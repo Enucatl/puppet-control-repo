@@ -1,2 +1,16 @@
 ---
 message: "This node is using common data"
+
+ssh::storeconfigs_enabled: true
+ssh::validate_sshd_file: true
+
+ssh::server_options:
+  ListenAddress:
+    - '127.0.0.0'
+    - '%{trusted.certname}'
+  PermitEmptyPasswords: 'no'
+  PermitRootLogin: 'no'
+  MaxAuthTries: 3
+  MaxSessions: 11
+  X11Forwarding: 'yes'
+  Subsystem: sftp /usr/lib/openssh/sftp-server
