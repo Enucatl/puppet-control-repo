@@ -2,7 +2,11 @@
 
 Install puppet agent following
 https://puppet.com/docs/puppet/7/install_agents.html#install_agents
+
+Download package from http://apt.puppet.com/
 ```
+sudo dpkg -i package
+sudo apt install puppet-agent
 sudo /opt/puppetlabs/bin/puppet config set server vault.home.arpa --section main
 sudo /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
 sudo /opt/puppetlabs/bin/puppet ssl bootstrap
