@@ -29,4 +29,9 @@ node default {
   # Example:
   #   class { 'my_class': }
   hiera_include('classes')
+
+  ca_cert::ca { 'root_2022_ca':
+    ensure => 'trusted',
+    source => 'puppet:///data/root_2022_ca.crt',
+  }
 }
