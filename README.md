@@ -1,5 +1,15 @@
 # A Puppet Control Repository
 
+Install puppet agent
+```
+https://puppet.com/docs/puppet/7/install_agents.html#install_agents
+```
+
+Resolve dependencies
+```
+generate-puppetfile -p Puppetfile-without-deps
+```
+
 Apply the latest definition on the puppet server
 ```
 sudo r10k deploy environment --modules -v info
