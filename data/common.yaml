@@ -1,6 +1,9 @@
 ---
 message: "This node is using common data"
 
+classes:
+  - ssh
+
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
 
