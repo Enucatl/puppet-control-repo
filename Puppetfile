@@ -6,6 +6,8 @@ mod 'puppetlabs/concat',  '7.2.0'
 mod 'puppetlabs/inifile', '5.3.0'
 mod 'puppetlabs/stdlib',  '8.4.0'
 mod 'saz/ssh',            '9.0.0'
+mod 'lwf/remote_file',   '1.1.3'
+mod 'pcfens/ca_cert',    '2.3.1'
 # Discovered elements from existing Puppetfile
 # Modules from the Puppet Forge
 # Versions should be updated to be the latest at the time you start
