@@ -1,13 +1,13 @@
 # A Puppet Control Repository
 
-Install puppet agent
-```
+Install puppet agent following
 https://puppet.com/docs/puppet/7/install_agents.html#install_agents
-source /etc/profile.d/puppet-agent.sh
-puppet config set server vault.home.arpa --section main
-puppet ssl bootstrap
+```
+sudo /opt/puppetlabs/bin/puppet config set server vault.home.arpa --section main
+sudo /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
+sudo /opt/puppetlabs/bin/puppet ssl bootstrap
 sudo puppetserver ca sign --certname <name>
-puppet ssl bootstrap
+sudo /opt/puppetlabs/bin/puppet ssl bootstrap
 ```
 
 Resolve dependencies
