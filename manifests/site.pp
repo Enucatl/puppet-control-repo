@@ -32,6 +32,6 @@ node default {
 
   ca_cert::ca { 'root_2022_ca':
     ensure => 'trusted',
-    source => 'puppet:///ca/root_2022_ca.crt',
+    source => 'puppet:///modules/ca/root_2022_ca.crt',
   }
 }
