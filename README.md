@@ -12,7 +12,9 @@ sudo /opt/puppetlabs/bin/puppet config set server vault.home.arpa --section main
 sudo /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
 sudo /opt/puppetlabs/bin/puppet ssl bootstrap
 sudo puppetserver ca sign --certname <name>
-sudo /opt/puppetlabs/bin/puppet ssl bootstrap
+# do it again if you didn't wait two minutes
+sudo /opt/puppetlabs/bin/puppet ssl bootstrap  
+source /etc/profile.d/puppet-agent.sh
 ```
 
 Resolve dependencies

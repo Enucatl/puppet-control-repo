@@ -3,10 +3,14 @@ version: 5
 
 defaults:
   datadir: "data"
+  data_hash: yaml_data
 
 hierarchy:
-  - name: "Yaml backend"
-    data_hash: yaml_data
-    paths:
-      - "nodes/%{trusted.certname}.yaml"
-      - "common.yaml"
+  - name: "Single node"
+    path: "nodes/%{trusted.certname}.yaml"
+
+  - name: "OS defaults"
+    path: "os/%{facts.os.family}.yaml"
+
+  - name: "Common data for all nodes"
+    path: "common.yaml"

@@ -9,6 +9,8 @@ mod 'saz/ssh',            '9.0.0'
 mod 'lwf/remote_file',   '1.1.3'
 mod 'pcfens/ca_cert',    '2.3.1'
 # Discovered elements from existing Puppetfile
+mod 'puppetlabs-apt', '8.5.0'
+mod 'puppet-unattended_upgrades', '7.0.0'
 # Modules from the Puppet Forge
 # Versions should be updated to be the latest at the time you start
 #mod 'puppetlabs/inifile', '5.0.1'

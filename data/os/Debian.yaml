@@ -1,0 +1,19 @@
+classes:
+  - apt
+  - unattended_upgrades
+
+unattended_upgrades:
+  age:
+    max: 14
+  auto:
+    fix_interrupted_dpkg: true
+    reboot: true
+    reboot_time: "02:03"
+    remove: true
+  update: 1
+  upgrade: 7
+  days:
+    - 0
+  remove_new_unused_deps: true
+  remove_unused_kernel: true
+  syslog_enable: true
