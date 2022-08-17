@@ -34,4 +34,13 @@ node default {
     ensure => 'trusted',
     source => 'puppet:///modules/ca/root_2022_ca.crt',
   }
+
+  file { '/etc/ssl/ssh_ca.pub':
+    source => 'puppet:///modules/ca/ssl_ca.pub',
+    owner  => 'root',
+    group  => 'root',
+    mode   => '0644',
+    before => Class['ssh'],
+  }
+
 }
