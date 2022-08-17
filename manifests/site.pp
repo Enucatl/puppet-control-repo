@@ -35,7 +35,7 @@ node default {
     source => 'puppet:///modules/ca/root_2022_ca.crt',
   }
 
-  file { '/etc/ssl/ssh_ca.pub':
+  file { '/etc/ssh/ssh_ca.pub':
     source => 'puppet:///modules/ca/ssh_ca.pub',
     owner  => 'root',
     group  => 'root',
