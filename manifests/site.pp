@@ -36,7 +36,7 @@ node default {
   }
 
   file { '/etc/ssl/ssh_ca.pub':
-    source => 'puppet:///modules/ca/ssl_ca.pub',
+    source => 'puppet:///modules/ca/ssh_ca.pub',
     owner  => 'root',
     group  => 'root',
     mode   => '0644',
