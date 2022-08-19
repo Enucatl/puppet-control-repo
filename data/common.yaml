@@ -3,7 +3,7 @@ message: "This node is using common data"
 
 classes:
   - ssh
-  - dnsmasq
+  - ::dnsmasq
 
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
@@ -20,7 +20,7 @@ ssh::server_options:
   TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
 
 
-dnsmasq:configs_hash:
+::dnsmasq:configs_hash:
   local-dns:
     content:
       - 'no-resolv'
