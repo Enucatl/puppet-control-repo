@@ -1,0 +1,10 @@
+---
+message: "This node is using specific data"
+
+classes:
+  - dnsmasq
+
+
+dnsmasq:configs_hash:
+  local-dns:
+    source: 'puppet:///modules/dns/dnsmasq.conf'
