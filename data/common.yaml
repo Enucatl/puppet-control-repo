@@ -3,7 +3,6 @@ message: "This node is using common data"
 
 classes:
   - ssh
-  - dnsmasq
 
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
@@ -18,10 +17,3 @@ ssh::server_options:
   X11Forwarding: 'yes'
   Subsystem: sftp /usr/lib/openssh/sftp-server
   TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
-
-
-dnsmasq::configs_hash:
-  local-dns:
-    content:
-      - 'no-resolv'
-      - 'server=dns.home.arpa'

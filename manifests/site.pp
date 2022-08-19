@@ -24,11 +24,17 @@ File { backup => false }
 # Puppet Enterprise console and External Node Classifiers (ENC's).
 #
 # For more on node definitions, see: https://puppet.com/docs/puppet/latest/lang_node_definitions.html
+hiera_include('classes')
+
 node default {
   # This is where you can declare classes for all nodes.
   # Example:
   #   class { 'my_class': }
-  hiera_include('classes')
+
+  ca_cert::ca { 'puppet_ca':
+    ensure => 'trusted',
+    source => 'puppet:///modules/ca/puppet-ca.crt',
+  }
 
   ca_cert::ca { 'root_2022_ca':
     ensure => 'trusted',
@@ -43,4 +49,20 @@ node default {
     before => Class['ssh'],
   }
 
+  dnsmasq::conf { 'local-dns':
+    ensure  => present,
+    content => "server=${facts['networking']['dhcp']}\nno-resolv",
+  }
+
+
+}
+
+node 'dns.home.arpa' {
+
+  $cpe_id = Deferred('vault_lookup::lookup', ['secret/dns', 'https://vault.home.arpa:8200'])
+
+  dnsmasq::conf { 'local-dns':
+    ensure  => present,
+    content => Deferred('inline_epp', [file('dns/dnsmasq.conf.epp'), $cpe_id]),
+  }
 }
