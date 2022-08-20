@@ -70,7 +70,7 @@ server=20a7:a8c1::
 server=45.90.30.0
 server=20a7:a8c0::
 server=45.90.28.0
-add-cpe-id=<%= $cpe_id['cpe-id'] %>
+add-cpe-id=<%= $cpe_id.unwrap['cpe-id'] %>
 
 # Example of routing PTR queries to nameservers: this will send all
 # address->name queries for 192.168.3/24 to nameserver 10.1.2.3
