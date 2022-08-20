@@ -59,10 +59,12 @@ node default {
 
 node 'dns.home.arpa' {
 
-  $cpe_id = Deferred('vault_lookup::lookup', ['secret/dns', 'https://vault.home.arpa:8200'])
+  $dns_variables = {
+    'cpe_id' => Deferred('vault_lookup::lookup', ['secret/dns', 'https://vault.home.arpa:8200'])
+  }
 
   dnsmasq::conf { 'local-dns':
     ensure  => present,
-    content => Deferred('inline_epp', [file('dns/dnsmasq.conf.epp'), $cpe_id]),
+    content => Deferred('inline_epp', [file('dns/dnsmasq.conf.epp'), $dns_variables]),
   }
 }
