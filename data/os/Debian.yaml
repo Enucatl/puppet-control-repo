@@ -16,6 +16,6 @@ unattended_upgrades::remove_new_unused_deps: true
 unattended_upgrades::remove_unused_kernel: true
 unattended_upgrades::syslog_enable: true
 unattended_upgrades::extra_origins:
-  - TorProject
-  - debian bullseye
-  - Puppetlabs
+  - origin=TorProject,component=main
+  - origin=Puppetlabs,component=puppet7
+  - site=repo.i2pd.xyz
