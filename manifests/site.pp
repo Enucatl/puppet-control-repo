@@ -75,9 +75,7 @@ node 'nuc10i7fnh.home.arpa' {
 
 node 'vm-debian.home.arpa' {
   include dns::client
-  $vault_hash = Deferred('vault_hash', [ "${vault_addr}/v1/secret/data/tor", 'cert', 'v2', ])
+  include tor_relay
 
-  class { 'tor_relay':
-    vault_hash => $vault_hash,
-  }
+
 }
