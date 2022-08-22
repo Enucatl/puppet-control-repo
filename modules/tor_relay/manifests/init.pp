@@ -11,11 +11,14 @@ class tor_relay {
   include tor
 
   tor::daemon::relay { 'relay':
-    port     => $orport,
-    nickname => $nickname,       
-    relay_bandwidth_rate => $relay_bandwidth_rate,       
+    port                  => $orport,
+    nickname              => $nickname,       
+    address               => undef,
+    bandwidth_rate  => undef,       
+    bandwidth_burst => undef,       
+    relay_bandwidth_rate  => $relay_bandwidth_rate,       
     relay_bandwidth_burst => $relay_bandwidth_burst,       
-    contact_info => $contact_info,       
+    contact_info          => $contact_info,       
   }
 
   tor::daemon::directory { 'directory':
@@ -24,6 +27,7 @@ class tor_relay {
 
   tor::daemon::socks { 'socks':
     port => $socks_port,
+    port_front_page => undef,
   }
 
   tor::daemon::snippet {'snippet':
