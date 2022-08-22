@@ -37,7 +37,7 @@ node 'dns.home.arpa' {
 
   $dns_variables = {
     'cpe_id' => Sensitive(Deferred('vault_key', [
-      'https://vault.home.arpa:8200/v1/secret/dns',
+      'https://vault.home.arpa:8200/v1/secret/data/dns',
       'cert',
       'cpe-id',
       'v2',
@@ -75,7 +75,7 @@ node 'nuc10i7fnh.home.arpa' {
 node 'vm-debian.home.arpa' {
   include dns::client
   $vault_hash = Deferred('vault_hash', [
-      'https://vault.home.arpa:8200/v1/secret/tor',
+      'https://vault.home.arpa:8200/v1/secret/data/tor',
       'cert',
       'v2',
       ])

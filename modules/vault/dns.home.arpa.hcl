@@ -1,3 +1,3 @@
-path "secret/dns" {
+path "secret/data/dns" {
     capabilities = ["read"]
 }

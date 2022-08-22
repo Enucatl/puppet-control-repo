@@ -1,3 +1,3 @@
-path "secret/tor" {
+path "secret/data/tor" {
     capabilities = ["read"]
 }
