@@ -36,12 +36,12 @@ node default {
 node 'dns.home.arpa' {
 
   $dns_variables = {
-    'cpe_id' => Sensitive(Deferred('vault_key', [
+    'cpe_id' => Deferred('vault_key', [
       'https://vault.home.arpa:8200/v1/secret/data/dns',
       'cert',
       'cpe-id',
       'v2',
-      ]))
+      ])
   }
 
   dnsmasq::conf { 'local-dns':
