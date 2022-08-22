@@ -20,7 +20,6 @@ class tor_relay {
 
   tor::daemon::directory { 'directory':
     port => $dir_port,
-    port_front_page => "",
   }
 
   tor::daemon::socks { 'socks':
