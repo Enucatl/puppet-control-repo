@@ -2,6 +2,7 @@
 message: "This node is using common data"
 
 classes:
+  - ca
   - ssh
 
 ssh::storeconfigs_enabled: true

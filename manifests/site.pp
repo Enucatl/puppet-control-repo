@@ -31,24 +31,6 @@ node default {
   # Example:
   #   class { 'my_class': }
 
-  ca_cert::ca { 'puppet_ca':
-    ensure => 'trusted',
-    source => 'puppet:///modules/ca/puppet-ca.crt',
-  }
-
-  ca_cert::ca { 'root_2022_ca':
-    ensure => 'trusted',
-    source => 'puppet:///modules/ca/root_2022_ca.crt',
-  }
-
-  file { '/etc/ssh/ssh_ca.pub':
-    source => 'puppet:///modules/ca/ssh_ca.pub',
-    owner  => 'root',
-    group  => 'root',
-    mode   => '0644',
-    before => Class['ssh'],
-  }
-
   dnsmasq::conf { 'local-dns':
     ensure  => present,
     content => "server=${facts['networking']['dhcp']}\nno-resolv",
@@ -58,8 +40,6 @@ node default {
 }
 
 node 'dns.home.arpa' {
-
-  include default
 
   $dns_variables = {
     'cpe_id' => Sensitive(Deferred('vault_key', [
@@ -72,6 +52,6 @@ node 'dns.home.arpa' {
   dnsmasq::conf { 'local-dns':
     ensure  => present,
     content => Deferred('inline_epp', [file('dns/dnsmasq.conf.epp'), $dns_variables]),
-    require =>  Ca_cert::Ca['puppet_ca']
+    require => Class['ca']
   }
 }
