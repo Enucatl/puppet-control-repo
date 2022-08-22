@@ -60,14 +60,14 @@ node default {
 node 'dns.home.arpa' {
 
   $dns_variables = {
-    'cpe_id' => Deferred('vault_key', [
+    'cpe_id' => Sensitive(Deferred('vault_key', [
       'https://vault.home.arpa:8200/v1/secret/dns',
       'cert',
       'cpe-id',
       'v1',
       5,
       '/usr/local/share/ca-certificates/puppet-ca.crt',
-      ])
+      ]))
   }
 
   dnsmasq::conf { 'local-dns':
