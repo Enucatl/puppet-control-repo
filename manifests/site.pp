@@ -59,6 +59,8 @@ node default {
 
 node 'dns.home.arpa' {
 
+  include default
+
   $dns_variables = {
     'cpe_id' => Sensitive(Deferred('vault_key', [
       'https://vault.home.arpa:8200/v1/secret/dns',
