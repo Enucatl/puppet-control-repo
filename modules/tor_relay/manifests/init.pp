@@ -13,9 +13,6 @@ class tor_relay {
   tor::daemon::relay { 'relay':
     port                  => $orport,
     nickname              => $nickname,       
-    address               => "",
-    #bandwidth_rate        => 0,
-    #bandwidth_burst       => 0,       
     relay_bandwidth_rate  => $relay_bandwidth_rate,       
     relay_bandwidth_burst => $relay_bandwidth_burst,       
     contact_info          => $contact_info,       
