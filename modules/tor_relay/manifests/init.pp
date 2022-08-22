@@ -13,9 +13,9 @@ class tor_relay {
   tor::daemon::relay { 'relay':
     port                  => $orport,
     nickname              => $nickname,       
-    address               => undef,
-    bandwidth_rate        => undef,
-    bandwidth_burst       => undef,       
+    address               => "",
+    #bandwidth_rate        => 0,
+    #bandwidth_burst       => 0,       
     relay_bandwidth_rate  => $relay_bandwidth_rate,       
     relay_bandwidth_burst => $relay_bandwidth_burst,       
     contact_info          => $contact_info,       
@@ -23,7 +23,7 @@ class tor_relay {
 
   tor::daemon::directory { 'directory':
     port => $dir_port,
-    port_front_page => undef,
+    port_front_page => "",
   }
 
   tor::daemon::socks { 'socks':
