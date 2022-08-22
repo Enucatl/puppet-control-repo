@@ -64,14 +64,12 @@ node 'dns.home.arpa' {
       'https://vault.home.arpa:8200/v1/secret/dns',
       'cert',
       'cpe-id',
-      'v1',
-      5,
-      '/usr/local/share/ca-certificates/puppet-ca.crt',
       ]))
   }
 
   dnsmasq::conf { 'local-dns':
     ensure  => present,
     content => Deferred('inline_epp', [file('dns/dnsmasq.conf.epp'), $dns_variables]),
+    require =>  Ca_cert::Ca['puppet_ca']
   }
 }
