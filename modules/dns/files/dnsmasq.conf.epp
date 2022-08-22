@@ -1,4 +1,4 @@
-<%- | Sensitive $cpe_id | -%>
+<%- | String $cpe_id | -%>
 
 # Configuration file for dnsmasq.
 #
