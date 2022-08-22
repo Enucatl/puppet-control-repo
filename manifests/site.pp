@@ -74,7 +74,6 @@ node 'nuc10i7fnh.home.arpa' {
 }
 
 node 'vm-debian.home.arpa' {
-  include dns::hardcoded_client
   include tor_relay
 
 }
