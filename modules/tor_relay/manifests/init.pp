@@ -23,11 +23,11 @@ class tor_relay {
 
   tor::daemon::directory { 'directory':
     port => $dir_port,
+    port_front_page => undef,
   }
 
   tor::daemon::socks { 'socks':
     port => $socks_port,
-    port_front_page => undef,
   }
 
   tor::daemon::snippet {'snippet':
