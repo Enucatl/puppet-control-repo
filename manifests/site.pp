@@ -77,5 +77,4 @@ node 'vm-debian.home.arpa' {
   include dns::client
   include tor_relay
 
-
 }

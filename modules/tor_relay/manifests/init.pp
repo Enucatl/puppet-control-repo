@@ -1,12 +1,14 @@
 class tor_relay {
 
-  $orport = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'ORPort', 'cpe-id', 'v2'])
-  $nickname = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'Nickname', 'cpe-id', 'v2'])
-  $relay_bandwidth_rate = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'RelayBandwidthRate', 'cpe-id', 'v2'])
-  $relay_bandwidth_burst = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'RelayBandwidthBurst', 'cpe-id', 'v2'])
-  $contact_info = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'ContactInfo', 'cpe-id', 'v2'])
-  $dir_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'DirPort', 'cpe-id', 'v2'])
-  $socks_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'SocksPort', 'cpe-id', 'v2'])
+  $orport = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'ORPort', 'v2'])
+  $nickname = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'Nickname', 'v2'])
+  $relay_bandwidth_rate = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert',  'RelayBandwidthRate', 'v2'])
+  $relay_bandwidth_burst = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert',  'RelayBandwidthBurst', 'v2'])
+  $contact_info = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'ContactInfo', 'v2'])
+  $dir_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'DirPort', 'v2'])
+  $socks_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'SocksPort', 'v2'])
+
+  include tor
 
   tor::daemon::relay { 'relay':
     port     => $orport,
