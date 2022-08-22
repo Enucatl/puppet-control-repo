@@ -60,7 +60,7 @@ node 'nuc10i7fnh.home.arpa' {
     vault_uri         => 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa',
     auth_path         => 'cert',
     cert_data         => {
-      'common_name' => 'traefik-dashboard.nuc10i7fnh.home.arpa', 
+      'common_name' => "traefik-dashboard.${trusted['certname']}", 
       'ttl'         =>  '48h',  # 2 day
     },
     renewal_threshold => 2,
