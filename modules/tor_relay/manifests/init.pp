@@ -1,19 +1,27 @@
-class tor_relay (Hash $vault_hash) {
+class tor_relay {
+
+  $orport = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'ORPort', 'cpe-id', 'v2'])
+  $nickname = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'Nickname', 'cpe-id', 'v2'])
+  $relay_bandwidth_rate = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'RelayBandwidthRate', 'cpe-id', 'v2'])
+  $relay_bandwidth_burst = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'RelayBandwidthBurst', 'cpe-id', 'v2'])
+  $contact_info = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'ContactInfo', 'cpe-id', 'v2'])
+  $dir_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'DirPort', 'cpe-id', 'v2'])
+  $socks_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'SocksPort', 'cpe-id', 'v2'])
 
   tor::daemon::relay { 'relay':
-    port     => $vault_hash['ORPort'],
-    nickname => $vault_hash['Nickname'],       
-    relay_bandwidth_rate => $vault_hash['RelayBandwidthRate'],       
-    relay_bandwidth_burst => $vault_hash['RelayBandwidthBurst'],       
-    contact_info => $vault_hash['ContactInfo'],       
+    port     => $orport,
+    nickname => $nickname,       
+    relay_bandwidth_rate => $relay_bandwidth_rate,       
+    relay_bandwidth_burst => $relay_bandwidth_burst,       
+    contact_info => $contact_info,       
   }
 
   tor::daemon::directory { 'directory':
-    port => $vault_hash['DirPort'],
+    port => $dir_port,
   }
 
   tor::daemon::socks { 'socks':
-    port => $vault_hash['SocksPort'],
+    port => $socks_port,
   }
 
   tor::daemon::snippet {'snippet':

@@ -25,6 +25,7 @@ File { backup => false }
 #
 # For more on node definitions, see: https://puppet.com/docs/puppet/latest/lang_node_definitions.html
 hiera_include('classes')
+$vault_addr = 'https://vault.home.arpa:8200'
 
 node default {
   # This is where you can declare classes for all nodes.
@@ -37,7 +38,7 @@ node 'dns.home.arpa' {
 
   $dns_variables = {
     'cpe_id' => Deferred('vault_key', [
-      'https://vault.home.arpa:8200/v1/secret/data/dns',
+      "${vault_addr}/v1/secret/data/dns",
       'cert',
       'cpe-id',
       'v2',
@@ -58,7 +59,7 @@ node 'nuc10i7fnh.home.arpa' {
 
   vault_cert { 'traefik-dashboard':
     ensure            => present,
-    vault_uri         => 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa',
+    vault_uri         => "${vault_addr}/v1/pki_int/issue/home-dot-arpa",
     auth_path         => 'cert',
     cert_data         => {
       'common_name' => "traefik-dashboard.${trusted['certname']}", 
@@ -74,11 +75,7 @@ node 'nuc10i7fnh.home.arpa' {
 
 node 'vm-debian.home.arpa' {
   include dns::client
-  $vault_hash = Deferred('vault_hash', [
-      'https://vault.home.arpa:8200/v1/secret/data/tor',
-      'cert',
-      'v2',
-      ])
+  $vault_hash = Deferred('vault_hash', [ "${vault_addr}/v1/secret/data/tor", 'cert', 'v2', ])
 
   class { 'tor_relay':
     vault_hash => $vault_hash,
