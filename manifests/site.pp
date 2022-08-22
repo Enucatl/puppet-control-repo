@@ -46,7 +46,7 @@ node 'dns.home.arpa' {
 
   dnsmasq::conf { 'local-dns':
     ensure  => present,
-    content => Deferred('inline_epp', [file('dns/dnsmasq.conf.epp'), $dns_variables]),
+    content => stdlib::deferrable_epp('dns/dnsmasq.conf.epp', $dns_variables),
     require => Class['ca']
   }
 }
