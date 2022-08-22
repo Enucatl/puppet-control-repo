@@ -9,7 +9,7 @@ mod 'puppetlabs/apt', '8.5.0'
 mod 'puppet/unattended_upgrades', '7.0.0'
 mod 'saz/dnsmasq', '1.4.0'
 mod 'saz/dnsmasq', '1.4.0'
-mod 'puppet/vault_lookup', '0.4.0'
+mod 'southalc-vault_secrets', '0.5.1'
 
 # Modules from Git
 # Examples: https://github.com/puppetlabs/r10k/blob/master/doc/puppetfile.mkd#examples
