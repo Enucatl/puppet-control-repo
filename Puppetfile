@@ -13,6 +13,7 @@ mod 'saz/dnsmasq',        '1.3.0'
 mod 'saz/ssh',            '9.0.0'
 mod 'puppet/hashi_stack', '2.0.1'
 mod 'southalc/vault_secrets', '0.5.1'
+mod 'smash-tor', '4.0.0'
 
 
 # Modules from the Puppet Forge
