@@ -30,13 +30,7 @@ node default {
   # This is where you can declare classes for all nodes.
   # Example:
   #   class { 'my_class': }
-
-  dnsmasq::conf { 'local-dns':
-    ensure  => present,
-    content => "server=${facts['networking']['dhcp']}\nno-resolv",
-  }
-
-
+  include dns::client
 }
 
 node 'dns.home.arpa' {
