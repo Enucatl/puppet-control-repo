@@ -40,6 +40,7 @@ node 'dns.home.arpa' {
       'https://vault.home.arpa:8200/v1/secret/dns',
       'cert',
       'cpe-id',
+      'v2',
       ]))
   }
 
@@ -67,6 +68,36 @@ node 'nuc10i7fnh.home.arpa' {
     ca_chain_file     => '/home/user/chain.pem',
     cert_file     => '/home/user/cert.pem',
     key_file     => '/home/user/key.pem',
+  }
+
+}
+
+node 'vm-debian.home.arpa' {
+  include dns::client
+  $vault_hash = Sensitive(Deferred('vault_hash', [
+      'https://vault.home.arpa:8200/v1/secret/tor',
+      'cert',
+      'v2',
+      ]))
+
+  tor::daemon::relay { 'relay':
+    port     => $vault_hash['ORPort'],
+    nickname => $vault_hash['Nickname'],       
+    relay_bandwidth_rate => $vault_hash['RelayBandwidthRate'],       
+    relay_bandwidth_burst => $vault_hash['RelayBandwidthBurst'],       
+    contact_info => $vault_hash['ContactInfo'],       
+  }
+
+  tor::daemon::directory { 'directory':
+    port => $vault_hash['DirPort'],
+  }
+
+  tor::daemon::socks { 'socks':
+    port => $vault_hash['SocksPort'],
+  }
+
+  tor::daemon::snippet {'snippet':
+    content => 'ExitRelay 0'
   }
 
 }
