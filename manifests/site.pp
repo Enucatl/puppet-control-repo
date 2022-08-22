@@ -74,26 +74,26 @@ node 'nuc10i7fnh.home.arpa' {
 
 node 'vm-debian.home.arpa' {
   include dns::client
-  $vault_hash = Sensitive(Deferred('vault_hash', [
+  $vault_hash = Deferred('vault_hash', [
       'https://vault.home.arpa:8200/v1/secret/tor',
       'cert',
       'v2',
-      ]))
+      ])
 
   tor::daemon::relay { 'relay':
-    port     => $vault_hash.unwrap['ORPort'],
-    nickname => $vault_hash.unwrap['Nickname'],       
-    relay_bandwidth_rate => $vault_hash.unwrap['RelayBandwidthRate'],       
-    relay_bandwidth_burst => $vault_hash.unwrap['RelayBandwidthBurst'],       
-    contact_info => $vault_hash.unwrap['ContactInfo'],       
+    port     => $vault_hash['ORPort'],
+    nickname => $vault_hash['Nickname'],       
+    relay_bandwidth_rate => $vault_hash['RelayBandwidthRate'],       
+    relay_bandwidth_burst => $vault_hash['RelayBandwidthBurst'],       
+    contact_info => $vault_hash['ContactInfo'],       
   }
 
   tor::daemon::directory { 'directory':
-    port => $vault_hash.unwrap['DirPort'],
+    port => $vault_hash['DirPort'],
   }
 
   tor::daemon::socks { 'socks':
-    port => $vault_hash.unwrap['SocksPort'],
+    port => $vault_hash['SocksPort'],
   }
 
   tor::daemon::snippet {'snippet':
