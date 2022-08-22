@@ -13,7 +13,6 @@ mod 'saz/dnsmasq',        '1.3.0'
 mod 'saz/ssh',            '9.0.0'
 mod 'puppet/hashi_stack', '2.0.1'
 mod 'southalc/vault_secrets', '0.5.1'
-mod 'smash-tor', '4.0.0'
 
 
 # Modules from the Puppet Forge
@@ -25,6 +24,6 @@ mod 'smash-tor', '4.0.0'
 #mod 'apache',
 #  git:    'https://github.com/puppetlabs/puppetlabs-apache',
 #  commit: '1b6f89afdde0df7f9433a163d5c4b5328eac5779'
-#mod 'apache',
-#  git:    'https://github.com/puppetlabs/puppetlabs-apache',
-#  branch: 'docs_experiment'
+mod 'tor',
+  git:    'https://gitlab.com/enucatl/tor.git',
+  branch: 'master'
