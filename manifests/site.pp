@@ -49,3 +49,24 @@ node 'dns.home.arpa' {
     require => Class['ca']
   }
 }
+
+node 'nuc10i7fnh.home.arpa' {
+  include dns::client
+
+  include vault_secrets::vault_cert
+
+  vault_cert { 'traefik-dashboard':
+    ensure            => present,
+    vault_uri         => 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa',
+    auth_path         => 'cert',
+    cert_data         => {
+      'common_name' => 'traefik-dashboard.${trusted.certname}', 
+      'ttl'         =>  '48h',  # 2 day
+    },
+    renewal_threshold => 2,
+    ca_chain_file     => '/home/user/chain.pem',
+    cert_file     => '/home/user/cert.pem',
+    key_file     => '/home/user/key.pem',
+  }
+
+}
