@@ -80,31 +80,7 @@ node 'vm-debian.home.arpa' {
       'v2',
       ])
 
-  $orport = Deferred('vault_key', [
-      'https://vault.home.arpa:8200/v1/secret/data/tor',
-      'cert',
-      'ORPort',
-      'v2',
-    ])         
-
-  tor::daemon::relay { 'relay':
-    port     => $orport,
-    nickname => $vault_hash['Nickname'],       
-    relay_bandwidth_rate => $vault_hash['RelayBandwidthRate'],       
-    relay_bandwidth_burst => $vault_hash['RelayBandwidthBurst'],       
-    contact_info => $vault_hash['ContactInfo'],       
+  class { 'tor_relay':
+    vault_hash => $vault_hash,
   }
-
-  tor::daemon::directory { 'directory':
-    port => $vault_hash['DirPort'],
-  }
-
-  tor::daemon::socks { 'socks':
-    port => $vault_hash['SocksPort'],
-  }
-
-  tor::daemon::snippet {'snippet':
-    content => 'ExitRelay 0'
-  }
-
 }
