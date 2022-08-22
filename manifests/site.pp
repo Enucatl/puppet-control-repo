@@ -81,19 +81,19 @@ node 'vm-debian.home.arpa' {
       ]))
 
   tor::daemon::relay { 'relay':
-    port     => $vault_hash['ORPort'],
-    nickname => $vault_hash['Nickname'],       
-    relay_bandwidth_rate => $vault_hash['RelayBandwidthRate'],       
-    relay_bandwidth_burst => $vault_hash['RelayBandwidthBurst'],       
-    contact_info => $vault_hash['ContactInfo'],       
+    port     => $vault_hash.unwrap['ORPort'],
+    nickname => $vault_hash.unwrap['Nickname'],       
+    relay_bandwidth_rate => $vault_hash.unwrap['RelayBandwidthRate'],       
+    relay_bandwidth_burst => $vault_hash.unwrap['RelayBandwidthBurst'],       
+    contact_info => $vault_hash.unwrap['ContactInfo'],       
   }
 
   tor::daemon::directory { 'directory':
-    port => $vault_hash['DirPort'],
+    port => $vault_hash.unwrap['DirPort'],
   }
 
   tor::daemon::socks { 'socks':
-    port => $vault_hash['SocksPort'],
+    port => $vault_hash.unwrap['SocksPort'],
   }
 
   tor::daemon::snippet {'snippet':
