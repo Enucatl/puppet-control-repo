@@ -8,7 +8,9 @@ class tor_relay {
   $dir_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'DirPort', 'v2'])
   $socks_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'SocksPort', 'v2'])
 
-  include tor
+  class { 'tor':
+    use_upstream_repository => true,
+  }
 
   tor::daemon::relay { 'relay':
     port                  => $orport,
