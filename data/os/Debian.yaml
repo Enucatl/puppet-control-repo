@@ -6,8 +6,7 @@ unattended_upgrades::age:
   max: 14
 unattended_upgrades::auto:
   fix_interrupted_dpkg: true
-  reboot: true
-  reboot_time: "02:03"
+  reboot: false
   remove: true
 unattended_upgrades::update: 1
 unattended_upgrades::upgrade: 7
