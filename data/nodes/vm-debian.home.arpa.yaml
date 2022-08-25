@@ -19,9 +19,9 @@ i2pd::daemon::base::config:
   httpproxy:
     address: '127.0.0.1'
     port: 4444
-  socksproxy:
-    address: '127.0.0.1'
-    port: 4447
+  #socksproxy:
+    #address: '127.0.0.1'
+    #port: 4447
   sam:
     enabled: true
   reseed:
