@@ -1,0 +1,28 @@
+---
+classes:
+  - i2pd
+
+i2pd::install::version: 'latest'
+i2pd::daemon::base::user: 'i2pd'
+i2pd::daemon::base::group: 'i2pd'
+i2pd::daemon::base::config_file: '/etc/i2pd/i2pd.conf'
+i2pd::daemon::base::config:
+  global:
+    log: 'file'
+    port: 55623
+    ipv4: true
+    ipv6: true
+    bandwidth: 'P'
+  http:
+    address: '127.0.0.1'
+    port: 7070
+  httpproxy:
+    address: '127.0.0.1'
+    port: 4444
+  socksproxy:
+    address: '127.0.0.1'
+    port: 4447
+  sam:
+    enabled: true
+  reseed:
+    verify: true

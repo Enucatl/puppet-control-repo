@@ -27,3 +27,7 @@ mod 'southalc/vault_secrets', '0.5.1'
 mod 'tor',
   git:    'https://gitlab.com/enucatl/tor.git',
   branch: 'master'
+
+mod 'i2pd',
+  git:    'https://github.com/enucatl/i2pd.git',
+  branch: 'main'
