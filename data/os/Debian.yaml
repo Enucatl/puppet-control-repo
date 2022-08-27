@@ -9,8 +9,7 @@ unattended_upgrades::auto:
   reboot: false
   remove: true
 unattended_upgrades::update: 1
-unattended_upgrades::upgrade: 7
-unattended_upgrades::days: ["sunday"]
+unattended_upgrades::upgrade: 1
 unattended_upgrades::remove_new_unused_deps: true
 unattended_upgrades::remove_unused_kernel: true
 unattended_upgrades::syslog_enable: true
