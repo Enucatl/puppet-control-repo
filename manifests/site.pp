@@ -52,5 +52,9 @@ node 'dns.home.arpa' {
 }
 
 node 'nuc10i7fnh.home.arpa' {
-  create_resources(vault_cert, $vault_certs)
+  notify { 'notify':
+    message => $vault_certs
+  }
+
+  #create_resources(vault_cert, $vault_certs)
 }
