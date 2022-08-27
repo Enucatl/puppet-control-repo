@@ -95,3 +95,21 @@ vault_certs:
     key_file: '/home/user/docker/traefik/data/certs/paperless.key'
     key_owner: 'user'
     key_group: 'user'
+
+  elabftw:
+    ensure: 'present'
+    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
+    auth_path: 'cert'
+    cert_data:
+      common_name: "elabftw.%{trusted.certname}"
+      ttl: '2160h'  # 90 days
+    renewal_threshold: 5
+    ca_chain_file: '/home/user/docker/traefik/data/certs/elabftw.chain'
+    ca_chain_owner: 'user'
+    ca_chain_group: 'user'
+    cert_file: '/home/user/docker/traefik/data/certs/elabftw.crt'
+    cert_owner: 'user'
+    cert_group: 'user'
+    key_file: '/home/user/docker/traefik/data/certs/elabftw.key'
+    key_owner: 'user'
+    key_group: 'user'
