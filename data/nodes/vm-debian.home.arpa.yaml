@@ -1,5 +1,6 @@
 ---
 classes:
+  - tor_relay
   - i2pd
 
 i2pd::install::version: 'latest'
