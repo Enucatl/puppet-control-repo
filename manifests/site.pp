@@ -34,9 +34,6 @@ node default {
   include dns::client
 }
 
-node 'vm-debian.home.arpa' {
-}
-
 node 'dns.home.arpa' {
   $dns_variables = {
     'cpe_id' => Deferred('vault_key', [
