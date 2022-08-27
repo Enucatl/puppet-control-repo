@@ -5,6 +5,7 @@ classes:
 
 
 vault_certs:
+
   traefik:
     ensure: 'present'
     vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
@@ -22,6 +23,7 @@ vault_certs:
     key_file: '/home/user/docker/traefik/data/certs/traefik.key'
     key_owner: 'user'
     key_group: 'user'
+
   checkmk:
     ensure: 'present'
     vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
@@ -39,6 +41,25 @@ vault_certs:
     key_file: '/home/user/docker/traefik/data/certs/checkmk.key'
     key_owner: 'user'
     key_group: 'user'
+
+  portainer:
+    ensure: 'present'
+    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
+    auth_path: 'cert'
+    cert_data:
+      common_name: "portainer.%{trusted.certname}"
+      ttl: '2160h'  # 90 days
+    renewal_threshold: 5
+    ca_chain_file: '/home/user/docker/traefik/data/certs/portainer.chain'
+    ca_chain_owner: 'user'
+    ca_chain_group: 'user'
+    cert_file: '/home/user/docker/traefik/data/certs/portainer.crt'
+    cert_owner: 'user'
+    cert_group: 'user'
+    key_file: '/home/user/docker/traefik/data/certs/portainer.key'
+    key_owner: 'user'
+    key_group: 'user'
+
   nuc10i7fnh:
     ensure: 'present'
     vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
