@@ -4,15 +4,16 @@ classes:
   - vault_secrets::vault_cert
 
 
-vault_certs:
-  traefik-dashboard:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "traefik-dashboard.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.chain'
-    cert_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.crt'
-    key_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.key'
+vault_certs_data:
+  vault_certs:
+    traefik-dashboard:
+      ensure: 'present'
+      vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
+      auth_path: 'cert'
+      cert_data:
+        common_name: "traefik-dashboard.%{trusted.certname}"
+        ttl: '2160h'  # 90 days
+      renewal_threshold: 5
+      ca_chain_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.chain'
+      cert_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.crt'
+      key_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.key'
