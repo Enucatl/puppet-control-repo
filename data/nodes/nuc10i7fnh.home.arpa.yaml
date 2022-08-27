@@ -5,20 +5,37 @@ classes:
 
 
 vault_certs:
-  traefik-dashboard:
+  traefik:
     ensure: 'present'
     vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
     auth_path: 'cert'
     cert_data:
-      common_name: "traefik-dashboard.%{trusted.certname}"
+      common_name: "traefik.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.chain'
+    ca_chain_file: '/home/user/docker/traefik/data/certs/traefik.chain'
     ca_chain_owner: 'user'
     ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.crt'
+    cert_file: '/home/user/docker/traefik/data/certs/traefik.crt'
     cert_owner: 'user'
     cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/traefik-dashboard.key'
+    key_file: '/home/user/docker/traefik/data/certs/traefik.key'
+    key_owner: 'user'
+    key_group: 'user'
+  checkmk:
+    ensure: 'present'
+    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
+    auth_path: 'cert'
+    cert_data:
+      common_name: "checkmk.%{trusted.certname}"
+      ttl: '2160h'  # 90 days
+    renewal_threshold: 5
+    ca_chain_file: '/home/user/docker/traefik/data/certs/checkmk.chain'
+    ca_chain_owner: 'user'
+    ca_chain_group: 'user'
+    cert_file: '/home/user/docker/traefik/data/certs/checkmk.crt'
+    cert_owner: 'user'
+    cert_group: 'user'
+    key_file: '/home/user/docker/traefik/data/certs/checkmk.key'
     key_owner: 'user'
     key_group: 'user'
