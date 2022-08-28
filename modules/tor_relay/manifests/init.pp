@@ -1,5 +1,6 @@
 class tor_relay {
 
+  $vault_addr = 'https://vault.home.arpa:8200'
   $orport = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'ORPort', 'v2'])
   $nickname = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'Nickname', 'v2'])
   $relay_bandwidth_rate = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert',  'RelayBandwidthRate', 'v2'])
