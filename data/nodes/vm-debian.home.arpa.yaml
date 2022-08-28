@@ -3,6 +3,7 @@ classes:
   - tor_relay
   - i2pd
 
+dns::client::server: '192.168.2.42'
 i2pd::install::version: 'latest'
 i2pd::daemon::base::user: 'i2pd'
 i2pd::daemon::base::group: 'i2pd'
