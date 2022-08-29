@@ -12,7 +12,6 @@ mod 'puppetlabs/stdlib',  '8.4.0'
 mod 'saz/dnsmasq',        '1.3.0'
 mod 'saz/ssh',            '9.0.0'
 mod 'puppet/hashi_stack', '2.0.1'
-mod 'southalc/vault_secrets', '0.5.1'
 
 
 # Modules from the Puppet Forge
@@ -31,3 +30,7 @@ mod 'tor',
 mod 'i2pd',
   git:    'https://github.com/enucatl/i2pd.git',
   branch: 'main'
+
+mod 'vault_secrets',
+  git: 'https://github.com/Enucatl/vault.git',
+  branch: 'master'
