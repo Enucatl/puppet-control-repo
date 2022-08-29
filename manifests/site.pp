@@ -28,20 +28,12 @@ hiera_include('classes')
 $vault_addr = 'https://vault.home.arpa:8200'
 
 node default {
-  # This is where you can declare classes for all nodes.
-  # Example:
-  #   class { 'my_class': }
   include dns::client
 }
 
 node 'dns.home.arpa' {
   $dns_variables = {
-    'cpe_id' => Deferred('vault_key', [
-      "${vault_addr}/v1/secret/data/dns",
-      'cert',
-      'cpe-id',
-      'v2',
-      ])
+    'cpe_id' => lookup('dns::cpe-id')
   }
 
   dnsmasq::conf { 'local-dns':
