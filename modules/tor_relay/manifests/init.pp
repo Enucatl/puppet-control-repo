@@ -4,7 +4,7 @@ class tor_relay (
   Integer $relay_bandwidth_rate,
   Integer $relay_bandwidth_burst,
   String $contact_info,
-  Integer $dirport,
+  Integer $dir_port,
   Integer $socks_port,
 ) {
 
