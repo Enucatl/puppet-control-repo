@@ -9,7 +9,7 @@ hierarchy:
   - name: "Secrets from Vault"
     data_hash: vault_hiera_hash
     uris:
-      - "https://vault.home.arpa:8200/secret/puppet"
+      - "https://vault.home.arpa:8200/v1/secret/data/puppet"
     options:
       timeout: 5
       version: "v2"
