@@ -1,3 +1,3 @@
-path "secret/data/tor" {
+path "secret/data/puppet" {
     capabilities = ["read"]
 }

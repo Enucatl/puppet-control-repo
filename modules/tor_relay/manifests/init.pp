@@ -1,13 +1,12 @@
-class tor_relay {
-
-  $vault_addr = 'https://vault.home.arpa:8200'
-  $orport = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'ORPort', 'v2'])
-  $nickname = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'Nickname', 'v2'])
-  $relay_bandwidth_rate = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert',  'RelayBandwidthRate', 'v2'])
-  $relay_bandwidth_burst = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert',  'RelayBandwidthBurst', 'v2'])
-  $contact_info = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'ContactInfo', 'v2'])
-  $dir_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'DirPort', 'v2'])
-  $socks_port = Deferred('vault_key', ["${vault_addr}/v1/secret/data/tor", 'cert', 'SocksPort', 'v2'])
+class tor_relay (
+  Integer $orport,
+  String $nickname,
+  Integer $relay_bandwidth_rate,
+  Integer $relay_bandwidth_burst,
+  String $contact_info,
+  Integer $dirport,
+  Integer $socks_port,
+) {
 
   class { 'tor':
     use_upstream_repository => true,

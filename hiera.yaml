@@ -6,6 +6,14 @@ defaults:
   data_hash: yaml_data
 
 hierarchy:
+  - name: "Secrets from Vault"
+    data_hash: vault_hiera_hash
+    uris:
+      - "https://vault.home.arpa:8200/secret/puppet"
+    options:
+      timeout: 5
+      version: "v2"
+      auth_path: "cert"
   - name: "Single node"
     path: "nodes/%{trusted.certname}.yaml"
 

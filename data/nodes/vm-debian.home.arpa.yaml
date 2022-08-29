@@ -1,4 +1,9 @@
 ---
+lookup_options:
+  i2pd::daemon::base::config:
+    merge:
+      strategy: deep
+
 classes:
   - tor_relay
   - i2pd
