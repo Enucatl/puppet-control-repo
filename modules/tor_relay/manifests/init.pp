@@ -21,11 +21,11 @@ class tor_relay (
   }
 
   tor::daemon::directory { 'directory':
-    port => $dir_port,
+    port => Integer($dir_port),
   }
 
   tor::daemon::socks { 'socks':
-    port => $socks_port,
+    port => Integer($socks_port),
   }
 
   tor::daemon::snippet {'snippet':
