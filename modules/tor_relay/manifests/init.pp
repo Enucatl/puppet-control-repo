@@ -1,11 +1,11 @@
 class tor_relay (
-  Integer $orport,
+  String $orport,
   String $nickname,
-  Integer $relay_bandwidth_rate,
-  Integer $relay_bandwidth_burst,
+  String $relay_bandwidth_rate,
+  String $relay_bandwidth_burst,
   String $contact_info,
-  Integer $dir_port,
-  Integer $socks_port,
+  String $dir_port,
+  String $socks_port,
 ) {
 
   class { 'tor':
