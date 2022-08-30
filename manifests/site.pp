@@ -32,6 +32,7 @@ node default {
 }
 
 node 'dns.home.arpa' {
+
   $dns_variables = {
     'cpe_id' => lookup('dns::cpe-id')
   }
@@ -41,8 +42,20 @@ node 'dns.home.arpa' {
     content => stdlib::deferrable_epp('dns/dnsmasq.conf.epp', $dns_variables),
     require => Class['ca']
   }
+
 }
 
 node 'nuc10i7fnh.home.arpa' {
+
   create_resources(vault_cert, hiera_hash('vault_certs'))
+
+  file { '/etc/postfix/sasl_passwd':
+    ensure  => present,
+    owner   => 'vmail',
+    group   => 'vmail',
+    mode    => '0600',
+    content => "${lookup('postfix::relayhost')} ${lookup('smtp_sasl_username')}:${lookup('smtp_sasl_password')}",
+    notify  => Class['postfix'],
+  }
+
 }

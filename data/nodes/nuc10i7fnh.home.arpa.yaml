@@ -2,6 +2,23 @@
 classes:
   - dns::client
   - vault_secrets::vault_cert
+  - postfix
+
+
+postfix::configs:
+  message_size_limits:
+    value: 51200000
+  smtp_use_tls:
+    value: 'yes'
+  smtp_sasl_auth_enable:
+    value: 'yes'
+  smtp_sasl_security_options:
+    value: ''
+  smtp_sasl_password_maps:
+    value: 'hash:/etc/postfix/sasl_passwd'
+  smtp_tls_CAfile:
+    value: '/etc/ssl/certs/ca-certificates.crt'
+postfix::relayhost: '[smtp.google.com]:587'
 
 
 vault_certs:
