@@ -49,13 +49,9 @@ node 'nuc10i7fnh.home.arpa' {
 
   create_resources(vault_cert, hiera_hash('vault_certs'))
 
-  file { '/etc/postfix/sasl_passwd':
-    ensure  => present,
-    owner   => 'vmail',
-    group   => 'vmail',
-    mode    => '0600',
+  postfix::hash { '/etc/postfix/sasl_passwd':
     content => "${lookup('postfix::relayhost')} ${lookup('smtp_sasl_username')}:${lookup('smtp_sasl_password')}",
-    notify  => Class['postfix'],
+    require => Class['postfix'],
   }
 
 }
