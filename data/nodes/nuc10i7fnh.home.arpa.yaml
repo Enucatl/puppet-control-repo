@@ -6,8 +6,6 @@ classes:
 
 
 postfix::configs:
-  message_size_limits:
-    value: 51200000
   smtp_use_tls:
     value: 'yes'
   smtp_sasl_auth_enable:
