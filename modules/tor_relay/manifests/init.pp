@@ -13,7 +13,7 @@ class tor_relay (
   }
 
   tor::daemon::relay { 'relay':
-    port                  => $orport,
+    port                  => Integer($orport),
     nickname              => $nickname,       
     relay_bandwidth_rate  => Integer($relay_bandwidth_rate),       
     relay_bandwidth_burst => Integer($relay_bandwidth_burst),       
