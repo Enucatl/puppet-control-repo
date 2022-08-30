@@ -11,7 +11,7 @@ postfix::configs:
   smtp_sasl_auth_enable:
     value: 'yes'
   smtp_sasl_security_options:
-    value: ''
+    value: 'noanonymous'
   smtp_sasl_password_maps:
     value: 'hash:/etc/postfix/sasl_passwd'
   smtp_tls_CAfile:
