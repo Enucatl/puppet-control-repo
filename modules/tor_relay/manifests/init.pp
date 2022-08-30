@@ -1,11 +1,11 @@
 class tor_relay (
-  String $orport,
-  String $nickname,
-  String $relay_bandwidth_rate,
-  String $relay_bandwidth_burst,
-  String $contact_info,
-  String $dir_port,
-  String $socks_port,
+  $orport,
+  $nickname,
+  $relay_bandwidth_rate,
+  $relay_bandwidth_burst,
+  $contact_info,
+  $dir_port,
+  $socks_port,
 ) {
 
   class { 'tor':
@@ -15,8 +15,8 @@ class tor_relay (
   tor::daemon::relay { 'relay':
     port                  => $orport,
     nickname              => $nickname,       
-    relay_bandwidth_rate  => $relay_bandwidth_rate,       
-    relay_bandwidth_burst => $relay_bandwidth_burst,       
+    relay_bandwidth_rate  => Integer($relay_bandwidth_rate),       
+    relay_bandwidth_burst => Integer($relay_bandwidth_burst),       
     contact_info          => $contact_info,       
   }
 
