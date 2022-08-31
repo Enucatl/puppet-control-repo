@@ -15,7 +15,7 @@ postfix::configs:
   smtp_sasl_password_maps:
     value: 'hash:/etc/postfix/sasl_passwd'
   smtp_tls_CAfile:
-    value: '/etc/ssl/certs/ca-certificates.nuc10i7fnh.home.arpa/cert.pem'
+    value: '/etc/ssl/certs/ca-certificates.crt'
 postfix::relayhost: '[smtp.google.com]:587'
 
 
