@@ -12,7 +12,6 @@ mod 'puppetlabs/stdlib',  '8.4.0'
 mod 'saz/dnsmasq',        '1.3.0'
 mod 'saz/ssh',            '9.0.0'
 mod 'puppet/hashi_stack', '2.0.1'
-mod 'southalc/vault_secrets', '0.5.1'
 mod 'camptocamp/augeas',         '1.9.0'
 mod 'puppet/alternatives',       '4.1.0'
 mod 'puppetlabs/augeas_core',    '1.2.0'
@@ -31,6 +30,10 @@ mod 'puppet/postfix',            '3.0.0'
 #  commit: '1b6f89afdde0df7f9433a163d5c4b5328eac5779'
 mod 'tor',
   git:    'https://gitlab.com/enucatl/tor.git',
+  branch: 'master'
+
+mod 'vault_secrets',
+  git:    'https://github.com/enucatl/vault.git',
   branch: 'master'
 
 mod 'i2pd',
