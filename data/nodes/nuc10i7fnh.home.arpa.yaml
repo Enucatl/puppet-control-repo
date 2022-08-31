@@ -29,10 +29,7 @@ vault_certs:
       common_name: "traefik.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/privkey.pem'
@@ -47,10 +44,7 @@ vault_certs:
       common_name: "checkmk.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/checkmk.nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/checkmk.nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/checkmk.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/checkmk.nuc10i7fnh.home.arpa/privkey.pem'
@@ -65,10 +59,7 @@ vault_certs:
       common_name: "portainer.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/portainer.nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/portainer.nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/portainer.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/portainer.nuc10i7fnh.home.arpa/privkey.pem'
@@ -83,10 +74,7 @@ vault_certs:
       common_name: "%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
@@ -101,10 +89,7 @@ vault_certs:
       common_name: "paperless.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/paperless.nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/paperless.nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/paperless.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/paperless.nuc10i7fnh.home.arpa/privkey.pem'
@@ -119,10 +104,7 @@ vault_certs:
       common_name: "elabftw.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/elabftw.nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/elabftw.nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/elabftw.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/elabftw.nuc10i7fnh.home.arpa/privkey.pem'
@@ -137,10 +119,7 @@ vault_certs:
       common_name: "qbittorrent.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/qbittorrent.nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/qbittorrent.nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/qbittorrent.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/qbittorrent.nuc10i7fnh.home.arpa/privkey.pem'
@@ -155,10 +134,7 @@ vault_certs:
       common_name: "authentik.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    ca_chain_file: '/home/user/docker/traefik/data/certs/authentik.nuc10i7fnh.home.arpa/fullchain.pem'
-    ca_chain_owner: 'user'
-    ca_chain_group: 'user'
-    cert_file: '/home/user/docker/traefik/data/certs/authentik.nuc10i7fnh.home.arpa/cert.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/authentik.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
     key_file: '/home/user/docker/traefik/data/certs/authentik.nuc10i7fnh.home.arpa/privkey.pem'
