@@ -9,7 +9,7 @@ freeipa::install::server::options:
   ds-password: "%{lookup('freeipa::install::server::options::ds-password')}"
   admin-password: "%{lookup('freeipa::install::server::options::admin-password')}"
   mkhomedir:
-  hostname: %{facts.networking.fqdn}
+  hostname: "%{facts.networking.fqdn}"
   idstart: 10000
   no_hbac_allow:
   external-ca:
