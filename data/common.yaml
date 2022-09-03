@@ -5,6 +5,7 @@ classes:
   - ca
   - ssh
 
+dns::client::server: '192.168.2.42'
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
 ssh::server_options:
