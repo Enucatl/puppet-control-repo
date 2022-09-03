@@ -39,3 +39,7 @@ mod 'vault_secrets',
 mod 'i2pd',
   git:    'https://github.com/enucatl/i2pd.git',
   branch: 'main'
+
+mod 'freeipa',
+  git:    'https://github.com/enucatl/puppet-freeipa.git',
+  branch: 'dev'

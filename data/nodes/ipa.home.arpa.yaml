@@ -1,0 +1,15 @@
+classes:
+  - freeipa
+  - freeipa::install::server
+
+
+freeipa::install::server::options:
+  realm: HOME.ARPA
+  domain: home.arpa
+  ds-password: "%{lookup('freeipa::install::server::options::ds-password')}"
+  admin-password: "%{lookup('freeipa::install::server::options::admin-password')}"
+  mkhomedir:
+  hostname: %{facts.networking.fqdn}
+  idstart: 10000
+  no_hbac_allow:
+  external-ca:
