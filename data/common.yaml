@@ -1,5 +1,7 @@
 ---
-message: "This node is using common data"
+lookup_options:
+  classes:
+    merge: unique
 
 classes:
   - ca

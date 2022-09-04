@@ -24,30 +24,30 @@ File { backup => false }
 # Puppet Enterprise console and External Node Classifiers (ENC's).
 #
 # For more on node definitions, see: https://puppet.com/docs/puppet/latest/lang_node_definitions.html
-hiera_include('classes')
-$vault_addr = 'https://vault.home.arpa:8200'
+$classes = lookup('classes', Array[String])
 
 node default {
-  include dns::client
+  $classes.include
 }
 
 node 'dns.home.arpa' {
-
-  $dns_variables = {
-    'cpe_id' => lookup('dns::cpe-id')
-  }
+  $classes.include
 
   dnsmasq::conf { 'local-dns':
     ensure  => present,
-    content => stdlib::deferrable_epp('dns/dnsmasq.conf.epp', $dns_variables),
+    content => stdlib::deferrable_epp(
+      'dns/dnsmasq.conf.epp',
+      {'cpe_id' => lookup('dns::cpe-id')}
+    ),
     require => Class['ca']
   }
 
 }
 
 node 'nuc10i7fnh.home.arpa' {
+  $classes.include
 
-  create_resources(vault_cert, hiera_hash('vault_certs'))
+  create_resources(vault_cert, lookup('vault_certs'))
 
   postfix::hash { '/etc/postfix/sasl_passwd':
     content => "${lookup('postfix::relayhost')} ${lookup('smtp_sasl_username')}:${lookup('smtp_sasl_password')}",
