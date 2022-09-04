@@ -7,6 +7,8 @@ classes:
   - ca
   - ssh
   - tidy
+  - freeipa
+  - freeipa::install::client
 
 dns::client::server: '192.168.2.42'
 ssh::storeconfigs_enabled: true
@@ -29,3 +31,7 @@ tidy::defaults:
   age: 1w
   recurse: true
   rmdirs: true
+
+freeipa::install::client::options:
+  mkhomedir:
+  server: ipa.home.arpa
