@@ -36,3 +36,4 @@ freeipa::install::client::options:
   mkhomedir:
   domain: home.arpa
   server: ipa.home.arpa
+  hostname: "%{facts.networking.fqdn}"

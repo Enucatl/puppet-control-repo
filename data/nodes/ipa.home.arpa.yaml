@@ -10,5 +10,4 @@ freeipa::install::server::options:
   mkhomedir:
   hostname: "%{facts.networking.fqdn}"
   idstart: 100000
-  no_hbac_allow:
   external-ca:
