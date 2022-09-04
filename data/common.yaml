@@ -35,6 +35,7 @@ ssh:client_options:
   'Host *':
     HashKnownHosts: yes
     SendEnv: 'LANG LC_*'
+    GSSAPIAuthentication: yes
 
 tidy::files:
   downloads:
