@@ -36,6 +36,6 @@ freeipa::install::client::options:
   mkhomedir:
   domain: home.arpa
   server: ipa.home.arpa
-  hostname: "%{facts.networking.fqdn}"
+  hostname: "%{trusted.certname}"
   principal: admin
   password: "%{lookup('freeipa::install::server::options::admin-password')}"
