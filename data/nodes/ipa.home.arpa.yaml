@@ -1,4 +1,5 @@
 classes:
+  - freeipa
   - freeipa::install::server
 
 
