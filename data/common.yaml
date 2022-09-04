@@ -17,13 +17,15 @@ ssh::server_options:
   ListenAddress:
     - '127.0.0.1'
     - '%{trusted.certname}'
-  PermitEmptyPasswords: 'no'
-  PermitRootLogin: 'no'
+  PermitEmptyPasswords: no
+  PermitRootLogin: no
   MaxAuthTries: 3
   MaxSessions: 11
-  X11Forwarding: 'no'
+  X11Forwarding: no
   Subsystem: sftp /usr/lib/openssh/sftp-server
   TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
+  GSSAPIAuthentication: yes
+  GSSAPIKeyExchange: yes
 tidy::files:
   downloads:
     path: /home/user/Downloads
