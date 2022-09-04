@@ -13,6 +13,7 @@ classes:
 dns::client::server: '192.168.2.42'
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
+
 ssh::server_options:
   ListenAddress:
     - '127.0.0.1'
@@ -26,6 +27,15 @@ ssh::server_options:
   TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
   GSSAPIAuthentication: yes
   GSSAPIKeyExchange: yes
+
+ssh:client_options:
+  PubkeyAuthentication: yes
+  ProxyCommand: '/usr/bin/sss_ssh_knownhostsproxy -p %p %h'
+  GlobalKnownHostsFile: /var/lib/sss/pubconf/known_hosts
+  'Host *':
+    HashKnownHosts: yes
+    SendEnv: 'LANG LC_*'
+
 tidy::files:
   downloads:
     path: /home/user/Downloads
