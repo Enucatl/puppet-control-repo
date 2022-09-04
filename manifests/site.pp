@@ -28,6 +28,7 @@ $classes = lookup('classes', Array[String])
 
 node default {
   $classes.include
+  
 }
 
 node 'dns.home.arpa' {

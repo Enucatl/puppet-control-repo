@@ -6,6 +6,7 @@ lookup_options:
 classes:
   - ca
   - ssh
+  - tidy
 
 dns::client::server: '192.168.2.42'
 ssh::storeconfigs_enabled: true
@@ -21,3 +22,9 @@ ssh::server_options:
   X11Forwarding: 'no'
   Subsystem: sftp /usr/lib/openssh/sftp-server
   TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
+tidy::files:
+  '/home/user/Downloads':
+tidy::defaults:
+  age: 1w
+  recurse: true
+  rmdirs: true
