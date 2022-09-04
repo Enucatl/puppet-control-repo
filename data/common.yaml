@@ -23,7 +23,8 @@ ssh::server_options:
   Subsystem: sftp /usr/lib/openssh/sftp-server
   TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
 tidy::files:
-  '/home/user/Downloads':
+  downloads:
+    path: /home/user/Downloads
 tidy::defaults:
   age: 1w
   recurse: true
