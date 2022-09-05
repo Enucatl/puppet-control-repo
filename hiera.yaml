@@ -17,7 +17,12 @@ hierarchy:
   - name: "Single node"
     path: "nodes/%{trusted.certname}.yaml"
 
-  - name: "OS defaults"
+  - name: "osfamily/major release"
+    paths:
+        # Used to distinguish between Debian and Ubuntu
+      - "os/%{facts.os.family}/%{facts.os.name}.yaml"
+
+  - name: "OS family"
     path: "os/%{facts.os.family}.yaml"
 
   - name: "Common data for all nodes"

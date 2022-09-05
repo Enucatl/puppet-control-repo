@@ -55,4 +55,9 @@ node 'nuc10i7fnh.home.arpa' {
     require => Class['postfix'],
   }
 
+  file { '/var/lib/docker':
+    ensure => 'directory',
+    mode   => '0711',
+  }
+
 }

@@ -1,0 +1,5 @@
+---
+classes:
+  - apt::backports
+
+apt::backports::repos: 'main'
