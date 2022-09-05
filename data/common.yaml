@@ -50,5 +50,5 @@ freeipa::install::client::options:
   domain: home.arpa
   server: ipa.home.arpa
   hostname: "%{trusted.certname}"
-  principal: admin
-  password: "%{lookup('freeipa::install::server::options::admin-password')}"
+  principal: enrollment
+  password: "%{lookup('freeipa::install::server::options::enrollment-password')}"
