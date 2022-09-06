@@ -6,6 +6,7 @@ class tor_relay (
   $contact_info,
   $dir_port,
   $socks_port,
+  $metrics_port,
 ) {
 
   class { 'tor':
@@ -13,23 +14,26 @@ class tor_relay (
   }
 
   tor::daemon::relay { 'relay':
-    port                  => Integer($orport),
+    port                  => $orport,
     nickname              => $nickname,       
-    relay_bandwidth_rate  => Integer($relay_bandwidth_rate),       
-    relay_bandwidth_burst => Integer($relay_bandwidth_burst),       
+    relay_bandwidth_rate  => $relay_bandwidth_rate,       
+    relay_bandwidth_burst => $relay_bandwidth_burst,       
     contact_info          => $contact_info,       
   }
 
   tor::daemon::directory { 'directory':
-    port => Integer($dir_port),
+    port => $dir_port,
   }
 
   tor::daemon::socks { 'socks':
-    port => Integer($socks_port),
+    port => $socks_port,
   }
 
-  tor::daemon::snippet {'snippet':
-    content => 'ExitRelay 0'
+  tor::daemon::snippet {'extras':
+    content => epp(
+      'tor_relay/extras.epp',
+      {'metrics_port' => $metrics_port}
+    )
   }
 
 }

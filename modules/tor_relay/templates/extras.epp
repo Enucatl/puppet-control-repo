@@ -1,0 +1,4 @@
+<%- | Integer $metrics_port | -%>
+
+MetricsPort localhost:<%= $metrics_port %>
+MetricsPortPolicy accept localhost
