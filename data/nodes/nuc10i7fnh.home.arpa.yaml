@@ -126,17 +126,17 @@ vault_certs:
     key_owner: 'user'
     key_group: 'user'
 
-  authentik:
+  authelia:
     ensure: 'present'
     vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
     auth_path: 'cert'
     cert_data:
-      common_name: "authentik.%{trusted.certname}"
+      common_name: "authelia.%{trusted.certname}"
       ttl: '2160h'  # 90 days
     renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/authentik.nuc10i7fnh.home.arpa/fullchain.pem'
+    cert_file: '/home/user/docker/traefik/data/certs/authelia.nuc10i7fnh.home.arpa/fullchain.pem'
     cert_owner: 'user'
     cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/authentik.nuc10i7fnh.home.arpa/privkey.pem'
+    key_file: '/home/user/docker/traefik/data/certs/authelia.nuc10i7fnh.home.arpa/privkey.pem'
     key_owner: 'user'
     key_group: 'user'
