@@ -9,6 +9,8 @@ classes:
   - tidy
   - freeipa
   - freeipa::install::client
+  - systemd::journald
+
 
 dns::client::server: '192.168.2.42'
 ssh::storeconfigs_enabled: true

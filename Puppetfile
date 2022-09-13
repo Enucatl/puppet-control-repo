@@ -17,6 +17,8 @@ mod 'puppet/alternatives',       '4.1.0'
 mod 'puppetlabs/augeas_core',    '1.2.0'
 mod 'puppetlabs/mailalias_core', '1.1.0'
 mod 'puppet/postfix',            '3.0.0'
+mod 'eyp/eyplib', '0.1.24'
+mod 'eyp/systemd', '3.1.0'
 
 
 # Modules from the Puppet Forge
