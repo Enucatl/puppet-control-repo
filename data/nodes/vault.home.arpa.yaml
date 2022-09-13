@@ -8,3 +8,4 @@ tidy::files:
   puppetserver-reports:
     path: /opt/puppetlabs/server/data/puppetserver/reports
     age: 3w
+    max_files: 10000
