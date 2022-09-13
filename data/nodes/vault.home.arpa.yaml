@@ -1,0 +1,10 @@
+---
+lookup_options:
+  tidy::files:
+    merge: deep
+
+
+tidy::files:
+  puppetserver-reports:
+    path: /opt/puppetlabs/server/data/puppetserver/reports
+    age: 3w
