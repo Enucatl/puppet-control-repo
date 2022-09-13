@@ -54,3 +54,7 @@ freeipa::install::client::options:
   hostname: "%{trusted.certname}"
   principal: enrollment
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
+
+systemd::journald_settings:
+  Storage: auto
+  MaxRetentionSec: 1month
