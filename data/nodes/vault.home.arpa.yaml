@@ -2,6 +2,8 @@
 lookup_options:
   tidy::files:
     merge: deep
+  systemd::journald_settings:
+    merge: deep
 
 
 tidy::files:
@@ -9,3 +11,6 @@ tidy::files:
     path: /opt/puppetlabs/server/data/puppetserver/reports
     age: 3w
     max_files: 10000
+
+systemd::journald_settings:
+  SystemMaxUse: 100M
