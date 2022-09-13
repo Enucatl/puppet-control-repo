@@ -4,12 +4,12 @@ lookup_options:
     merge: unique
 
 classes:
+  - systemd
   - ca
   - ssh
   - tidy
   - freeipa
   - freeipa::install::client
-  - systemd::journald
 
 
 dns::client::server: '192.168.2.42'
