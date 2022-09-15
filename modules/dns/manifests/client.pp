@@ -8,6 +8,6 @@ class dns::client (String $server=$facts['networking']['dhcp']) {
       unit   => 'sshd.service',
       source => "puppet:///modules/dns/sshd.override.conf",
       require => Class["ssh"],
-      notify => Service["sshd"],
+      notify => Service[$ssh::server::service_name],
     }
 }
