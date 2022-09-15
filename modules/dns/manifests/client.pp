@@ -4,9 +4,13 @@ class dns::client (String $server=$facts['networking']['dhcp']) {
         content => "server=$server\nno-resolv",
     }
 
+    service { 'sshd':
+      ensure => 'running',
+    }
+
     systemd::dropin_file { 'sshd.conf':
       unit   => 'sshd.service',
       source => "puppet:///modules/dns/sshd.override.conf",
-      notify => Class["ssh::server::config"],
+      notify => Service["sshd"],
     }
 }
