@@ -1,6 +1,5 @@
 ---
 classes:
-  - dns::client
   - vault_secrets::vault_cert
   - postfix
 

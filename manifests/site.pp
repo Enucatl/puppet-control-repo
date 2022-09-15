@@ -32,7 +32,7 @@ node default {
 }
 
 node 'dns.home.arpa' {
-  $classes.include
+  stdlib::delete($classes, "dns::client").include
 
   dnsmasq::conf { 'local-dns':
     ensure  => present,
