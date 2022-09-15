@@ -7,7 +7,7 @@ class dns::client (String $server=$facts['networking']['dhcp']) {
     systemd::dropin_file { 'sshd.conf':
       unit   => 'sshd.service',
       source => "puppet:///modules/dns/sshd.override.conf",
-      after => Class["ssh"],
+      require => Class["ssh"],
       notify => Service["sshd"],
     }
 }
