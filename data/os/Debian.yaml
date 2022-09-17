@@ -1,6 +1,7 @@
 classes:
   - apt
   - unattended_upgrades
+  - nfs
 
 unattended_upgrades::age:
   max: 14
