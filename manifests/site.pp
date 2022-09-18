@@ -31,6 +31,14 @@ node default {
 
 }
 
+node 'vault.home.arpa' {
+    systemd::dropin_file { 'vault.conf':
+      unit   => 'vault.service',
+      content => "[Service]\nLimitMEMLOCK=infinity",
+      notify => Service["vault"],
+    }
+}
+
 node 'dns.home.arpa' {
   delete($classes, "dns::client").include
 
