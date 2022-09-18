@@ -19,8 +19,9 @@ ssh::validate_sshd_file: true
 
 ssh::server_options:
   ListenAddress:
-    - '127.0.0.1'
-    - '%{trusted.certname}'
+    - '0.0.0.0'
+    - '[::]'
+  DenyUsers: '*'
   PermitEmptyPasswords: no
   PermitRootLogin: no
   MaxAuthTries: 3
@@ -30,6 +31,8 @@ ssh::server_options:
   TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
   GSSAPIAuthentication: yes
   GSSAPIKeyExchange: yes
+  'Match Host *.home.arpa':
+    AllowUsers: '*'
 
 ssh::client_options:
   PubkeyAuthentication: yes
