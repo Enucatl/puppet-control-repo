@@ -10,6 +10,7 @@ classes:
   - tidy
   - freeipa
   - freeipa::install::client
+  - freeipa::automount
   - dns::client
 
 
