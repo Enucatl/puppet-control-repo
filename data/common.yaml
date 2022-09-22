@@ -7,7 +7,6 @@ classes:
   - systemd
   - ca
   - ssh
-  - tidy
   - freeipa
   - freeipa::install::client
   - freeipa::automount
@@ -40,14 +39,6 @@ ssh::client_options:
     HashKnownHosts: yes
     SendEnv: 'LANG LC_*'
     GSSAPIAuthentication: yes
-
-tidy::files:
-  downloads:
-    path: /home/user/Downloads
-tidy::defaults:
-  age: 1w
-  recurse: true
-  rmdirs: true
 
 freeipa::install::client::options:
   mkhomedir:

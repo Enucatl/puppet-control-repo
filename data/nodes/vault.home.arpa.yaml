@@ -6,6 +6,9 @@ lookup_options:
     merge: deep
 
 
+classes:
+  - tidy
+
 tidy::files:
   puppetserver-reports:
     path: /opt/puppetlabs/server/data/puppetserver/reports
