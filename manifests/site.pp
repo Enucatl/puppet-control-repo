@@ -32,11 +32,13 @@ node default {
 }
 
 node 'vault.home.arpa' {
-    # https://www.vaultproject.io/docs/configuration#disable_mlock
-    systemd::dropin_file { 'vault.conf':
-      unit   => 'vault.service',
-      content => "[Service]\nLimitMEMLOCK=infinity",
-    }
+  $classes.include
+
+  # https://www.vaultproject.io/docs/configuration#disable_mlock
+  systemd::dropin_file { 'vault.conf':
+    unit   => 'vault.service',
+    content => "[Service]\nLimitMEMLOCK=infinity",
+  }
 }
 
 node 'dns.home.arpa' {
