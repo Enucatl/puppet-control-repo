@@ -61,11 +61,14 @@ node 'nuc10i7fnh.home.arpa' {
   $vault_certs = lookup('vault_certs')
   $vault_certs_defaults = lookup('vault_certs_defaults')
   $vault_certs_default_location = lookup('vault_certs_default_location')
-  $vault_certs.each |String $subdomain, Hash $config| {
+  $vault_certs.each |String $subdomain, Optional[Hash] $config| {
       $paths = {
         'cert_chain_file' => "${vault_certs_default_location}/${subdomain}.${trusted.certname}/fullchain.pem",
         'key_file'        => "${vault_certs_default_location}/${subdomain}.${trusted.certname}/privkey.pem",
       }
+      # if $config.empty {
+      #   $config = {}
+      # }
       $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
       vault_cert { $subdomain:
         * => $merged_config,
