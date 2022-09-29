@@ -62,7 +62,7 @@ node 'nuc10i7fnh.home.arpa' {
   $vault_certs_defaults = lookup('vault_certs_defaults')
   $vault_certs_default_location = lookup('vault_certs_default_location')
   create_resources(vault_cert, lookup('vault_certs'))
-  $vault_certs.each |$subdomain, $config| {
+  $vault_certs.each |String $subdomain, Hash $config| {
       $paths = {
         'cert_chain_file' => "${vault_certs_default_location}/${subdomain}.${trusted.certname}/fullchain.pem",
         'key_file'        => "${vault_certs_default_location}/${subdomain}.${trusted.certname}/privkey.pem",
