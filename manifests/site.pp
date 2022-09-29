@@ -71,11 +71,11 @@ node 'nuc10i7fnh.home.arpa' {
       # }
       $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
       notify { "notify_${subdomain}":
-        message => $merged_config
+        message => "${merged_config}"
       }
-      vault_cert { $subdomain:
-        * => $merged_config,
-      }
+      # vault_cert { $subdomain:
+      #   * => $merged_config,
+      # }
   }
 
   postfix::hash { '/etc/postfix/sasl_passwd':
