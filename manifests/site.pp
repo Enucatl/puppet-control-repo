@@ -36,13 +36,13 @@ node 'vault.home.arpa' {
 
   # https://www.vaultproject.io/docs/configuration#disable_mlock
   systemd::dropin_file { 'vault.conf':
-    unit   => 'vault.service',
+    unit    => 'vault.service',
     content => "[Service]\nLimitMEMLOCK=infinity",
   }
 }
 
 node 'dns.home.arpa' {
-  delete($classes, "dns::client").include
+  delete($classes, 'dns::client').include
 
   dnsmasq::conf { 'local-dns':
     ensure  => present,
@@ -63,9 +63,11 @@ node 'nuc10i7fnh.home.arpa' {
   $vault_certs_default_location = lookup('vault_certs_default_location')
   create_resources(vault_cert, lookup('vault_certs'))
   $vault_certs.each |$subdomain, $config| {
-      $vault_certs_default["cert_chain_file"] = "${vault_certs_default_location}/${subdomain}.${trusted.certname}/fullchain.pem"
-      $vault_certs_default["key_file"] = "${vault_certs_default_location}/${subdomain}.${trusted.certname}/privkey.pem"
-      $merged_config = deep_merge($vault_certs_default, $config)
+      $paths = {
+        'cert_chain_file' => "${vault_certs_default_location}/${subdomain}.${trusted.certname}/fullchain.pem",
+        'key_file'        => "${vault_certs_default_location}/${subdomain}.${trusted.certname}/privkey.pem",
+      }
+      $merged_config = deep_merge($vault_certs_default + $paths, $config)
       vault_cert { $subdomain:
         * => $merged_config,
       }
