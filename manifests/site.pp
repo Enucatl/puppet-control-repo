@@ -70,6 +70,9 @@ node 'nuc10i7fnh.home.arpa' {
       #   $config = {}
       # }
       $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
+      notify { "notify_${subdomain}":
+        message => $merged_config
+      }
       vault_cert { $subdomain:
         * => $merged_config,
       }
