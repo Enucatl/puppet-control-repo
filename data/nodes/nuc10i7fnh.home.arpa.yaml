@@ -46,6 +46,8 @@ vault_certs:
   checkmk:
   portainer:
   nuc10i7fnh:
+    cert_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
+    key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
   paperless:
   elabftw:
   qbittorrent:
