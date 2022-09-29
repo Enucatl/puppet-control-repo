@@ -66,16 +66,26 @@ node 'nuc10i7fnh.home.arpa' {
         'cert_chain_file' => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/fullchain.pem",
         'key_file'        => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/privkey.pem",
       }
-      # if $config.empty {
-      #   $config = {}
-      # }
       $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
       notify { "notify_${subdomain}":
         message => "${merged_config}"
       }
-      # vault_cert { $subdomain:
-      #   * => $merged_config,
-      # }
+      vault_cert { "example":
+        'ensure' => present,
+        'vault_uri' => 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa,'
+        'auth_path' => 'cert',
+        'cert_data' => {'ttl' => '2160h'},
+        'renewal_threshold' => 5,
+        'cert_chain_owner' => 'user,'
+        'cert_chain_group' => 'user,'
+        'key_owner' => 'user,'
+        'key_group' => 'user,'
+        'cert_chain_file' => '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/fullchain.pem,'
+        'key_file' => '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/privkey.pem'
+      }
+      vault_cert { $subdomain:
+        * => $merged_config,
+      }
   }
 
   postfix::hash { '/etc/postfix/sasl_passwd':
