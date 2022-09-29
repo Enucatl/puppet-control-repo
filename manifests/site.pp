@@ -65,13 +65,11 @@ node 'nuc10i7fnh.home.arpa' {
       $paths = {
         'cert_chain_file' => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/fullchain.pem",
         'key_file'        => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/privkey.pem",
-      }
-      $cert_data = {
         'cert_data'   => {
           'common_name' => "${subdomain}.${trusted['certname']}"
         }
       }
-      $merged_config = deep_merge($vault_certs_defaults + $paths, $cert_data + $config)
+      $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
       notify { "notify_${subdomain}":
         message => "${merged_config}"
       }
