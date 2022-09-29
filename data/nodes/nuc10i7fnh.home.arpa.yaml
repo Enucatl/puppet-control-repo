@@ -28,139 +28,26 @@ postfix::configs:
 postfix::relayhost: '[smtp.google.com]:587'
 
 
+vault_certs_default_location: /home/user/docker/traefik/data/certs
+vault_certs_defaults:
+  ensure: 'present'
+  vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
+  auth_path: 'cert'
+  cert_data:
+    ttl: '2160h'  # 90 days
+  renewal_threshold: 5
+  cert_chain_owner: 'user'
+  cert_chain_group: 'user'
+  key_owner: 'user'
+  key_group: 'user'
+
 vault_certs:
-
   traefik:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "traefik.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/traefik.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   checkmk:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "checkmk.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/checkmk.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/checkmk.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   portainer:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "portainer.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/portainer.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/portainer.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   nuc10i7fnh:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   paperless:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "paperless.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/paperless.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/paperless.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   elabftw:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "elabftw.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/elabftw.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/elabftw.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   qbittorrent:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "qbittorrent.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/qbittorrent.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/qbittorrent.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   authelia:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "authelia.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/authelia.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/authelia.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
-
   duplicati:
-    ensure: 'present'
-    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
-    auth_path: 'cert'
-    cert_data:
-      common_name: "duplicati.%{trusted.certname}"
-      ttl: '2160h'  # 90 days
-    renewal_threshold: 5
-    cert_file: '/home/user/docker/traefik/data/certs/duplicati.nuc10i7fnh.home.arpa/fullchain.pem'
-    cert_owner: 'user'
-    cert_group: 'user'
-    key_file: '/home/user/docker/traefik/data/certs/duplicati.nuc10i7fnh.home.arpa/privkey.pem'
-    key_owner: 'user'
-    key_group: 'user'
