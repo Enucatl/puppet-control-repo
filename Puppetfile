@@ -17,7 +17,6 @@ mod 'puppet/alternatives',       '4.1.0'
 mod 'puppetlabs/augeas_core',    '1.2.0'
 mod 'puppetlabs/mailalias_core', '1.1.0'
 mod 'puppet/postfix',            '3.0.0'
-mod 'southalc/vault_secrets', '0.6.0'
 
 
 # Modules from the Puppet Forge
@@ -33,9 +32,10 @@ mod 'tor',
   git:    'https://gitlab.com/enucatl/tor.git',
   branch: 'master'
 
-# mod 'vault_secrets',
-#   git:    'https://github.com/enucatl/vault.git',
-#   branch: 'master'
+mod 'vault_secrets',
+  git:    'https://github.com/enucatl/vault.git',
+  # branch: 'master'
+  commit: '38010a2'
 
 mod 'i2pd',
   git:    'https://github.com/enucatl/i2pd.git',
