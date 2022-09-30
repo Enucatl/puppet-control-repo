@@ -34,8 +34,8 @@ mod 'tor',
 
 mod 'vault_secrets',
   git:    'https://github.com/enucatl/vault.git',
-  # branch: 'master'
-  commit: '38010a2'
+  branch: 'master'
+  # commit: '38010a2'
 
 mod 'i2pd',
   git:    'https://github.com/enucatl/i2pd.git',
