@@ -33,8 +33,8 @@ vault_certs_defaults:
     # ttl: '2160h'  # 90 days
     ttl: '720h'  # 30 days
   renewal_threshold: 5
-  # cert_chain_owner: 'user'
-  # cert_chain_group: 'user'
+  cert_owner: 'user'
+  cert_group: 'user'
   key_owner: 'user'
   key_group: 'user'
 
