@@ -35,8 +35,6 @@ vault_certs_defaults:
   renewal_threshold: 5
   cert_chain_owner: 'user'
   cert_chain_group: 'user'
-  cert_owner: 'user'
-  cert_group: 'user'
   key_owner: 'user'
   key_group: 'user'
 
