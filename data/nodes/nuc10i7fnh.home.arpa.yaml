@@ -30,8 +30,7 @@ vault_certs_defaults:
   vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
   auth_path: 'cert'
   cert_data:
-    # ttl: '2160h'  # 90 days
-    ttl: '720h'  # 30 days
+    ttl: '2160h'  # 90 days
   renewal_threshold: 5
   cert_chain_owner: 'user'
   cert_chain_group: 'user'
