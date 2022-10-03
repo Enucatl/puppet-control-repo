@@ -2,10 +2,10 @@ BINDPASS=$(vault kv get -mount=secret puppet | grep ldap_ro::password | tr -s ' 
 
 vault write auth/ldap/config \
     url="ldaps://ipa.home.arpa" \
-    userattr="uid" \
+    userattr="krbPrincipalName" \
     userdn="cn=users,cn=accounts,dc=home,dc=arpa" \
     groupdn="cn=users,cn=accounts,dc=home,dc=arpa" \
-    groupfilter="(&(objectClass=person)(uid={{.Username}}))" \
+    groupfilter="(&(objectClass=person)(krbPrincipalName={{.Username}}))" \
     groupattr="memberOf" \
     binddn="uid=ldap_ro,cn=sysaccounts,cn=etc,dc=home,dc=arpa" \
     bindpass="${BINDPASS}" \
