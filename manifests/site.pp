@@ -66,10 +66,10 @@ node 'nuc10i7fnh.home.arpa' {
       cert_chain_file => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/fullchain.pem",
       key_file        => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/privkey.pem",
       cert_data       => {
-        common_name => "${subdomain}.${trusted['certname']}"
+        common_name => "${subdomain}.${trusted['certname']}",
         # comma separated list of DNS names 
         # https://www.rfc-editor.org/rfc/rfc6125#section-6.4.4
-        alt_names => "${subdomain}.${trusted['certname']}"
+        alt_names => "${subdomain}.${trusted['certname']}",
       }
     }
     $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
