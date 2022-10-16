@@ -94,6 +94,8 @@ node 'ognongle.home.arpa' {
   $classes.include
   file { '/opt/steam/user/steamapps/common/dota 2 beta/game/dota/cfg/autoexec.cfg':
     content => 'cl_dota_alt_unit_movetodirection 1',
+    owner   => 'user',
+    group   => 'user',
   }
 
 }
