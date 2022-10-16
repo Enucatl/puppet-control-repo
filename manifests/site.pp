@@ -88,4 +88,8 @@ node 'nuc10i7fnh.home.arpa' {
     mode   => '0711',
   }
 
+  file { '/home/user/.local/share/Steam/steamapps/common/dota 2 beta/game/dota/cfg/autoexec.cfg':
+    content => 'cl_dota_alt_unit_movetodirection 1',
+  }
+
 }
