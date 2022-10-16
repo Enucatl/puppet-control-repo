@@ -92,7 +92,7 @@ node 'nuc10i7fnh.home.arpa' {
 
 node 'ognongle.home.arpa' {
   $classes.include
-  file { '/opt/home/user/steamapps/common/dota 2 beta/game/dota/cfg/autoexec.cfg':
+  file { '/opt/home/user/.steam/steam/steamapps/common/dota 2 beta/game/dota/cfg/autoexec.cfg':
     content => 'cl_dota_alt_unit_movetodirection 1',
   }
 
