@@ -84,7 +84,7 @@ local=/home.arpa/
 # Add domains which you want to force to an IP address here.
 # The example below send any host in double-click.net to a local
 # web-server.
-address=/nuc10i7fnh.home.arpa/192.168.2.30
+address=/nuc10i7fnh.home.arpa/192.168.2.28
 
 # --address (and --server) work with IPv6 addresses too.
 #address=/www.thekelleys.org.uk/fe80::20d:60ff:fe36:f83
