@@ -24,7 +24,7 @@ generate-puppetfile -p Puppetfile-without-deps
 
 Apply the latest definition on the puppet server
 ```
-sudo r10k deploy environment --modules -v info
+sudo r10k deploy environment --modules -v info; sudo /opt/puppetlabs/puppet/bin/puppet generate types
 ```
 
 ## What You Get From This control-repo
