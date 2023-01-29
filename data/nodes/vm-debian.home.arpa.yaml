@@ -16,6 +16,7 @@ i2pd::daemon::base::config:
   global:
     log: 'file'
     loglevel: 'error'
+    logclftime: true
     port: "%{lookup('i2pd::daemon::base::config::global::port')}"
     ipv4: true
     ipv6: true
