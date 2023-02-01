@@ -571,7 +571,7 @@ dhcp-authoritative
 #dhcp-script=/bin/echo
 
 # Set the cachesize here.
-cache-size=100000
+cache-size=0
 
 # If you want to disable negative caching, uncomment this.
 #no-negcache
