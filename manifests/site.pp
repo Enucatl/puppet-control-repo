@@ -88,6 +88,11 @@ node 'nuc10i7fnh.home.arpa' {
     mode   => '0711',
   }
 
+  file { '/var/lib/docker/volumes/paperless-ngx_consume/_data':
+    ensure => 'directory',
+    mode   => '0771',
+  }
+
 }
 
 node 'ognongle.home.arpa' {
