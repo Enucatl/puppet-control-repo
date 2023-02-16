@@ -42,7 +42,7 @@ path "sys/auth"
 # List, create, update, and delete key/value secrets
 path "secret/*"
 {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+  capabilities = ["create", "read", "update", "delete", "list", "sudo", "patch"]
 }
 
 # Manage secrets engines
