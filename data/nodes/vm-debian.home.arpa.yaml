@@ -20,7 +20,7 @@ i2pd::daemon::base::config:
     port: "%{lookup('i2pd::daemon::base::config::global::port')}"
     ipv4: true
     ipv6: true
-    bandwidth: 1024
+    bandwidth: 2048
   http:
     address: '127.0.0.1'
     port: 7070
