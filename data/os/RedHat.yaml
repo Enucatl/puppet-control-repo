@@ -1,0 +1,5 @@
+classes:
+  - yum_cron
+
+yum_cron::apply_updates: false
+yum_cron::download_updates: true
