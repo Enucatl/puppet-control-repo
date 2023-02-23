@@ -8,6 +8,8 @@ classes:
 tidy::files:
   downloads:
     path: /home/user/Downloads
+  screenshots:
+    path: /home/user/Pictures/Screenshots
 
 
 postfix::configs:
