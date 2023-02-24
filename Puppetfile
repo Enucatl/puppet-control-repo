@@ -23,6 +23,7 @@ mod 'puppet/fail2ban', '4.2.0'
 mod 'kogitoapp/ufw', '1.0.3'
 mod 'puppetlabs/resource_api', '1.1.0'
 mod 'puppetlabs/puppetserver_gem', '1.1.1'
+mod 'rehan/git', '2.0.3'
 
 
 # Modules from the Puppet Forge
