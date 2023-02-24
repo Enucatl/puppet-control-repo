@@ -1,7 +1,16 @@
+lookup_options:
+  ufw::rules:
+    merge:
+      strategy: deep
+  ufw::routes:
+    merge:
+      strategy: deep
+
 classes:
   - apt
   - unattended_upgrades
   - nfs
+  - ufw
 
 unattended_upgrades::age:
   max: 14
@@ -19,3 +28,13 @@ unattended_upgrades::extra_origins:
   - origin=TorProject,component=main
   - origin=Puppetlabs,component=puppet7
   - site=repo.i2pd.xyz
+
+ufw::purge_unmanaged_rules: true
+ufw::purge_unmanaged_routes: true
+ufw::rules:
+  allow_ssh_connections:
+    action: "allow"
+    to_ports_app: 22
+  allow_puppetagent:
+    action: "allow"
+    from_ports_app: 8140

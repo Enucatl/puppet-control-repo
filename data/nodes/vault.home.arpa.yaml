@@ -17,3 +17,11 @@ tidy::files:
 
 systemd::journald_settings:
   SystemMaxUse: 100M
+
+ufw::rules:
+  allow_vault:
+    action: "allow"
+    to_ports_app: 8200
+  allow_puppetserver:
+    action: "allow"
+    to_ports_app: 8140

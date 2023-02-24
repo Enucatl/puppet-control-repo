@@ -11,6 +11,7 @@ classes:
   - freeipa::install::client
   - freeipa::automount
   - dns::client
+  - fail2ban
 
 tidy::defaults:
   age: 1w
