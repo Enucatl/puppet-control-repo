@@ -44,6 +44,7 @@ ssh::client_options:
     HashKnownHosts: yes
     SendEnv: 'LANG LC_*'
     GSSAPIAuthentication: yes
+    GSSAPIDelegateCredentials: yes
 
 freeipa::install::client::options:
   mkhomedir:
