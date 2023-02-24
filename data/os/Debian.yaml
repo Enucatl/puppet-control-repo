@@ -33,7 +33,7 @@ ufw::purge_unmanaged_rules: true
 ufw::purge_unmanaged_routes: true
 ufw::manage_package: true
 ufw::manage_service: true
-ufw::service_ensure: "running"
+ufw::service_ensure: "stopped"
 ufw::rules:
   allow_ssh_connections:
     action: "allow"
