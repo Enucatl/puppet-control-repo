@@ -34,3 +34,15 @@ i2pd::daemon::base::config:
     enabled: true
   reseed:
     verify: true
+
+
+ufw::rules:
+  allow_i2pd_port:
+    action: "allow"
+    to_ports_app: "%{lookup('i2pd::daemon::base::config::global::port')}"
+  allow_tor_orport:
+    action: "allow"
+    to_ports_app: "%{lookup('tor_relay::orport')}"
+  allow_tor_dirport:
+    action: "allow"
+    to_ports_app: "%{lookup('tor_relay::dirport')}"
