@@ -41,3 +41,6 @@ ufw::rules:
   allow_puppetagent:
     action: "allow"
     from_ports_app: 8140
+  allow_dns:
+    action: "allow"
+    to_ports_app: 53
