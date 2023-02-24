@@ -45,4 +45,4 @@ ufw::rules:
     to_ports_app: "%{lookup('tor_relay::orport')}"
   allow_tor_dirport:
     action: "allow"
-    to_ports_app: "%{lookup('tor_relay::dirport')}"
+    to_ports_app: "%{lookup('tor_relay::dir_port')}"
