@@ -31,6 +31,9 @@ unattended_upgrades::extra_origins:
 
 ufw::purge_unmanaged_rules: true
 ufw::purge_unmanaged_routes: true
+ufw::manage_package: true
+ufw::manage_service: true
+ufw::service_ensure: "running"
 ufw::rules:
   allow_ssh_connections:
     action: "allow"
