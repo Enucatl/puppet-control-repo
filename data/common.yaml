@@ -12,7 +12,6 @@ classes:
   - freeipa::automount
   - dns::client
   - fail2ban
-  - git
 
 tidy::defaults:
   age: 1w
