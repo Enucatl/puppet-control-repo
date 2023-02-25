@@ -33,6 +33,17 @@ sudo -u puppet r10k deploy environment --modules -v info \
 ```
 
 The post-receive hook does the above automatically
+
+On the server
+```
+cd /opt
+sudo mkdir puppet-control-repo
+sudo chown -R $USER:$USER !$
+cd !$
+git clone --bare https://github.com/Enucatl/puppet-control-repo.git
+```
+
+On the client
 ```
 scp post-receive vault:/opt/puppet-control-repo/puppet-control-repo.git/hooks
 ```
