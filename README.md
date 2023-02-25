@@ -24,7 +24,17 @@ generate-puppetfile -p Puppetfile-without-deps
 
 Apply the latest definition on the puppet server
 ```
-sudo r10k deploy environment --modules -v info; sudo /opt/puppetlabs/puppet/bin/puppet generate types
+sudo -u puppet r10k deploy environment --modules -v info \
+&& sudo -u puppet /opt/puppetlabs/puppet/bin/puppet generate types \
+--environment production \
+--confdir /etc/puppetlabs/puppet \
+--codedir /etc/puppetlabs/code \
+--vardir /opt/puppetlabs/puppet/cache
+```
+
+The post-receive hook does the above automatically
+```
+scp post-receive vault:/opt/puppet-control-repo/puppet-control-repo.git/hooks
 ```
 
 ## What You Get From This control-repo
