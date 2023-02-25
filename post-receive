@@ -17,7 +17,7 @@ do
         echo "Ref $ref received. Deploying ${BRANCH} branch..."
         sudo -u puppet r10k deploy environment --modules -v info
         sudo -u puppet $PUPPET generate types \
-            --environment $ref \
+            --environment $BRANCH \
             --confdir $CONFDIR \
             --codedir $CODEDIR \
             --vardir $VARDIR
