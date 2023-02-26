@@ -15,6 +15,8 @@ iface enp1s0 inet static
   address <%= $ipv4 %>
   netmask 255.255.255.0
   gateway 192.168.2.1
+  dns-nameserver 127.0.0.1
+  dns-search home.arpa
 
 # This is an autoconfigured IPv6 interface
 iface enp1s0 inet6 auto
