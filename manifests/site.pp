@@ -41,6 +41,34 @@ node 'vault.home.arpa' {
   }
 }
 
+node 'pihole.home.arpa' {
+  delete($classes, 'dns::client').include
+
+  $interfaces = lookup('interfaces')
+  $interfaces.each |String $title, Optional[Hash] $config| {
+   network::interface { $title:
+      * => $config,
+    }
+  }
+
+  network::interface { 'enp1s0_ipv4':
+    interface => 'enp1s0',
+    family    => 'inet',
+    ipaddress => '192.168.2.10',
+    netmask   => '255.255.255.0',
+    gateway   => '192.168.2.1',
+  }
+
+  network::interface { 'enp1s0_ipv6':
+    name => 'enp1s0',
+    family => 'inet6',
+    ipaddress => '',
+    netmask   => '64',
+    gateway   => '',
+  }
+
+}
+
 node 'dns.home.arpa' {
   delete($classes, 'dns::client').include
 

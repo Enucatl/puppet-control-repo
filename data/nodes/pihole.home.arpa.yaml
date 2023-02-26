@@ -1,0 +1,15 @@
+---
+
+interfaces:
+  enp1s0_ipv4:
+    interface: enp1s0
+    family: inet
+    ipaddress: 192.168.2.10
+    netmask: 255.255.255.0
+    gateway: 192.168.2.1
+  enp1s0_ipv6:
+    interface: enp1s0
+    family: inet6
+    ipaddress: "%{lookup('dns::client::server_ipv6')}"
+    netmask: 64
+    gateway: fe80::6e99:61ff:fe19:1ea7

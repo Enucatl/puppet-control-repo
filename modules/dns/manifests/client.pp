@@ -1,4 +1,7 @@
-class dns::client (String $server=$facts['networking']['dhcp']) {
+class dns::client (
+  String $server=$facts['networking']['dhcp'],
+  Optional[String] $server_ipv6,
+) {
     dnsmasq::conf { 'local-dns':
         ensure  => present,
         content => "server=$server\nno-resolv",
