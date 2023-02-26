@@ -2,6 +2,7 @@ forge 'https://forge.puppet.com'
 
 # Modules discovered by generate-puppetfile
 mod 'camptocamp/augeas',           '1.9.0'
+mod 'kogitoapp/ufw',               '1.0.3'
 mod 'lwf/remote_file',             '1.1.3'
 mod 'pcfens/ca_cert',              '2.3.2'
 mod 'puppet/alternatives',         '4.2.0'
