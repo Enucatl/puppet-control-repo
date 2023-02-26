@@ -48,28 +48,13 @@ node 'pihole.home.arpa' {
     ensure  => present,
     content => stdlib::deferrable_epp(
       'dns/interfaces.epp',
-      # {'ipv4' => lookup('dns::client::server')}
-      {'ipv4' => '192.168.2.10'}
+      {'ipv4' => lookup('dns::client::server_ipv4')}
     ),
     notify  =>  Service['networking'],
   }
 
   service { 'networking':
     ensure => running,
-  }
-
-}
-
-node 'dns.home.arpa' {
-  delete($classes, 'dns::client').include
-
-  dnsmasq::conf { 'local-dns':
-    ensure  => present,
-    content => stdlib::deferrable_epp(
-      'dns/dnsmasq.conf.epp',
-      {'cpe_id' => lookup('dns::cpe-id')}
-    ),
-    require => Class['ca']
   }
 
 }

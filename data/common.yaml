@@ -20,7 +20,7 @@ tidy::defaults:
   recurse: true
   rmdirs: true
 
-dns::client::server: '192.168.2.42'
+dns::client::server_ipv4: '192.168.2.10'
 dns::client::server_ipv6: '2a04:ee41:3:5506:5054:ff:fedf:6921'
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true

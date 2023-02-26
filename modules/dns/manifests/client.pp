@@ -1,10 +1,10 @@
 class dns::client (
+  String $server_ipv6,
   String $server=$facts['networking']['dhcp'],
-  Optional[String] $server_ipv6,
 ) {
     dnsmasq::conf { 'local-dns':
         ensure  => present,
-        content => "server=$server\nno-resolv",
+        content => "server=$server_ipv6\nserver=$server\nno-resolv",
     }
 
     systemd::dropin_file { 'sshd.conf':
