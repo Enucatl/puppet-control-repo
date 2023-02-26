@@ -44,11 +44,18 @@ node 'vault.home.arpa' {
 node 'pihole.home.arpa' {
   delete($classes, 'dns::client').include
 
-  $interfaces = lookup('interfaces')
-  $interfaces.each |String $title, Optional[Hash] $config| {
-   network_config { $title:
-      * => $config,
-    }
+  file { '/etc/network/interfaces':
+    ensure  => present,
+    content => stdlib::deferrable_epp(
+      'dns/interfaces.epp',
+      # {'ipv4' => lookup('dns::client::server')}
+      {'ipv4' => '192.168.2.10'}
+    ),
+    notify  =>  Service['networking'],
+  }
+
+  service { 'networking':
+    ensure => running,
   }
 
 }
