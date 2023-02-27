@@ -26,6 +26,7 @@ ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
 
 ssh::server_options:
+  HostKey: /etc/ssh/ssh_host_ed25519_key
   ListenAddress:
     - '0.0.0.0'
     - '[::]'
@@ -44,6 +45,7 @@ ssh::client_options:
   ProxyCommand: '/usr/bin/sss_ssh_knownhostsproxy -p %p %h'
   GlobalKnownHostsFile: /var/lib/sss/pubconf/known_hosts
   'Host *':
+    UseRoaming: no
     HashKnownHosts: yes
     SendEnv: 'LANG LC_*'
     GSSAPIAuthentication: yes
