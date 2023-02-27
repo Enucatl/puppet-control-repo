@@ -44,6 +44,11 @@ node 'vault.home.arpa' {
 node 'pihole.home.arpa' {
   delete($classes, 'dns::client').include
 
+  file { '/etc/dnsmasq.d/10-nuc10i7fnh':
+    ensure  => present,
+    content => 'address=/nuc10i7fnh.home.arpa/192.168.2.28',
+  }
+
   file { '/etc/network/interfaces':
     ensure  => present,
     content => stdlib::deferrable_epp(
