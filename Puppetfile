@@ -1,6 +1,7 @@
 forge 'https://forge.puppet.com'
 
 # Modules discovered by generate-puppetfile
+#
 mod 'camptocamp/augeas',           '1.9.0'
 mod 'kogitoapp/ufw',               '1.0.3'
 mod 'lwf/remote_file',             '1.1.3'
@@ -19,9 +20,13 @@ mod 'puppet/unattended_upgrades',  '7.1.0'
 mod 'puppetlabs/apt',              '9.0.1'
 mod 'puppetlabs/augeas_core',      '1.3.0'
 mod 'puppetlabs/concat',           '7.3.1'
+mod 'puppetlabs/docker',           '5.1.0'
 mod 'puppetlabs/inifile',          '5.4.0'
 mod 'puppetlabs/mailalias_core',   '1.1.0'
+mod 'puppetlabs/powershell',       '5.2.0'
 mod 'puppetlabs/puppetserver_gem', '1.1.1'
+mod 'puppetlabs/pwshlib',          '0.10.3'
+mod 'puppetlabs/reboot',           '4.3.0'
 mod 'puppetlabs/resource_api',     '1.1.0'
 mod 'puppetlabs/stdlib',           '8.5.0'
 mod 'rehan/git',                   '2.0.3'

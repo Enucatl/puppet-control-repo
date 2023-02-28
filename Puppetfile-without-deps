@@ -25,6 +25,7 @@ mod 'rehan/git', '2.0.3'
 mod 'saz/dnsmasq',        '1.4.0'
 mod 'saz/ssh',            '9.0.0'
 mod 'treydock/yum_cron', '6.2.0'
+mod 'puppetlabs/docker', '6.0.2'
 
 
 # Modules from Git
