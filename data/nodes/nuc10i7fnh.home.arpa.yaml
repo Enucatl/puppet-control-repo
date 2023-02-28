@@ -4,6 +4,8 @@ classes:
   - postfix
   - tidy
   - docker
+  - docker::plugins
+  - docker::networks
 
 
 tidy::files:
