@@ -3,6 +3,7 @@ classes:
   - vault_secrets::vault_cert
   - postfix
   - tidy
+  - docker
 
 
 tidy::files:
@@ -25,6 +26,25 @@ postfix::configs:
     value: '/etc/ssl/certs/ca-certificates.crt'
 postfix::relayhost: '[smtp.google.com]:587'
 
+
+docker::version: latest
+docker::ipv6: true
+docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:549c::/80"
+docker::log_level: info
+docker::log_driver: loki
+docker::log_opt:
+  - 'loki-url=http://localhost:3100/loki/api/v1/push'
+  - 'loki-batch-size=400'
+docker::plugins::plugins:
+  loki:
+    plugin_name: 'grafana/loki-docker-driver:latest'
+    plugin_alias: loki
+docker::networks::networks:
+  traefik_proxy:
+    ensure: present
+    driver: bridge
+    subnet: '172.28.0.0/16'
+    gateway: '172.28.0.1'
 
 vault_certs_default_location: /home/user/docker/traefik/data/certs
 vault_certs_defaults:
