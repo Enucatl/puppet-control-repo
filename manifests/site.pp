@@ -95,11 +95,13 @@ node 'nuc10i7fnh.home.arpa' {
   file { '/var/lib/docker':
     ensure => 'directory',
     mode   => '0711',
+    subscribe => Class['docker'],
   }
 
   file { '/var/lib/docker/volumes/paperless-ngx_consume/_data':
     ensure => 'directory',
     mode   => '0771',
+    subscribe => Class['docker'],
   }
 
 }
