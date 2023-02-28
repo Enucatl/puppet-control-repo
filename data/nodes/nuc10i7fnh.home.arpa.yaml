@@ -30,11 +30,11 @@ postfix::relayhost: '[smtp.google.com]:587'
 docker::version: latest
 docker::ipv6: true
 docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:549c::/80"
-docker::log_level: info
-docker::log_driver: loki
-docker::log_opt:
-  - 'loki-url=http://localhost:3100/loki/api/v1/push'
-  - 'loki-batch-size=400'
+# docker::log_level: info
+# docker::log_driver: loki
+# docker::log_opt:
+#   - 'loki-url=http://localhost:3100/loki/api/v1/push'
+#   - 'loki-batch-size=400'
 docker::plugins::plugins:
   loki:
     plugin_name: 'grafana/loki-docker-driver:latest'
