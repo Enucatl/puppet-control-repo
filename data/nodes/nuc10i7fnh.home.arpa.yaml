@@ -62,14 +62,15 @@ vault_certs_defaults:
   key_group: 'user'
 
 vault_certs:
-  traefik:
+  authelia:
   checkmk:
-  portainer:
+  duplicati:
+  elabftw:
+  keycloak:
   nuc10i7fnh:
     cert_chain_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
     key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
   paperless:
-  elabftw:
+  portainer:
   qbittorrent:
-  authelia:
-  duplicati:
+  traefik:
