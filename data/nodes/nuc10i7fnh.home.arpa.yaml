@@ -66,6 +66,8 @@ vault_certs:
   checkmk:
   duplicati:
   elabftw:
+  grafana:
+  loki:
   keycloak:
   nuc10i7fnh:
     cert_chain_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
