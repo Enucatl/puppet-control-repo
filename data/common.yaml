@@ -80,18 +80,18 @@ promtail::server_config_hash:
     disable: true
 promtail::clients_config_hash:
   clients:
-    - url: "https://loki.nuc10i7fnh.home.arpa/api/prom/push"
+      - url: "https://loki.nuc10i7fnh.home.arpa/api/prom/push"
 promtail::scrape_configs_hash:
   scrape_configs:
-    - job_name: journal
-      journal:
-        max_age: 12h
-        labels:
-          job: systemd-journal
-          host: "%{trusted.certname}"
-    - job_name: varlogs
-      static_configs:
-        labels:
-          __path__: /var/log/*log
-          job: varlogs
-          host: "%{trusted.certname}"
+      - job_name: journal
+        journal:
+          max_age: 12h
+          labels:
+            job: systemd-journal
+            host: "%{trusted.certname}"
+      - job_name: varlogs
+        static_configs:
+          labels:
+            __path__: /var/log/*log
+            job: varlogs
+            host: "%{trusted.certname}"
