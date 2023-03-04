@@ -42,17 +42,14 @@ docker::networks::networks:
 promtail::scrape_configs_hash:
   scrape_configs:
     - job_name: docker
-      pipeline_stages:
-        - docker: {}
-      static_configs:
-        - targets:
-          - localhost
-          labels:
-            job: docker
-            __path__: /var/lib/docker/containers/*/*-json.log
-            container_name: "{{.Name}}"
-            container_id: "{{.ID}}"
-            stack_name: "{{.Labels \"com.docker.compose.project\"}}"
+      docker_sd_configs:
+        - host: unix:///var/run/docker.sock
+          refresh_interval: 5s
+      relabel_configs:
+        - source_labels: 
+            - "__meta_docker_container_name"
+          regex: "/(.*)"
+          target_label: 'container_name'
 
 vault_certs_default_location: /home/user/docker/traefik/data/certs
 vault_certs_defaults:
