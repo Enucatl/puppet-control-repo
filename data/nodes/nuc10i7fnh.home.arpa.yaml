@@ -50,8 +50,8 @@ promtail::scrape_configs_hash:
           labels:
             job: docker
             __path__: /var/lib/docker/containers/*/*-json.log
-            docker.container_name: "{{.Name}}"
-            docker.container_id: "{{.ID}}"
+            container_name: "{{.Name}}"
+            container_id: "{{.ID}}"
             stack_name: "{{.Labels \"com.docker.compose.project\"}}"
 
 vault_certs_default_location: /home/user/docker/traefik/data/certs
