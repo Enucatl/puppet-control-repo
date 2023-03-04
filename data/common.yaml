@@ -3,7 +3,7 @@ lookup_options:
   classes:
     merge: unique
   promtail::scrape_configs_hash:
-    merge: deep
+    merge: deeper
 
 classes:
   - systemd
@@ -70,6 +70,7 @@ systemd::journald_settings:
   Storage: auto
   MaxRetentionSec: 1month
 
+promtail::version: "v2.7.4"
 promtail::service_enable: true
 promtail::service_ensure: running
 promtail::positions_config_hash:
@@ -80,19 +81,16 @@ promtail::server_config_hash:
     disable: true
 promtail::clients_config_hash:
   clients:
-    - 
-      url: "https://loki.nuc10i7fnh.home.arpa/api/prom/push"
+    - url: "https://loki.nuc10i7fnh.home.arpa/api/prom/push"
 promtail::scrape_configs_hash:
   scrape_configs:
-    - 
-      job_name: journal
+    - job_name: journal
       journal:
         max_age: 12h
         labels:
           job: systemd-journal
           host: "%{trusted.certname}"
-    - 
-      job_name: varlogs
+    - job_name: varlogs
       static_configs:
         labels:
           __path__: /var/log/*log
