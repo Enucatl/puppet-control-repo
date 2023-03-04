@@ -45,9 +45,11 @@ promtail::scrape_configs_hash:
       pipeline_stages:
         - docker: {}
       static_configs:
-        - labels:
-          job: docker
-          __path__: /var/lib/docker/containers/*/*-json.log
+        - targets:
+          - localhost
+          labels:
+            job: docker
+            __path__: /var/lib/docker/containers/*/*-json.log
 
 vault_certs_default_location: /home/user/docker/traefik/data/certs
 vault_certs_defaults:
