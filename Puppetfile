@@ -3,10 +3,12 @@ forge 'https://forge.puppet.com'
 # Modules discovered by generate-puppetfile
 #
 mod 'camptocamp/augeas',           '1.9.0'
+mod 'grafana/promtail',            '2.1.0'
 mod 'kogitoapp/ufw',               '1.0.3'
 mod 'lwf/remote_file',             '1.1.3'
 mod 'pcfens/ca_cert',              '2.3.2'
 mod 'puppet/alternatives',         '4.2.0'
+mod 'puppet/archive',              '6.1.1'
 mod 'puppet/boolean',              '2.0.2'
 mod 'puppet/extlib',               '6.1.0'
 mod 'puppet/fail2ban',             '4.2.0'
@@ -33,6 +35,7 @@ mod 'rehan/git',                   '2.0.3'
 mod 'saz/dnsmasq',                 '1.3.0'
 mod 'saz/ssh',                     '8.0.0'
 mod 'treydock/yum_cron',           '6.2.0'
+
 # Discovered elements from existing Puppetfile
 # Modules from the Puppet Forge
 # Versions should be updated to be the latest at the time you start
