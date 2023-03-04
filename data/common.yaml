@@ -71,6 +71,7 @@ systemd::journald_settings:
   MaxRetentionSec: 1month
 
 promtail::version: "v2.7.4"
+promtail::checksum: "1687d859ed51ec1851a10f9b0eae823530d7f1bf95dd4684c357fbe143daacc6"
 promtail::service_enable: true
 promtail::service_ensure: running
 promtail::positions_config_hash:
