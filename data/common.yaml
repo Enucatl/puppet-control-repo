@@ -70,6 +70,8 @@ systemd::journald_settings:
   Storage: auto
   MaxRetentionSec: 1month
 
+promtail::service_enable: true
+promtail::service_ensure: running
 promtail::positions_config_hash:
   positions:
     filename: /var/log/positions.yaml
