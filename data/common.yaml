@@ -93,7 +93,7 @@ promtail::scrape_configs_hash:
           host: "%{trusted.certname}"
     - job_name: varlogs
       static_configs:
-        labels:
-          __path__: /var/log/*log
-          job: varlogs
-          host: "%{trusted.certname}"
+        - labels:
+            __path__: /var/log/*log
+            job: varlogs
+            host: "%{trusted.certname}"
