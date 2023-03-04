@@ -3,7 +3,7 @@ lookup_options:
   classes:
     merge: unique
   promtail::scrape_configs_hash:
-    merge: deeper
+    merge: deep
 
 classes:
   - systemd
