@@ -39,6 +39,16 @@ docker::networks::networks:
     subnet: '172.28.0.0/16'
     gateway: '172.28.0.1'
 
+promtail::scrape_configs_hash:
+  scrape_configs:
+    - job_name: docker
+      pipeline_stages:
+        - docker: {}
+      static_configs:
+        - labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*-json.log
+
 vault_certs_default_location: /home/user/docker/traefik/data/certs
 vault_certs_defaults:
   ensure: 'present'
