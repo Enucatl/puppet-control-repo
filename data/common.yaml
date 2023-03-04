@@ -2,6 +2,8 @@
 lookup_options:
   classes:
     merge: unique
+  promtail::scrape_configs_hash:
+    merge: deep
 
 classes:
   - systemd
@@ -14,6 +16,7 @@ classes:
   - fail2ban
   - git
   - network
+  - promtail
 
 tidy::defaults:
   age: 1w
@@ -66,3 +69,24 @@ freeipa::install::client::options:
 systemd::journald_settings:
   Storage: auto
   MaxRetentionSec: 1month
+
+promtail::server_config_hash:
+  server:
+    disable: true
+promtail::clients_config_hash:
+  clients:
+    - url: "https://loki.nuc10i7fnh.home.arpa/api/prom/push"
+promtail::scrape_configs_hash:
+  scrape_configs:
+    - job_name: journal
+      journal:
+        max_age: 12h
+        labels:
+          job: systemd-journal
+          host: "%{trusted.certname}"
+    - job_name: varlogs
+      static_configs:
+        labels:
+          __path__: /var/log/*log
+          job: varlogs
+          host: "%{trusted.certname}"
