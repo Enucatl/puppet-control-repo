@@ -88,7 +88,7 @@ node 'nuc10i7fnh.home.arpa' {
   }
 
   postfix::hash { '/etc/postfix/sasl_passwd':
-    content => "${lookup('postfix::relayhost')} ${lookup('smtp_sasl_username_noat')}:${lookup('smtp_sasl_password')}",
+    content => "${lookup('postfix::relayhost')} ${lookup('smtp_sasl_username')}:${lookup('smtp_sasl_password')}",
     require => Class['postfix'],
   }
 
@@ -97,7 +97,7 @@ node 'nuc10i7fnh.home.arpa' {
   }
 
   postfix::conffile { 'sender_canonical':
-    content => "/^(.*)@(.*).home.arpa/    ${lookup('smtp_sasl_username_noat')}+\${1}.\${2}.home.arpa@gmail.com",
+    content => "/^(.*)@(.*).(home.arpa)/    ${lookup('smtp_sasl_username')}+\${1}.\${2}.\${3}@gmail.com",
   }
 
   file { '/var/lib/docker':
