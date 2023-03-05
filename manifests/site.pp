@@ -97,8 +97,8 @@ node 'nuc10i7fnh.home.arpa' {
   }
 
   postfix::conffile { 'sender_canonical':
-    # content => "/^(.*)@(.*).home.arpa/    ${lookup('smtp_sasl_username_noat')}+\${1}.\${2}@gmail.com",
-    content => "/.*/    ${lookup('smtp_sasl_username')}",
+    content => "/^(.*)@(.*).home.arpa/    ${lookup('smtp_sasl_username_noat')}+\${1}.\${2}@gmail.com",
+    # content => "/.*/    ${lookup('smtp_sasl_username')}",
   }
 
   file { '/var/lib/docker':
