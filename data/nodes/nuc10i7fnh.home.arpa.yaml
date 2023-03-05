@@ -1,7 +1,6 @@
 ---
 classes:
   - vault_secrets::vault_cert
-  - postfix
   - tidy
   - docker
   - docker::networks
@@ -12,28 +11,6 @@ tidy::files:
     path: /home/user/Downloads
   screenshots:
     path: /home/user/Pictures/Screenshots
-
-
-postfix::configs:
-  smtp_use_tls:
-    value: 'yes'
-  smtp_sasl_auth_enable:
-    value: 'yes'
-  smtp_sasl_security_options:
-    value: 'noanonymous'
-  smtp_sasl_password_maps:
-    value: 'hash:/etc/postfix/sasl_passwd'
-  smtp_tls_CAfile:
-    value: '/etc/ssl/certs/ca-certificates.crt'
-  smtp_tls_security_level:
-    value: 'encrypt'
-  smtp_sasl_mechanism_filter:
-    value: 'plain'
-  sender_canonical_maps:
-    value: 'regexp:/etc/postfix/sender_canonical'
-  recipient_canonical_maps:
-    value: 'regexp:/etc/postfix/recipient_canonical'
-postfix::relayhost: '[smtp.google.com]:587'
 
 
 docker::version: latest

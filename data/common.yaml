@@ -17,6 +17,7 @@ classes:
   - git
   - network
   - promtail
+  - postfix_configuration
 
 tidy::defaults:
   age: 1w
@@ -66,9 +67,11 @@ freeipa::install::client::options:
   principal: enrollment
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
+
 systemd::journald_settings:
   Storage: auto
   MaxRetentionSec: 1month
+
 
 promtail::version: "v2.7.4"
 promtail::checksum: "1687d859ed51ec1851a10f9b0eae823530d7f1bf95dd4684c357fbe143daacc6"
@@ -97,3 +100,25 @@ promtail::scrape_configs_hash:
             __path__: /var/log/*log
             job: varlogs
             host: "%{trusted.certname}"
+
+
+postfix::configs:
+  smtp_use_tls:
+    value: 'yes'
+  smtp_sasl_auth_enable:
+    value: 'yes'
+  smtp_sasl_security_options:
+    value: 'noanonymous'
+  smtp_sasl_password_maps:
+    value: 'hash:/etc/postfix/sasl_passwd'
+  smtp_tls_CAfile:
+    value: '/etc/ssl/certs/ca-certificates.crt'
+  smtp_tls_security_level:
+    value: 'encrypt'
+  smtp_sasl_mechanism_filter:
+    value: 'plain'
+  sender_canonical_maps:
+    value: 'regexp:/etc/postfix/sender_canonical'
+  recipient_canonical_maps:
+    value: 'regexp:/etc/postfix/recipient_canonical'
+postfix::relayhost: '[smtp.google.com]:587'
