@@ -92,6 +92,14 @@ node 'nuc10i7fnh.home.arpa' {
     require => Class['postfix'],
   }
 
+  postfix::conffile { 'recipient_canonical':
+    content => "/.+/    ${lookup('recipient_canonical')}",
+  }
+
+  postfix::conffile { 'sender_canonical':
+    content => "/.+/    ${lookup('smtp_sasl_username')}",
+  }
+
   file { '/var/lib/docker':
     ensure => 'directory',
     mode   => '0711',
