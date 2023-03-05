@@ -33,6 +33,8 @@ postfix::configs:
     value: 'regexp:/etc/postfix/sender_canonical'
   recipient_canonical_maps:
     value: 'regexp:/etc/postfix/recipient_canonical'
+  smtp_header_checks:
+    value: 'regexp:/etc/postfix/smtp_header_checks'
 postfix::relayhost: '[smtp.google.com]:587'
 
 

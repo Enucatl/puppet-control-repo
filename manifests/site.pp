@@ -100,6 +100,10 @@ node 'nuc10i7fnh.home.arpa' {
     content => "/.+/    ${lookup('smtp_sasl_username')}",
   }
 
+  postfix::conffile { 'smtp_header_checks':
+    content => "/^From:/ IGNORE",
+  }
+
   file { '/var/lib/docker':
     ensure => 'directory',
     mode   => '0711',
