@@ -5,6 +5,7 @@ classes:
   - docker
   - docker::networks
   - checkmk
+  - libvirt_log_fix
 
 
 tidy::files:
