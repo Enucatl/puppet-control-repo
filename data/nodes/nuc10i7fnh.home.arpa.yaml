@@ -4,6 +4,7 @@ classes:
   - tidy
   - docker
   - docker::networks
+  - checkmk
 
 
 tidy::files:
