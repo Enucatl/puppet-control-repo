@@ -283,8 +283,6 @@ class MKDockerClient(docker.DockerClient):
             self.all_containers = {c.attrs["Id"][:12]: c for c in all_containers}
         label = config.get("label")
         if label is not None:
-            print("filtering containers by label")
-            print("label: %s" % label)
             self.all_containers = {
                 key: c
                 for key, c in self.all_containers.items()
