@@ -286,7 +286,7 @@ class MKDockerClient(docker.DockerClient):
             self.all_containers = {
                 key: c
                 for key, c in self.all_containers.items()
-                if c.attrs.get("Config", {}).get("Labels", {}).get("label") == "true"
+                if c.attrs.get("Config", {}).get("Labels", {}).get(label) == "true"
             }
         self._env = {"REMOTE": os.getenv("REMOTE", "")}
         self._container_stats = {}
