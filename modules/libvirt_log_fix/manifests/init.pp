@@ -4,4 +4,9 @@ class libvirt_log_fix {
     content => 'puppet:///modules/libvirt/10-rpc-libvirtd.conf',
     notify  =>  Service['rsyslog'],
   }
+
+  service { 'rsyslog':
+    ensure => running,
+  }
+
 }
