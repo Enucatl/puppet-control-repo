@@ -9,4 +9,3 @@ class checkmk {
     source => 'puppet:///modules/checkmk/mk_docker.py',
   }
 }
-
