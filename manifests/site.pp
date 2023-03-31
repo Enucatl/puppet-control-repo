@@ -28,7 +28,6 @@ $classes = lookup('classes', Array[String])
 
 node default {
   $classes.include
-
 }
 
 node 'vault.home.arpa' {
@@ -39,11 +38,13 @@ node 'vault.home.arpa' {
     unit    => 'vault.service',
     content => "[Service]\nLimitMEMLOCK=infinity",
   }
+
 }
 
 node 'pihole.home.arpa' {
   delete($classes, 'dns::client').include
 
+  # forward resolution of *.nuc10i7fnh.home.arpa subdomains to traefik
   file { '/etc/dnsmasq.d/10-nuc10i7fnh':
     ensure  => present,
     content => 'address=/nuc10i7fnh.home.arpa/192.168.2.28',
@@ -103,10 +104,32 @@ node 'nuc10i7fnh.home.arpa' {
 
 node 'ognongle.home.arpa' {
   $classes.include
+
+  # dota 2: clicking alt while moving a unit will make it move in the direction,
+  # disregarding pathing
   file { '/opt/steam/user/steamapps/common/dota 2 beta/game/dota/cfg/autoexec.cfg':
     content => 'cl_dota_alt_unit_movetodirection 1',
     owner   => 'user',
     group   => 'user',
+  }
+
+  # automatically enable nvidia accounting mode, required by scalene 
+  # to accurately calculate the per process GPU usage
+  systemd::manage_unit { 'nvidia-accounting-mode.service':
+    $unit_entry => {
+      'Description' => 'Enable nvidia accounting mode',
+      'Requires' => 'nvidia-persistenced.service',
+      'After' => 'nvidia-persistenced.service',
+    },
+    $service_entry => {
+      'Type' => 'oneshot',
+      'ExecStart' => '/usr/bin/nvidia-smi --accounting-mode=ENABLED',
+    },
+    $install_entry => {
+      'WantedBy' => 'multi-user.target',
+    },
+    enable => true,
+    active => true,
   }
 
 }
