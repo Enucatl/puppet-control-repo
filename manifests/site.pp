@@ -116,16 +116,16 @@ node 'ognongle.home.arpa' {
   # automatically enable nvidia accounting mode, required by scalene 
   # to accurately calculate the per process GPU usage
   systemd::manage_unit { 'nvidia-accounting-mode.service':
-    'unit_entry' => {
+    unit_entry => {
       'Description' => 'Enable nvidia accounting mode',
       'Requires' => 'nvidia-persistenced.service',
       'After' => 'nvidia-persistenced.service',
     },
-    'service_entry' => {
+    service_entry => {
       'Type' => 'oneshot',
       'ExecStart' => '/usr/bin/nvidia-smi --accounting-mode=ENABLED',
     },
-    'install_entry' => {
+    install_entry => {
       'WantedBy' => 'multi-user.target',
     },
     enable => true,
