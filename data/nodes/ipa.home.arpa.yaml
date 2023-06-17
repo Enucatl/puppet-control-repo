@@ -1,7 +1,15 @@
+lookup_options:
+  tidy::files:
+    merge: deep
+  systemd::journald_settings:
+    merge: deep
+
 classes:
   - freeipa
   - freeipa::install::server
 
+systemd::journald_settings:
+  SystemMaxUse: 100M
 
 freeipa::install::server::options:
   realm: HOME.ARPA
