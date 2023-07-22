@@ -1,0 +1,8 @@
+classes:
+  - limits
+
+limits::entries:
+  'user/rtprio':
+    both: 98
+  'user/memlock':
+    both: unlimited
