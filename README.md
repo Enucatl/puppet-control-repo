@@ -1,7 +1,7 @@
 # A Puppet Control Repository
 
 Install puppet agent following
-https://puppet.com/docs/puppet/7/install_agents.html#install_agents
+https://puppet.com/docs/puppet/8/install_agents.html#install_agents
 
 Download package from http://apt.puppet.com/
 ```
