@@ -1,4 +1,5 @@
----
+systemd::journald_settings:
+  SystemMaxUse: 100M
 
 interfaces:
   enp1s0_ipv4:

@@ -18,7 +18,7 @@ i2pd::daemon::base::config:
     loglevel: 'error'
     logclftime: true
     port: "%{lookup('i2pd::daemon::base::config::global::port')}"
-    ipv4: true
+    ipv4: false
     ipv6: true
     bandwidth: 2048
   http:
