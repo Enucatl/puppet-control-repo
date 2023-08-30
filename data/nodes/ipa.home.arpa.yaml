@@ -1,9 +1,3 @@
-lookup_options:
-  tidy::files:
-    merge: deep
-  systemd::journald_settings:
-    merge: deep
-
 classes:
   - freeipa
   - freeipa::install::server

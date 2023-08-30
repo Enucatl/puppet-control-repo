@@ -4,6 +4,10 @@ lookup_options:
     merge: unique
   promtail::scrape_configs_hash:
     merge: deep
+  systemd::journald_settings:
+    merge: deep
+  tidy::files:
+    merge: deep
 
 classes:
   - systemd
