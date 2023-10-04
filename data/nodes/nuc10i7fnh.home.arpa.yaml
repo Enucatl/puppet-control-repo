@@ -66,3 +66,4 @@ vault_certs:
   portainer:
   qbittorrent:
   traefik:
+  protonmail-bridge:
