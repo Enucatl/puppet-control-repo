@@ -70,4 +70,3 @@ control-repo/
 ├── environment.conf                      # Environment-specific settings. Configures the modulepath and config_version.
 └── hiera.yaml                            # Hiera's configuration file. The Hiera hierarchy is defined here.
 ```
-
