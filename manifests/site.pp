@@ -75,7 +75,6 @@ node 'nuc10i7fnh.home.arpa' {
     # set default domain to subdomain.nuc10i7fnh.home.arpa
     # unless explicitly specified
     $default_value = "${subdomain}.${trusted['certname']}"
-    $merged_config = deep_merge($default_config, $config)
     $paths = {
       cert_chain_file => "${vault_certs_default_location}/${default_value}/fullchain.pem",
       key_file        => "${vault_certs_default_location}/${default_value}/privkey.pem",
