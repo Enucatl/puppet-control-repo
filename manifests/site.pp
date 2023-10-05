@@ -72,38 +72,23 @@ node 'nuc10i7fnh.home.arpa' {
   $vault_certs_defaults = lookup('vault_certs_defaults')
   $vault_certs_default_location = lookup('vault_certs_default_location')
   $vault_certs.each |String $subdomain, Optional[Hash] $config| {
-    # set default domains to subdomain.nuc10i7fnh.home.arpa
+    # set default domain to subdomain.nuc10i7fnh.home.arpa
     # unless explicitly specified
-    $domain = "${subdomain}.${trusted['certname']}"
-    $alt_names = "${subdomain}.${trusted['certname']}"
-    $common_name = "${subdomain}.${trusted['certname']}"
-    if $config {
-      $domain = $config['domain']
-      if $domain == undef {
-        $domain = "${subdomain}.${trusted['certname']}"
-      }
-      $alt_names = $config['alt_names']
-      if $alt_names == undef {
-        $alt_names = "${subdomain}.${trusted['certname']}"
-      }
-      $common_name = $config['common_name']
-      if $common_name == undef {
-        $common_name = "${subdomain}.${trusted['certname']}"
-      }
-    }
+    $default_value = "${subdomain}.${trusted['certname']}"
+    $merged_config = deep_merge($default_config, $config)
     $paths = {
-      cert_chain_file => "${vault_certs_default_location}/${domain}/fullchain.pem",
-      key_file        => "${vault_certs_default_location}/${domain}/privkey.pem",
+      cert_chain_file => "${vault_certs_default_location}/${default_value}/fullchain.pem",
+      key_file        => "${vault_certs_default_location}/${default_value}/privkey.pem",
       cert_data       => {
-        common_name => $common_name,
+        common_name => $default_value,
         # comma separated list of DNS names 
         # https://www.rfc-editor.org/rfc/rfc6125#section-6.4.4
-        alt_names => $alt_names,
+        alt_names => $default_value,
       }
     }
-    $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
+    $vault_cert_config = deep_merge($vault_certs_defaults + $paths, $config)
     vault_cert { $subdomain:
-      * => $merged_config,
+      * => $vault_cert_config,
     }
   }
 

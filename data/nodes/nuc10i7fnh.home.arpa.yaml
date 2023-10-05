@@ -60,9 +60,11 @@ vault_certs:
   loki:
   keycloak:
   nuc10i7fnh:
-    domain: 'nuc10i7fnh.home.arpa'
     cert_chain_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
     key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
+    cert_data:
+      common_name: 'nuc10i7fnh.home.arpa'
+      alt_names: 'nuc10i7fnh.home.arpa'
   paperless:
   portainer:
   qbittorrent:
