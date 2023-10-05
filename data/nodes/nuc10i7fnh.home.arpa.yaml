@@ -65,6 +65,17 @@ vault_certs:
     cert_data:
       common_name: 'nuc10i7fnh.home.arpa'
       alt_names: 'nuc10i7fnh.home.arpa'
+  # create a specific certificate for protonmail-bridge readable by its user
+  nuc10i7fnh-protonmail-bridge:
+    cert_chain_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/protonmail-bridge-fullchain.pem'
+    key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/protonmail-bridge-privkey.pem'
+    cert_data:
+      common_name: 'nuc10i7fnh.home.arpa'
+      alt_names: 'nuc10i7fnh.home.arpa'
+    cert_chain_owner: 8535
+    cert_chain_group: 8535
+    key_owner: 8535
+    key_group: 8535
   paperless:
   portainer:
   qbittorrent:
