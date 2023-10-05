@@ -72,14 +72,26 @@ node 'nuc10i7fnh.home.arpa' {
   $vault_certs_defaults = lookup('vault_certs_defaults')
   $vault_certs_default_location = lookup('vault_certs_default_location')
   $vault_certs.each |String $subdomain, Optional[Hash] $config| {
+    $domain = $config['domain']
+    if $domain == undef {
+      $domain = "${subdomain}.${trusted['certname']}"
+    }
+    $alt_names = $config['alt_names']
+    if $alt_names == undef {
+      $alt_names = "${subdomain}.${trusted['certname']}"
+    }
+    $common_name = $config['common_name']
+    if $common_name == undef {
+      $common_name = "${subdomain}.${trusted['certname']}"
+    }
     $paths = {
-      cert_chain_file => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/fullchain.pem",
-      key_file        => "${vault_certs_default_location}/${subdomain}.${trusted['certname']}/privkey.pem",
+      cert_chain_file => "${vault_certs_default_location}/${domain}/fullchain.pem",
+      key_file        => "${vault_certs_default_location}/${domain}/privkey.pem",
       cert_data       => {
-        common_name => "${subdomain}.${trusted['certname']}",
+        common_name => $common_name,
         # comma separated list of DNS names 
         # https://www.rfc-editor.org/rfc/rfc6125#section-6.4.4
-        alt_names => "${subdomain}.${trusted['certname']}",
+        alt_names => $alt_names,
       }
     }
     $merged_config = deep_merge($vault_certs_defaults + $paths, $config)
