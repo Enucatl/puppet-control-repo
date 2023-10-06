@@ -10,9 +10,9 @@ classes:
 
 tidy::files:
   downloads:
-    path: /home/user/Downloads
+    path: /nfs_exports/home/user/Downloads
   screenshots:
-    path: /home/user/Pictures/Screenshots
+    path: /nfs_exports/home/user/Pictures/Screenshots
 
 
 docker::version: latest
@@ -38,7 +38,7 @@ promtail::scrape_configs_hash:
           regex: "/(.*)"
           target_label: 'container_name'
 
-vault_certs_default_location: /home/user/docker/traefik/data/certs
+vault_certs_default_location: /nfs_exports/home/user/docker/traefik/data/certs
 vault_certs_defaults:
   ensure: 'present'
   vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/home-dot-arpa'
@@ -60,15 +60,15 @@ vault_certs:
   loki:
   keycloak:
   nuc10i7fnh:
-    cert_chain_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
-    key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
+    cert_chain_file: '/nfs_exports/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
+    key_file: '/nfs_exports/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
     cert_data:
       common_name: 'nuc10i7fnh.home.arpa'
       alt_names: 'nuc10i7fnh.home.arpa'
   # create a specific certificate for protonmail-bridge readable by its user
   nuc10i7fnh-protonmail-bridge:
-    cert_chain_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/protonmail-bridge-fullchain.pem'
-    key_file: '/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/protonmail-bridge-privkey.pem'
+    cert_chain_file: '/nfs_exports/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/protonmail-bridge-fullchain.pem'
+    key_file: '/nfs_exports/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/protonmail-bridge-privkey.pem'
     cert_data:
       common_name: 'nuc10i7fnh.home.arpa'
       alt_names: 'nuc10i7fnh.home.arpa'
