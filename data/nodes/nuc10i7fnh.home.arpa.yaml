@@ -18,7 +18,10 @@ tidy::files:
 docker::version: latest
 docker::ipv6: true
 docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:549c::/80"
+docker::ip6tables: true
 docker::log_level: info
+docker::extra_parameters:
+  - '--experimental=true'
 docker::networks::networks:
   traefik_proxy:
     ensure: present
