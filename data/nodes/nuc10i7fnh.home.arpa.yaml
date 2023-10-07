@@ -81,3 +81,4 @@ vault_certs:
   qbittorrent:
   traefik:
   protonmail-bridge:
+  salt-box:
