@@ -1,8 +1,13 @@
 classes:
   - limits
+  - tidy
 
 limits::entries:
   'user/rtprio':
     both: 98
   'user/memlock':
     both: unlimited
+
+tidy::files:
+  downloads:
+    path: /opt/home/user/Downloads
