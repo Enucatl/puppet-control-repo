@@ -6,6 +6,7 @@ classes:
   - docker::networks
   - checkmk
   - libvirt_log_fix
+  - sysctl::base
 
 
 tidy::files:
@@ -42,6 +43,19 @@ promtail::scrape_configs_hash:
             - "__meta_docker_container_name"
           regex: "/(.*)"
           target_label: 'container_name'
+
+sysctl::base::purge: false
+sysctl::base::values:
+  net.ipv6.conf.all.forwarding:
+    value: 1
+  net.ipv6.conf.eno1.accept_ra:
+    value: 2
+  net.ipv6.conf.eno1.proxy_ndp:
+    value: 1
+  vm.swappiness:
+    value: 10
+  vm.vfs_cache_pressure:
+    value: 50
 
 vault_certs_default_location: /nfs_exports/home/user/docker/traefik/data/certs
 vault_certs_defaults:
