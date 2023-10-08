@@ -6,8 +6,6 @@ classes:
   - docker::networks
   - checkmk
   - libvirt_log_fix
-  - augeasproviders::instances
-
 
 tidy::files:
   downloads:
@@ -44,7 +42,7 @@ promtail::scrape_configs_hash:
           regex: "/(.*)"
           target_label: 'container_name'
 
-augeasproviders::instances::sysctl_hash:
+sysctl_hash:
   net.ipv6.conf.all.forwarding:
     value: 1
   net.ipv6.conf.eno1.accept_ra:
