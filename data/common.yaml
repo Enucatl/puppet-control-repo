@@ -57,7 +57,6 @@ ssh::client_options:
   'Host *':
     Ciphers: chacha20-poly1305@openssh.com
     MACs: hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
-    UseRoaming: no
     HashKnownHosts: yes
     SendEnv: 'LANG LC_*'
     GSSAPIAuthentication: yes
