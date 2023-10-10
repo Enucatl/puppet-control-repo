@@ -45,6 +45,16 @@ promtail::scrape_configs_hash:
 sysctl_hash:
   net.ipv6.conf.all.forwarding:
     value: 1
+  net.ipv6.conf.default.forwarding:
+    value: 1
+  net.ipv6.conf.all.accept_ra:
+    value: 2
+  net.ipv6.conf.all.proxy_ndp:
+    value: 1
+  net.ipv6.conf.default.accept_ra:
+    value: 2
+  net.ipv6.conf.default.proxy_ndp:
+    value: 1
   net.ipv6.conf.eno1.accept_ra:
     value: 2
   net.ipv6.conf.eno1.proxy_ndp:
