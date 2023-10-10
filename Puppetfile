@@ -59,3 +59,6 @@ mod 'i2pd',
 mod 'freeipa',
   git:    'https://github.com/enucatl/puppet-freeipa.git',
   branch: 'dev'
+mod 'puppet-libvirt',
+  git:    'https://github.com/enucatl/puppet-libvirt.git',
+  branch: 'master'
