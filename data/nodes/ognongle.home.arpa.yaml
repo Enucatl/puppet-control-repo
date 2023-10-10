@@ -48,4 +48,4 @@ libvirt::networks:
     ips:
       - family: ipv6
         address: "%{lookup('ipv6-prefix')}::"
-        prefix: 64
+        prefix: '64'
