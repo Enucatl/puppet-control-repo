@@ -46,6 +46,6 @@ libvirt::networks:
       name: br10
     autostart: true
     ips:
-      family: ipv6
-      address: "%{lookup('ipv6-prefix')}::"
-      prefix: 64
+      - family: ipv6
+        address: "%{lookup('ipv6-prefix')}::"
+        prefix: 64
