@@ -14,7 +14,6 @@ tidy::files:
   downloads:
     path: /opt/home/user/Downloads
 
-
 netplan::purge_config: true
 netplan::configs:
   network-manager-all:
@@ -29,14 +28,12 @@ netplan::configs:
           dhcp6: no
       bridges:
         br0:
-          interfaces:
-            - enp0s31f6
+          interfaces: [enp0s31f6]
           dhcp4: yes
           dhcp6: yes
           parameters:
             forward-delay: 0
             stp: true
-
 
 sysctl_hash:
   net.ipv6.conf.all.forwarding:
@@ -55,13 +52,3 @@ sysctl_hash:
     value: 10
   vm.vfs_cache_pressure:
     value: 50
-
-
-libvirt::networks:
-  testbridge:
-    template: generic
-    forward:
-      mode: bridge
-    bridge:
-      name: br0
-    autostart: true
