@@ -21,6 +21,7 @@ netplan::configs:
     file_mode: '0644'
     priority: 01
     settings:
+      version: 2
       renderer: networkd
       ethernets:
         enp0s31f6:
