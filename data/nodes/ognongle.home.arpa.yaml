@@ -50,9 +50,9 @@ sysctl_hash:
     value: 2
   net.ipv6.conf.default.proxy_ndp:
     value: 1
-  net.ipv6.conf.eno1.accept_ra:
+  net.ipv6.conf.enp0s31f6.accept_ra:
     value: 2
-  net.ipv6.conf.eno1.proxy_ndp:
+  net.ipv6.conf.enp0s31f6.proxy_ndp:
     value: 1
   vm.swappiness:
     value: 10
@@ -66,9 +66,5 @@ libvirt::networks:
     forward:
       mode: bridge
     bridge:
-      name: br10
+      name: br0
     autostart: true
-    ips:
-      - family: ipv6
-        address: "%{lookup('ipv6-prefix')}::"
-        prefix: '64'
