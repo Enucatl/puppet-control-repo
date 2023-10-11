@@ -15,23 +15,26 @@ tidy::files:
     path: /opt/home/user/Downloads
 
 
-netplan::version: 2
-netplan::renderer: networkd
 netplan::purge_config: true
-netplan::ethernets:
-  enp0s31f6:
-    dhcp4: no
-    dhcp6: no
-netplan::bridges:
-  br0:
-    interfaces: 
-      - enp0s31f6
-    dhcp4: yes
-    dhcp6: yes
-    link-local: []
-    parameters:
-      forward-delay: 0
-      stp: true
+netplan::configs:
+  all:
+    priority: 1
+    settings:
+      renderer: networkd
+      ethernets:
+        enp0s31f6:
+          dhcp4: no
+          dhcp6: no
+      bridges:
+        br0:
+          interfaces:
+            - enp0s31f6
+          dhcp4: yes
+          dhcp6: yes
+          link-local:
+          parameters:
+            forward-delay: 0
+            stp: true
 
 
 sysctl_hash:
