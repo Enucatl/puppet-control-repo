@@ -17,8 +17,9 @@ tidy::files:
 
 netplan::purge_config: true
 netplan::configs:
-  all:
-    priority: 1
+  network-manager-all:
+    file_mode: 611
+    priority: 01
     settings:
       renderer: networkd
       ethernets:
