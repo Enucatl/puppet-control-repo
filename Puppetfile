@@ -38,6 +38,8 @@ mod 'saz/dnsmasq',                 '1.5.0'
 mod 'saz/ssh',                     '8.0.0'
 mod 'treydock/yum_cron',           '6.2.0'
 mod 'saz/limits',                  '3.1.0'
+mod 'zehweh/netplan',              '2.0.0'
+
 
 # Discovered elements from existing Puppetfile
 # Modules from the Puppet Forge
