@@ -50,10 +50,6 @@ sysctl_hash:
     value: 2
   net.ipv6.conf.default.proxy_ndp:
     value: 1
-  net.ipv6.conf.enp0s31f6.accept_ra:
-    value: 2
-  net.ipv6.conf.enp0s31f6.proxy_ndp:
-    value: 1
   vm.swappiness:
     value: 10
   vm.vfs_cache_pressure:
