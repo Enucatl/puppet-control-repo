@@ -2,6 +2,7 @@ classes:
   - limits
   - tidy
   - libvirt
+  - netplan
 
 limits::entries:
   'user/rtprio':
@@ -12,6 +13,25 @@ limits::entries:
 tidy::files:
   downloads:
     path: /opt/home/user/Downloads
+
+
+netplan::version: 2
+netplan::renderer: networkd
+netplan::purge_config: true
+netplan::ethernets:
+  enp0s31f6:
+    dhcp4: no
+    dhcp6: no
+netplan::bridges:
+  br0:
+    interfaces: 
+      - enp0s31f6
+    dhcp4: yes
+    dhcp6: yes
+    link-local: []
+    parameters:
+      forward-delay: 0
+      stp: true
 
 
 sysctl_hash:
