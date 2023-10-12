@@ -43,9 +43,9 @@ promtail::scrape_configs_hash:
           target_label: 'container_name'
 
 sysctl_hash:
-  net.ipv6.conf.all.accept_redirect:
+  net.ipv6.conf.all.accept_redirects:
     value: 0
-  net.ipv6.conf.default.accept_redirect:
+  net.ipv6.conf.default.accept_redirects:
     value: 0
   net.ipv6.conf.all.forwarding:
     value: 1
