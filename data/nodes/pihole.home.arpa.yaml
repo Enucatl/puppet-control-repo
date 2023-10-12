@@ -13,4 +13,4 @@ interfaces:
     family: inet6
     ipaddress: "%{lookup('dns::client::server_ipv6')}"
     netmask: 64
-    gateway: fe80::6e99:61ff:fe19:1ea7
+    gateway: "%{lookup('ipv6-prefix')}:6e99:61ff:fe19:1ea7"
