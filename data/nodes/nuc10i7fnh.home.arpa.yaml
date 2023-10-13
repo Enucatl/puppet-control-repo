@@ -20,7 +20,7 @@ docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:549c::/80"
 docker::log_level: info
 docker::extra_parameters:
   - "--experimental=true"
-  - "--ip6tables=true"
+  - "--ip6tables=false"
   - "--default-address-pool base=172.17.0.0/12,size=20"
   - "--default-address-pool base=%{lookup('ipv6-prefix')}:d00::/72,size=80"
 docker::networks::networks:
