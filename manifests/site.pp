@@ -103,6 +103,8 @@ node 'nuc10i7fnh.home.arpa' {
     subscribe => Service['docker'],
   }
 
+  create_resources(libvirt::network, lookup('libvirt::networks'))
+
 }
 
 node 'ognongle.home.arpa' {
@@ -136,5 +138,5 @@ node 'ognongle.home.arpa' {
   }
 
   create_resources(sysctl, lookup('sysctl_hash'))
-
+  create_resources(libvirt::network, lookup('libvirt::networks'))
 }

@@ -56,3 +56,7 @@ sysctl_hash:
     value: 10
   vm.vfs_cache_pressure:
     value: 50
+
+libvirt::networks:
+  default:
+    ensure: absent
