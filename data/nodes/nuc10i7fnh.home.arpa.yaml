@@ -108,3 +108,7 @@ vault_certs:
   traefik:
   protonmail-bridge:
   salt-box:
+
+libvirt::networks:
+  default:
+    ensure: absent
