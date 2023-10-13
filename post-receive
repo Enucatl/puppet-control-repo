@@ -2,7 +2,7 @@
 
 set -x
 
-R10K=/opt/puppetlabs/server/data/puppetserver/jruby-gems/bin/r10k
+R10K=r10k
 PUPPET=/opt/puppetlabs/puppet/bin/puppet
 CONFDIR=/etc/puppetlabs/puppet
 CODEDIR=/etc/puppetlabs/code
