@@ -2,6 +2,7 @@
 
 set -x
 
+R10K=/opt/puppetlabs/server/data/puppetserver/jruby-gems/bin/r10k
 PUPPET=/opt/puppetlabs/puppet/bin/puppet
 CONFDIR=/etc/puppetlabs/puppet
 CODEDIR=/etc/puppetlabs/code
@@ -15,7 +16,7 @@ do
     if [[ $ref = refs/heads/$BRANCH ]];
     then
         echo "Ref $ref received. Deploying ${BRANCH} branch..."
-        sudo -u puppet r10k deploy environment --modules -v info
+        sudo -u puppet $R10K deploy environment --modules -v info
         sudo -u puppet $PUPPET generate types \
             --environment $BRANCH \
             --confdir $CONFDIR \
