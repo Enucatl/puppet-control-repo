@@ -67,7 +67,6 @@ node 'pihole.home.arpa' {
 
 node 'nuc10i7fnh.home.arpa' {
   $classes.include
-  create_resources(sysctl, lookup('sysctl_hash'))
   $vault_certs = lookup('vault_certs')
   $vault_certs_defaults = lookup('vault_certs_defaults')
   $vault_certs_default_location = lookup('vault_certs_default_location')
@@ -90,8 +89,6 @@ node 'nuc10i7fnh.home.arpa' {
       * => $vault_cert_config,
     }
 
-  create_resources(cron, lookup('cronjobs'))
-
   }
 
   file { '/var/lib/docker':
@@ -106,7 +103,9 @@ node 'nuc10i7fnh.home.arpa' {
     subscribe => Service['docker'],
   }
 
+  create_resources(sysctl, lookup('sysctl_hash'))
   create_resources(libvirt::network, lookup('libvirt::networks'))
+  create_resources(cron, lookup('cronjobs'))
 
 }
 
