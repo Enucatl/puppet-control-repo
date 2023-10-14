@@ -139,6 +139,17 @@ node 'ognongle.home.arpa' {
     active => true,
   }
 
+  # prevent goa-daemon from writing one million lines a day in the logs
+  file { '/usr/share/dbus-1/services/org.gnome.OnlineAccounts.service':
+    content => @("OnlineAccounts"/L)
+              [D-BUS Service]
+              Name=org.gnome.OnlineAccounts
+              #disabled by puppet
+              #Exec=/usr/libexec/goa-daemon
+              Exec=/usr/bin/false
+              | OnlineAccounts
+  }
+
   create_resources(sysctl, lookup('sysctl_hash'))
   create_resources(libvirt::network, lookup('libvirt::networks'))
 }
