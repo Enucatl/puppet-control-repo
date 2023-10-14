@@ -112,3 +112,14 @@ vault_certs:
 libvirt::networks:
   default:
     ensure: absent
+
+cronjobs:
+  vault-backup:
+    minute: 0
+    hour: 0
+    date: '*'
+    month: '*'
+    weekday: 2
+    user: user
+    command: '/usr/bin/vault operator raft snapshot save /nfs_exports/home/user/Documents/backup/vault/vault-`/bin/date --iso-8601=seconds`.snap'
+    description: 'backup hashicorp vault'

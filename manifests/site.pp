@@ -89,6 +89,9 @@ node 'nuc10i7fnh.home.arpa' {
     vault_cert { $subdomain:
       * => $vault_cert_config,
     }
+
+  create_resources(cron, lookup('cronjobs'))
+
   }
 
   file { '/var/lib/docker':
