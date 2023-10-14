@@ -22,6 +22,7 @@ classes:
   - network
   - promtail
   - postfix_configuration
+  - puppet_configuration
 
 tidy::defaults:
   age: 1w
@@ -70,11 +71,9 @@ freeipa::install::client::options:
   principal: enrollment
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
-
 systemd::journald_settings:
   Storage: auto
   MaxRetentionSec: 1month
-
 
 promtail::version: "v2.7.4"
 promtail::checksum: "1687d859ed51ec1851a10f9b0eae823530d7f1bf95dd4684c357fbe143daacc6"
@@ -104,7 +103,6 @@ promtail::scrape_configs_hash:
             job: varlogs
             host: "%{trusted.certname}"
 
-
 postfix::configs:
   smtp_use_tls:
     value: 'yes'
@@ -125,3 +123,9 @@ postfix::configs:
   recipient_canonical_maps:
     value: 'regexp:/etc/postfix/recipient_canonical'
 postfix::relayhost: '[smtp.google.com]:587'
+
+puppet_configuration::settings:
+  number_of_facts_soft_limit:
+    section: agent
+    setting: number_of_facts_soft_limit
+    value: 10000
