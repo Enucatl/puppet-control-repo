@@ -136,7 +136,7 @@ node 'ognongle.home.arpa' {
       'WantedBy' => 'multi-user.target',
     },
     enable => true,
-    active => true,
+    active => false,
   }
 
   # prevent goa-daemon from writing one million lines a day in the logs
