@@ -140,6 +140,7 @@ node 'ognongle.home.arpa' {
   }
 
   # prevent goa-daemon from writing one million lines a day in the logs
+  # https://askubuntu.com/questions/343746/disable-and-delete-goa-daemon
   file { '/usr/share/dbus-1/services/org.gnome.OnlineAccounts.service':
     ensure  => file,
     content => @("ONLINEACCOUNTS"/L)
