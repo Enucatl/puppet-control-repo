@@ -40,25 +40,13 @@
 
 <!-- vim-markdown-toc -->
 
-# Manage KVM networks and guests with Ansible
+# What is this fork about
 
-This is an example Ansible playbook for my [Virtual Infrastructure Ansible
-role](https://github.com/csmart/ansible-role-virt-infra).
-
-It uses separate YAML Ansible [inventory files](#inventory) to define and
-manage networks and guests on KVM hosts. Ansible's `--limit` option lets you
-manage them individually or as a group.
-
-It is really designed for dev work, where the KVM host is your local machine,
-you have `sudo` and talk to `libvirtd` at `qemu:///system` however it also
-works on remote hosts.
-
-To test this out, maybe spin up a supported distro as a guest on a host that
-supports nested virtualisation (CPU passthrough).
-
-<img src="virt-infra-ansible.png" alt="Virtual Infrastructure with Ansible">
-
-An [SVG demo is included](demo.svg), if you want to see it in action.
+## Install with `ansible-galaxy`
+Instead of using a submodule:
+```
+ansible-galaxy install -r roles/requirements.yml -p roles
+```
 
 # Too long; didn't read
 
