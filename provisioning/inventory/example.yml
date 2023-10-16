@@ -1,0 +1,114 @@
+---
+## YAML based inventory, see:
+## https://docs.ansible.com/ansible/latest/plugins/inventory/yaml.html
+#
+# Example using mix of distros
+# Overriding some defaults at hostgroup and individual guest levels
+# Note that the virt_infra_variant are not set to specific versions,
+# this is to make it work on different hosts
+# Note also that CentOS 8 needs the path to system Python
+example:
+  hosts:
+    example-centos-7:
+      virt_infra_state: running
+      virt_infra_variant: centos7.0
+      virt_infra_distro_image: CentOS-7-x86_64-GenericCloud.qcow2
+      virt_infra_timezone: "Australia/Melbourne"
+      virt_infra_ram: 2048
+      virt_infra_disks:
+        - name: "boot"
+        - name: "data"
+          size: "20"
+      ansible_python_interpreter: /usr/bin/python
+      virt_infra_disk_cmd:
+        - yum -y install yum-plugin-fastestmirror
+    example-centos-8:
+      virt_infra_state: running
+      virt_infra_variant: centos7.0
+      virt_infra_distro_image: "CentOS-Stream-GenericCloud-8-20220125.1.x86_64.qcow2"
+      virt_infra_distro_image_url: "https://cloud.centos.org/centos/8-stream/x86_64/images/CentOS-Stream-GenericCloud-8-20220125.1.x86_64.qcow2"
+      virt_infra_distro_image_checksum_url: "https://cloud.centos.org/centos/8-stream/x86_64/images/CHECKSUM"
+      ansible_python_interpreter: /usr/libexec/platform-python
+      virt_infra_disk_cmd:
+        - echo 'fastestmirror=1' >> /etc/dnf/dnf.conf
+    example-centos-9:
+      virt_infra_state: running
+      virt_infra_variant: centos7.0
+      virt_infra_distro_image: "CentOS-Stream-GenericCloud-9-20220531.0.x86_64.qcow2"
+      virt_infra_distro_image_url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-20220531.0.x86_64.qcow2"
+      virt_infra_distro_image_checksum_url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
+      ansible_python_interpreter: /usr/libexec/platform-python
+      virt_infra_disk_cmd:
+        - echo 'fastestmirror=1' >> /etc/dnf/dnf.conf
+    example-fedora-32:
+      virt_infra_state: running
+      virt_infra_autostart: yes
+      virt_infra_distro: fedora
+      virt_infra_distro_image: Fedora-Cloud-Base-32-1.6.x86_64.qcow2
+      virt_infra_distro_image_url: https://download.fedoraproject.org/linux/releases/32/Cloud/x86_64/images/Fedora-Cloud-Base-32-1.6.x86_64.qcow2
+      virt_infra_distro_image_checksum_url: https://download.fedoraproject.org/linux/releases/32/Cloud/x86_64/images/Fedora-Cloud-32-1.6-x86_64-CHECKSUM
+      virt_infra_variant: fedora-unknown
+      virt_infra_disk_cmd:
+        - echo 'fastestmirror=1' >> /etc/dnf/dnf.conf
+      virt_infra_ram: 4096
+      virt_infra_cpus: 4
+    example-fedora-33:
+      virt_infra_state: running
+      virt_infra_distro: fedora
+      virt_infra_distro_image: Fedora-Cloud-Base-33-1.2.x86_64.qcow2
+      virt_infra_distro_image_url: https://download.fedoraproject.org/pub/fedora/linux/releases/33/Cloud/x86_64/images/Fedora-Cloud-Base-33-1.2.x86_64.qcow2
+      virt_infra_distro_image_checksum_url: https://download.fedoraproject.org/pub/fedora/linux/releases/33/Cloud/x86_64/images/Fedora-Cloud-33-1.2-x86_64-CHECKSUM
+      virt_infra_variant: fedora-unknown
+      virt_infra_disk_cmd:
+        - echo 'fastestmirror=1' >> /etc/dnf/dnf.conf
+      virt_infra_ram: 4096
+      virt_infra_cpus: 4
+    example-debian-10:
+      virt_infra_state: running
+      virt_infra_distro: debian
+      virt_infra_distro_image: debian-10.2.0-openstack-amd64.qcow2
+      virt_infra_distro_image_url: http://cdimage.debian.org/cdimage/openstack/current/debian-10.2.0-openstack-amd64.qcow2
+      virt_infra_distro_image_checksum_url: http://cdimage.debian.org/cdimage/openstack/current/SHA512SUMS
+      virt_infra_variant: debiantesting
+      virt_infra_disk_cmd:
+        - apt-get update
+        - apt-get install -y netselect-apt
+        - netselect-apt -n -o /etc/apt/sources.list
+    example-opensuse-15:
+      virt_infra_state: running
+      virt_infra_distro: opensuse
+      virt_infra_distro_image: openSUSE-Leap-15.2-JeOS.x86_64-OpenStack-Cloud.qcow2
+      virt_infra_distro_image_url: http://download.opensuse.org/distribution/leap/15.2/appliances/openSUSE-Leap-15.2-JeOS.x86_64-OpenStack-Cloud.qcow2
+      virt_infra_distro_image_checksum_url: http://download.opensuse.org/distribution/leap/15.2/appliances/openSUSE-Leap-15.2-JeOS.x86_64-OpenStack-Cloud.qcow2.sha256
+      virt_infra_variant: opensuse-unknown
+      virt_infra_disks:
+        - name: "boot"
+          bus: "scsi"
+    example-ubuntu-bionic:
+      virt_infra_state: running
+      virt_infra_distro: ubuntu
+      virt_infra_distro_image: bionic-server-cloudimg-amd64.img
+      virt_infra_distro_image_url: http://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img
+      virt_infra_distro_image_checksum_url: http://cloud-images.ubuntu.com/bionic/current/SHA256SUMS
+      virt_infra_variant: ubuntu18.04
+    example-ubuntu-focal:
+      virt_infra_state: running
+      virt_infra_distro: ubuntu
+      virt_infra_distro_image: focal-server-cloudimg-amd64.img
+      virt_infra_distro_image_url: http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img
+      virt_infra_distro_image_checksum_url: http://cloud-images.ubuntu.com/focal/current/SHA256SUMS
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    virt_infra_disks:
+      - name: "boot"
+        clone: false
+      - name: "data-scsi"
+        size: "40"
+      - name: "data-ssd"
+        ssd: "true"
+      - name: "data-sata"
+        bus: "sata"
+      - name: "data-virtio"
+        bus: "virtio"
+    virt_infra_networks:
+      - name: "default"
