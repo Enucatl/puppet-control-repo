@@ -8,7 +8,7 @@
         state: latest
       become: true
       register: result_package_update
-      retries: 30
+      retries: 10
       delay: 10
       until: result_package_update is succeeded
 
@@ -21,7 +21,7 @@
         state: present
       become: true
       register: result_package_install
-      retries: 30
+      retries: 10
       delay: 10
       until: result_package_install is succeeded
 

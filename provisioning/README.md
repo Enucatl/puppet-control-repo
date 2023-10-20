@@ -44,8 +44,13 @@
 
 ## Install with `ansible-galaxy`
 Instead of using a submodule:
-```
+```bash
 ansible-galaxy install -r roles/requirements.yml -p roles
+```
+
+Run the playbook:
+```bash
+ansible-playbook virt-infra.yml --inventory inventory/simple-multikvm.yml
 ```
 
 # Too long; didn't read
