@@ -4,24 +4,71 @@
 #
 ## Simple example using defaults to spin up 3 CentOS guests
 ## This is on multiple KVM hosts, see kvmhost.yml
-simple_multikvm:
+kvmhost:
   hosts:
-    simple-multikvm-centos-8-[1:3]:
+    ## Put your KVM host connection and settings here
+    ognongle.home.arpa:
+      ansible_host: ognongle.home.arpa
+    ## We are emulating multiple KVM hosts here, defaults to localhost
+    ## Update them to use real hostnames, or
+    ## change ansible_connection to ansible_host with an IP
+    nuc10i7fnh.home.arpa:
+      ansible_host: nuc10i7fnh.home.arpa
   vars:
-    ansible_python_interpreter: /usr/libexec/platform-python
+    ansible_python_interpreter: /usr/bin/python3
+    # Networks are a list, you can add more than one
+    # You can create and remove NAT networks on kvmhost (creating bridges not supported)
+    # The 'default' network is the standard one shipped with libvirt
+    # By default we don't remove any networks (empty absent list)
+    virt_infra_host_networks:
+      absent:
+        - name: default
+      present:
+
+
+simple_multikvm:
+  vars:
+    virt_infra_distro: debian
+    virt_infra_distro_release: 12
+    virt_infra_distro_image: debian-12-genericcloud-amd64.qcow2
+    # Fix non-free split warning More information about this can be found online in the Release notes at:
+    # https://www.debian.org/releases/bookworm/amd64/release-notes/ch-information.html#non-free-split
+    # Run virt-customize with the following arguments
+    virt_infra_virt_customize_flags:
+      - flag: "install"
+        args: "cloud-init"
+      - flag: "install"
+        args: "qemu-guest-agent"
+      - flag: "copy-in"
+        args: "/home/user/src/puppet-control-repo/provisioning/templates/sources.list:/etc/apt"
+      - flag: "copy-in"
+        args: "/home/user/src/puppet-control-repo/provisioning/templates/no-bookworm-firmware.conf:/etc/apt/apt.conf.d"
+      - flag: "run-command"
+        args: "chown root:root /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
+      - flag: "run-command"
+        args: "chmod 644 /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
+      - flag: "run-command"
+        args: "apt update"
+    virt_infra_disk_size: 5
+    virt_infra_distro_image_url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2
+    virt_infra_security_driver: apparmor
+    virt_infra_network_config: true
+    virt_infra_user: user
+    virt_infra_ssh_pwauth: false
+    virt_infra_add_ssh_config: false
+    virt_infra_add_etc_hosts: false
   children:
-    kvmhost_1:
+    ognongle.home.arpa:
       hosts:
-        simple-multikvm-centos-8-1:
+        test-debian12-1.home.arpa:
       vars:
-        kvmhost: kvmhost1
-    kvmhost_2:
-      hosts:
-        simple-multikvm-centos-8-2:
-      vars:
-        kvmhost: kvmhost2
-    kvmhost_3:
-      hosts:
-        simple-multikvm-centos-8-3:
-      vars:
-        kvmhost: kvmhost3
+        kvmhost: ognongle.home.arpa
+        virt_infra_networks:
+          - name: br0
+            type: bridge
+            model: virtio
+    # nuc10i7fnh.home.arpa:
+    #   hosts:
+    #     test-debian12-2:
+    #   vars:
+    #     kvmhost: nuc10i7fnh.home.arpa

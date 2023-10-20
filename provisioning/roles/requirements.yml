@@ -1,6 +1,6 @@
 ---
 roles:
-  - name: virt_infra
-    src: https://github.com/csmart/ansible-role-virt-infra.git
+  - name: ansible-role-virt-infra
+    src: git@github.com:Enucatl/ansible-role-virt-infra.git
     version: master
     scm: git

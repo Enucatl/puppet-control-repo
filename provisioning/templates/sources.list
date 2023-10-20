@@ -1,0 +1,3 @@
+# Installed by ansible
+deb http://mirror.init7.net/debian/ stable main contrib non-free
+deb http://security.debian.org/ stable-security/updates main contrib non-free
