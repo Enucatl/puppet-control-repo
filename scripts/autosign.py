@@ -10,7 +10,7 @@ import cryptography.x509
 @click.command()
 @click.argument("certname")
 @click.argument("input_file", type=click.File("rb"), default="-")
-@click.option("--vault_addr", default=os.environ["VAULT_ADDR"])
+@click.option("--vault_addr", default=os.environ.get("VAULT_ADDR", "https://vault.home.arpa:8200"))
 @click.option("--policy", default="puppet")
 def main(certname, input_file, vault_addr, policy):
     """
