@@ -12,7 +12,7 @@ import cryptography.x509
 @click.argument("input_file", type=click.File("rb"), default="-")
 @click.option("--vault_addr", default=os.environ.get("VAULT_ADDR", "https://vault.home.arpa:8200"))
 @click.option("--policy", default="puppet")
-@click.option("--verify", default="/etc/ssl/certs/root_2022_ca.pem")
+@click.option("--verify", default="/etc/ssl/certs/puppet_ca.pem")
 def main(certname, input_file, vault_addr, policy, verify):
     """
     Check the challengePassword OID in a Certificate Signing Request (CSR) to verify if it's a valid token for logging into HashiCorp Vault.
