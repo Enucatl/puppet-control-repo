@@ -4,6 +4,8 @@ lookup_options:
     merge: deep
   systemd::journald_settings:
     merge: deep
+  puppet_configuration::settings:
+    merge: deep
 
 
 classes:
@@ -25,3 +27,9 @@ ufw::rules:
   allow_puppetserver:
     action: "allow"
     to_ports_app: 8140
+
+puppet_configuration::settings:
+  autosign:
+    section: server
+    setting: autosign
+    value: /etc/puppetlabs/code/environments/production/scripts/autosign.py
