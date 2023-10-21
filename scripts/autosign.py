@@ -12,7 +12,8 @@ import cryptography.x509
 @click.argument("input_file", type=click.File("rb"), default="-")
 @click.option("--vault_addr", default=os.environ.get("VAULT_ADDR", "https://vault.home.arpa:8200"))
 @click.option("--policy", default="puppet")
-def main(certname, input_file, vault_addr, policy):
+@click.option("--verify", default="/etc/ssl/certs/root_2022_ca.pem")
+def main(certname, input_file, vault_addr, policy, verify):
     """
     Check the challengePassword OID in a Certificate Signing Request (CSR) to verify if it's a valid token for logging into HashiCorp Vault.
     To be called as an autosign policy executable file:
@@ -23,6 +24,7 @@ def main(certname, input_file, vault_addr, policy):
     input_file (file): The input file containing the PEM-encoded CSR data. If not provided, reads from standard input ("-").
     vault_addr (str, optional): The address of the HashiCorp Vault server. Defaults to the 'VAULT_ADDR' environment variable.
     policy (str, optional): The policy name to check for in HashiCorp Vault. Defaults to "puppet".
+    verify (str, optional): The location of the root CA certificate to talk SSL with vault
 
     Raises:
     - cryptography.x509.base.AttributeNotFound: If the 'challengePassword' attribute with the specified OID is not found in the CSR.
@@ -65,6 +67,7 @@ def main(certname, input_file, vault_addr, policy):
     vault_client = hvac.Client(
         url=vault_addr,
         token=token,
+        verify=verify,
     )
     # will raise if the token cannot authenticate itself
     current_token = vault_client.auth.token.lookup_self()
