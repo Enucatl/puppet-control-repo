@@ -44,3 +44,5 @@ ufw::rules:
   allow_dns:
     action: "allow"
     to_ports_app: 53
+
+fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
