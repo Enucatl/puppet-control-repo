@@ -16,7 +16,6 @@ classes:
   - freeipa
   - freeipa::install::client
   - freeipa::automount
-  - dns::client
   - fail2ban
   - git
   - network
