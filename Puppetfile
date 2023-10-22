@@ -36,7 +36,7 @@ mod 'puppetlabs/stdlib',           '9.2.0'
 mod 'rehan/git',                   '2.0.3'
 mod 'saz/dnsmasq',                 '1.5.0'
 mod 'saz/ssh',                     '8.0.0'
-mod 'treydock/yum_cron',           '6.2.0'
+mod 'treydock/yum_cron',           '7.0.0'
 mod 'saz/limits',                  '3.1.0'
 mod 'jmckenzie/netplan',           '0.1.3'
 
