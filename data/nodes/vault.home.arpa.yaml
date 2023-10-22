@@ -5,7 +5,7 @@ lookup_options:
   systemd::journald_settings:
     merge: deep
   puppet_configuration::settings:
-    merge: unique
+    merge: deep
 
 
 classes:
@@ -35,15 +35,16 @@ puppet_configuration::settings:
     value: /etc/puppetlabs/code/environments/production/scripts/autosign.py
 
 promtail::scrape_configs_hash:
-  - job_name: puppetserver
-    static_configs:
-      - labels:
-          __path__: /var/log/puppetlabs/puppetserver/*.log
-          job: puppetserver
-          host: "%{trusted.certname}"
-  - job_name: vault
-    static_configs:
-      - labels:
-          __path__: /var/log/vault/*.log
-          job: vault
-          host: "%{trusted.certname}"
+  scrape_configs:
+    - job_name: puppetserver
+      static_configs:
+        - labels:
+            __path__: /var/log/puppetlabs/puppetserver/*.log
+            job: puppetserver
+            host: "%{trusted.certname}"
+    - job_name: vault
+      static_configs:
+        - labels:
+            __path__: /var/log/vault/*.log
+            job: vault
+            host: "%{trusted.certname}"
