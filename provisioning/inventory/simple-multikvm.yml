@@ -39,24 +39,18 @@ simple_multikvm:
         args: "cloud-init"
       - flag: "install"
         args: "qemu-guest-agent"
+      - flag: "write"
+        args: "/etc/hostname:{{ inventory_hostname }}"
       - flag: "copy-in"
         args: "/home/user/src/puppet-control-repo/provisioning/templates/sources.list:/etc/apt"
       - flag: "copy-in"
         args: "/home/user/src/puppet-control-repo/provisioning/templates/no-bookworm-firmware.conf:/etc/apt/apt.conf.d"
-      - flag: "run-command"
-        args: "chown root:root /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
-      - flag: "run-command"
-        args: "chmod 644 /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
+      - flag: "mkdir"
+        args: "/opt/ansible_data"
       - flag: "copy-in"
-        args: "{{ virt_infra_host_puppet_path }}/{{ virt_infra_puppet_package }}:/opt"
-      - flag: "run-command"
-        args: "dpkg -i /opt/{{ virt_infra_puppet_package }} && apt update && apt install puppet-agent"
+        args: "{{ virt_infra_host_puppet_path }}/{{ virt_infra_puppet_package }}:/opt/ansible_data"
       - flag: "copy-in"
-        args: "{{ csr_attributes_file }}:/etc/puppetlabs/puppet"
-      - flag: "run-command"
-        args: "chown root:root /etc/puppetlabs/puppet/csr_attributes.yaml"
-      - flag: "run-command"
-        args: "chmod 600 /etc/puppetlabs/puppet/csr_attributes.yaml"
+        args: "{{ csr_attributes_file }}:/opt/ansible_data"
     virt_infra_disk_size: 5
     virt_infra_distro_image_url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2
     virt_infra_security_driver: apparmor
@@ -68,10 +62,26 @@ simple_multikvm:
     virt_infra_host_puppet_path: "/home/user/Downloads"
     virt_infra_puppet_repository: http://apt.puppet.com
     virt_infra_puppet_package: puppet8-release-bullseye.deb
+    virt_infra_cloud_init_runcmd:
+      - "chown root:root /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
+      - "chmod 644 /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
+      - "dpkg -i /opt/ansible_data/{{ virt_infra_puppet_package }} && apt update && apt install -y puppet-agent"
+      - "echo {{ inventory_hostname }} > /etc/hostname"
+      - "mv /opt/ansible_data/csr_attributes.yaml /etc/puppetlabs/puppet"
+      - "chown root:root /etc/puppetlabs/puppet/csr_attributes.yaml"
+      - "chmod 600 /etc/puppetlabs/puppet/csr_attributes.yaml"
+      - "/opt/puppetlabs/bin/puppet config set server vault.home.arpa --section main"
+      - "/opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true"
+      - "/opt/puppetlabs/bin/puppet ssl bootstrap --waitforlock 10s"
+      - "/opt/puppetlabs/bin/puppet agent --test --waitforlock 10s"
   children:
     ognongle:
       hosts:
-        test-debian12-1.home.arpa:
+        # test-debian12-1.home.arpa:
+        # test-debian12-2.home.arpa:
+        # test-debian12-3.home.arpa:
+        # test-debian12-4.home.arpa:
+        test-debian12-5.home.arpa:
       vars:
         kvmhost: ognongle.home.arpa
         virt_infra_networks:
