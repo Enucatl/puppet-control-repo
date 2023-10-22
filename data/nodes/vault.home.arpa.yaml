@@ -33,3 +33,17 @@ puppet_configuration::settings:
     section: server
     setting: autosign
     value: /etc/puppetlabs/code/environments/production/scripts/autosign.py
+
+promtail::scrape_configs_hash:
+  - job_name: puppetserver
+    static_configs:
+      - labels:
+          __path__: /var/log/puppetlabs/puppetserver/*.log
+          job: puppetserver
+          host: "%{trusted.certname}"
+  - job_name: vault
+    static_configs:
+      - labels:
+          __path__: /var/log/vault/*.log
+          job: vault
+          host: "%{trusted.certname}"
