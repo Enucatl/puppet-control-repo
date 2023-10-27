@@ -2,8 +2,6 @@
 ## YAML based inventory, see:
 ## https://docs.ansible.com/ansible/latest/plugins/inventory/yaml.html
 #
-## Simple example using defaults to spin up 3 CentOS guests
-## This is on multiple KVM hosts, see kvmhost.yml
 kvmhost:
   hosts:
     ## Put your KVM host connection and settings here
@@ -31,8 +29,6 @@ simple_multikvm:
     virt_infra_distro: debian
     virt_infra_distro_release: 12
     virt_infra_distro_image: debian-12-genericcloud-amd64.qcow2
-    # Fix non-free split warning More information about this can be found online in the Release notes at:
-    # https://www.debian.org/releases/bookworm/amd64/release-notes/ch-information.html#non-free-split
     # Run virt-customize with the following arguments
     virt_infra_virt_customize_flags:
       - flag: "install"
@@ -43,6 +39,8 @@ simple_multikvm:
         args: "/etc/hostname:{{ inventory_hostname }}"
       - flag: "copy-in"
         args: "/home/user/src/puppet-control-repo/provisioning/templates/sources.list:/etc/apt"
+        # Fix non-free split warning More information about this can be found online in the Release notes at:
+        # https://www.debian.org/releases/bookworm/amd64/release-notes/ch-information.html#non-free-split
       - flag: "copy-in"
         args: "/home/user/src/puppet-control-repo/provisioning/templates/no-bookworm-firmware.conf:/etc/apt/apt.conf.d"
       - flag: "mkdir"
@@ -62,11 +60,14 @@ simple_multikvm:
     virt_infra_host_puppet_path: "/home/user/Downloads"
     virt_infra_puppet_repository: http://apt.puppet.com
     virt_infra_puppet_package: puppet8-release-bullseye.deb
+    # install puppet and fix the hostname in the image
     virt_infra_cloud_init_runcmd:
       - "chown root:root /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
       - "chmod 644 /etc/apt/sources.list /etc/apt/apt.conf.d/no-bookworm-firmware.conf"
       - "dpkg -i /opt/ansible_data/{{ virt_infra_puppet_package }} && apt update && apt install -y puppet-agent"
       - "echo {{ inventory_hostname }} > /etc/hostname"
+      - "echo 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }} >> /etc/hosts"
+      - "hostname -F /etc/hostname"
       - "mv /opt/ansible_data/csr_attributes.yaml /etc/puppetlabs/puppet"
       - "chown root:root /etc/puppetlabs/puppet/csr_attributes.yaml"
       - "chmod 600 /etc/puppetlabs/puppet/csr_attributes.yaml"
@@ -75,13 +76,19 @@ simple_multikvm:
       - "/opt/puppetlabs/bin/puppet ssl bootstrap --waitforlock 10s"
       - "/opt/puppetlabs/bin/puppet agent --test --waitforlock 10s"
   children:
+    deactivated:
+      hosts:
+        test-debian12-1.home.arpa:
+        test-debian12-2.home.arpa:
+        test-debian12-3.home.arpa:
+        test-debian12-4.home.arpa:
+        test-debian12-5.home.arpa:
+      vars:
+        kvmhost: ognongle.home.arpa
+        virt_infra_state: undefined
     ognongle:
       hosts:
-        # test-debian12-1.home.arpa:
-        # test-debian12-2.home.arpa:
-        # test-debian12-3.home.arpa:
-        # test-debian12-4.home.arpa:
-        test-debian12-5.home.arpa:
+        test-debian12-6.home.arpa:
       vars:
         kvmhost: ognongle.home.arpa
         virt_infra_networks:
