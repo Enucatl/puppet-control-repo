@@ -33,6 +33,14 @@ puppet_configuration::settings:
     section: server
     setting: autosign
     value: /etc/puppetlabs/code/environments/production/scripts/autosign.py
+  external_node_classifier_node_terminus:
+    section: server
+    setting: node_terminus
+    value: exec
+  external_node_classifier_external_nodes:
+    section: server
+    setting: external_nodes
+    value: /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py
 
 promtail::scrape_configs_hash:
   scrape_configs:
