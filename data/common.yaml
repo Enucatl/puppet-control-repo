@@ -23,6 +23,10 @@ classes:
   - postfix_configuration
   - puppet_configuration
 
+fail2ban::sendmail_actions:
+  actionstart: ""
+  actionstop: ""
+
 tidy::defaults:
   age: 1w
   recurse: true
