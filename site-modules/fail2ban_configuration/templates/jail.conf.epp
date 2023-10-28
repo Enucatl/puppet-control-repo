@@ -1,6 +1,5 @@
 #
 # THIS FILE IS MANAGED BY PUPPET
-# local site-modules version
 #
 # WARNING: heavily refactored in 0.9.0 release.  Please review and
 #          customize settings for your setup.
@@ -47,19 +46,19 @@ before = paths-debian.conf
 # MISCELLANEOUS OPTIONS
 #
 
-# "bantime.increment" allows to use database for searching of previously banned ip's to increase a 
+# "bantime.increment" allows to use database for searching of previously banned ip's to increase a
 # default ban time using special formula, default it is banTime * 1, 2, 4, 8, 16, 32...
 #bantime.increment = true
 
-# "bantime.rndtime" is the max number of seconds using for mixing with random time 
+# "bantime.rndtime" is the max number of seconds using for mixing with random time
 # to prevent "clever" botnets calculate exact time IP can be unbanned again:
-#bantime.rndtime = 
+#bantime.rndtime =
 
 # "bantime.maxtime" is the max number of seconds using the ban time can reach (doesn't grow further)
-#bantime.maxtime = 
+#bantime.maxtime =
 
 # "bantime.factor" is a coefficient to calculate exponent growing of the formula or common multiplier,
-# default value of factor is 1 and with default value of formula, the ban time 
+# default value of factor is 1 and with default value of formula, the ban time
 # grows by 1, 2, 4, 8, 16 ...
 #bantime.factor = 1
 
@@ -70,17 +69,17 @@ before = paths-debian.conf
 # more aggressive example of formula has the same values only for factor "2.0 / 2.885385" :
 #bantime.formula = ban.Time * math.exp(float(ban.Count+1)*banFactor)/math.exp(1*banFactor)
 
-# "bantime.multipliers" used to calculate next value of ban time instead of formula, corresponding
+# "bantime.multipliers" used to calculate next value of ban time instead of formula, coresponding
 # previously ban count and given "bantime.factor" (for multipliers default is 1);
-# following example grows ban time by 1, 2, 4, 8, 16 ... and if last ban count greater as multipliers count, 
+# following example grows ban time by 1, 2, 4, 8, 16 ... and if last ban count greater as multipliers count,
 # always used last multiplier (64 in example), for factor '1' and original ban time 600 - 10.6 hours
 #bantime.multipliers = 1 2 4 8 16 32 64
 # following example can be used for small initial ban time (bantime=60) - it grows more aggressive at begin,
 # for bantime=60 the multipliers are minutes and equal: 1 min, 5 min, 30 min, 1 hour, 5 hour, 12 hour, 1 day, 2 day
 #bantime.multipliers = 1 5 30 60 300 720 1440 2880
 
-# "bantime.overalljails" (if true) specifies the search of IP in the database will be executed 
-# cross over all jails, if false (default), only current jail of the ban IP will be searched
+# "bantime.overalljails" (if true) specifies the search of IP in the database will be executed
+# cross over all jails, if false (dafault), only current jail of the ban IP will be searched
 #bantime.overalljails = false
 
 # --------------------
@@ -212,16 +211,20 @@ banaction = <%= $fail2ban::banaction %>
 banaction_allports = iptables-allports
 
 # The simplest action to take: ban only
-action_ = %(banaction)s[port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+action_ = %(banaction)s[name=%(__name__)s, bantime="%(bantime)s", port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+
+# ban & send an e-mail with buffered report to the destemail.
+action_mb = %(banaction)s[name=%(__name__)s, bantime="%(bantime)s", port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+            %(mta)s-buffered[name=%(__name__)s, sender="%(sender)s", dest="%(destemail)s", protocol="%(protocol)s", chain="%(chain)s"]
 
 # ban & send an e-mail with whois report to the destemail.
 action_mw = %(action_)s
-            %(mta)s-whois[sender="%(sender)s", dest="%(destemail)s", protocol="%(protocol)s", chain="%(chain)s"]
+            %(mta)s-whois[name=%(__name__)s, sender="%(sender)s", dest="%(destemail)s", protocol="%(protocol)s", chain="%(chain)s"]
 
 # ban & send an e-mail with whois report and relevant log lines
 # to the destemail.
 action_mwl = %(action_)s
-             %(mta)s-whois-lines[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
+             %(mta)s-whois-lines[name=%(__name__)s, sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
 
 # See the IMPORTANT note in action.d/xarf-login-attack for when to use this action
 #
@@ -230,29 +233,34 @@ action_mwl = %(action_)s
 action_xarf = %(action_)s
              xarf-login-attack[service=%(__name__)s, sender="%(sender)s", logpath="%(logpath)s", port="%(port)s"]
 
-# ban & send a notification to one or more of the 50+ services supported by Apprise.
-# See https://github.com/caronc/apprise/wiki for details on what is supported.
-#
-# You may optionally over-ride the default configuration line (containing the Apprise URLs)
-# by using 'apprise[config="/alternate/path/to/apprise.cfg"]' otherwise
-# /etc/fail2ban/apprise.conf is sourced for your supported notification configuration.
-# action = %(action_)s
-#          apprise
-
 # ban IP on CloudFlare & send an e-mail with whois report and relevant log lines
 # to the destemail.
 action_cf_mwl = cloudflare[cfuser="%(cfemail)s", cftoken="%(cfapikey)s"]
-                %(mta)s-whois-lines[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
+                %(mta)s-whois-lines[name=%(__name__)s, sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
 
 # Report block via blocklist.de fail2ban reporting service API
-# 
+#
 # See the IMPORTANT note in action.d/blocklist_de.conf for when to use this action.
 # Specify expected parameters in file action.d/blocklist_de.local or if the interpolation
 # `action_blocklist_de` used for the action, set value of `blocklist_de_apikey`
-# in your `jail.local` globally (section [DEFAULT]) or per specific jail section (resp. in 
+# in your `jail.local` globally (section [DEFAULT]) or per specific jail section (resp. in
 # corresponding jail.d/my-jail.local file).
 #
 action_blocklist_de  = blocklist_de[email="%(sender)s", service="%(__name__)s", apikey="%(blocklist_de_apikey)s", agent="%(fail2ban_agent)s"]
+
+# Report ban via badips.com, and use as blacklist
+#
+# See BadIPsAction docstring in config/action.d/badips.py for
+# documentation for this action.
+#
+# NOTE: This action relies on banaction being present on start and therefore
+# should be last action defined for a jail.
+#
+action_badips = badips.py[category="%(__name__)s", banaction="%(banaction)s", agent="%(fail2ban_agent)s"]
+#
+# Report ban via badips.com (uses action.d/badips.conf for reporting only)
+#
+action_badips_report = badips[category="%(__name__)s", agent="%(fail2ban_agent)s"]
 
 # Report ban via abuseipdb.com.
 #
@@ -359,7 +367,7 @@ enabled  = <%= "apache-fakegooglebot" in $fail2ban::jails %>
 port     = http,https
 logpath  = %(apache_access_log)s
 maxretry = 1
-ignorecommand = %(fail2ban_confpath)s/filter.d/ignorecommands/apache-fakegooglebot <ip>
+ignorecommand = %(ignorecommands_dir)s/apache-fakegooglebot <ip>
 
 
 [apache-modsecurity]
@@ -386,23 +394,19 @@ banaction = %(banaction_allports)s
 logpath = /opt/openhab/logs/request.log
 
 
-# To use more aggressive http-auth modes set filter parameter "mode" in jail.local:
-# normal (default), aggressive (combines all), auth or fallback
-# See "tests/files/logs/nginx-http-auth" or "filter.d/nginx-http-auth.conf" for usage example and details.
 [nginx-http-auth]
 
-enabled = <%= "nginx-http-auth" in $fail2ban::jails %>
-# mode = normal
+enabled  = <%= "nginx-http-auth" in $fail2ban::jails %>
 port    = http,https
 logpath = %(nginx_error_log)s
 
-# To use 'nginx-limit-req' jail you should have `ngx_http_limit_req_module` 
+# To use 'nginx-limit-req' jail you should have `ngx_http_limit_req_module`
 # and define `limit_req` and `limit_req_zone` as described in nginx documentation
 # http://nginx.org/en/docs/http/ngx_http_limit_req_module.html
 # or for example see in 'config/filter.d/nginx-limit-req.conf'
 [nginx-limit-req]
 
-enabled = <%= "nginx-limit-req" in $fail2ban::jails %>
+enabled  = <%= "nginx-limit-req" in $fail2ban::jails %>
 port    = http,https
 logpath = %(nginx_error_log)s
 
@@ -411,12 +415,8 @@ logpath = %(nginx_error_log)s
 enabled  = <%= "nginx-botsearch" in $fail2ban::jails %>
 port     = http,https
 logpath  = %(nginx_error_log)s
+maxretry = 2
 
-[nginx-bad-request]
-
-enabled = <%= "nginx-bad-request" in $fail2ban::jails %>
-port    = http,https
-logpath = %(nginx_access_log)s
 
 # Ban attackers that try to use PHP's URL-fopen() functionality
 # through GET/POST variables. - Experimental, with more than a year
@@ -483,14 +483,14 @@ logpath  = /home/groupoffice/log/info.log
 # Monitor SOGo groupware server
 # without proxy this would be:
 # port    = 20000
-enabled  = <%= "sogo-auth" in $fail2ban::jails %>
+enabled = <%= "sogo-auth" in $fail2ban::jails %>
 port     = http,https
 logpath  = /var/log/sogo/sogo.log
 
 
 [tine20]
 
-enabled  = <%= "tine20" in $fail2ban::jails %>
+enabled = <%= "tine20" in $fail2ban::jails %>
 logpath  = /var/log/tine20/tine20.log
 port     = http,https
 
@@ -502,22 +502,22 @@ port     = http,https
 
 [drupal-auth]
 
-enabled  = <%= "drupal-auth" in $fail2ban::jails %>
+enabled = <%= "drupal-auth" in $fail2ban::jails %>
 port     = http,https
 logpath  = %(syslog_daemon)s
 backend  = %(syslog_backend)s
 
 [guacamole]
 
-enabled  = <%= "guacamole" in $fail2ban::jails %>
+enabled = <%= "guacamole" in $fail2ban::jails %>
 port     = http,https
 logpath  = /var/log/tomcat*/catalina.out
 #logpath  = /var/log/guacamole.log
 
 [monit]
 #Ban clients brute-forcing the monit gui login
-enabled  = <%= "monit" in $fail2ban::jails %>
-port     = 2812
+enabled = <%= "monit" in $fail2ban::jails %>
+port = 2812
 logpath  = /var/log/monit
            /var/log/monit.log
 
@@ -532,8 +532,8 @@ backend = %(syslog_backend)s
 
 [froxlor-auth]
 
-enabled  = <%= "froxlor-auth" in $fail2ban::jails %>
-port     = http,https
+enabled = <%= "froxlor-auth" in $fail2ban::jails %>
+port    = http,https
 logpath  = %(syslog_authpriv)s
 backend  = %(syslog_backend)s
 
@@ -546,7 +546,7 @@ backend  = %(syslog_backend)s
 [squid]
 
 enabled = <%= "squid" in $fail2ban::jails %>
-port    =  80,443,3128,8080
+port     =  80,443,3128,8080
 logpath = /var/log/squid/access.log
 
 
@@ -699,21 +699,21 @@ logpath = %(solidpop3d_log)s
 [exim]
 # see filter.d/exim.conf for further modes supported from filter:
 #mode = normal
-enabled = <%= "exim" in $fail2ban::jails %>
-port    = smtp,465,submission
+enabled  = <%= "exim" in $fail2ban::jails %>
+port   = smtp,465,submission
 logpath = %(exim_main_log)s
 
 
 [exim-spam]
 
-enabled = <%= "exim-spam" in $fail2ban::jails %>
-port    = smtp,465,submission
+enabled  = <%= "exim-spam" in $fail2ban::jails %>
+port   = smtp,465,submission
 logpath = %(exim_main_log)s
 
 
 [kerio]
 
-enabled = <%= "kerio" in $fail2ban::jails %>
+enabled  = <%= "kerio" in $fail2ban::jails %>
 port    = imap,smtp,imaps,465
 logpath = /opt/kerio/mailserver/store/logs/security.log
 
@@ -745,31 +745,31 @@ backend  = %(postfix_backend)s
 
 [perdition]
 
-enabled = <%= "perdition" in $fail2ban::jails %>
-port    = imap,imaps,pop3,pop3s
+enabled  = <%= "perdition" in $fail2ban::jails %>
+port   = imap,imaps,pop3,pop3s
 logpath = %(syslog_mail)s
 backend = %(syslog_backend)s
 
 
 [squirrelmail]
 
-enabled = <%= "squirrelmail" in $fail2ban::jails %>
-port    = smtp,465,submission,imap,imap2,imaps,pop3,pop3s,http,https,socks
+enabled  = <%= "squirrelmail" in $fail2ban::jails %>
+port = smtp,465,submission,imap,imap2,imaps,pop3,pop3s,http,https,socks
 logpath = /var/lib/squirrelmail/prefs/squirrelmail_access_log
 
 
 [cyrus-imap]
 
-enabled = <%= "cyrus-imap" in $fail2ban::jails %>
-port    = imap,imaps
+enabled  = <%= "cyrus-imap" in $fail2ban::jails %>
+port   = imap,imaps
 logpath = %(syslog_mail)s
 backend = %(syslog_backend)s
 
 
 [uwimap-auth]
 
-enabled = <%= "uwimap-auth" in $fail2ban::jails %>
-port    = imap,imaps
+enabled  = <%= "uwimap-auth" in $fail2ban::jails %>
+port   = imap,imaps
 logpath = %(syslog_mail)s
 backend = %(syslog_backend)s
 
@@ -809,6 +809,7 @@ logpath  = /var/log/named/security.log
 
 [nsd]
 
+enabled  = <%= "nsd" in $fail2ban::jails %>
 port     = 53
 action_  = %(default/action_)s[name=%(__name__)s-tcp, protocol="tcp"]
            %(default/action_)s[name=%(__name__)s-udp, protocol="udp"]
@@ -866,15 +867,6 @@ logpath  = %(mysql_log)s
 backend  = %(mysql_backend)s
 
 
-[mssql-auth]
-# Default configuration for Microsoft SQL Server for Linux
-# See the 'mssql-conf' manpage how to change logpath or port
-enabled = <%= "mssql-auth" in $fail2ban::jails %>
-logpath = /var/opt/mssql/log/errorlog
-port    = 1433
-filter  = mssql-auth
-
-
 # Log wrong MongoDB auth (for details see filter 'filter.d/mongodb-auth.conf')
 [mongodb-auth]
 # change port when running with "--shardsvr" or "--configsvr" runtime operation
@@ -904,11 +896,11 @@ findtime = 1d
 
 [pam-generic]
 
-enabled   = <%= "pam-generic" in $fail2ban::jails %>
+enabled  = <%= "pam-generic" in $fail2ban::jails %>
 # pam-generic filter can be customized to monitor specific subset of 'tty's
 banaction = %(banaction_allports)s
-logpath   = %(syslog_authpriv)s
-backend   = %(syslog_backend)s
+logpath  = %(syslog_authpriv)s
+backend  = %(syslog_backend)s
 
 
 [xinetd-fail]
@@ -923,25 +915,24 @@ maxretry  = 2
 # stunnel - need to set port for this
 [stunnel]
 
-enabled = <%= "stunnel" in $fail2ban::jails %>
+enabled  = <%= "stunnel" in $fail2ban::jails %>
 logpath = /var/log/stunnel4/stunnel.log
 
 
 [ejabberd-auth]
 
-enabled = <%= "ejabberd-auth" in $fail2ban::jails %>
+enabled  = <%= "ejabberd-auth" in $fail2ban::jails %>
 port    = 5222
 logpath = /var/log/ejabberd/ejabberd.log
 
 
 [counter-strike]
 
-
-enabled = <%= "counter-strike" in $fail2ban::jails %>
+enabled  = <%= "counter-strike" in $fail2ban::jails %>
 logpath = /opt/cstrike/logs/L[0-9]*.log
 tcpport = 27030,27031,27032,27033,27034,27035,27036,27037,27038,27039
 udpport = 1200,27000,27001,27002,27003,27004,27005,27006,27007,27008,27009,27010,27011,27012,27013,27014,27015
-action_ = %(default/action_)s[name=%(__name__)s-tcp, port="%(tcpport)s", protocol="tcp"]
+action_  = %(default/action_)s[name=%(__name__)s-tcp, port="%(tcpport)s", protocol="tcp"]
            %(default/action_)s[name=%(__name__)s-udp, port="%(udpport)s", protocol="udp"]
 
 [softethervpn]
@@ -951,22 +942,22 @@ protocol = udp
 logpath  = /usr/local/vpnserver/security_log/*/sec.log
 
 [gitlab]
-enabled = <%= "gitlab" in $fail2ban::jails %>
+enabled  = <%= "gitlab" in $fail2ban::jails %>
 port    = http,https
 logpath = /var/log/gitlab/gitlab-rails/application.log
 
 [grafana]
-enabled = <%= "grafana" in $fail2ban::jails %>
+enabled  = <%= "grafana" in $fail2ban::jails %>
 port    = http,https
 logpath = /var/log/grafana/grafana.log
 
 [bitwarden]
-enabled = <%= "bitwarden" in $fail2ban::jails %>
+enabled  = <%= "bitwarden" in $fail2ban::jails %>
 port    = http,https
 logpath = /home/*/bwdata/logs/identity/Identity/log.txt
 
 [centreon]
-enabled = <%= "centreon" in $fail2ban::jails %>
+enabled  = <%= "centreon" in $fail2ban::jails %>
 port    = http,https
 logpath = /var/log/centreon/login.log
 
@@ -982,15 +973,15 @@ maxretry = 1
 
 [oracleims]
 # see "oracleims" filter file for configuration requirement for Oracle IMS v6 and above
-enabled   = <%= "oracleims" in $fail2ban::jails %>
-logpath   = /opt/sun/comms/messaging64/log/mail.log_current
+enabled  = <%= "oracleims" in $fail2ban::jails %>
+logpath = /opt/sun/comms/messaging64/log/mail.log_current
 banaction = %(banaction_allports)s
 
 [directadmin]
 
-enabled = <%= "directadmin" in $fail2ban::jails %>
+enabled  = <%= "directadmin" in $fail2ban::jails %>
 logpath = /var/log/directadmin/login.log
-port    = 2222
+port = 2222
 
 [portsentry]
 
@@ -1000,7 +991,7 @@ maxretry = 1
 
 [pass2allow-ftp]
 # this pass2allow example allows FTP traffic after successful HTTP authentication
-enabled      = <%= "pass2allow-ftp" in $fail2ban::jails %>
+enabled  = <%= "pass2allow-ftp" in $fail2ban::jails %>
 port         = ftp,ftp-data,ftps,ftps-data
 # knocking_url variable must be overridden to some secret value in jail.local
 knocking_url = /knocking/
@@ -1040,42 +1031,32 @@ enabled  = <%= "haproxy-http-auth" in $fail2ban::jails %>
 logpath  = /var/log/haproxy.log
 
 [slapd]
-enabled = <%= "slapd" in $fail2ban::jails %>
+enabled  = <%= "slapd" in $fail2ban::jails %>
 port    = ldap,ldaps
 logpath = /var/log/slapd.log
 
 [domino-smtp]
-enabled = <%= "domino-smtp" in $fail2ban::jails %>
+enabled  = <%= "domino-smtp" in $fail2ban::jails %>
 port    = smtp,ssmtp
 logpath = /home/domino01/data/IBM_TECHNICAL_SUPPORT/console.log
 
 [phpmyadmin-syslog]
-enabled = <%= "phpmyadmin-syslog" in $fail2ban::jails %>
+enabled  = <%= "phpmyadmin-syslog" in $fail2ban::jails %>
 port    = http,https
 logpath = %(syslog_authpriv)s
 backend = %(syslog_backend)s
 
 
 [zoneminder]
-enabled = <%= "zoneminder" in $fail2ban::jails %>
+enabled  = <%= "zoneminder" in $fail2ban::jails %>
 # Zoneminder HTTP/HTTPS web interface auth
 # Logs auth failures to apache2 error log
 port    = http,https
 logpath = %(apache_error_log)s
 
 [traefik-auth]
-enabled = <%= "traefik-auth" in $fail2ban::jails %>
+enabled  = <%= "traefik-auth" in $fail2ban::jails %>
 # to use 'traefik-auth' filter you have to configure your Traefik instance,
 # see `filter.d/traefik-auth.conf` for details and service example.
 port    = http,https
 logpath = /var/log/traefik/access.log
-
-[scanlogd]
-enabled   = <%= "scanlogd" in $fail2ban::jails %>
-logpath   = %(syslog_local0)s
-banaction = %(banaction_allports)s
-
-[monitorix]
-enabled = <%= "monitorix" in $fail2ban::jails %>
-port    = 8080
-logpath = /var/log/monitorix-httpd
