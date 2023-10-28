@@ -23,8 +23,15 @@ kvmhost:
         - name: default
       present:
 
+puppetserver:
+  hosts:
+    ## Put your KVM host connection and settings here
+    vault.home.arpa:
+      ansible_host: vault.home.arpa
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
 
-simple_multikvm:
+vm:
   vars:
     virt_infra_distro: debian
     virt_infra_distro_release: 12
@@ -85,12 +92,14 @@ simple_multikvm:
         test-debian12-5.home.arpa:
       vars:
         kvmhost: ognongle.home.arpa
+        puppetserver: vault.home.arpa
         virt_infra_state: undefined
     ognongle:
       hosts:
         test-debian12-6.home.arpa:
       vars:
         kvmhost: ognongle.home.arpa
+        puppetserver: vault.home.arpa
         virt_infra_networks:
           - name: br0
             type: bridge
