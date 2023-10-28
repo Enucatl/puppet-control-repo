@@ -10,3 +10,4 @@
 !README.md
 # and any specific role we want to version locally
 !locally-versioned-role*/
+!ansible-role-puppet-ca/

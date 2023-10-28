@@ -1,0 +1,41 @@
+---
+# This is only run on puppet server
+# If result_all_certificates already defined, then move the variable.
+# This way we can get the latest and previous list of certificates
+- name: Move list of all certificates to old list
+  set_fact:
+    result_all_certificates_before: "{{ result_all_certificates }}"
+  when:
+    - inventory_hostname in groups['puppetserver']
+    - result_all_certificates is defined and result_all_certificates
+  changed_when: false
+
+- name: Move list of running certificates to old list
+  set_fact:
+    result_running_certificates_before: "{{ result_running_certificates }}"
+  when:
+    - inventory_hostname in groups['puppetserver']
+    - result_running_certificates is defined and result_running_certificates
+  changed_when: false
+
+- name: Get list of all signed certificates
+  shell: >
+    /opt/puppetlabs/bin/puppetserver ca list --all --format=json | jq --raw-output .signed[].name
+  register: result_all_certificates
+  become: true
+  when:
+    - inventory_hostname in groups['puppetserver']
+
+- name: Clean undefined certificates
+  shell: >
+    /opt/puppetlabs/bin/puppetserver ca clean --certname {{ inventory_hostname }}
+  become: true
+  when:
+    - inventory_hostname not in groups['puppetserver']
+    - inventory_hostname in hostvars[puppetserver].result_all_certificates.stdout_lines
+    - virt_infra_state == "undefined"
+  delegate_to: "{{ puppetserver }}"
+  register: result_ca_clean
+  retries: 10
+  delay: 5
+  until: result_ca_clean is succeeded
