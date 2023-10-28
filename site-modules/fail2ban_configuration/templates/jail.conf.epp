@@ -1,5 +1,6 @@
 #
 # THIS FILE IS MANAGED BY PUPPET
+# local site-modules version
 #
 # WARNING: heavily refactored in 0.9.0 release.  Please review and
 #          customize settings for your setup.
