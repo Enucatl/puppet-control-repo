@@ -1,0 +1,15 @@
+---
+
+- name: Clean undefined certificates
+  shell: >
+    /opt/puppetlabs/bin/puppetserver ca clean --certname {{ inventory_hostname }}
+  become: true
+  when:
+    - inventory_hostname not in groups['puppetserver']
+    - inventory_hostname in hostvars[puppetserver].result_all_certificates.stdout_lines
+    - virt_infra_state == "undefined"
+  delegate_to: "{{ puppetserver }}"
+  register: result_ca_clean
+  retries: 10
+  delay: 5
+  until: result_ca_clean is succeeded

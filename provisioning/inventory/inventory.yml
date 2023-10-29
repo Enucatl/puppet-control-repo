@@ -97,6 +97,7 @@ vm:
     ognongle:
       hosts:
         test-debian12-6.home.arpa:
+        test-debian12-7.home.arpa:
       vars:
         kvmhost: ognongle.home.arpa
         puppetserver: vault.home.arpa

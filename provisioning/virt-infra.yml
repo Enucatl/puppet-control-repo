@@ -9,12 +9,13 @@
 # --inventory ./inventory/hosts.yml \
 # ./virt-infra.yml
 #
-- hosts: kvmhost,vm
-  gather_facts: no
-  roles:
-    - ansible-role-virt-infra
 
 - hosts: puppetserver,vm
   gather_facts: no
   roles:
     - ansible-role-puppet-ca
+
+- hosts: kvmhost,vm
+  gather_facts: no
+  roles:
+    - ansible-role-virt-infra

@@ -1,0 +1,47 @@
+- name: Download puppet package if it does not exist
+  delegate_to: "{{ kvmhost }}"
+  when:
+    - inventory_hostname not in groups['kvmhost']
+    - inventory_hostname not in groups['puppetserver']
+    - inventory_hostname not in hostvars[puppetserver].result_all_certificates.stdout_lines
+    - virt_infra_state != "undefined"
+  block:
+
+    - name: Check if the file exists
+      stat:
+        path: "{{ hostvars[kvmhost].virt_infra_host_puppet_path | default(virt_infra_host_puppet_path) }}/{{ virt_infra_puppet_package }}"
+      register: result_stat_puppet_package
+
+    - name: Download the file if it doesn't exist
+      get_url:
+        url: "{{ virt_infra_puppet_repository }}/{{ virt_infra_puppet_package }}"
+        dest: "{{ hostvars[kvmhost].virt_infra_host_puppet_path | default(virt_infra_host_puppet_path) }}/{{ virt_infra_puppet_package }}"
+      when: 
+        - inventory_hostname not in groups['kvmhost']
+        - inventory_hostname not in groups['puppetserver']
+        - inventory_hostname not in hostvars[puppetserver].result_all_certificates.stdout_lines
+        - virt_infra_state != "undefined"
+        - not result_stat_puppet_package.stat.exists
+
+    - name: Get token from the hashicorp vault
+      shell:
+        vault token create -address="{{ virt_infra_vault_addr }}" -policy=puppet -explicit-max-ttl=15m -use-limit=1 -format=json | jq --raw-output .auth.client_token
+      args:
+        executable: /bin/bash
+      register: vault_token_output
+
+    - name: Create a temporary directory
+      file:
+        path: "/tmp/ansible/{{ inventory_hostname }}"
+        state: directory
+
+    - name: Create a temporary file from the template (overwrite if exists)
+      template:
+        src: templates/csr_attributes.yaml.j2
+        dest: "/tmp/ansible/{{ inventory_hostname }}/csr_attributes.yaml"
+        force: yes  # Overwrite the file if it exists
+      register: temp_file
+
+    - name: Set fact to temporary file name
+      set_fact:
+        csr_attributes_file: "{{ temp_file.dest }}"
