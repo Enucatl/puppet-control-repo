@@ -2,3 +2,9 @@
 # defaults file for ansible-role-puppet-ca
 
 virt_infra_state: running
+
+# Download puppet
+virt_infra_host_puppet_path: "/home/user/Downloads"
+virt_infra_puppet_repository: http://apt.puppet.com
+virt_infra_puppet_package: puppet8-release-bullseye.deb
+virt_infra_vault_addr: "https://vault.home.arpa:8200"
