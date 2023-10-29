@@ -8,21 +8,24 @@ CONFDIR=/etc/puppetlabs/puppet
 CODEDIR=/etc/puppetlabs/code
 VARDIR=/opt/puppetlabs/puppet/cache
 
-BRANCH=production
+BRANCHES="production dev"
 
 while read oldrev newrev ref
 do
-    # only checking out the master
-    if [[ $ref = refs/heads/$BRANCH ]];
-    then
-        echo "Ref $ref received. Deploying ${BRANCH} branch..."
-        sudo -u puppet $R10K deploy environment --modules -v info
-        sudo -u puppet $PUPPET generate types \
-            --environment $BRANCH \
-            --confdir $CONFDIR \
-            --codedir $CODEDIR \
-            --vardir $VARDIR
-    else
-        echo "Ref $ref received. Doing nothing: only the ${BRANCH} branch may be deployed on this server."
-    fi
+    for BRANCH in $BRANCHES
+    do
+        # only checking out the master
+        if [[ $ref = refs/heads/$BRANCH ]];
+        then
+            echo "Ref $ref received. Deploying ${BRANCH} branch..."
+            sudo -u puppet $R10K deploy environment --modules -v info
+            sudo -u puppet $PUPPET generate types \
+                --environment $BRANCH \
+                --confdir $CONFDIR \
+                --codedir $CODEDIR \
+                --vardir $VARDIR
+        else
+            echo "Ref $ref received. Doing nothing: only the ${BRANCH} branch may be deployed on this server."
+        fi
+    done
 done
