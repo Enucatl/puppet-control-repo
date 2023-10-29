@@ -14,7 +14,6 @@ while read oldrev newrev ref
 do
     for BRANCH in $BRANCHES
     do
-        # only checking out the master
         if [[ $ref = refs/heads/$BRANCH ]];
         then
             echo "Ref $ref received. Deploying ${BRANCH} branch..."
