@@ -117,7 +117,7 @@ cronjobs:
   # backup the hashicorp vault to a location that is picked up by duplicati
   vault-backup:
     minute: 0
-    hour: 0
-    weekday: 'Monday'
+    # hour: 0
+    # weekday: 'Monday'
     user: user
-    command: '/usr/bin/vault operator raft snapshot save /nfs_exports/home/user/Documents/backup/vault/vault-`/bin/date --iso-8601=seconds`.snap'
+    command: '/usr/bin/vault operator raft snapshot save /nfs_exports/home/user/Documents/backup/vault/vault-`/bin/date --iso-8601=seconds`.snap -address="https://vault.home.arpa:8200"'
