@@ -106,6 +106,7 @@ node 'nuc10i7fnh' {
   create_resources(sysctl, lookup('sysctl_hash'))
   create_resources(libvirt::network, lookup('libvirt::networks'))
   create_resources(cron, lookup('cronjobs'))
+  notice("--------------------------------------------------------------------------")
 
 }
 
