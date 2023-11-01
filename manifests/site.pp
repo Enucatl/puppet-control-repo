@@ -28,6 +28,7 @@ $classes = lookup('classes', Array[String])
 
 node default {
   $classes.include
+  notice("--------------------------------------------------------------------------")
 }
 
 node 'vault' {
@@ -106,7 +107,6 @@ node 'nuc10i7fnh' {
   create_resources(sysctl, lookup('sysctl_hash'))
   create_resources(libvirt::network, lookup('libvirt::networks'))
   create_resources(cron, lookup('cronjobs'))
-  notice("--------------------------------------------------------------------------")
 
 }
 
@@ -145,12 +145,12 @@ node 'ognongle' {
   file { '/usr/share/dbus-1/services/org.gnome.OnlineAccounts.service':
     ensure  => file,
     content => @("ONLINEACCOUNTS"/L)
-        [D-BUS Service]
-        Name=org.gnome.OnlineAccounts
-        #disabled by puppet
-        #Exec=/usr/libexec/goa-daemon
-        Exec=/usr/bin/false
-        | ONLINEACCOUNTS
+    [D-BUS Service]
+    Name=org.gnome.OnlineAccounts
+    #disabled by puppet
+    #Exec=/usr/libexec/goa-daemon
+    Exec=/usr/bin/false
+    | ONLINEACCOUNTS
   }
 
   create_resources(sysctl, lookup('sysctl_hash'))
