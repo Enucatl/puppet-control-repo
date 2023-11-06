@@ -28,7 +28,6 @@ $classes = lookup('classes', Array[String])
 
 node default {
   $classes.include
-  notice("--------------------------------------------------------------------------")
 }
 
 node 'vault' {
@@ -66,7 +65,7 @@ node 'pihole' {
 
 }
 
-node 'nuc10i7fnh' {
+node 'nuc10i7fnh.home.arpa' {
   $classes.include
   $vault_certs = lookup('vault_certs')
   $vault_certs_defaults = lookup('vault_certs_defaults')
