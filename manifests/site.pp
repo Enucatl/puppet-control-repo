@@ -30,7 +30,7 @@ node default {
   $classes.include
 }
 
-node 'vault' {
+node 'vault.home.arpa' {
   $classes.include
 
   # https://www.vaultproject.io/docs/configuration#disable_mlock
@@ -41,7 +41,7 @@ node 'vault' {
 
 }
 
-node 'pihole' {
+node 'pihole.home.arpa' {
   delete($classes, 'dns::client').include
 
   # forward resolution of *.nuc10i7fnh.home.arpa subdomains to traefik
@@ -109,7 +109,7 @@ node 'nuc10i7fnh.home.arpa' {
 
 }
 
-node 'ognongle' {
+node 'ognongle.home.arpa' {
   $classes.include
 
   # dota 2: clicking alt while moving a unit will make it move in the direction,
