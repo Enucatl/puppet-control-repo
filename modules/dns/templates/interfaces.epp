@@ -1,6 +1,9 @@
 <%- | String $ipv4 | -%>
 
 # This file is managed by Puppet
+# This is the configuration for the DNS server in the local network,
+# so that it can use itself to resolve DNS and have a static ipv4,
+# which is also then pointed at from the other servers
 # For more information, see interfaces(5).
 
 source /etc/network/interfaces.d/*

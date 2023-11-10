@@ -1,5 +1,6 @@
 # A Puppet Control Repository
 
+## Install the agent
 Install puppet agent following
 https://puppet.com/docs/puppet/8/install_agents.html#install_agents
 
@@ -11,12 +12,14 @@ sudo apt install puppet-agent
 sudo /opt/puppetlabs/bin/puppet config set server vault.home.arpa --section main
 sudo /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
 sudo /opt/puppetlabs/bin/puppet ssl bootstrap
+# on the puppet server:
 sudo puppetserver ca sign --certname <name>
 # do it again if you didn't wait two minutes
 sudo /opt/puppetlabs/bin/puppet ssl bootstrap  
 source /etc/profile.d/puppet-agent.sh
 ```
 
+## Update Puppetfile
 Resolve dependencies
 ```
 generate-puppetfile -p Puppetfile-without-deps
@@ -43,30 +46,68 @@ cd !$
 git clone --bare https://github.com/Enucatl/puppet-control-repo.git
 ```
 
-On the client
+On the development client
 ```
 scp post-receive vault:/opt/puppet-control-repo/puppet-control-repo.git/hooks
 ```
 
-## What You Get From This control-repo
+## Architecture
 
 Here's a visual representation of the structure of this repository:
 
 ```
-control-repo/
-├── data/                                 # Hiera data directory.
-│   ├── nodes/                            # Node-specific data goes here.
-│   └── common.yaml                       # Common data goes here.
-├── manifests/
-│   └── site.pp                           # The "main" manifest that contains a default node definition.
-├── scripts/
-│   ├── code_manager_config_version.rb    # A config_version script for Code Manager.
-│   ├── config_version.rb                 # A config_version script for r10k.
-│   └── config_version.sh                 # A wrapper that chooses the appropriate config_version script.
-├── modules/                              # Locally developed modules
-├── LICENSE
-├── Puppetfile                            # A list of external Puppet modules to deploy with an environment.
-├── README.md
-├── environment.conf                      # Environment-specific settings. Configures the modulepath and config_version.
-└── hiera.yaml                            # Hiera's configuration file. The Hiera hierarchy is defined here.
+.
+├── architecture.png                                        # an architecture diagram for the network
+├── CODEOWNERS                                              # needed by github workers
+├── data                                                    # hiera data
+│   ├── common.yaml                                             # for all nodes
+│   ├── nodes                                                   # for specific nodes, by hostname
+│   │   ├── ipa.home.arpa.yaml
+│   │   ├── nuc10i7fnh.home.arpa.yaml
+│   │   ├── ognongle.home.arpa.yaml
+│   │   ├── pihole.home.arpa.yaml
+│   │   ├── vault.home.arpa.yaml
+│   │   └── vm-debian.home.arpa.yaml
+│   └── os                                                      # for specific nodes, by os family
+│       ├── Debian.yaml
+│       └── RedHat.yaml
+├── environment.conf                                        # puppet environment configuration
+├── hiera.yaml                                              # puppet hiera main configuration
+├── LICENSE                                                 # LICENSE
+├── manifests                                               # main manifest file
+│   └── site.pp
+├── modules                                                 # locally developed modules
+│   ├── ca                                                      # internal certificate authority
+│   ├── checkmk                                                 # docker checkmk custom module
+│   ├── dns                                                     # DNS settings
+│   ├── fail2ban_configuration                                  # remove fail2ban start/stop emails
+│   ├── libvirt_log_fix                                         # remove libvirt log spam coming from a bug
+│   ├── nfs                                                     # fix a startup bug of nfs mounts on debian
+│   ├── nvidia-accounting-mode                                  # allow monitoring GPU memory usage on nvidia
+│   ├── postfix_configuration                                   # configure postfix to send emails from all servers
+│   ├── puppet_configuration                                    # configure puppet.conf
+│   ├── tidy                                                    # wrapper around tidy to be able to specify paths in hiera
+│   └── tor_relay                                               # configure a tor relay
+├── post-receive                                            # post-receive hook that deploys the code to the puppetserver on every push
+├── provisioning                                            # use ansible to provision virtual machines with libvirt
+│   ├── README.md
+│   ├── roles
+│   │   ├── ansible-role-puppet-ca                              # custom role to deploy puppet to the new VMs
+│   │   ├── ansible-role-virt-infra                             # role to deploy the VMs
+│   │   └── requirements.yml
+├── Puppetfile                                              # automatically generated with dependencies
+├── Puppetfile-without-deps                                 # manually add dependencies to this
+├── Rakefile
+├── README.md                                               # this file
+└── scripts                                                 # administration scripts
+    ├── architecture.py                                         # generate the architecture diagram
+    ├── autosign.py                                             # allow the puppet CA to autosign new VM requests, if they have a valid HashiCorp Vault token
+    ├── config_version-r10k.rb
+    ├── config_version-rugged.rb
+    ├── config_version.sh
+    ├── external_node_classifier.py                             # select dev/production environment according to the fully qualified domain name
+    └── vault                                                   # vault policies and LDAP configuration
+        ├── admin.hcl
+        ├── ldap-config.sh
+        └── puppet.hcl
 ```
