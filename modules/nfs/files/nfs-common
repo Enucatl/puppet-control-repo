@@ -18,4 +18,5 @@ NEED_IDMAPD=
 # Do you want to start the gssd daemon? It is required for Kerberos mounts.
 NEED_GSSD=yes
 
+# add option RPCSVCGSSDOPTS="-n" to fix startup of service rpc-svcgssd on debian hosts
 RPCSVCGSSDOPTS="-n"

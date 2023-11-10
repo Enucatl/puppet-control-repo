@@ -15,6 +15,37 @@ The docker library must be installed on the system executing the
 plugin ("pip install docker").
 
 This plugin it will be called by the agent without any arguments.
+
+
+My edits: enable filtering by container label
+It avoids running into the freemium limits of checkmk since I don't want to
+monitor ALL containers, but just the ones with the label checkmk_monitor,
+which I can specify in docker-compose.yml
+
+```yml
+version: '3'
+
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik_proxy
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /nfs_exports/home/user/docker/traefik/data:/etc/traefik:ro
+    command:
+      - "--log.level=INFO"
+    labels:
+      - "checkmk_monitor=true"
+      - "traefik.enable=true"
+```
 """
 
 from __future__ import with_statement
