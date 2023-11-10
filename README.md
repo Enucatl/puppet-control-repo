@@ -63,7 +63,7 @@ control-repo/
 │   ├── code_manager_config_version.rb    # A config_version script for Code Manager.
 │   ├── config_version.rb                 # A config_version script for r10k.
 │   └── config_version.sh                 # A wrapper that chooses the appropriate config_version script.
-├── site-modules/                         # This directory contains site-specific modules and is added to $modulepath.
+├── modules/                              # Locally developed modules
 ├── LICENSE
 ├── Puppetfile                            # A list of external Puppet modules to deploy with an environment.
 ├── README.md
