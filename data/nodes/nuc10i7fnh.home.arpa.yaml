@@ -121,4 +121,4 @@ cronjobs:
     hour: 0
     weekday: 'Monday'
     user: user
-    command: '/usr/bin/vault operator raft snapshot save /nfs_exports/home/user/Documents/backup/vault/vault-`/bin/date --iso-8601=seconds`.snap -address="https://vault.home.arpa:8200"'
+    command: '/usr/bin/vault operator raft snapshot save -address="https://vault.home.arpa:8200" /nfs_exports/home/user/Documents/backup/vault/vault-`/bin/date --iso-8601=seconds`.snap'
