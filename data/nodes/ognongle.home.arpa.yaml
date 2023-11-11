@@ -1,8 +1,10 @@
 classes:
-  - limits
-  - tidy
+  - docker
+  - docker::networks
   - libvirt
+  - limits
   - netplan
+  - tidy
 
 limits::entries:
   'user/rtprio':
@@ -60,3 +62,21 @@ sysctl_hash:
 libvirt::networks:
   default:
     ensure: absent
+
+docker::version: latest
+docker::ipv6: true
+docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:d4e1::/80"
+docker::log_level: info
+docker::extra_parameters:
+  - "--experimental=true"
+  - "--iptables=true"
+  - "--ip6tables=true"
+  - "--default-address-pool base=172.17.0.0/12,size=20"
+  - "--default-address-pool base=%{lookup('ipv6-prefix')}:d01::/72,size=80"
+docker::networks::networks:
+  traefik_proxy:
+    ensure: present
+    driver: bridge
+    subnet: '172.28.0.0/16'
+    gateway: '172.28.0.1'
+
