@@ -14,8 +14,9 @@ hierarchy:
       timeout: 5
       version: "v2"
       auth_path: "cert"
-  - name: "Single node"
-    path: "nodes/%{trusted.certname}.yaml"
+
+  - name: "Single node hostname only"
+    path: "nodes/%{trusted.hostname}.yaml"
 
   - name: "osfamily/major release"
     paths:
