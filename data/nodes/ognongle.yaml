@@ -69,9 +69,8 @@ docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:d4e1::/80"
 docker::log_level: info
 docker::extra_parameters:
   - "--experimental=true"
-  - "--iptables=true"
-  - "--ip6tables=false"
-  - "--default-address-pool base=172.17.0.0/12,size=20"
+  - "--ip6tables=true"
+  - "--default-address-pool base=172.18.0.0/16,size=20"
   - "--default-address-pool base=%{lookup('ipv6-prefix')}:d01::/72,size=80"
 docker::networks::networks:
   traefik_proxy:
