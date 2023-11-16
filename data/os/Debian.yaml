@@ -1,16 +1,7 @@
-lookup_options:
-  ufw::rules:
-    merge:
-      strategy: deep
-  ufw::routes:
-    merge:
-      strategy: deep
-
 classes:
   - apt
   - unattended_upgrades
   - nfs
-  - ufw
 
 unattended_upgrades::age:
   max: 14
@@ -28,21 +19,5 @@ unattended_upgrades::extra_origins:
   - origin=TorProject,component=main
   - origin=Puppetlabs,component=puppet7
   - site=repo.i2pd.xyz
-
-ufw::purge_unmanaged_rules: true
-ufw::purge_unmanaged_routes: true
-ufw::manage_package: true
-ufw::manage_service: true
-ufw::service_ensure: "stopped"
-ufw::rules:
-  allow_ssh_connections:
-    action: "allow"
-    to_ports_app: 22
-  allow_puppetagent:
-    action: "allow"
-    from_ports_app: 8140
-  allow_dns:
-    action: "allow"
-    to_ports_app: 53
 
 fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
