@@ -27,8 +27,8 @@ docker::networks::networks:
   traefik_proxy:
     ensure: present
     driver: bridge
-    subnet: '172.28.0.0/16'
-    gateway: '172.28.0.1'
+    additional_flags:
+      - "--ipv6"
 
 promtail::scrape_configs_hash:
   scrape_configs:
