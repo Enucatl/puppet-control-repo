@@ -76,3 +76,5 @@ docker::networks::networks:
   traefik_proxy:
     ensure: present
     driver: bridge
+    additional_flags:
+      - "--ipv6"
