@@ -1,7 +1,6 @@
 classes:
   - freeipa
   - freeipa::install::server
-  - logrotate
 
 systemd::journald_settings:
   SystemMaxUse: 100M
@@ -16,18 +15,7 @@ freeipa::install::server::options:
   idstart: 100000
   external-ca:
 
-logrotate::rules:
-  pki_tomcat:
-    path: '/var/log/pki/pki-tomcat/ca/debug.*.log'
-    rotate: 3
-    rotate_every: 'week'
-    ifempty: false
-    missingok: true
-    sharedscripts: true
-    compress: true
-    delaycompress: true
-    su: true
-    su_user: pkiuser
-    su_group: pkiuser
-    # https://access.redhat.com/solutions/4049411
-    postrotate: '/bin/systemctl restart pki-tomcatd@pki-tomcat.service > /dev/null 2>/dev/null || true'
+tidy::files:
+  pkilogs:
+    path: /var/log/pki/pki-tomcat/
+    age: 3w
