@@ -1,6 +1,7 @@
 classes:
   - freeipa
   - freeipa::install::server
+  - tidy
 
 systemd::journald_settings:
   SystemMaxUse: 100M
