@@ -26,6 +26,7 @@ logrotate::rules:
     sharedscripts: true
     compress: true
     delaycompress: true
+    su: true
     su_user: pkiuser
     su_group: pkiuser
     # https://access.redhat.com/solutions/4049411
