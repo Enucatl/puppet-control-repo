@@ -65,6 +65,10 @@ node 'pihole.home.arpa' {
     notify  =>  Service['networking'],
   }
 
+  service { 'pihole-FTL':
+    ensure => running,
+  }
+
   service { 'networking':
     ensure => running,
   }
