@@ -50,6 +50,12 @@ node 'pihole.home.arpa' {
     content => 'address=/nuc10i7fnh.home.arpa/192.168.2.28',
   }
 
+  file { '/etc/pihole/pihole-FTL.conf':
+    ensure => present,
+    source => 'puppet:///modules/dns/pihole-FTL.conf',
+    notify => Service['pihole-FTL'],
+  }
+
   file { '/etc/network/interfaces':
     ensure  => present,
     content => stdlib::deferrable_epp(
