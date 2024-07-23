@@ -37,6 +37,9 @@ i2pd::daemon::base::config:
 
 
 ufw::rules:
+  allow_checkmk:
+    action: "allow"
+    to_ports_app: 6556
   allow_i2pd_port:
     action: "allow"
     to_ports_app: "%{lookup('i2pd::daemon::base::config::global::port')}"

@@ -27,6 +27,9 @@ ufw::rules:
   allow_puppetserver:
     action: "allow"
     to_ports_app: 8140
+  allow_checkmk:
+    action: "allow"
+    to_ports_app: 6556
 
 puppet_configuration::settings:
   autosign:
