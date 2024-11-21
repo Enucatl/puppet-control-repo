@@ -78,6 +78,7 @@ vault_certs_defaults:
   key_group: 'user'
 
 vault_certs:
+  airflow:
   authelia:
   checkmk:
   duplicati:
