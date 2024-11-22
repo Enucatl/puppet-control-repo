@@ -107,6 +107,12 @@ node 'nuc10i7fnh.home.arpa' {
     subscribe => Service['docker'],
   }
 
+  file { '/var/lib/docker/volumes/airflow_airflow-venv-volume/_data':
+    ensure => 'directory',
+    mode   => '0777',
+    subscribe => Service['docker'],
+  }
+
   file { '/var/lib/docker/volumes/paperless-ngx_consume/_data':
     ensure => 'directory',
     mode   => '0771',
