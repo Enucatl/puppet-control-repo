@@ -48,6 +48,7 @@ node 'pihole.home.arpa' {
   file { '/etc/dnsmasq.d/10-nuc10i7fnh':
     ensure  => present,
     content => "address=/nuc10i7fnh.home.arpa/192.168.2.28\naddress=/nuc10i7fnh.home.arpa/${lookup('ipv6-prefix')}:549c:10ff:fe9a:ead9\n",
+    notify => Service['pihole-FTL'],
   }
 
   file { '/etc/pihole/pihole-FTL.conf':
