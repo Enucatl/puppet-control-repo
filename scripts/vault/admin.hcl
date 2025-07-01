@@ -34,6 +34,11 @@ path "sys/auth" {
 # Enable and manage the key/value secrets engine at `secret/` path
 
 # List, create, update, and delete key/value secrets
+path "airflow/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo", "patch"]
+}
+
+# List, create, update, and delete key/value secrets
 path "secret/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo", "patch"]
 }
