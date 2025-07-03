@@ -84,8 +84,8 @@ vault_certs:
   duplicati:
   elabftw:
   grafana:
-  loki:
   keycloak:
+  loki:
   nuc10i7fnh:
     cert_chain_file: '/nfs_exports/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/fullchain.pem'
     key_file: '/nfs_exports/home/user/docker/traefik/data/certs/nuc10i7fnh.home.arpa/privkey.pem'
@@ -105,10 +105,11 @@ vault_certs:
     key_group: 8535
   paperless:
   portainer:
-  qbittorrent:
-  traefik:
+  postgres:
   protonmail-bridge:
+  qbittorrent:
   salt-box:
+  traefik:
 
 libvirt::networks:
   default:
