@@ -80,6 +80,7 @@ vault_certs_defaults:
 vault_certs:
   airflow:
   authelia:
+  bills:
   checkmk:
   duplicati:
   elabftw:
