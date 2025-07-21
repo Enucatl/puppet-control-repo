@@ -58,10 +58,12 @@ class nftables_config {
 
   # Create a systemd drop-in file for the docker.service.
   # This makes Docker wait for nftables to be ready before starting.
-  systemd::dropin_file { 'docker_after_nftables.conf':
-    unit    => 'docker.service',
+  file { '/etc/systemd/system/docker.service.d/docker_after_nftables.conf':
+    ensure => file,
     content => "[Unit]\nRequires=nftables.service\nAfter=nftables.service\n",
     require => Package['docker'],
   }
+
+  File['/etc/systemd/system/docker.service.d/docker_after_nftables.conf'] ~> Exec['systemd-daemon-reload'] ~> Service['docker']
 
 }
