@@ -12,6 +12,12 @@ class nftables_config {
     ensure => present,
   }
 
+  service { 'nftables':
+    ensure => running,
+    enable => true,
+    require => Package['nftables'],
+  }
+
   # Ensure the /etc/nftables/ directory exists for included rules
   file { '/etc/nftables':
     ensure  => directory,
@@ -56,26 +62,10 @@ class nftables_config {
     unit    => 'docker.service',
     content => "[Unit]\nRequires=nftables.service\nAfter=nftables.service\n",
     # Notify systemd to reload its configuration when this file changes.
-    notify  => Exec['systemd-daemon-reload'],
     # This drop-in is only useful if the docker package is installed.
     require => Package['docker'],
   }
 
-  # Now, manage the services. Puppet will handle the dependencies correctly.
-  # nftables will be started first.
-  service { 'nftables':
-    ensure => running,
-    enable => true,
-    require => Package['nftables'],
-  }
+  Systemd::Dropin_file['docker_after_nftables.conf'] ~> Exec['systemd-daemon-reload'] ~> Service['docker']
 
-  # Thanks to the drop-in file, systemd now knows to start docker after nftables.
-  service { 'docker':
-    ensure  => running,
-    enable  => true,
-    require => Package['docker'],
-    # Explicitly subscribe to the drop-in to ensure the service is restarted
-    # with the new configuration if the drop-in file changes.
-    subscribe => Systemd::Dropin_file['docker_after_nftables.conf'],
-  }
 }
