@@ -8,11 +8,6 @@
 class nftables_config {
 
   # Ensure nftables package is installed
-  package { 'docker':
-    ensure => present,
-  }
-
-  # Ensure nftables package is installed
   package { 'nftables':
     ensure => present,
   }
