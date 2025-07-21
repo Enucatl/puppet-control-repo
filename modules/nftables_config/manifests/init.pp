@@ -60,6 +60,7 @@ class nftables_config {
   # This makes Docker wait for nftables to be ready before starting.
   systemd::dropin_file { 'docker_after_nftables.conf':
     unit    => 'docker.service',
+    manage_unit_dir  => false,
     content => "[Unit]\nRequires=nftables.service\nAfter=nftables.service\n",
     # Notify systemd to reload its configuration when this file changes.
     # This drop-in is only useful if the docker package is installed.
