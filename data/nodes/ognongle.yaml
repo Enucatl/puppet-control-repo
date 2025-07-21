@@ -5,6 +5,7 @@ classes:
   - limits
   - netplan
   - tidy
+  - nftables_config
 
 limits::entries:
   'user/rtprio':

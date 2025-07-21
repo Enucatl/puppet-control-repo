@@ -6,6 +6,7 @@ classes:
   - docker::networks
   - checkmk
   - libvirt_log_fix
+  - nftables_config
 
 tidy::files:
   downloads:
