@@ -4,8 +4,8 @@ classes:
   - libvirt
   - limits
   - netplan
-  - tidy
   - nftables_config
+  - tidy
 
 limits::entries:
   'user/rtprio':
@@ -79,3 +79,10 @@ docker::networks::networks:
     driver: bridge
     additional_flags:
       - "--ipv6"
+
+systemd::udev_reload: true
+systemd::manage_udevd: true
+systemd::udev_rules:
+  50-md.rules:
+    rules:
+      - 'ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c547", ATTR{power/wakeup}="disabled"'
