@@ -8,16 +8,12 @@ unattended_upgrades::age:
 unattended_upgrades::auto:
   fix_interrupted_dpkg: true
   remove: true
-  reboot: true
-  reboot_time: "02:00"
+  reboot: false
+  # reboot_time: "02:00"
 unattended_upgrades::update: 1
 unattended_upgrades::upgrade: 1
 unattended_upgrades::remove_new_unused_deps: true
 unattended_upgrades::remove_unused_kernel: true
 unattended_upgrades::syslog_enable: true
-unattended_upgrades::extra_origins:
-  - origin=TorProject,component=main
-  - origin=Puppetlabs,component=puppet7
-  - site=repo.i2pd.xyz
 
 fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
