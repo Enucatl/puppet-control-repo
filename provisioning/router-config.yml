@@ -1,0 +1,191 @@
+---
+- name: Configure VyOS Router from Scratch
+  hosts: router
+  gather_facts: no
+  vars_files:
+    - vars/secrets.yml
+
+  vars:
+    # --- INTERFACE AND IP CONFIGURATION ---
+    wan_interface: "eth0"
+    lan_interface: "eth1"
+
+    # WAN Transit Network
+    isp_router_ip: "192.168.1.1"
+    vyos_wan_ip: "192.168.1.2/24"
+
+    # LAN Network
+    vyos_lan_ip: "10.0.0.1/24"
+    lan_subnet: "10.0.0.0/24"
+
+    # IPv6 Network
+    vyos_lan_ipv6: "{{ ipv6_prefix }}::2/64"
+
+    # Persistent storage path on the VyOS router itself
+    adguard_data_path: "/config/containers/adguard"
+    # Official AdGuard Home container image
+    adguard_image: "docker.io/adguard/adguardhome:latest"
+    adguard_dns_bind_hosts:
+      - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+      - "{{ vyos_lan_ipv6 | ansible.utils.ipaddr('address') }}"
+    local_adguard_config_path: "/tmp/AdGuardHome.yaml.tmp"
+
+  tasks:
+    - name: >
+        Send all configuration commands in a single batch
+      vyos.vyos.vyos_config:
+        # Use 'save: false' to not have the config persist after reboot
+        save: true
+        lines:
+          # Interfaces
+          - set interfaces ethernet {{ wan_interface }} description 'WAN to ISP Router'
+          - set interfaces ethernet {{ wan_interface }} address {{ vyos_wan_ip }}
+          - set interfaces ethernet {{ lan_interface }} description 'LAN'
+          - set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ip }}
+          - set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ipv6 }}
+
+          # System Services
+          - set protocols static route 0.0.0.0/0 next-hop {{ isp_router_ip }} interface {{ wan_interface }}
+          - set protocols static route6 ::0/0 next-hop fe80::6e99:61ff:fe19:1ea7 interface {{ wan_interface }}
+          # route docker ipv6 subnets to docker host
+          - set protocols static route6 {{ ipv6_prefix }}:d01::/80 next-hop {{ ipv6_prefix }}:549c:10ff:fe9a:ead9 interface {{ lan_interface }}
+
+          # NAT
+          - set nat source rule 100 outbound-interface name {{ wan_interface }}
+          - set nat source rule 100 source address {{ lan_subnet }}
+          - set nat source rule 100 translation address masquerade
+
+          # Create Interface Groups for easy rule management
+          - set firewall group interface-group LAN interface {{ lan_interface }}
+          - set firewall group interface-group WAN interface {{ wan_interface }}
+
+          # --- IPv4 Firewall Rulesets ---
+          # Rules for traffic originating FROM the LAN
+          - set firewall ipv4 name LAN-FORWARD default-action drop
+          - set firewall ipv4 name LAN-FORWARD rule 10 action accept
+          - set firewall ipv4 name LAN-FORWARD rule 10 description 'Allow established/related from LAN'
+          - set firewall ipv4 name LAN-FORWARD rule 10 state established
+          - set firewall ipv4 name LAN-FORWARD rule 10 state related
+          - set firewall ipv4 name LAN-FORWARD rule 20 action accept
+          - set firewall ipv4 name LAN-FORWARD rule 20 description 'Allow new connections from LAN to WAN'
+          - set firewall ipv4 name LAN-FORWARD rule 20 outbound-interface group WAN
+
+          # Rules for traffic originating FROM the WAN
+          - set firewall ipv4 name WAN-FORWARD default-action drop
+          - set firewall ipv4 name WAN-FORWARD rule 10 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 10 description 'Allow established/related from WAN'
+          - set firewall ipv4 name WAN-FORWARD rule 10 state established
+          - set firewall ipv4 name WAN-FORWARD rule 10 state related
+          - set firewall ipv4 name WAN-FORWARD rule 20 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 20 description 'Allow ICMP ping from WAN'
+          - set firewall ipv4 name WAN-FORWARD rule 20 protocol icmp
+
+          # --- IPv6 Firewall Rulesets ---
+          # Rules for traffic originating FROM the LAN
+          - set firewall ipv6 name LAN-FORWARD6 default-action drop
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 description 'Allow established/related from LAN'
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 state established
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 state related
+          - set firewall ipv6 name LAN-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name LAN-FORWARD6 rule 20 description 'Allow all new IPv6 from LAN to WAN'
+          - set firewall ipv6 name LAN-FORWARD6 rule 20 source address {{ ipv6_prefix }}::/64
+
+          # Rules for traffic originating FROM the WAN
+          - set firewall ipv6 name WAN-FORWARD6 default-action drop
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 description 'Allow established/related from WAN'
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 state established
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 state related
+
+          # Allow essential ICMPv6 types for network operation
+          - set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 20 description 'Allow ICMPv6 from WAN'
+          - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
+
+          # --- Apply Rulesets to the Forward Filter Chain ---
+          - set firewall ipv4 forward filter rule 10 action jump
+          - set firewall ipv4 forward filter rule 10 inbound-interface group LAN
+          - set firewall ipv4 forward filter rule 10 jump-target LAN-FORWARD
+
+          - set firewall ipv4 forward filter rule 20 action jump
+          - set firewall ipv4 forward filter rule 20 inbound-interface group WAN
+          - set firewall ipv4 forward filter rule 20 jump-target WAN-FORWARD
+
+          - set firewall ipv6 forward filter rule 10 action jump
+          - set firewall ipv6 forward filter rule 10 inbound-interface group LAN
+          - set firewall ipv6 forward filter rule 10 jump-target LAN-FORWARD6
+
+          - set firewall ipv6 forward filter rule 20 action jump
+          - set firewall ipv6 forward filter rule 20 inbound-interface group WAN
+          - set firewall ipv6 forward filter rule 20 jump-target WAN-FORWARD6
+
+          # IPv6 RA and NDP Proxy
+          - set service router-advert interface {{ lan_interface }} prefix {{ ipv6_prefix }}::/64
+          - set service router-advert interface {{ lan_interface }} interval min 5
+          - set service router-advert interface {{ lan_interface }} interval max 10
+          - set service router-advert interface {{ lan_interface }} name-server {{ vyos_lan_ipv6 | ansible.utils.ipaddr('address') }}
+          - set service ndp-proxy interface {{ wan_interface }} prefix {{ ipv6_prefix }}::/64 mode auto
+          - set service ndp-proxy interface {{ wan_interface }} enable-router-bit
+
+    - name: Create necessary folders for adguard
+      vyos.vyos.vyos_command:
+        commands:
+          - mkdir -p '{{ adguard_data_path }}/work'
+          - mkdir -p '{{ adguard_data_path }}/conf'
+          # - add container image {{ adguard_image }}
+
+    - name: Configure AdGuard Home container and update system DNS
+      vyos.vyos.vyos_config:
+        save: false
+        lines:
+          - set container name adguard image {{ adguard_image }}
+          - set container name adguard restart on-failure
+          - set container name adguard allow-host-networks
+          - set container name adguard capability net-raw
+
+          # --- Persistent Volumes ---
+          - set container name adguard volume adguard_work source '{{ adguard_data_path }}/work'
+          - set container name adguard volume adguard_work mode rw
+          - set container name adguard volume adguard_work destination /opt/adguardhome/work
+          - set container name adguard volume adguard_conf source '{{ adguard_data_path }}/conf'
+          - set container name adguard volume adguard_conf mode rw
+          - set container name adguard volume adguard_conf destination /opt/adguardhome/conf
+
+          # set the system DNS
+          - delete service dns forwarding
+          - delete container name adguard volume etc_hosts
+          - set system name-server {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+          - set system name-server {{ vyos_lan_ipv6 | ansible.utils.ipaddr('address') }}
+
+    - name: Generate AdGuard config locally from template
+      # This task runs on your Ansible machine, not on VyOS
+      delegate_to: localhost
+      ansible.builtin.template:
+        src: templates/AdGuardHome.yaml.j2
+        dest: "{{ local_adguard_config_path }}"
+        mode: '0600'
+
+    - name: Upload generated AdGuard config to VyOS
+      # net_put is designed for network devices and is more reliable
+      ansible.netcommon.net_put:
+        src: "{{ local_adguard_config_path }}"
+        dest: "/tmp/AdGuardHome.yaml"
+
+    - name: Ensure correct ownership and permissions on the uploaded config
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo mv /tmp/AdGuardHome.yaml {{ adguard_data_path }}/conf/AdGuardHome.yaml"
+          - "sudo chown root:vyattacfg {{ adguard_data_path }}/conf/AdGuardHome.yaml"
+          - "sudo chmod 0600 {{ adguard_data_path }}/conf/AdGuardHome.yaml"
+
+    - name: Clean up local temporary config file
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ local_adguard_config_path }}"
+        state: absent
+
+    - name: Restart AdGuard Container
+      vyos.vyos.vyos_command:
+        commands:
+          - restart container adguard
