@@ -20,6 +20,7 @@
 
     # IPv6 Network
     vyos_lan_ipv6: "{{ ipv6_prefix }}::2/64"
+    vyos_lan_ipv6_local: "fe80::be24:11ff:fe1c:ecb6"
 
     # Persistent storage path on the VyOS router itself
     adguard_data_path: "/config/containers/adguard"
@@ -27,7 +28,6 @@
     adguard_image: "docker.io/adguard/adguardhome:latest"
     adguard_dns_bind_hosts:
       - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
-      - "{{ vyos_lan_ipv6 | ansible.utils.ipaddr('address') }}"
     local_adguard_config_path: "/tmp/AdGuardHome.yaml.tmp"
 
   tasks:
@@ -124,7 +124,6 @@
           - set service router-advert interface {{ lan_interface }} prefix {{ ipv6_prefix }}::/64
           - set service router-advert interface {{ lan_interface }} interval min 5
           - set service router-advert interface {{ lan_interface }} interval max 10
-          - set service router-advert interface {{ lan_interface }} name-server {{ vyos_lan_ipv6 | ansible.utils.ipaddr('address') }}
           - set service ndp-proxy interface {{ wan_interface }} prefix {{ ipv6_prefix }}::/64 mode auto
           - set service ndp-proxy interface {{ wan_interface }} enable-router-bit
 
@@ -156,7 +155,6 @@
           - delete service dns forwarding
           - delete container name adguard volume etc_hosts
           - set system name-server {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
-          - set system name-server {{ vyos_lan_ipv6 | ansible.utils.ipaddr('address') }}
 
     - name: Generate AdGuard config locally from template
       # This task runs on your Ansible machine, not on VyOS

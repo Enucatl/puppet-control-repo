@@ -41,41 +41,6 @@ node 'vault.home.arpa' {
 
 }
 
-node 'pihole.home.arpa' {
-  delete($classes, 'dns::client').include
-
-  # forward resolution of *.nuc10i7fnh.home.arpa subdomains to traefik
-  file { '/etc/dnsmasq.d/10-nuc10i7fnh':
-    ensure  => present,
-    content => "address=/nuc10i7fnh.home.arpa/192.168.2.28\naddress=/nuc10i7fnh.home.arpa/${lookup('ipv6-prefix')}:549c:10ff:fe9a:ead9\n",
-    notify => Service['pihole-FTL'],
-  }
-
-  file { '/etc/pihole/pihole-FTL.conf':
-    ensure => present,
-    source => 'puppet:///modules/dns/pihole-FTL.conf',
-    notify => Service['pihole-FTL'],
-  }
-
-  file { '/etc/network/interfaces':
-    ensure  => present,
-    content => stdlib::deferrable_epp(
-      'dns/interfaces.epp',
-      {'ipv4' => lookup('dns::client::server_ipv4')}
-    ),
-    notify  =>  Service['networking'],
-  }
-
-  service { 'pihole-FTL':
-    ensure => running,
-  }
-
-  service { 'networking':
-    ensure => running,
-  }
-
-}
-
 node 'nuc10i7fnh.home.arpa' {
   $classes.include
   $vault_certs = lookup('vault_certs')
