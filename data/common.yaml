@@ -10,6 +10,7 @@ lookup_options:
     merge: deep
 
 classes:
+  - freeipa
   - freeipa::install::client
 
 fail2ban::sendmail_actions:
