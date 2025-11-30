@@ -58,7 +58,7 @@ freeipa::install::client::options:
   mkhomedir:
   domain: home.arpa
   server: freeipa.home.arpa
-  hostname: "%{trusted.certname}"
+  hostname: "%{trusted.certname}.home.arpa"
   principal: admin
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
