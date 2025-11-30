@@ -10,18 +10,7 @@ lookup_options:
     merge: deep
 
 classes:
-  - systemd
-  - ca
-  - ssh
-  - freeipa
   - freeipa::install::client
-  - freeipa::automount
-  - fail2ban
-  - git
-  - network
-  - promtail
-  - postfix_configuration
-  - puppet_configuration
 
 fail2ban::sendmail_actions:
   actionstart: ""
@@ -67,9 +56,9 @@ ssh::client_options:
 freeipa::install::client::options:
   mkhomedir:
   domain: home.arpa
-  server: ipa.home.arpa
+  server: freeipa.home.arpa
   hostname: "%{trusted.certname}"
-  principal: enrollment
+  principal: admin
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
 systemd::journald_settings:
