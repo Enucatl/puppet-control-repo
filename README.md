@@ -111,3 +111,4 @@ Here's a visual representation of the structure of this repository:
         ├── ldap-config.sh
         └── puppet.hcl
 ```
+
