@@ -10,8 +10,19 @@ lookup_options:
     merge: deep
 
 classes:
+  - nisdomainname
   - freeipa
   - freeipa::install::client
+
+nisdomainname::domain: home.arpa
+
+freeipa::install::client::options:
+  mkhomedir:
+  domain: home.arpa
+  server: freeipa.home.arpa
+  hostname: "%{trusted.certname}.home.arpa"
+  principal: admin
+  password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
 fail2ban::sendmail_actions:
   actionstart: ""
@@ -53,14 +64,6 @@ ssh::client_options:
     SendEnv: 'LANG LC_*'
     GSSAPIAuthentication: yes
     GSSAPIDelegateCredentials: yes
-
-freeipa::install::client::options:
-  mkhomedir:
-  domain: home.arpa
-  server: freeipa.home.arpa
-  hostname: "%{trusted.certname}.home.arpa"
-  principal: admin
-  password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
 systemd::journald_settings:
   Storage: auto
