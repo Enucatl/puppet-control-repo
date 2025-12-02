@@ -6,14 +6,14 @@ defaults:
   data_hash: yaml_data
 
 hierarchy:
-  - name: "Secrets from Vault"
-    data_hash: vault_hiera_hash
-    uris:
-      - "https://hcv.home.arpa:8200/v1/kv/data/puppet"
-    options:
-      timeout: 5
-      version: "v2"
-      auth_path: "cert"
+  # - name: "Secrets from Vault"
+  #   data_hash: vault_hiera_hash
+  #   uris:
+  #     - "https://hcv.home.arpa:8200/v1/kv/data/puppet"
+  #   options:
+  #     timeout: 5
+  #     version: "v2"
+  #     auth_path: "cert"
 
   - name: "Single node hostname only"
     path: "nodes/%{trusted.hostname}.yaml"
