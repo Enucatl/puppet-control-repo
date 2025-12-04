@@ -10,7 +10,6 @@ lookup_options:
     merge: deep
 
 classes:
-  - ca
   - systemd
   - ssh
   - nisdomainname
@@ -20,7 +19,7 @@ classes:
   - postfix_configuration
   - puppet_configuration
 
-ca::vault_addr: https://hcv.home.arpa:8200
+
 nisdomainname::domain: home.arpa
 
 freeipa::install::client::options:
@@ -40,7 +39,7 @@ fail2ban::sendmail_actions:
 
 tidy::defaults:
   age: 1w
-  recurse: trueg s
+  recurse: true
   rmdirs: true
 
 ssh::storeconfigs_enabled: true
