@@ -10,9 +10,14 @@ lookup_options:
     merge: deep
 
 classes:
+  - systemd
+  - ssh
   - nisdomainname
   - freeipa
   - freeipa::install::client
+  - freeipa_users
+  - postfix_configuration
+  - puppet_configuration
 
 nisdomainname::domain: home.arpa
 
@@ -23,13 +28,17 @@ freeipa::install::client::options:
   principal: admin
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
+freeipa_users::user_groups:
+  user:
+    - docker
+
 fail2ban::sendmail_actions:
   actionstart: ""
   actionstop: ""
 
 tidy::defaults:
   age: 1w
-  recurse: true
+  recurse: trueg s
   rmdirs: true
 
 ssh::storeconfigs_enabled: true
@@ -48,7 +57,6 @@ ssh::server_options:
   MaxSessions: 11
   X11Forwarding: no
   Subsystem: sftp /usr/lib/openssh/sftp-server
-  TrustedUserCAKeys: /etc/ssh/ssh_ca.pub
   GSSAPIAuthentication: yes
   GSSAPIKeyExchange: yes
 
@@ -68,8 +76,7 @@ systemd::journald_settings:
   Storage: auto
   MaxRetentionSec: 1month
 
-promtail::version: "v2.7.4"
-promtail::checksum: "1687d859ed51ec1851a10f9b0eae823530d7f1bf95dd4684c357fbe143daacc6"
+promtail::version: "v3.6.2"
 promtail::service_enable: true
 promtail::service_ensure: running
 promtail::positions_config_hash:
