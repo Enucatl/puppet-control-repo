@@ -9,47 +9,54 @@
 # Example Usage:
 #   class { 'ca': }
 #
-class ca {
+class ca (
+  String $vault_addr = 'https://127.0.0.1:8200',
+) {
 
-  # ca_cert::ca - Define a trusted CA certificate for the Puppet infrastructure.
-  #
-  # Parameters:
-  #   - name: The name of the CA certificate.
-  #   - ensure: Specifies the desired state of the CA certificate (default: 'trusted').
-  #   - source: The source URL for the CA certificate file.
-  #
-  ca_cert::ca { 'puppet_ca':
-    ensure => 'trusted',
-    source => 'puppet:///modules/ca/puppet-ca.crt',
-  }
+  # 2. Create a staging directory to store the raw downloads
+  $staging_dir = '/opt/vault_cert_staging'
 
-  # ca_cert::ca - Define a trusted CA certificate for the root CA in 2022.
-  #
-  # Parameters:
-  #   - name: The name of the CA certificate.
-  #   - ensure: Specifies the desired state of the CA certificate (default: 'trusted').
-  #   - source: The source URL for the CA certificate file.
-  #
-  ca_cert::ca { 'root_2022_ca':
-    ensure => 'trusted',
-    source => 'puppet:///modules/ca/root_2022_ca.crt',
-  }
-
-  # file - Manage the SSH CA public key file.
-  #
-  # Parameters:
-  #   - path: The path to the SSH CA public key file.
-  #   - source: The source URL for the SSH CA public key file.
-  #   - owner: The owner of the file (default: 'root').
-  #   - group: The group of the file (default: 'root').
-  #   - mode: The file permission mode (default: '0644').
-  #
-  file { '/etc/ssh/ssh_ca.pub':
-    source => 'puppet:///modules/ca/ssh_ca.pub',
+  file { $staging_dir:
+    ensure => directory,
     owner  => 'root',
     group  => 'root',
-    mode   => '0644',
-    before => Class['ssh'],
+    mode   => '0700',
   }
 
+  # --- Root CA Section ---
+
+  # Download the Root CA to the staging folder
+  exec { 'download_vault_root_ca':
+    command => "/usr/bin/curl --insecure -s ${vault_addr}/v1/pki/ca/pem -o ${staging_dir}/vault_root.crt",
+    creates => "${staging_dir}/vault_root.crt", # Only download if it doesn't exist
+    require => [File[$staging_dir], Package['curl']],
+  }
+
+  # Install the Root CA using pcfens/ca_cert
+  ca_cert { 'vault_root':
+    ensure  => trusted,
+    source  => "file://${staging_dir}/vault_root.crt",
+    require => Exec['download_vault_root_ca'],
+  }
+
+  # --- Intermediate CA Section ---
+
+  # Download the Intermediate CA to the staging folder
+  exec { 'download_vault_intermediate_ca':
+    command => "/usr/bin/curl --insecure -s ${vault_addr}/v1/pki_int/ca/pem -o ${staging_dir}/vault_intermediate.crt",
+    creates => "${staging_dir}/vault_intermediate.crt",
+    require => [File[$staging_dir], Package['curl']],
+  }
+
+  # Install the Intermediate CA using pcfens/ca_cert
+  ca_cert { 'vault_intermediate':
+    ensure  => trusted,
+    source  => "file://${staging_dir}/vault_intermediate.crt",
+    require => Exec['download_vault_intermediate_ca'],
+  }
+
+  # Ensure Curl is present
+  if ! defined(Package['curl']) {
+    package { 'curl': ensure => present }
+  }
 }
