@@ -6,7 +6,6 @@ mod 'camptocamp/augeas',           '1.9.0'
 mod 'grafana/promtail',            '2.1.0'
 mod 'jmckenzie/netplan',           '2.0.0'
 mod 'lwf/remote_file',             '1.1.3'
-mod 'pcfens/ca_cert',              '2.5.0'
 mod 'puppet/alternatives',         '6.0.0'
 mod 'puppet/archive',              '8.1.0'
 mod 'puppet/augeasproviders_core', '4.2.0'
@@ -63,3 +62,4 @@ mod 'freeipa',
 mod 'puppet-libvirt',
     git: 'https://github.com/enucatl/puppet-libvirt.git',
     branch: 'master'
+
