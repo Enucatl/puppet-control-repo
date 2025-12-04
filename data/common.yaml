@@ -10,6 +10,7 @@ lookup_options:
     merge: deep
 
 classes:
+  - ca
   - systemd
   - ssh
   - nisdomainname
@@ -19,6 +20,7 @@ classes:
   - postfix_configuration
   - puppet_configuration
 
+ca::vault_addr: https://hcv.home.arpa:8200
 nisdomainname::domain: home.arpa
 
 freeipa::install::client::options:
