@@ -13,6 +13,8 @@ class ca (
   String $vault_addr = 'https://127.0.0.1:8200',
 ) {
 
+  include ::ca_cert
+
   # 2. Create a staging directory to store the raw downloads
   $staging_dir = '/opt/vault_cert_staging'
 
