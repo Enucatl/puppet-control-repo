@@ -41,6 +41,33 @@ node 'vault.home.arpa' {
 
 }
 
+node 'docker.home.arpa' {
+  $classes.include
+  $vault_certs = lookup('vault_certs')
+  $vault_certs_defaults = lookup('vault_certs_defaults')
+  $vault_certs_default_location = lookup('vault_certs_default_location')
+  $vault_certs.each |String $subdomain, Optional[Hash] $config| {
+    # set default domain to subdomain.nuc10i7fnh.home.arpa
+    # unless explicitly specified
+    $default_value = "${subdomain}.${trusted['certname']}"
+    $paths = {
+      cert_chain_file => "${vault_certs_default_location}/${default_value}/fullchain.pem",
+      key_file        => "${vault_certs_default_location}/${default_value}/privkey.pem",
+      cert_data       => {
+        common_name => $default_value,
+        # comma separated list of DNS names 
+        # https://www.rfc-editor.org/rfc/rfc6125#section-6.4.4
+        alt_names => $default_value,
+      }
+    }
+    $vault_cert_config = deep_merge($vault_certs_defaults + $paths, $config)
+    vault_cert { $subdomain:
+      * => $vault_cert_config,
+    }
+
+  }
+}
+
 node 'nuc10i7fnh.home.arpa' {
   $classes.include
   $vault_certs = lookup('vault_certs')
