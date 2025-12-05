@@ -47,12 +47,11 @@ node 'docker.home.arpa' {
   $vault_certs_defaults = lookup('vault_certs_defaults')
   $vault_certs_default_location = lookup('vault_certs_default_location')
   $vault_certs.each |String $subdomain, Optional[Hash] $config| {
-    # set default domain to subdomain.nuc10i7fnh.home.arpa
     # unless explicitly specified
     $default_value = "${subdomain}.${trusted['certname']}"
     $paths = {
-      cert_chain_file => "${vault_certs_default_location}/${default_value}/fullchain.pem",
-      key_file        => "${vault_certs_default_location}/${default_value}/privkey.pem",
+      cert_chain_file => "${vault_certs_default_location}/${subdomain}_fullchain.pem",
+      key_file        => "${vault_certs_default_location}/${subdomain}_key.pem",
       cert_data       => {
         common_name => $default_value,
         # comma separated list of DNS names 
