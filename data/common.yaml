@@ -8,6 +8,8 @@ lookup_options:
     merge: deep
   tidy::files:
     merge: deep
+  packages::list:
+    merge: unique
 
 classes:
   - systemd

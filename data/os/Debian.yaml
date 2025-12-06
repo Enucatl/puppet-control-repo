@@ -1,6 +1,11 @@
 classes:
   - apt
+  - packages
   - unattended_upgrades
+
+packages::list:
+  - git
+  - rake
 
 unattended_upgrades::age:
   max: 14
