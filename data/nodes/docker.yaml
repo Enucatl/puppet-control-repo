@@ -66,6 +66,8 @@ grafana_alloy::config: |
   loki.source.docker "docker_logs" {
     targets = discovery.relabel.docker_relabel.output
     forward_to = [loki.write.remote_loki.receiver]
+    host = "unix:///var/run/docker.sock"
+    labels = {"app" = "docker"}
   }
 
 
