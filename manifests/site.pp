@@ -65,6 +65,16 @@ node 'docker.home.arpa' {
     }
 
   }
+
+  # read certificates from protonmail bridge container
+  acl { "${vault_certs_default_location}/docker_key.pem":
+    permissions => [
+      { identity => '101001', permission => ['read'] },
+    ],
+    # This ensures the Cert is generated/renewed first
+    require     => Vault_cert['docker'],
+  }
+
 }
 
 node 'nuc10i7fnh.home.arpa' {
@@ -123,43 +133,43 @@ node 'ognongle.home.arpa' {
   # dota 2: clicking alt while moving a unit will make it move in the direction,
   # disregarding pathing
   file { '/opt/steam/user/steamapps/common/dota 2 beta/game/dota/cfg/autoexec.cfg':
-    content => 'cl_dota_alt_unit_movetodirection 1',
-    owner   => 'user',
-    group   => 'user',
-  }
+  content => 'cl_dota_alt_unit_movetodirection 1',
+  owner   => 'user',
+  group   => 'user',
+}
 
-  # automatically enable nvidia accounting mode, required by scalene 
-  # to accurately calculate the per process GPU usage
-  systemd::manage_unit { 'nvidia-accounting-mode.service':
-    unit_entry => {
-      'Description' => 'Enable nvidia accounting mode',
-      'Requires' => 'nvidia-persistenced.service',
-      'After' => 'nvidia-persistenced.service',
-    },
-    service_entry => {
-      'Type' => 'oneshot',
-      'ExecStart' => '/usr/bin/nvidia-smi --accounting-mode=ENABLED',
-    },
-    install_entry => {
-      'WantedBy' => 'multi-user.target',
-    },
-    enable => true,
-    active => false,
-  }
+# automatically enable nvidia accounting mode, required by scalene 
+# to accurately calculate the per process GPU usage
+systemd::manage_unit { 'nvidia-accounting-mode.service':
+  unit_entry => {
+    'Description' => 'Enable nvidia accounting mode',
+    'Requires' => 'nvidia-persistenced.service',
+    'After' => 'nvidia-persistenced.service',
+  },
+  service_entry => {
+    'Type' => 'oneshot',
+    'ExecStart' => '/usr/bin/nvidia-smi --accounting-mode=ENABLED',
+  },
+  install_entry => {
+    'WantedBy' => 'multi-user.target',
+  },
+  enable => true,
+  active => false,
+}
 
-  # prevent goa-daemon from writing one million lines a day in the logs
-  # https://askubuntu.com/questions/343746/disable-and-delete-goa-daemon
-  file { '/usr/share/dbus-1/services/org.gnome.OnlineAccounts.service':
-    ensure  => file,
-    content => @("ONLINEACCOUNTS"/L)
+# prevent goa-daemon from writing one million lines a day in the logs
+# https://askubuntu.com/questions/343746/disable-and-delete-goa-daemon
+file { '/usr/share/dbus-1/services/org.gnome.OnlineAccounts.service':
+  ensure  => file,
+  content => @("ONLINEACCOUNTS"/L)
     [D-BUS Service]
     Name=org.gnome.OnlineAccounts
     #disabled by puppet
     #Exec=/usr/libexec/goa-daemon
     Exec=/usr/bin/false
-    | ONLINEACCOUNTS
-  }
+  | ONLINEACCOUNTS
+}
 
-  create_resources(sysctl, lookup('sysctl_hash'))
-  create_resources(libvirt::network, lookup('libvirt::networks'))
+create_resources(sysctl, lookup('sysctl_hash'))
+create_resources(libvirt::network, lookup('libvirt::networks'))
 }

@@ -7,6 +7,9 @@ tidy::files:
   downloads:
     path: /home/user/Downloads
 
+packages::list:
+  - acl
+
 promtail::scrape_configs_hash:
   scrape_configs:
     - job_name: docker
