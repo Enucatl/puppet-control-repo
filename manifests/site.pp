@@ -91,6 +91,15 @@ node 'docker.home.arpa' {
     group   => printer,
     mode    => '0777',
   }
+
+  file { '/var/lib/docker/100000.100000/volumes/grafana-loki_loki_data/_data':
+    ensure    => 'directory',
+    owner     => '110001', # 100000 (remap base) + 10001 (loki uid)
+    group     => '110001',
+    mode      => '0751',
+    subscribe => Service['docker'],
+    recurse   => false,
+  }
 }
 
 node 'nuc10i7fnh.home.arpa' {
