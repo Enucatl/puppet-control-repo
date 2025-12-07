@@ -6,10 +6,14 @@ classes:
   - vault_secrets::vault_cert
 
 samba::workgroup: 'WORKGROUP'
-samba::server_string: 'docker.home.arpa'
+samba::server_string: 'docker'
 samba::security: 'user'
 samba::map_to_guest: 'Bad User'
 samba::package_ensure: 'installed'
+samba::hosts_allow:
+   - '%S'
+samba::hosts_deny:
+   - 'ALL'
 samba::shares:
   'scans':
     comment: 'Printer Uploads'
