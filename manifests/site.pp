@@ -109,7 +109,8 @@ node 'docker.home.arpa' {
   user { 'alloy':
     ensure  => present,
     groups  => 'docker',
-    require => Service['alloy'], 
+    require => Package['alloy'], 
+    notify => Service['alloy'], 
   }
 
 }
