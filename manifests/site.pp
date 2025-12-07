@@ -94,7 +94,7 @@ node 'docker.home.arpa' {
   posix_acl { "/opt/paperless-consume":
     action => set,
     permission => [
-      "user:100000:rw-",
+      "user:100000:rwx",
     ],
     require => File['/opt/paperless-consume'],
   }
