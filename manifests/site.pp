@@ -105,6 +105,13 @@ node 'docker.home.arpa' {
     subscribe => Service['docker'],
     recurse   => false,
   }
+
+  user { 'alloy':
+    ensure  => present,
+    groups  => 'docker',
+    require => Service['alloy'], 
+  }
+
 }
 
 node 'nuc10i7fnh.home.arpa' {
