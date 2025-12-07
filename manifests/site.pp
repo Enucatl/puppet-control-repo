@@ -76,14 +76,20 @@ node 'docker.home.arpa' {
     require     => Vault_cert['docker'],
   }
 
-  $smbpasswd = lookup("printer::smbpasswd")
   # samba share for the printer
+  $smbpasswd = lookup("printer::smbpasswd")
     exec { 'create_samba_user':
     path    => ['/bin', '/usr/bin'],
     # Create the user in Samba only if they don't exist in the output of pdbedit
     command => "printf '${smbpasswd}\\n${smbpasswd}\\n' | smbpasswd -a -s printer",
     unless  => "pdbedit -L -u printer",
     require => Class['samba'],
+  }
+  file { '/opt/paperless-consume':
+    ensure  => directory,
+    owner   => printer,
+    group   => printer,
+    mode    => '0770',
   }
 
 }
