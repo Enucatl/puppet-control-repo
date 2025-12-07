@@ -5,31 +5,69 @@ classes:
   - tidy
   - vault_secrets::vault_cert
 
-grafana_alloy_config_fragments:
-  - |
-    discovery.docker "containers" {
-      host = "unix:///var/run/docker.sock"
-      refresh_interval = "5s"
+grafana_alloy::config: |
+  // 1. Output: Remote Loki (Traefik)
+  loki.write "remote_loki" {
+    endpoint {
+      // Using HTTPS because your Traefik handles TLS
+      url = "https://loki.docker.home.arpa/loki/api/v1/push"
     }
+  }
 
-    discovery.relabel "docker_relabel" {
-      targets = discovery.docker.containers.targets
-      rule {
-        source_labels = ["__meta_docker_container_name"]
-        regex = "/(.*)"
-        action = "replace"
-        target_label = "container_name"
-      }
-      rule {
-        target_label = "job"
-        replacement = "docker"
-      }
+  // 2. Input: Systemd Journal
+  loki.source.journal "read_journal" {
+    max_age = "12h"
+    labels  = {
+      job  = "systemd-journal",
+      // Hiera will replace this value before creating the file
+      host = "%{trusted.certname}",
     }
+    forward_to = [loki.write.remote_loki.receiver]
+  }
 
-    loki.source.docker "docker_logs" {
-      targets = discovery.relabel.docker_relabel.output
-      forward_to = [loki.write.remote_loki.receiver]
+  // 3. Input: /var/log Files
+  // Step A: Define where to look and what static labels to apply
+  local.file_match "varlogs_files" {
+    path_targets = [{
+      __path__ = "/var/log/*.log",
+      job      = "varlogs",
+      host     = "%{trusted.certname}",
+    }]
+  }
+
+  // Step B: Scrape the files found in Step A
+  loki.source.file "varlogs_scrape" {
+    targets    = local.file_match.varlogs_files.targets
+    forward_to = [loki.write.remote_loki.receiver]
+  }
+
+  // ==========================================
+  // DOCKER LOG SCRAPING (Only on Docker Hosts)
+  // ==========================================
+  discovery.docker "containers" {
+    host = "unix:///var/run/docker.sock"
+    refresh_interval = "5s"
+  }
+
+  discovery.relabel "docker_relabel" {
+    targets = discovery.docker.containers.targets
+    rule {
+      source_labels = ["__meta_docker_container_name"]
+      regex = "/(.*)"
+      action = "replace"
+      target_label = "container_name"
     }
+    rule {
+      target_label = "job"
+      replacement = "docker"
+    }
+  }
+
+  loki.source.docker "docker_logs" {
+    targets = discovery.relabel.docker_relabel.output
+    forward_to = [loki.write.remote_loki.receiver]
+  }
+
 
 samba::workgroup: 'WORKGROUP'
 samba::server_string: 'docker'
