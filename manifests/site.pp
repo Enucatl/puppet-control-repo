@@ -91,6 +91,13 @@ node 'docker.home.arpa' {
     group   => printer,
     mode    => '0770',
   }
+  posix_acl { "/opt/paperless-consume":
+    action => set,
+    permission => [
+      "user:100000:rw-",
+    ],
+    require => File['/opt/paperless-consume'],
+  }
 
 }
 
