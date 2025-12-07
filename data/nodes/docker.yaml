@@ -1,14 +1,12 @@
 ---
 classes:
-  - vault_secrets::vault_cert
+  - posix_acl::requirements
   - tidy
+  - vault_secrets::vault_cert
 
 tidy::files:
   downloads:
     path: /home/user/Downloads
-
-packages::list:
-  - acl
 
 promtail::scrape_configs_hash:
   scrape_configs:
