@@ -22,8 +22,8 @@ samba::shares:
     writable: true
     valid_users: ['printer']
     force_user: 'printer'
-    create_mask: '0660'
-    directory_mask: '0770'
+    create_mask: '0666'
+    directory_mask: '0777'
 
 tidy::files:
   downloads:
