@@ -2,8 +2,6 @@
 lookup_options:
   classes:
     merge: unique
-  promtail::scrape_configs_hash:
-    merge: deep
   systemd::journald_settings:
     merge: deep
   tidy::files:
@@ -18,6 +16,7 @@ classes:
   - freeipa
   - freeipa::install::client
   - freeipa_users
+  - grafana_alloy
   - postfix_configuration
   - puppet_configuration
 
@@ -79,32 +78,41 @@ systemd::journald_settings:
   Storage: auto
   MaxRetentionSec: 1month
 
-promtail::version: "v3.6.2"
-promtail::service_enable: true
-promtail::service_ensure: running
-promtail::positions_config_hash:
-  positions:
-    filename: /var/log/positions.yaml
-promtail::server_config_hash:
-  server:
-    disable: true
-promtail::clients_config_hash:
-  clients:
-    - url: "https://loki.nuc10i7fnh.home.arpa/api/prom/push"
-promtail::scrape_configs_hash:
-  scrape_configs:
-    - job_name: journal
-      journal:
-        max_age: 12h
-        labels:
-          job: systemd-journal
-          host: "%{trusted.certname}"
-    - job_name: varlogs
-      static_configs:
-        - labels:
-            __path__: /var/log/*log
-            job: varlogs
-            host: "%{trusted.certname}"
+grafana_alloy::config: |
+  // 1. Output: Remote Loki (Traefik)
+  loki.write "remote_loki" {
+    endpoint {
+      // Using HTTPS because your Traefik handles TLS
+      url = "https://loki.docker.home.arpa/loki/api/v1/push"
+    }
+  }
+
+  // 2. Input: Systemd Journal
+  loki.source.journal "read_journal" {
+    max_age = "12h"
+    labels  = {
+      job  = "systemd-journal",
+      // Hiera will replace this value before creating the file
+      host = "%{trusted.certname}",
+    }
+    forward_to = [loki.write.remote_loki.receiver]
+  }
+
+  // 3. Input: /var/log Files
+  // Step A: Define where to look and what static labels to apply
+  local.file_match "varlogs_files" {
+    path_targets = [{
+      __path__ = "/var/log/*.log",
+      job      = "varlogs",
+      host     = "%{trusted.certname}",
+    }]
+  }
+
+  // Step B: Scrape the files found in Step A
+  loki.source.file "varlogs_scrape" {
+    targets    = local.file_match.varlogs_files.targets
+    forward_to = [loki.write.remote_loki.receiver]
+  }
 
 postfix::configs:
   smtp_use_tls:
