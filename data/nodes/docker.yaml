@@ -11,7 +11,7 @@ samba::security: 'user'
 samba::map_to_guest: 'Bad User'
 samba::package_ensure: 'installed'
 samba::hosts_allow:
-   - '%S'
+   - '10.0.0.'
 samba::hosts_deny:
    - 'ALL'
 samba::shares:
