@@ -5,6 +5,32 @@ classes:
   - tidy
   - vault_secrets::vault_cert
 
+grafana_alloy_config_fragments:
+  - |
+    discovery.docker "containers" {
+      host = "unix:///var/run/docker.sock"
+      refresh_interval = "5s"
+    }
+
+    discovery.relabel "docker_relabel" {
+      targets = discovery.docker.containers.targets
+      rule {
+        source_labels = ["__meta_docker_container_name"]
+        regex = "/(.*)"
+        action = "replace"
+        target_label = "container_name"
+      }
+      rule {
+        target_label = "job"
+        replacement = "docker"
+      }
+    }
+
+    loki.source.docker "docker_logs" {
+      targets = discovery.relabel.docker_relabel.output
+      forward_to = [loki.write.remote_loki.receiver]
+    }
+
 samba::workgroup: 'WORKGROUP'
 samba::server_string: 'docker'
 samba::security: 'user'
