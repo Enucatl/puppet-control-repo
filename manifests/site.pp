@@ -92,6 +92,11 @@ node 'docker.home.arpa' {
     mode    => '0777',
   }
 
+  service { 'docker':
+    ensure  => running,
+    enable  => true,
+  }
+
   file { '/var/lib/docker/100000.100000/volumes/grafana-loki_loki_data/_data':
     ensure    => 'directory',
     owner     => '110001', # 100000 (remap base) + 10001 (loki uid)
