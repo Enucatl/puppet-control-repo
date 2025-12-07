@@ -69,7 +69,7 @@ node 'docker.home.arpa' {
   # read certificates from protonmail bridge container
   acl { "${vault_certs_default_location}/docker_key.pem":
     permissions => [
-      { identity => '101001', permission => ['read'] },
+      { identity => '101001', rights => ['read'] },
     ],
     # This ensures the Cert is generated/renewed first
     require     => Vault_cert['docker'],
