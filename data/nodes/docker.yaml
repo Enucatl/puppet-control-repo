@@ -9,33 +9,44 @@ grafana_alloy::config: |
   // 1. Output: Remote Loki (Traefik)
   loki.write "remote_loki" {
     endpoint {
-      // Using HTTPS because your Traefik handles TLS
       url = "https://loki.docker.home.arpa/loki/api/v1/push"
+      
+      // MEMORY OPTIMIZATION:
+      // Send smaller batches more frequently to clear RAM.
+      batch_wait = "1s"      // Default is often higher, send faster
+      batch_size = "512KB"   // Default is 1MB+, reduce to keep RAM usage low
+    }
+
+    // Ensure the Write Ahead Log (WAL) is managed
+    wal {
+      enabled = true
+      // If the remote endpoint is down, store on disk, don't bloat RAM
+      max_segment_age = "1h" 
     }
   }
 
   // 2. Input: Systemd Journal
   loki.source.journal "read_journal" {
-    max_age = "12h"
+    // If you restart Alloy, 12h might pull too much history at once. 
+    // 1h is usually safer for restarts unless you strictly need the backfill.
+    max_age = "1h" 
     labels  = {
       job  = "systemd-journal",
-      // Hiera will replace this value before creating the file
-      host = "%{trusted.certname}",
+      host     = "%{trusted.certname}",
     }
     forward_to = [loki.write.remote_loki.receiver]
   }
 
   // 3. Input: /var/log Files
-  // Step A: Define where to look and what static labels to apply
   local.file_match "varlogs_files" {
     path_targets = [{
+      // Explicitly exclude gzipped files to prevent unzipping in memory
       __path__ = "/var/log/*.log",
       job      = "varlogs",
       host     = "%{trusted.certname}",
     }]
   }
 
-  // Step B: Scrape the files found in Step A
   loki.source.file "varlogs_scrape" {
     targets    = local.file_match.varlogs_files.targets
     forward_to = [loki.write.remote_loki.receiver]
@@ -46,7 +57,7 @@ grafana_alloy::config: |
   // ==========================================
   discovery.docker "containers" {
     host = "unix:///var/run/docker.sock"
-    refresh_interval = "5s"
+    refresh_interval = "60s"
   }
 
   discovery.relabel "docker_relabel" {
@@ -60,6 +71,12 @@ grafana_alloy::config: |
     rule {
       target_label = "job"
       replacement = "docker"
+    }
+    // 2. CRITICAL: DROP Loki logs to prevent feedback loops
+    rule {
+      source_labels = ["container_name"]
+      regex = "grafana-loki-loki-1" 
+      action = "drop"
     }
   }
 
