@@ -38,46 +38,6 @@ fail2ban::sendmail_actions:
   actionstart: ""
   actionstop: ""
 
-tidy::defaults:
-  age: 1w
-  recurse: true
-  rmdirs: true
-
-ssh::storeconfigs_enabled: true
-ssh::validate_sshd_file: true
-
-ssh::server_options:
-  HostKey: /etc/ssh/ssh_host_ed25519_key
-  Ciphers: chacha20-poly1305@openssh.com
-  MACs: hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
-  ListenAddress:
-    - '0.0.0.0'
-    - '[::]'
-  PermitEmptyPasswords: no
-  PermitRootLogin: no
-  MaxAuthTries: 3
-  MaxSessions: 11
-  X11Forwarding: no
-  Subsystem: sftp /usr/lib/openssh/sftp-server
-  GSSAPIAuthentication: yes
-  GSSAPIKeyExchange: yes
-
-ssh::client_options:
-  PubkeyAuthentication: yes
-  ProxyCommand: '/usr/bin/sss_ssh_knownhostsproxy -p %p %h'
-  GlobalKnownHostsFile: /var/lib/sss/pubconf/known_hosts
-  'Host *':
-    Ciphers: chacha20-poly1305@openssh.com
-    MACs: hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
-    HashKnownHosts: yes
-    SendEnv: 'LANG LC_*'
-    GSSAPIAuthentication: yes
-    GSSAPIDelegateCredentials: yes
-
-systemd::journald_settings:
-  Storage: auto
-  MaxRetentionSec: 1month
-
 grafana_alloy::config: |
   // 1. Output: Remote Loki (Traefik)
   loki.write "remote_loki" {
@@ -151,3 +111,52 @@ puppet_configuration::settings:
     section: agent
     setting: number_of_facts_soft_limit
     value: 10000
+
+ssh::storeconfigs_enabled: true
+ssh::validate_sshd_file: true
+
+ssh::server_options:
+  HostKey: /etc/ssh/ssh_host_ed25519_key
+  Ciphers: chacha20-poly1305@openssh.com
+  MACs: hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
+  ListenAddress:
+    - '0.0.0.0'
+    - '[::]'
+  PermitEmptyPasswords: no
+  PermitRootLogin: no
+  MaxAuthTries: 3
+  MaxSessions: 11
+  X11Forwarding: no
+  Subsystem: sftp /usr/lib/openssh/sftp-server
+  GSSAPIAuthentication: yes
+  GSSAPIKeyExchange: yes
+
+ssh::client_options:
+  PubkeyAuthentication: yes
+  ProxyCommand: '/usr/bin/sss_ssh_knownhostsproxy -p %p %h'
+  GlobalKnownHostsFile: /var/lib/sss/pubconf/known_hosts
+  'Host *':
+    Ciphers: chacha20-poly1305@openssh.com
+    MACs: hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
+    HashKnownHosts: yes
+    SendEnv: 'LANG LC_*'
+    GSSAPIAuthentication: yes
+    GSSAPIDelegateCredentials: yes
+
+systemd::journald_settings:
+  Storage: auto
+  MaxRetentionSec: 1month
+
+systemd::dropin_files:
+  alloy_memory_limit.conf:
+    unit: "alloy.service"
+    content: |
+      [Service]
+      Environment="GOMEMLIMIT=512MiB"
+    notify: "Service[alloy]"
+
+tidy::defaults:
+  age: 1w
+  recurse: true
+  rmdirs: true
+
