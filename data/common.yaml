@@ -130,6 +130,9 @@ ssh::server_options:
   Subsystem: sftp /usr/lib/openssh/sftp-server
   GSSAPIAuthentication: yes
   GSSAPIKeyExchange: yes
+  PubkeyAuthentication: yes
+  AuthorizedKeysCommand: /usr/bin/sss_ssh_authorizedkeys
+  AuthorizedKeysCommandUser: nobody
 
 ssh::client_options:
   PubkeyAuthentication: yes
