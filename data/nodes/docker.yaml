@@ -139,6 +139,7 @@ vault_certs_defaults:
   cert_chain_group: 'user'
   key_owner: 'user'
   key_group: 'user'
+  key_mode: '0640'
 
 vault_certs:
   docker:
