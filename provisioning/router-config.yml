@@ -102,6 +102,12 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 20 description 'Allow ICMPv6 from WAN'
           - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
+          
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 description 'Allow qBittorrent'
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ ipv6_prefix }}:be24:11ff:fe4a:bfed
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
 
           # --- Apply Rulesets to the Forward Filter Chain ---
           - set firewall ipv4 forward filter rule 10 action jump
