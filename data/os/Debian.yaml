@@ -5,6 +5,7 @@ classes:
 
 packages::list:
   - git
+  - ncdu
   - rake
 
 unattended_upgrades::age:
