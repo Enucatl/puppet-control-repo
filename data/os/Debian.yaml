@@ -4,6 +4,7 @@ classes:
   - unattended_upgrades
 
 packages::list:
+  - auto-apt-proxy
   - git
   - ncdu
   - rake
