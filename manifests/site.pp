@@ -73,7 +73,13 @@ node 'docker.home.arpa' {
       "user:101001:r--",
     ],
     # This ensures the Cert is generated/renewed first
-    require     => Vault_cert['docker'],
+    subscribe => Vault_cert['docker'],
+  }
+
+  exec { "trigger_traefik_reload":
+    command     => '/usr/bin/touch /opt/docker/traefik/data/config.yml',
+    refreshonly => true,
+    subscribe => Vault_cert['docker'],
   }
 
   # samba share for the printer
