@@ -107,7 +107,11 @@ filters:
     name: AdAway Default Blocklist
     id: 2
 whitelist_filters: []
-user_rules: []
+user_rules:
+  # 1. Define the IP of the Proxy Server (Change 10.0.0.128 if needed)
+  - '||apt-cacher-ng.home.arpa^$dnsrewrite=NOERROR;A;10.0.0.128'
+  # 2. Define the SRV Record pointing to port 3142
+  - '||_apt_proxy._tcp.home.arpa^$dnsrewrite=NOERROR;SRV;0 0 3142 apt-cacher-ng.home.arpa'
 dhcp:
   enabled: true
   interface_name: eth1
@@ -119,7 +123,9 @@ dhcp:
     range_end: "10.0.0.200"
     lease_duration: 86400
     icmp_timeout_msec: 1000
-    options: []
+    options: 
+      - code: 15
+      text: home.arpa
   dhcpv6:
     range_start: ""
     lease_duration: 86400
