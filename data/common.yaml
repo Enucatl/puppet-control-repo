@@ -151,11 +151,12 @@ systemd::journald_settings:
   MaxRetentionSec: 1month
 
 systemd::dropin_files:
-  alloy_memory_limit.conf:
+  alloy_settings.conf:
     unit: "alloy.service"
     content: |
       [Service]
       Environment="GOMEMLIMIT=512MiB"
+      Environment="CUSTOM_ARGS=--disable-reporting"
     notify: "Service[alloy]"
 
 tidy::defaults:
