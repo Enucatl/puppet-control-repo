@@ -129,6 +129,8 @@ tidy::files:
     path: /home/user/Downloads
 
 packages::list:
+  - ffmpeg
+  - parallel
   - python3-docker
 
 promtail::scrape_configs_hash:
