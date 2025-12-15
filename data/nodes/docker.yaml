@@ -5,6 +5,22 @@ classes:
   - tidy
   - vault_secrets::vault_cert
 
+cronjobs:
+  # backup the hashicorp vault to a location that is picked up by duplicati
+  vault-snapshot:
+    minute: 0
+    hour: 0
+    weekday: 'Monday'
+    user: root
+    command: '/opt/docker/infra/vault/scripts/backup.sh 2>&1'
+  paperless-snapshot:
+    minute: 0
+    hour: 0
+    weekday: 'Monday'
+    user: root
+    command: '/opt/docker/paperless-ngx/scripts/backup.sh 2>&1'
+
+
 grafana_alloy::config: |
   // 1. Output: Remote Loki (Traefik)
   loki.write "remote_loki" {
