@@ -157,6 +157,8 @@ systemd::dropin_files:
       [Service]
       Environment="GOMEMLIMIT=512MiB"
       Environment="CUSTOM_ARGS=--disable-reporting"
+      ExecStart=
+      ExecStart=/usr/bin/alloy run --disable-reporting --storage.path=/var/lib/alloy/data $CONFIG_FILE
     notify: "Service[alloy]"
 
 tidy::defaults:
