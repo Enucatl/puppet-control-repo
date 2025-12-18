@@ -1,4 +1,12 @@
 ---
+lookup_options:
+  tidy::files:
+    merge: deep
+  systemd::journald_settings:
+    merge: deep
+  puppet_configuration::settings:
+    merge: deep
+
 classes:
   - posix_acl::requirements
   - samba
@@ -103,6 +111,36 @@ grafana_alloy::config: |
     labels = {"app" = "docker"}
   }
 
+packages::list:
+  - ffmpeg
+  - parallel
+  - python3-docker
+
+promtail::scrape_configs_hash:
+  scrape_configs:
+    - job_name: docker
+      docker_sd_configs:
+        - host: unix:///var/run/docker.sock
+          refresh_interval: 5s
+      relabel_configs:
+        - source_labels: 
+            - "__meta_docker_container_name"
+          regex: "/(.*)"
+          target_label: 'container_name'
+
+puppet_configuration::settings:
+  autosign:
+    section: server
+    setting: autosign
+    value: /etc/puppetlabs/code/environments/production/scripts/autosign.py
+  external_node_classifier_node_terminus:
+    section: server
+    setting: node_terminus
+    value: exec
+  external_node_classifier_external_nodes:
+    section: server
+    setting: external_nodes
+    value: /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py
 
 samba::workgroup: 'WORKGROUP'
 samba::server_string: 'docker'
@@ -127,23 +165,6 @@ samba::shares:
 tidy::files:
   downloads:
     path: /home/user/Downloads
-
-packages::list:
-  - ffmpeg
-  - parallel
-  - python3-docker
-
-promtail::scrape_configs_hash:
-  scrape_configs:
-    - job_name: docker
-      docker_sd_configs:
-        - host: unix:///var/run/docker.sock
-          refresh_interval: 5s
-      relabel_configs:
-        - source_labels: 
-            - "__meta_docker_container_name"
-          regex: "/(.*)"
-          target_label: 'container_name'
 
 vault_certs_default_location: /opt/docker/traefik/data/certs
 vault_certs_defaults:
