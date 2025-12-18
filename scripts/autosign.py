@@ -14,7 +14,8 @@ import cryptography.x509
     "--vault_addr", default=os.environ.get("VAULT_ADDR", "https://hcv.home.arpa:8200")
 )
 @click.option("--policy", default="puppet")
-def main(certname, input_file, vault_addr, policy):
+@click.option("--verify", default="/etc/ssl/certs/ca-certificates.crt")
+def main(certname, input_file, vault_addr, policy, verify):
     """
     Check the challengePassword OID in a Certificate Signing Request (CSR)
     to verify if it's a valid token for HashiCorp Vault login.
@@ -67,6 +68,7 @@ def main(certname, input_file, vault_addr, policy):
     vault_client = hvac.Client(
         url=vault_addr,
         token=token,
+        verify=verify,
     )
     # will raise if the token cannot authenticate itself
     current_token = vault_client.auth.token.lookup_self()
