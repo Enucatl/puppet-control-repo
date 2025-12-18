@@ -1,6 +1,7 @@
 classes:
   - apt
   - packages
+  - python-is-python3
   - unattended_upgrades
 
 packages::list:
