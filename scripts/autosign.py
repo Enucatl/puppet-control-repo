@@ -1,4 +1,4 @@
-#!/opt/puppet-user/venv/bin/python
+#!/opt/puppetlabs/puppet/venv/bin/python
 
 import os
 
