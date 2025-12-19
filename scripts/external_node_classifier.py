@@ -1,4 +1,4 @@
-#!/opt/puppet-user/venv/bin/python
+#!/opt/puppetlabs/puppet/venv/bin/python
 
 import os
 
@@ -38,15 +38,14 @@ def main(certname, output_file, domain):
     """
 
     output = {
-        "parameters": {
-        },
+        "parameters": {},
     }
     if certname.endswith(f".dev.{domain}"):
         output["environment"] = "dev"
     else:
         output["environment"] = "production"
     yaml.dump(output, output_file)
-    
-    
+
+
 if __name__ == "__main__":
     main()
