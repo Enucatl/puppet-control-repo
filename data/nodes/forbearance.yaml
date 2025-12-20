@@ -8,7 +8,6 @@ tidy::files:
 
 packages::list:
   - atool
-  - diff-so-fancy
   - nemo
   - python3-docker
   - silversearcher-ag
