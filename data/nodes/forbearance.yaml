@@ -7,5 +7,7 @@ tidy::files:
     path: /home/user/Downloads
 
 packages::list:
+  - gnome-shell-extension-prefs
+  - gnome-shell-extension-ubuntu-dock
   - python3-docker
   - silversearcher-ag
