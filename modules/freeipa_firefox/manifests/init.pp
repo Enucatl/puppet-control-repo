@@ -25,7 +25,6 @@ class freeipa_firefox {
     group   => 'root',
     mode    => '0644',
     notify  => Exec['generate-firefox-policies'],
-    require => File[$cert_target_dir],
   }
 
   # 3. The Exec that builds the policies.json
@@ -36,6 +35,5 @@ class freeipa_firefox {
       echo \"{\\\"policies\\\": {\\\"Certificates\\\": {\\\"Install\\\": [\$CERTS]}}}\" > ${policy_dir}/policies.json
     '",
     refreshonly => true,
-    subscribe   => File[$cert_target_dir],
   }
 }
