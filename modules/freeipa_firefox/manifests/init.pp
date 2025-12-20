@@ -5,7 +5,7 @@ class freeipa_firefox {
   $cert_target_dir = "${policy_dir}/certs"
 
   # 1. Create the directories
-  file { [ '/etc/firefox', $policy_dir, $cert_target_dir ]:
+  file { [ '/etc/firefox', $policy_dir ]:
     ensure => directory,
     owner  => 'root',
     group  => 'root',
