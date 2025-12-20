@@ -1,0 +1,11 @@
+---
+classes:
+  - tidy
+
+tidy::files:
+  downloads:
+    path: /home/user/Downloads
+
+packages::list:
+  - python3-docker
+  - silversearcher-ag
