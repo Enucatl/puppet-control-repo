@@ -27,13 +27,28 @@ class freeipa_firefox {
     notify  => Exec['generate-firefox-policies'],
   }
 
-  # 3. The Exec that builds the policies.json
-  # This script finds all .crt files, escapes them for JSON, and writes the file.
-  exec { 'generate-firefox-policies':
-    command     => "/bin/bash -c '
+  exec { 'sync-certs-and-generate-policy':
+    command => "/bin/bash -c '
+      # Create target dir if missing
+      mkdir -p ${cert_target_dir}
+  
+      # Clean and copy each cert (removes the IPA headers)
+      for f in ${source_dir}/*.crt; do
+        [ -e \"\$f\" ] || continue
+        filename=\$(basename \"\$f\")
+        # This command extracts ONLY the certificate part
+        openssl x509 -in \"\$f\" -out \"${cert_target_dir}/\$filename\"
+      done
+  
+      # Build the JSON array of paths
       CERTS=\$(find ${cert_target_dir} -name \"*.crt\" -printf \"\\\"%p\\\",\" | sed \"s/,\$//\")
+      
+      # Write the policies.json
       echo \"{\\\"policies\\\": {\\\"Certificates\\\": {\\\"Install\\\": [\$CERTS]}}}\" > ${policy_dir}/policies.json
     '",
-    refreshonly => true,
-  }
+    path    => ['/bin', '/usr/bin'],
+    # Run if source exists
+    onlyif  => "/usr/bin/test -d ${source_dir}",
+  }'
+
 }
