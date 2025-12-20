@@ -8,6 +8,8 @@ tidy::files:
 
 packages::list:
   - atool
+  - gnome-tweaks
+  - gnome-software
   - gnome-shell-extension-prefs
   - gnome-shell-extension-ubuntu-dock
   - python3-docker
