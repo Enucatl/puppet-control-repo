@@ -27,7 +27,7 @@ class freeipa_firefox {
     notify  => Exec['generate-firefox-policies'],
   }
 
-  exec { 'sync-certs-and-generate-policy':
+  exec { 'generate-firefox-policies':
     command => "/bin/bash -c '
       # Create target dir if missing
       mkdir -p ${cert_target_dir}
