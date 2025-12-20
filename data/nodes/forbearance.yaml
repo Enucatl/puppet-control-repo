@@ -1,5 +1,6 @@
 ---
 classes:
+  - freeipa_firefox
   - tidy
 
 tidy::files:
@@ -11,3 +12,4 @@ packages::list:
   - nemo
   - python3-docker
   - silversearcher-ag
+  - vlc
