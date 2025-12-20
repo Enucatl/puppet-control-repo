@@ -47,8 +47,7 @@ class freeipa_firefox {
       echo \"{\\\"policies\\\": {\\\"Certificates\\\": {\\\"Install\\\": [\$CERTS]}}}\" > ${policy_dir}/policies.json
     '",
     path    => ['/bin', '/usr/bin'],
-    # Run if source exists
     onlyif  => "/usr/bin/test -d ${source_dir}",
-  }'
+  }
 
 }
