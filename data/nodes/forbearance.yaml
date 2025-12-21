@@ -9,7 +9,27 @@ tidy::files:
 
 packages::list:
   - atool
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
   - nemo
+  - neovim
+  - neovim-qt
   - python3-docker
   - silversearcher-ag
   - vlc
+
+packages::sources:
+  docker:
+    comment: 'Official Docker Repository'
+    location: 'https://download.docker.com/linux/ubuntu'
+    release: "%{facts.os.distro.codename}"
+    repos: 'stable'
+    key:
+      id: '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
+      source: 'https://download.docker.com/linux/ubuntu/gpg'
+
+packages::ppas:
+  - 'ppa:neovim-ppa/stable'
