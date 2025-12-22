@@ -28,6 +28,7 @@ packages::list:
   - python3-venv
   - ripgrep
   - silversearcher-ag
+  - virt-viewer
   - vlc
 
 packages::sources:
@@ -42,4 +43,4 @@ packages::sources:
       ensure: absent
 
 packages::ppas:
-  - 'ppa:neovim-ppa/stable'
+  - 'ppa:neovim-ppa/unstable'
