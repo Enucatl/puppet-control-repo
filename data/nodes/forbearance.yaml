@@ -33,6 +33,7 @@ packages::list:
   - silversearcher-ag
   - virt-viewer
   - vlc
+  - wl-clipboard
 
 packages::sources:
   docker:
