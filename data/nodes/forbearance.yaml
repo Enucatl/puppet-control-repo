@@ -29,17 +29,15 @@ packages::list:
   - vlc
   - wl-clipboard
 
-nfs::server::exports:
+nfs_config::server_exports:
   '/home/user/Documents':
     clients: 'docker.home.arpa(sec=krb5p,ro,sync,no_subtree_check,no_root_squash)'
     mount: '/export/user_documents'
+    atboot: true
 
-nfs::client::mounts:
-  '/mnt/scratch':
+nfs_config::client_mounts:
+  '/export/scratch':
     server: 'docker.home.arpa'
-    share: 'scratch'
-    nfs_v4: true
-    options_nfsv4: 'proto=tcp,nolock,noatime,sec=krb5p'
 
 packages::sources:
   docker:

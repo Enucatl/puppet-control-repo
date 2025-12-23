@@ -1,6 +1,7 @@
 classes:
   - apt
   - nfs
+  - nfs_config
   - packages
   - tidy
   - unattended_upgrades
@@ -21,14 +22,11 @@ fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
 
 nfs::nfs_v4: true
 nfs::nfs_v4_idmap_domain: 'home.arpa'
-nfs::nfs_v4_export_root: '/export'
+nfs::nfs_v4_mount_root: '/export'
 nfs::nfs_v4_idmap_conf: true
-# Enable Server & Client logic
 nfs::server_enabled: true
 nfs::client_enabled: true
-# Force Kerberos helper services (gssd) to start
 nfs::nfs_v4_client_services_enable: true
-# Ensure the module manages the idmapd config for FreeIPA resolution
 nfs::nfs_v4_idmap_conf: true
 
 unattended_upgrades::age:
