@@ -31,7 +31,7 @@ packages::list:
 
 nfs_config::server_exports:
   '/home/user/Documents':
-    clients: 'docker.home.arpa(sec=krb5p,ro,sync,no_subtree_check,no_root_squash)'
+    clients: 'docker.home.arpa(sec=sys,ro,sync,no_subtree_check,no_root_squash)'
     mount: '/export/user_documents'
     atboot: true
 
