@@ -108,18 +108,15 @@ grafana_alloy::config: |
     labels = {"app" = "docker"}
   }
 
-nfs::server::exports:
+nfs_config::server_exports:
   '/scratch':
-    # Keep as rw if this is the music/media library you want to manage
-    clients: 'docker.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
+    clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
     mount: '/export/scratch'
+    atboot: true
 
-nfs::client::mounts:
-  '/mnt/user_documents':
-    server: 'docker.home.arpa'
-    share: 'user_documents'
-    nfs_v4: true
-    options_nfsv4: 'proto=tcp,nolock,noatime,sec=krb5p,ro'
+nfs_config::client_mounts:
+  '/export/user_documents':
+    server: 'forbearance.home.arpa'
 
 packages::sources:
   docker:
