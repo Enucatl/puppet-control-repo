@@ -4,12 +4,32 @@ classes:
   - unattended_upgrades
 
 packages::list:
+  - atool
   - auto-apt-proxy
   - git
   - ncdu
+  - nfs
   - python-is-python3
-  - python3.12-venv
+  - python3
+  - python3-docker
+  - python3-pip
+  - python3-venv
   - rake
+  - tidy
+
+fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
+
+nfs::nfs_v4: true
+nfs::nfs_v4_idmap_domain: 'home.arpa'
+nfs::nfs_v4_export_root: '/export'
+nfs::nfs_v4_idmap_conf: true
+# Enable Server & Client logic
+nfs::server_enabled: true
+nfs::client_enabled: true
+# Force Kerberos helper services (gssd) to start
+nfs::nfs_v4_client_services_enable: true
+# Ensure the module manages the idmapd config for FreeIPA resolution
+nfs::nfs_v4_idmap_conf: true
 
 unattended_upgrades::age:
   max: 14
@@ -23,5 +43,3 @@ unattended_upgrades::upgrade: 1
 unattended_upgrades::remove_new_unused_deps: true
 unattended_upgrades::remove_unused_kernel: true
 unattended_upgrades::syslog_enable: true
-
-fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"

@@ -8,7 +8,6 @@ tidy::files:
     path: /home/user/Downloads
 
 packages::list:
-  - atool
   - build-essential
   - cargo
   - containerd.io
@@ -24,16 +23,24 @@ packages::list:
   - nodejs
   - npm
   - pavucontrol
-  - python3
-  - python3-docker
-  - python3-pip
-  - python3-venv
   - qpwgraph
   - ripgrep
   - silversearcher-ag
   - virt-viewer
   - vlc
   - wl-clipboard
+
+nfs::server::exports:
+  '/home/user/Documents':
+    clients: 'docker.home.arpa(sec=krb5p,ro,sync,no_subtree_check,no_root_squash)'
+    mount: '/export/user_documents'
+
+nfs::client::mounts:
+  '/mnt/scratch':
+    server: 'docker.home.arpa'
+    share: 'scratch'
+    nfs_v4: true
+    options_nfsv4: 'proto=tcp,nolock,noatime,sec=krb5p'
 
 packages::sources:
   docker:

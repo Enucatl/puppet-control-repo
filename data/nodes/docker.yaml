@@ -1,7 +1,5 @@
 ---
 lookup_options:
-  tidy::files:
-    merge: deep
   systemd::journald_settings:
     merge: deep
   puppet_configuration::settings:
@@ -10,7 +8,6 @@ lookup_options:
 classes:
   - posix_acl::requirements
   - samba
-  - tidy
   - vault_secrets::vault_cert
 
 cronjobs:
@@ -110,6 +107,19 @@ grafana_alloy::config: |
     host = "unix:///var/run/docker.sock"
     labels = {"app" = "docker"}
   }
+
+nfs::server::exports:
+  '/scratch':
+    # Keep as rw if this is the music/media library you want to manage
+    clients: 'docker.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
+    mount: '/export/scratch'
+
+nfs::client::mounts:
+  '/mnt/user_documents':
+    server: 'docker.home.arpa'
+    share: 'user_documents'
+    nfs_v4: true
+    options_nfsv4: 'proto=tcp,nolock,noatime,sec=krb5p,ro'
 
 packages::sources:
   docker:

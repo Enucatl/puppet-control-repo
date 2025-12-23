@@ -2,12 +2,16 @@
 lookup_options:
   classes:
     merge: unique
+  nfs::server::exports:
+    merge: hash
+  nfs::client::mounts:
+    merge: hash
+  packages::list:
+    merge: unique
   systemd::journald_settings:
     merge: deep
   tidy::files:
     merge: deep
-  packages::list:
-    merge: unique
 
 classes:
   - systemd
