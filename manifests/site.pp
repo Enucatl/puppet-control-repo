@@ -108,4 +108,5 @@ node 'docker.home.arpa' {
     notify => Service['alloy'], 
   }
 
+  create_resources(sysctl, lookup('sysctl_hash'))
 }
