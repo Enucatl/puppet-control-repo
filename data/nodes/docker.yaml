@@ -111,11 +111,10 @@ grafana_alloy::config: |
 nfs_config::server_exports:
   '/scratch':
     clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
-    mount: '/export/scratch'
     atboot: true
 
 nfs_config::client_mounts:
-  '/export/user_documents':
+  '/export/Documents':
     server: 'forbearance.home.arpa'
 
 packages::sources:
