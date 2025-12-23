@@ -2,6 +2,7 @@ classes:
   - apt
   - nfs
   - packages
+  - tidy
   - unattended_upgrades
 
 packages::list:
@@ -15,7 +16,6 @@ packages::list:
   - python3-pip
   - python3-venv
   - rake
-  - tidy
 
 fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
 
