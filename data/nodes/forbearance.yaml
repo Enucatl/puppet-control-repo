@@ -1,7 +1,6 @@
 ---
 classes:
   - freeipa_firefox
-  - tidy
 
 tidy::files:
   downloads:
