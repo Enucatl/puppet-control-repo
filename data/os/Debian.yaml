@@ -26,6 +26,11 @@ nfs::nfs_v4_idmap_conf: true
 # Enable Server & Client logic
 nfs::server_enabled: true
 nfs::client_enabled: true
+nfs::server_packages:
+  - nfs-kernel-server
+nfs::client_packages:
+  - nfs-common
+nfs::client_enabled: true
 # Force Kerberos helper services (gssd) to start
 nfs::nfs_v4_client_services_enable: true
 # Ensure the module manages the idmapd config for FreeIPA resolution
