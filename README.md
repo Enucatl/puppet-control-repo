@@ -9,7 +9,7 @@ Download package from http://apt.puppet.com/
 sudo dpkg -i package
 sudo apt update
 sudo apt install puppet-agent
-sudo /opt/puppetlabs/bin/puppet config set server vault.home.arpa --section main
+sudo /opt/puppetlabs/bin/puppet config set server docker.home.arpa --section main
 sudo /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
 sudo /opt/puppetlabs/bin/puppet ssl bootstrap
 # on the puppet server:
