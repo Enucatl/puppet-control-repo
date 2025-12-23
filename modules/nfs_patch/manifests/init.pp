@@ -9,7 +9,7 @@
 # Example Usage:
 #   class { 'nfs': }
 #
-class nfs {
+class nfs_patch {
   # service - Manage the rpc-svcgssd service.
   #
   # Parameters:
