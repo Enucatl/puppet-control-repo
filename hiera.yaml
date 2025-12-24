@@ -11,7 +11,7 @@ hierarchy:
     uris:
       - "https://hcv.home.arpa:8200/v1/kv/data/puppet"
     options:
-      timeout: 5
+      timeout: 20
       version: "v2"
       auth_path: "cert"
       ca_trust: "/etc/ssl/certs/CN=Docker_Home_Arpa_Root_CA_634702368810934143245700742467692493878270055232.pem"

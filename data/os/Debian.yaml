@@ -29,6 +29,10 @@ nfs::client_enabled: true
 nfs::nfs_v4_client_services_enable: true
 nfs::nfs_v4_idmap_conf: true
 
+tidy::files:
+  downloads:
+    path: /home/user/Downloads
+
 unattended_upgrades::age:
   max: 14
 unattended_upgrades::auto:

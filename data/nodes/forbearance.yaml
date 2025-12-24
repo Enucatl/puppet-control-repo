@@ -2,10 +2,6 @@
 classes:
   - freeipa_firefox
 
-tidy::files:
-  downloads:
-    path: /home/user/Downloads
-
 packages::list:
   - build-essential
   - cargo
@@ -32,7 +28,6 @@ packages::list:
 nfs_config::server_exports:
   '/home/user/Documents':
     clients: 'docker.home.arpa(sec=sys,ro,sync,no_subtree_check,no_root_squash)'
-    mount: '/export/user_documents'
     atboot: true
 
 nfs_config::client_mounts:
