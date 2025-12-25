@@ -19,6 +19,9 @@ hierarchy:
   - name: "Single node hostname only"
     path: "nodes/%{trusted.hostname}.yaml"
 
+  - name: "Node Group"
+    path: "roles/%{facts.node_type}.yaml"
+
   - name: "osfamily/major release"
     paths:
         # Used to distinguish between Debian and Ubuntu
