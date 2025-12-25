@@ -3,6 +3,7 @@ classes:
   - freeipa_firefox
 
 packages::list:
+  - audacity
   - ansible-core
   - build-essential
   - cargo
