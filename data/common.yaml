@@ -2,9 +2,9 @@
 lookup_options:
   classes:
     merge: unique
-  nfs::server::exports:
+  nfs_config::server_exports:
     merge: hash
-  nfs::client::mounts:
+  nfs_config::client_mounts:
     merge: hash
   packages::list:
     merge: unique

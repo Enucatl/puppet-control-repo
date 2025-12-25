@@ -1,1 +1,8 @@
-../roles/desktop.yaml
+nfs_config::server_exports:
+  '/home/user/Documents':
+    clients: 'docker.home.arpa(sec=krb5p,ro,sync,no_subtree_check,root_squash)'
+    atboot: true
+
+nfs_config::client_mounts:
+  '/export/scratch':
+    server: 'docker.home.arpa'
