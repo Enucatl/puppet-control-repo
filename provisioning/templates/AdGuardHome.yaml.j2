@@ -125,8 +125,9 @@ dhcp:
     icmp_timeout_msec: 1000
     options: 
       - '15 text home.arpa'
+      - '60 text PXEClient'
       - '66 text 10.0.0.128'
-      - '67 text iventoy_loader_16000'
+      - '67 text iventoy_loader_16000_uefi'
   dhcpv6:
     range_start: ""
     lease_duration: 86400
@@ -153,6 +154,15 @@ filtering:
   parental_block_host: family-block.dns.adguard.com
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites:
+    - domain: dropbear.proxmox.home.arpa
+      answer: 10.0.0.10
+      enabled: true
+    - domain: proxmox.home.arpa
+      answer: 10.0.0.10
+      enabled: true
+    - domain: dropbear.proxmox.home.arpa
+      answer: {{ ipv6_prefix }}:9e6b:ff:fec3:761d
+      enabled: true
     - domain: proxmox.home.arpa
       answer: {{ ipv6_prefix }}:9e6b:ff:fec3:761d
       enabled: true
@@ -167,6 +177,18 @@ filtering:
       enabled: true
     - domain: 'hcv.home.arpa'
       answer: 10.0.0.128
+      enabled: true
+    - domain: 'pve-desktop.home.arpa'
+      answer: 10.0.0.11
+      enabled: true
+    - domain: 'dropbear.pve-desktop.home.arpa'
+      answer: 10.0.0.11
+      enabled: true
+    - domain: 'pve-desktop.home.arpa'
+      answer: {{ ipv6_prefix }}:b26e:bfff:fe82:d51c
+      enabled: true
+    - domain: 'dropbear.pve-desktop.home.arpa'
+      answer: {{ ipv6_prefix }}:b26e:bfff:fe82:d51c
       enabled: true
   safe_fs_patterns:
     - /opt/adguardhome/work/userfilters/*
