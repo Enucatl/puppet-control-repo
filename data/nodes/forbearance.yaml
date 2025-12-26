@@ -6,3 +6,5 @@ nfs_config::server_exports:
 nfs_config::client_mounts:
   '/export/scratch':
     server: 'docker.home.arpa'
+  '/export/opt/docker':
+    server: 'docker.home.arpa'
