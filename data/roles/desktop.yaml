@@ -14,11 +14,13 @@ packages::list:
   - docker-compose-plugin
   - easyeffects
   - fd-find
+  - ffmpeg
   - nemo
   - neovim
   - neovim-qt
   - nodejs
   - npm
+  - opus-tools
   - pavucontrol
   - python3-scp
   - qpwgraph
