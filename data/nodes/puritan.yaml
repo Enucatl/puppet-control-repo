@@ -1,0 +1,19 @@
+vault_certs_default_location: /opt/certs
+vault_certs_defaults:
+  ensure: 'present'
+  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/general'
+  auth_path: 'cert'
+  cert_data:
+    ttl: '2160h'  # 90 days
+  renewal_threshold: 5
+  cert_chain_owner: 'user'
+  cert_chain_group: 'user'
+  key_owner: 'user'
+  key_group: 'user'
+  key_mode: '0640'
+
+vault_certs:
+  docker:
+    cert_data:
+      common_name: 'puritan.home.arpa'
+      alt_names: '*.puritan.home.arpa,puritan.home.arpa'
