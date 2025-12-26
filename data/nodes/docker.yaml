@@ -112,6 +112,9 @@ nfs_config::server_exports:
   '/scratch':
     clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
     atboot: true
+  '/opt/docker':
+    clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,root_squash)'
+    atboot: true
 
 nfs_config::client_mounts:
   '/export/Documents':
