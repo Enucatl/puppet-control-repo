@@ -8,9 +8,13 @@ lookup_options:
     merge: hash
   packages::list:
     merge: unique
+  packages::ppas:
+    merge: unique
   systemd::journald_settings:
     merge: deep
   tidy::files:
+    merge: deep
+  vault_certs:
     merge: deep
 
 classes:
