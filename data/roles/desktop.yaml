@@ -7,6 +7,7 @@ packages::list:
   - ansible-core
   - build-essential
   - cargo
+  - calibre
   - containerd.io
   - docker-buildx-plugin
   - docker-ce
