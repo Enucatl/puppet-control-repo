@@ -72,12 +72,20 @@ node 'docker.home.arpa' {
   }
 
   # samba share for the printer
-  $smbpasswd = lookup("printer::smbpasswd")
-    exec { 'create_samba_user':
+  $smbpasswd_printer = lookup("printer::smbpasswd")
+    exec { 'create_samba_user_printer':
     path    => ['/bin', '/usr/bin'],
     # Create the user in Samba only if they don't exist in the output of pdbedit
-    command => "printf '${smbpasswd}\\n${smbpasswd}\\n' | smbpasswd -a -s printer",
+    command => "printf '${smbpasswd_printer}\\n${smbpasswd_printer}\\n' | smbpasswd -a -s printer",
     unless  => "pdbedit -L -u printer",
+    require => Class['samba'],
+  }
+  $smbpasswd_pictures = lookup("pictures::smbpasswd")
+    exec { 'create_samba_user_pictures':
+    path    => ['/bin', '/usr/bin'],
+    # Create the user in Samba only if they don't exist in the output of pdbedit
+    command => "printf '${smbpasswd_pictures}\\n${smbpasswd_pictures}\\n' | smbpasswd -a -s pictures",
+    unless  => "pdbedit -L -u pictures",
     require => Class['samba'],
   }
   file { '/opt/paperless-consume':
