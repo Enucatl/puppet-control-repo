@@ -186,6 +186,17 @@ samba::shares:
     force_user: 'printer'
     create_mask: '0666'
     directory_mask: '0777'
+        
+  'shared_pictures':
+    comment: 'Shared Pictures'
+    path: '/scratch/shared_pictures'
+    browseable: true
+    writable: true
+    force_user: 'user'
+    force_group: 'user'
+    create_mask: '0660'
+    directory_mask: '0770'
+    valid_users: ['pictures']
 
 sysctl_hash:
   net.ipv6.conf.all.accept_redirects:
