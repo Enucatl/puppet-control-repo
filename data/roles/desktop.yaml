@@ -16,6 +16,7 @@ packages::list:
   - easyeffects
   - fd-find
   - ffmpeg
+  - gimp
   - nemo
   - neovim
   - neovim-qt
