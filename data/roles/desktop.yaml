@@ -17,6 +17,7 @@ packages::list:
   - fd-find
   - ffmpeg
   - gimp
+  - kde-connect
   - nemo
   - neovim
   - neovim-qt
