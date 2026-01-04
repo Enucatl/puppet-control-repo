@@ -31,6 +31,7 @@ packages::list:
   - silversearcher-ag
   - virt-viewer
   - vlc
+  - wakeonlan
   - wl-clipboard
 
 packages::sources:
