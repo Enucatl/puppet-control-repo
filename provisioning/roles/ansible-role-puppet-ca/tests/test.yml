@@ -1,5 +1,0 @@
----
-- hosts: puppetserver,vm
-  gather_facts: no
-  roles:
-    - ansible-role-puppet-ca
