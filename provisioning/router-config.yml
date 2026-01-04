@@ -30,6 +30,12 @@
       - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
     local_adguard_config_path: "/tmp/AdGuardHome.yaml.tmp"
 
+    # SNMP
+    snmp_listen_address: "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+    snmp_location: "VyOS Datacenter"
+    snmp_engineid: "000000000000000000000002"
+    snmp_user: "vyos"
+
   tasks:
     - name: >
         Send all configuration commands in a single batch
@@ -133,6 +139,19 @@
           - set service ndp-proxy interface {{ wan_interface }} prefix {{ ipv6_prefix }}::/64 mode auto
           - set service ndp-proxy interface {{ wan_interface }} enable-router-bit
 
+          # SNMP Configuration
+          - set service snmp listen-address {{ snmp_listen_address }}
+          - set service snmp location '{{ snmp_location }}'
+          - set service snmp v3 engineid '{{ snmp_engineid }}'
+          - set service snmp v3 group default mode 'ro'
+          - set service snmp v3 group default view 'default'
+          - set service snmp v3 user {{ snmp_user }} auth plaintext-password '{{ snmp_v3_password }}'
+          - set service snmp v3 user {{ snmp_user }} auth type 'sha'
+          - set service snmp v3 user {{ snmp_user }} group 'default'
+          - set service snmp v3 user {{ snmp_user }} privacy plaintext-password '{{ snmp_v3_password }}'
+          - set service snmp v3 user {{ snmp_user }} privacy type 'aes'
+          - set service snmp v3 view default oid 1
+
     - name: Create necessary folders for adguard
       vyos.vyos.vyos_command:
         commands:
@@ -142,7 +161,7 @@
 
     - name: Configure AdGuard Home container and update system DNS
       vyos.vyos.vyos_config:
-        save: false
+        save: true
         lines:
           - set container name adguard image {{ adguard_image }}
           - set container name adguard restart on-failure

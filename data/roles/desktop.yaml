@@ -19,6 +19,7 @@ packages::list:
   - ffmpeg
   - gimp
   - kdeconnect
+  - libssh-dev
   - nemo
   - neovim
   - neovim-qt
