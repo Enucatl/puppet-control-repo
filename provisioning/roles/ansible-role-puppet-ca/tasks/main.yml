@@ -1,4 +1,0 @@
----
-- include_tasks: "puppet-list.yml"
-- include_tasks: "puppet-package.yml"
-- include_tasks: "puppet-ca-clean.yml"
