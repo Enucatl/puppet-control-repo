@@ -2,3 +2,7 @@
 .yardoc
 .venv
 password
+package-lock.json
+package.json
+node_modules
+repomix*xml
