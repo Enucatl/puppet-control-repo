@@ -6,6 +6,7 @@ lookup_options:
     merge: deep
 
 classes:
+  - profile::docker_host
   - posix_acl::requirements
   - samba
   - vault_secrets::vault_cert
