@@ -1,0 +1,22 @@
+[project]
+name = "ansible-env"
+version = "0.1.0"
+description = "A minimal environment for running Ansible"
+requires-python = ">=3.10"
+dependencies = [
+    "ansible",
+    "ansible-pylibssh",
+    "jmespath",     # Required for the json_query filter
+    "ncclient",     # Required for NETCONF (used by many network modules)
+    "netaddr",      # Required for ipaddr filter
+    "paramiko",     # Required for standard SSH connections
+    "scp",          # Required for scp file transfers
+    "xmltodict",    # Required for parsing XML output from devices
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+package = false

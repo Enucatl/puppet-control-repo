@@ -33,7 +33,7 @@
     # SNMP
     snmp_listen_address: "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
     snmp_location: "VyOS Datacenter"
-    snmp_engineid: "000000000000000000000002"
+    snmp_engineid: "800000000102030405060709"
     snmp_user: "vyos"
 
   tasks:
@@ -43,6 +43,14 @@
         # Use 'save: false' to not have the config persist after reboot
         save: true
         lines:
+          # cleanup
+          # - delete interfaces ethernet {{ wan_interface }}
+          # - delete protocols
+          # - delete nat
+          # - delete nat66
+          # - delete firewall
+          # - delete service router-advert
+          # - delete service ndp-proxy
           # Interfaces
           - set interfaces ethernet {{ wan_interface }} description 'WAN to ISP Router'
           - set interfaces ethernet {{ wan_interface }} address {{ vyos_wan_ip }}
@@ -50,7 +58,7 @@
           - set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ip }}
           - set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ipv6 }}
 
-          # System Services
+          # Routes
           - set protocols static route 0.0.0.0/0 next-hop {{ isp_router_ip }} interface {{ wan_interface }}
           - set protocols static route6 ::0/0 next-hop fe80::6e99:61ff:fe19:1ea7 interface {{ wan_interface }}
           # route docker ipv6 subnets to docker host
@@ -61,6 +69,7 @@
           - set nat source rule 100 source address {{ lan_subnet }}
           - set nat source rule 100 translation address masquerade
 
+          # Firewall
           # Create Interface Groups for easy rule management
           - set firewall group interface-group LAN interface {{ lan_interface }}
           - set firewall group interface-group WAN interface {{ wan_interface }}
@@ -143,14 +152,14 @@
           - set service snmp listen-address {{ snmp_listen_address }}
           - set service snmp location '{{ snmp_location }}'
           - set service snmp v3 engineid '{{ snmp_engineid }}'
-          - set service snmp v3 group default mode 'ro'
-          - set service snmp v3 group default view 'default'
+          - set service snmp v3 view all_view oid 1
+          - set service snmp v3 group checkmk_group mode 'ro'
+          - set service snmp v3 group checkmk_group view 'all_view'
+          - set service snmp v3 user {{ snmp_user }} group 'checkmk_group'
           - set service snmp v3 user {{ snmp_user }} auth plaintext-password '{{ snmp_v3_password }}'
           - set service snmp v3 user {{ snmp_user }} auth type 'sha'
-          - set service snmp v3 user {{ snmp_user }} group 'default'
           - set service snmp v3 user {{ snmp_user }} privacy plaintext-password '{{ snmp_v3_password }}'
           - set service snmp v3 user {{ snmp_user }} privacy type 'aes'
-          - set service snmp v3 view default oid 1
 
     - name: Create necessary folders for adguard
       vyos.vyos.vyos_command:
@@ -163,6 +172,7 @@
       vyos.vyos.vyos_config:
         save: true
         lines:
+          # - delete container
           - set container name adguard image {{ adguard_image }}
           - set container name adguard restart on-failure
           - set container name adguard allow-host-networks
@@ -178,7 +188,6 @@
 
           # set the system DNS
           - delete service dns forwarding
-          - delete container name adguard volume etc_hosts
           - set system name-server {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 
     - name: Generate AdGuard config locally from template
