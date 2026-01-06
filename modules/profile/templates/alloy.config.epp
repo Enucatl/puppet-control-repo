@@ -1,0 +1,77 @@
+<%- | String $loki_url, Boolean $enable_docker | -%>
+// 1. Output: Remote Loki
+loki.write "remote_loki" {
+  endpoint {
+    url = "<%= $loki_url %>"
+    
+    // MEMORY OPTIMIZATION:
+    batch_wait = "1s"
+    batch_size = "512KB"
+  }
+
+  wal {
+    enabled = true
+    max_segment_age = "1h" 
+  }
+}
+
+// 2. Input: Systemd Journal
+loki.source.journal "read_journal" {
+  max_age = "1h" 
+  labels  = {
+    job  = "systemd-journal",
+    host = "${sys.hostname}", // Alloy can read the hostname natively
+  }
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+// 3. Input: /var/log Files
+local.file_match "varlogs_files" {
+  path_targets = [{
+    __path__ = "/var/log/*.log",
+    job      = "varlogs",
+    host     = "${sys.hostname}",
+  }]
+}
+
+loki.source.file "varlogs_scrape" {
+  targets    = local.file_match.varlogs_files.targets
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+<% if $enable_docker { -%>
+// ==========================================
+// DOCKER LOG SCRAPING
+// ==========================================
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+  refresh_interval = "60s"
+}
+
+discovery.relabel "docker_relabel" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(.*)"
+    action = "replace"
+    target_label = "container_name"
+  }
+  rule {
+    target_label = "job"
+    replacement = "docker"
+  }
+  // DROP Loki logs to prevent feedback loops
+  rule {
+    source_labels = ["container_name"]
+    regex = "grafana-loki-loki-1" 
+    action = "drop"
+  }
+}
+
+loki.source.docker "docker_logs" {
+  targets = discovery.relabel.docker_relabel.output
+  forward_to = [loki.write.remote_loki.receiver]
+  host = "unix:///var/run/docker.sock"
+  labels = {"app" = "docker"}
+}
+<% } -%>
