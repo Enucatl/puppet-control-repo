@@ -50,3 +50,4 @@ packages::sources:
 
 packages::ppas:
   - 'ppa:neovim-ppa/unstable'
+  - 'ppa:ubuntuhandbook1/audacity'
