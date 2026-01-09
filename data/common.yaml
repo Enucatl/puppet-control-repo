@@ -38,10 +38,6 @@ freeipa::install::client::options:
   principal: admin
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
-freeipa_users::user_groups:
-  user:
-    - docker
-
 fail2ban::sendmail_actions:
   actionstart: ""
   actionstop: ""
@@ -84,7 +80,6 @@ ssh::server_options:
     - '0.0.0.0'
     - '[::]'
   PermitEmptyPasswords: no
-  PermitRootLogin: no
   MaxAuthTries: 3
   MaxSessions: 11
   X11Forwarding: no
