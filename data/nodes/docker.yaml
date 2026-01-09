@@ -26,6 +26,9 @@ cronjobs:
     user: root
     command: '/opt/docker/paperless-ngx/scripts/backup.sh 2>&1'
 
+freeipa_users::user_groups:
+  user:
+    - docker
 
 nfs_config::server_exports:
   '/scratch':
