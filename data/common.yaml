@@ -10,6 +10,10 @@ lookup_options:
     merge: unique
   packages::ppas:
     merge: unique
+  ssh::client_options:
+    merge: deep
+  ssh::server_options:
+    merge: deep
   systemd::journald_settings:
     merge: deep
   tidy::files:
@@ -80,6 +84,7 @@ ssh::server_options:
     - '0.0.0.0'
     - '[::]'
   PermitEmptyPasswords: no
+  PermitRootLogin: no
   MaxAuthTries: 3
   MaxSessions: 11
   X11Forwarding: no
@@ -92,7 +97,6 @@ ssh::server_options:
 
 ssh::client_options:
   PubkeyAuthentication: yes
-  ProxyCommand: '/usr/bin/sss_ssh_knownhostsproxy -p %p %h'
   GlobalKnownHostsFile: /var/lib/sss/pubconf/known_hosts
   'Host *':
     Ciphers: chacha20-poly1305@openssh.com

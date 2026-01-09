@@ -1,0 +1,2 @@
+ssh::client_options:
+  ProxyCommand: '/usr/bin/sss_ssh_knownhostsproxy -p %p %h'

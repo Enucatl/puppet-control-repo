@@ -1,0 +1,6 @@
+ssh::server_options:
+  PermitRootLogin: yes
+
+ssh::client_options:
+  KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %h'
+  KnownHostsCommandUser: nobody
