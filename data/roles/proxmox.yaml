@@ -3,4 +3,3 @@ ssh::server_options:
 
 ssh::client_options:
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %h'
-  KnownHostsCommandUser: nobody
