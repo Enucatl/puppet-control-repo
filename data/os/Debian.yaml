@@ -40,6 +40,7 @@ packages::sources:
     key:
       id: "E8A03305928BA458A510A72107586B1B47D97E0C"
       source: "https://apt.releases.hashicorp.com/gpg"
+      keyring: "/usr/share/keyrings/hashicorp-archive-keyring.gpg"
 
 tidy::files:
   downloads:
