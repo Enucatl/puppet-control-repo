@@ -10,6 +10,10 @@ lookup_options:
     merge: unique
   packages::ppas:
     merge: unique
+  profile::common::sysctl_settings:
+    merge: deep
+  profile::common::vault_certs:
+    merge: deep
   ssh::client_options:
     merge: deep
   ssh::server_options:
@@ -17,8 +21,6 @@ lookup_options:
   systemd::journald_settings:
     merge: deep
   tidy::files:
-    merge: deep
-  vault_certs:
     merge: deep
 
 classes:
@@ -30,6 +32,7 @@ classes:
   - freeipa_users
   - postfix_configuration
   - profile::alloy
+  - profile::common
   - puppet_configuration
 
 

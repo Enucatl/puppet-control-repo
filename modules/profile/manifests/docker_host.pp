@@ -1,47 +1,11 @@
 class profile::docker_host (
-  # We use lookup() defaults here so your existing Hiera data works without changes.
-  Hash    $vault_certs                  = lookup('vault_certs', Hash, 'deep', {}),
-  Hash    $vault_certs_defaults         = lookup('vault_certs_defaults', Hash, 'deep', {}),
-  String  $vault_certs_default_location = lookup('vault_certs_default_location', String, 'first', '/opt/certs'),
-  String  $printer_smb_password         = lookup('printer::smbpasswd'),
-  String  $pictures_smb_password        = lookup('pictures::smbpasswd'),
-  Hash    $sysctl_settings              = lookup('sysctl_hash', Hash, 'deep', {}),
+  String  $printer_smb_password  = lookup('printer::smbpasswd'),
+  String  $pictures_smb_password = lookup('pictures::smbpasswd'),
 ) {
 
-  # ------------------------------------------------------------------
-  # 1. Vault Certificate Management
-  # ------------------------------------------------------------------
-  $vault_certs.each |String $subdomain, Optional[Hash] $config| {
-    # Default Common Name calculation
-    $default_value = "${subdomain}.${trusted['certname']}"
-    
-    # path defaults based on the location variable
-    $paths = {
-      cert_chain_file => "${vault_certs_default_location}/${subdomain}_fullchain.pem",
-      key_file        => "${vault_certs_default_location}/${subdomain}_key.pem",
-      cert_data       => {
-        common_name => $default_value,
-        alt_names   => $default_value,
-      }
-    }
-    
-    # Merge: Global Defaults -> Calculated Paths -> Specific Cert Config
-    $vault_cert_config = deep_merge($vault_certs_defaults + $paths, $config)
-    
-    vault_cert { $subdomain:
-      * => $vault_cert_config,
-    }
-  }
-
-  # Allow Protonmail Bridge container to read the docker key
-  # We subscribe to Vault_cert['docker'] which is created by the iterator above
-  posix_acl { "${vault_certs_default_location}/docker_key.pem":
-    action     => set,
-    permission => [
-      "user:101001:r--",
-    ],
-    subscribe  => Vault_cert['docker'],
-  }
+  require profile::common
+  require ::samba
+  require posix_acl::requirements
 
   # Trigger Traefik reload when certs change
   exec { "trigger_traefik_reload":
@@ -53,8 +17,6 @@ class profile::docker_host (
   # ------------------------------------------------------------------
   # 2. Samba Configuration
   # ------------------------------------------------------------------
-  # Ensure the base samba class is applied before adding users
-  require ::samba
 
   # Create 'printer' samba user
   exec { 'create_samba_user_printer':
@@ -89,6 +51,16 @@ class profile::docker_host (
     enable => true,
   }
 
+  # Allow Protonmail Bridge container to read the docker key
+  # We subscribe to Vault_cert['docker'] which is created by the iterator above
+  posix_acl { "${profile::common::vault_certs_default_location}/docker_key.pem":
+    action     => set,
+    permission => [
+      "user:101001:r--",
+    ],
+    subscribe  => Vault_cert['docker'],
+  }
+
   # Fix permissions for Loki volume so mapped users can write logs
   file { '/var/lib/docker/100000.100000/volumes/grafana-loki_loki_data/_data':
     ensure    => 'directory',
@@ -107,8 +79,4 @@ class profile::docker_host (
     notify  => Service['alloy'], 
   }
 
-  # ------------------------------------------------------------------
-  # 4. Sysctl
-  # ------------------------------------------------------------------
-  create_resources(sysctl, $sysctl_settings)
 }
