@@ -18,6 +18,7 @@ packages::list:
   - python3-venv
   - rake
   - vault
+  - wakeonlan
 
 fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
 
