@@ -39,8 +39,8 @@ packages::sources:
     architecture: "%{facts.os.architecture}"
     key:
       id: "E8A03305928BA458A510A72107586B1B47D97E0C"
+      name: "hashicorp-archive-keyring.gpg"
       source: "https://apt.releases.hashicorp.com/gpg"
-      keyring: "/usr/share/keyrings/hashicorp-archive-keyring.gpg"
 
 tidy::files:
   downloads:
