@@ -32,14 +32,14 @@ nfs::nfs_v4_idmap_conf: true
 
 packages::sources:
   hashicorp:
-  comment: "HashiCorp Stable Repository"
-  location: "https://apt.releases.hashicorp.com"
-  release: "%{facts.os.distro.codename}"
-  repos: "main"
-  architecture: "%{facts.os.architecture}"
-  key:
-    id: "E8A03305928BA458A510A72107586B1B47D97E0C"
-    source: "https://apt.releases.hashicorp.com/gpg"
+    comment: "HashiCorp Stable Repository"
+    location: "https://apt.releases.hashicorp.com"
+    release: "%{facts.os.distro.codename}"
+    repos: "main"
+    architecture: "%{facts.os.architecture}"
+    key:
+      id: "E8A03305928BA458A510A72107586B1B47D97E0C"
+      source: "https://apt.releases.hashicorp.com/gpg"
 
 tidy::files:
   downloads:
