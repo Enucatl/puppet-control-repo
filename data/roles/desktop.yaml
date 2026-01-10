@@ -14,7 +14,6 @@ packages::list:
   - docker-ce-cli
   - docker-compose-plugin
   - easyeffects
-  - expect
   - fd-find
   - ffmpeg
   - gimp

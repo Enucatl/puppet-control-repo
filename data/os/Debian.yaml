@@ -9,6 +9,7 @@ classes:
 packages::list:
   - atool
   - auto-apt-proxy
+  - expect
   - git
   - ncdu
   - python-is-python3
