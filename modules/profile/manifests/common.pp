@@ -2,6 +2,7 @@ class profile::common (
   Hash    $vault_certs                  = {},
   Hash    $vault_certs_defaults         = {},
   String  $vault_certs_default_location = '/opt/certs',
+  Hash    $sysctl_settings              = {},
   Hash    $cronjobs                     = {},
 ) {
 
