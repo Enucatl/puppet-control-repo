@@ -7,24 +7,6 @@ lookup_options:
 
 classes:
   - profile::docker_host
-  - posix_acl::requirements
-  - samba
-  - vault_secrets::vault_cert
-
-cronjobs:
-  # backup the hashicorp vault to a location that is picked up by duplicati
-  vault-snapshot:
-    minute: 0
-    hour: 0
-    weekday: 'Monday'
-    user: root
-    command: '/opt/docker/infra/vault/scripts/backup.sh 2>&1'
-  paperless-snapshot:
-    minute: 0
-    hour: 0
-    weekday: 'Monday'
-    user: root
-    command: '/opt/docker/paperless-ngx/scripts/backup.sh 2>&1'
 
 freeipa_users::user_groups:
   user:
@@ -64,6 +46,59 @@ packages::list:
   - python3-docker
 
 profile::alloy::enable_docker: true
+
+profile::common::cronjobs:
+  # backup the hashicorp vault to a location that is picked up by duplicati
+  vault-snapshot:
+    minute: 0
+    hour: 0
+    weekday: 'Monday'
+    user: root
+    command: '/opt/docker/infra/vault/scripts/backup.sh 2>&1'
+  paperless-snapshot:
+    minute: 0
+    hour: 0
+    weekday: 'Monday'
+    user: root
+    command: '/opt/docker/paperless-ngx/scripts/backup.sh 2>&1'
+
+profile::common::sysctl_settings:
+  net.ipv6.conf.all.accept_redirects:
+    value: 0
+  net.ipv6.conf.default.accept_redirects:
+    value: 0
+  net.ipv6.conf.all.forwarding:
+    value: 1
+  net.ipv6.conf.default.forwarding:
+    value: 1
+  net.ipv6.conf.all.accept_ra:
+    value: 2
+  net.ipv6.conf.default.accept_ra:
+    value: 2
+  net.ipv6.conf.all.proxy_ndp:
+    value: 1
+  net.ipv6.conf.default.proxy_ndp:
+    value: 1
+
+profile::common::vault_certs_default_location: /opt/docker/traefik/data/certs
+profile::common::vault_certs_defaults:
+  ensure: 'present'
+  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/general'
+  auth_path: 'cert'
+  cert_data:
+    ttl: '2160h'  # 90 days
+  renewal_threshold: 5
+  cert_chain_owner: 'user'
+  cert_chain_group: 'user'
+  key_owner: 'user'
+  key_group: 'user'
+  key_mode: '0640'
+
+profile::common::vault_certs:
+  docker:
+    cert_data:
+      common_name: '*.docker.home.arpa'
+      alt_names: '*.docker.home.arpa,docker.home.arpa'
 
 promtail::scrape_configs_hash:
   scrape_configs:
@@ -122,44 +157,6 @@ samba::shares:
     directory_mask: '0770'
     valid_users: ['pictures']
 
-sysctl_hash:
-  net.ipv6.conf.all.accept_redirects:
-    value: 0
-  net.ipv6.conf.default.accept_redirects:
-    value: 0
-  net.ipv6.conf.all.forwarding:
-    value: 1
-  net.ipv6.conf.default.forwarding:
-    value: 1
-  net.ipv6.conf.all.accept_ra:
-    value: 2
-  net.ipv6.conf.default.accept_ra:
-    value: 2
-  net.ipv6.conf.all.proxy_ndp:
-    value: 1
-  net.ipv6.conf.default.proxy_ndp:
-    value: 1
-
 tidy::files:
   downloads:
     path: /home/user/Downloads
-
-vault_certs_default_location: /opt/docker/traefik/data/certs
-vault_certs_defaults:
-  ensure: 'present'
-  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/general'
-  auth_path: 'cert'
-  cert_data:
-    ttl: '2160h'  # 90 days
-  renewal_threshold: 5
-  cert_chain_owner: 'user'
-  cert_chain_group: 'user'
-  key_owner: 'user'
-  key_group: 'user'
-  key_mode: '0640'
-
-vault_certs:
-  docker:
-    cert_data:
-      common_name: '*.docker.home.arpa'
-      alt_names: '*.docker.home.arpa,docker.home.arpa'
