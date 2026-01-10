@@ -17,6 +17,7 @@ packages::list:
   - python3-pip
   - python3-venv
   - rake
+  - vault
 
 fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
 
@@ -29,6 +30,17 @@ nfs::client_enabled: true
 nfs::nfs_v4_client_services_enable: true
 nfs::nfs_v4_idmap_conf: true
 
+packages::sources:
+  hashicorp:
+  comment: "HashiCorp Stable Repository"
+  location: "https://apt.releases.hashicorp.com"
+  release: "%{facts.os.distro.codename}"
+  repos: "main"
+  architecture: "%{facts.os.architecture}"
+  key:
+    id: "E8A03305928BA458A510A72107586B1B47D97E0C"
+    source: "https://apt.releases.hashicorp.com/gpg"
+
 tidy::files:
   downloads:
     path: /home/user/Downloads
@@ -38,7 +50,7 @@ unattended_upgrades::age:
 unattended_upgrades::auto:
   fix_interrupted_dpkg: true
   remove: true
-  reboot: true
+  reboot: false
   reboot_time: "02:00"
 unattended_upgrades::update: 1
 unattended_upgrades::upgrade: 1
