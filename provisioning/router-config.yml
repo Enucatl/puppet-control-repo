@@ -10,6 +10,19 @@
     wan_interface: "eth0"
     lan_interface: "eth1"
 
+    # --- WIREGUARD CONFIG ---
+    wg_interface: "wg0"
+    wg_port: "51820"
+    # The internal IPv4 subnet for the VPN tunnel
+    wg_subnet: "10.0.10.1/24"
+    wg_peers:
+      - name: "phone"
+        pubkey: "z4kWINsJrs2FY4q26DGErw6ECktgPEj6xoXT8UJsaRE="
+        ip: "10.0.10.2/32"
+      # - name: "riccardo"
+      #   pubkey: "ThePublicKeyForPhone=="
+      #   ip: "10.0.10.3/32"
+
     # WAN Transit Network
     isp_router_ip: "192.168.1.1"
     vyos_wan_ip: "192.168.1.2/24"
@@ -37,6 +50,7 @@
     snmp_user: "vyos"
 
   tasks:
+
     - name: >
         Send all configuration commands in a single batch
       vyos.vyos.vyos_config:
@@ -160,6 +174,66 @@
           - set service snmp v3 user {{ snmp_user }} auth type 'sha'
           - set service snmp v3 user {{ snmp_user }} privacy plaintext-password '{{ snmp_v3_password }}'
           - set service snmp v3 user {{ snmp_user }} privacy type 'aes'
+
+          # --- WireGuard Interface ---
+          - set interfaces wireguard {{ wg_interface }} address {{ wg_subnet }}
+          - set interfaces wireguard {{ wg_interface }} port {{ wg_port }}
+          - set interfaces wireguard {{ wg_interface }} private-key '{{ wg_server_private_key }}'
+          
+          # --- NAT (IPv4 Outbound) ---
+          # Even though the tunnel enters via IPv6, we want the inside to handle IPv4
+          - set nat source rule 110 outbound-interface name {{ wan_interface }}
+          - set nat source rule 110 source address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
+          - set nat source rule 110 translation address masquerade
+
+          # --- Firewall Groups ---
+          - set firewall group interface-group VPN interface {{ wg_interface }}
+
+          # --- Firewall IPv6 LOCAL (Crucial for your Public IPv6) ---
+          # We need to allow traffic destined TO the router on IPv6 UDP 51820
+          - set firewall ipv6 name WAN-LOCAL6 default-action drop
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 state established
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 state related
+          - set firewall ipv6 name WAN-LOCAL6 rule 20 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 20 protocol icmpv6
+          # Allow WireGuard Handshake over IPv6
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 destination port {{ wg_port }}
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 protocol udp
+
+          # Attach IPv6 Local Policy
+          - set firewall ipv6 input filter rule 10 action jump
+          - set firewall ipv6 input filter rule 10 inbound-interface group WAN
+          - set firewall ipv6 input filter rule 10 jump-target WAN-LOCAL6
+
+          # --- Firewall Forwarding (VPN Access) ---
+          - set firewall ipv4 name VPN-FORWARD default-action drop
+          - set firewall ipv4 name VPN-FORWARD rule 10 action accept
+          - set firewall ipv4 name VPN-FORWARD rule 10 state established
+          - set firewall ipv4 name VPN-FORWARD rule 10 state related
+          - set firewall ipv4 name VPN-FORWARD rule 20 action accept
+          - set firewall ipv4 name VPN-FORWARD rule 20 description "Allow VPN clients to everywhere"
+          
+          # Attach Forwarding Policy
+          - set firewall ipv4 forward filter rule 30 action jump
+          - set firewall ipv4 forward filter rule 30 inbound-interface group VPN
+          - set firewall ipv4 forward filter rule 30 jump-target VPN-FORWARD
+
+    - name: Configure WireGuard Peers
+      vyos.vyos.vyos_config:
+        # Save config after every peer add
+        save: true 
+        lines:
+          - set interfaces wireguard {{ wg_interface }} peer '{{ item.pubkey }}' public-key '{{ item.pubkey }}'
+          - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} allowed-ips {{ item.ip }}
+          - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} description '{{ item.name }}'
+          - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} persistent-keepalive 15
+      # This loops over the array, running the commands for each peer
+      loop: "{{ wg_peers }}"
+      # Optional: Don't fail the whole playbook if one peer key is malformed
+      ignore_errors: no
+
 
     - name: Create necessary folders for adguard
       vyos.vyos.vyos_command:
