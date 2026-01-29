@@ -20,6 +20,7 @@ packages::list:
   - rake
   - vault
   - wakeonlan
+  - wireguard-tools
 
 fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
 
