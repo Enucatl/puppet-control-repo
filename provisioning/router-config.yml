@@ -6,48 +6,34 @@
     - vars/secrets.yml
 
   vars:
-    # --- INTERFACE AND IP CONFIGURATION ---
-    wan_interface: "eth0"
-    lan_interface: "eth1"
+    # --- INTERFACES ---
+    wan_interface: "eth3"       # Mellanox Port 1 (New WAN)
+    lan_interface: "eth1"       # Intel Port (Existing LAN)
+    # old_wan_interface: "eth0" # (Optional: just to remember what it was)
 
-    # --- WIREGUARD CONFIG ---
+    # --- IP CONFIGURATION ---
+    vyos_lan_ip: "10.0.0.1/24"
+    lan_subnet: "10.0.0.0/24"
+
+    # --- WIREGUARD ---
     wg_interface: "wg0"
     wg_port: "51820"
-    # The internal IPv4 subnet for the VPN tunnel
     wg_subnet: "10.0.10.1/24"
     wg_peers:
       - name: "phone"
         pubkey: "z4kWINsJrs2FY4q26DGErw6ECktgPEj6xoXT8UJsaRE="
         ip: "10.0.10.2/32"
-      # - name: "riccardo"
-      #   pubkey: "ThePublicKeyForPhone=="
-      #   ip: "10.0.10.3/32"
 
-    # WAN Transit Network
-    isp_router_ip: "192.168.1.1"
-    vyos_wan_ip: "192.168.1.2/24"
-
-    # LAN Network
-    vyos_lan_ip: "10.0.0.1/24"
-    lan_subnet: "10.0.0.0/24"
-
-    # IPv6 Network
-    vyos_lan_ipv6: "{{ ipv6_prefix }}::2/64"
-    vyos_lan_ipv6_local: "fe80::be24:11ff:fe1c:ecb6"
-
-    # Persistent storage path on the VyOS router itself
-    adguard_data_path: "/config/containers/adguard"
-    # Official AdGuard Home container image
-    adguard_image: "docker.io/adguard/adguardhome:latest"
-    adguard_dns_bind_hosts:
-      - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
-    local_adguard_config_path: "/tmp/AdGuardHome.yaml.tmp"
-
-    # SNMP
-    snmp_listen_address: "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+    # --- SNMP (Use the valid hex ID you found) ---
+    snmp_listen_address: "10.0.0.1"
     snmp_location: "VyOS Datacenter"
-    snmp_engineid: "800000000102030405060709"
+    snmp_engineid: "800000000102030405060709" 
     snmp_user: "vyos"
+    # checkmk_server_ip: "10.0.0.5" # Add this if you use the ACL in the script below
+
+    # --- ADGUARD ---
+    adguard_data_path: "/config/containers/adguard"
+    adguard_image: "docker.io/adguard/adguardhome:latest"
 
   tasks:
 
@@ -57,114 +43,192 @@
         # Use 'save: false' to not have the config persist after reboot
         save: true
         lines:
-          # cleanup
-          # - delete interfaces ethernet {{ wan_interface }}
-          # - delete protocols
-          # - delete nat
-          # - delete nat66
-          # - delete firewall
-          # - delete service router-advert
-          # - delete service ndp-proxy
-          # Interfaces
-          - set interfaces ethernet {{ wan_interface }} description 'WAN to ISP Router'
-          - set interfaces ethernet {{ wan_interface }} address {{ vyos_wan_ip }}
+          # ============================================================
+          # 1. CLEANUP PHASE
+          # ============================================================
+          # Remove old global settings to prevent conflicts
+          - delete firewall
+          - delete nat
+          - delete container
+          - delete protocols
+          - delete service router-advert
+          - delete service ndp-proxy
+          - delete service snmp
+          - delete system flowtable
+
+          # Wipe the NEW WAN interface to ensure clean slate
+          - delete interfaces ethernet {{ wan_interface }}
+          
+          # Wipe the OLD WAN interface (if it was eth0) so it doesn't conflict
+          - delete interfaces ethernet eth0 
+
+          # We do NOT delete eth1 (LAN) to keep SSH alive. 
+          # We just overwrite settings below.
+
+          # ============================================================
+          # 2. INTERFACES & OFFLOADS (25Gbps Tuning)
+          # ============================================================
+          
+          # --- WAN (Mellanox) ---
+          - set interfaces ethernet {{ wan_interface }} description 'WAN - Init7 25G'
+          - set interfaces ethernet {{ wan_interface }} address dhcp
+          - set interfaces ethernet {{ wan_interface }} speed 25000
+          - set interfaces ethernet {{ wan_interface }} duplex full
+          
+          # Hardware Offloads (Critical for speed)
+          - set interfaces ethernet {{ wan_interface }} offload sg
+          - set interfaces ethernet {{ wan_interface }} offload tso
+          - set interfaces ethernet {{ wan_interface }} offload gso
+          - set interfaces ethernet {{ wan_interface }} offload gro
+          - set interfaces ethernet {{ wan_interface }} offload rx-checksum
+          - set interfaces ethernet {{ wan_interface }} offload tx-checksum
+
+          # IPv6 WAN (DHCPv6-PD)
+          - set interfaces ethernet {{ wan_interface }} ipv6 address dhcpv6
+          # Delegate the first /64 to the LAN interface automatically
+          - set interfaces ethernet {{ wan_interface }} ipv6 address dhcpv6 prefix-delegation interface {{ lan_interface }} sla-id 0
+          - set interfaces ethernet {{ wan_interface }} ipv6 address dhcpv6 prefix-delegation interface {{ lan_interface }} prefix-length 64
+
+          # --- LAN (Intel) ---
           - set interfaces ethernet {{ lan_interface }} description 'LAN'
           - set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ip }}
-          - set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ipv6 }}
+          # Note: We removed the static IPv6 address here. PD handles it now.
 
-          # Routes
-          - set protocols static route 0.0.0.0/0 next-hop {{ isp_router_ip }} interface {{ wan_interface }}
-          - set protocols static route6 ::0/0 next-hop fe80::6e99:61ff:fe19:1ea7 interface {{ wan_interface }}
-          # route docker ipv6 subnets to docker host
-          - set protocols static route6 {{ ipv6_prefix }}:d01::/80 next-hop {{ ipv6_prefix }}:549c:10ff:fe9a:ead9 interface {{ lan_interface }}
+          # --- WireGuard ---
+          - set interfaces wireguard {{ wg_interface }} address {{ wg_subnet }}
+          - set interfaces wireguard {{ wg_interface }} port {{ wg_port }}
+          - set interfaces wireguard {{ wg_interface }} private-key '{{ wg_server_private_key }}'
 
-          # NAT
-          - set nat source rule 100 outbound-interface name {{ wan_interface }}
-          - set nat source rule 100 source address {{ lan_subnet }}
-          - set nat source rule 100 translation address masquerade
+          # ============================================================
+          # 3. FIREWALL & FLOWTABLES
+          # ============================================================
+          
+          # --- Hardware Flowtable (Fastpath) ---
+          - set firewall flowtable FASTPATH interface {{ wan_interface }}
+          - set firewall flowtable FASTPATH interface {{ lan_interface }}
+          - set firewall flowtable FASTPATH offload hardware
 
-          # Firewall
-          # Create Interface Groups for easy rule management
+          # Groups
           - set firewall group interface-group LAN interface {{ lan_interface }}
           - set firewall group interface-group WAN interface {{ wan_interface }}
+          - set firewall group interface-group VPN interface {{ wg_interface }}
 
-          # --- IPv4 Firewall Rulesets ---
-          # Rules for traffic originating FROM the LAN
+          # --- GLOBAL FORWARD (Offload Rule) ---
+          # Must be Rule 1 to bypass CPU for established traffic
+          - set firewall ipv4 forward filter rule 1 action offload
+          - set firewall ipv4 forward filter rule 1 offload-target FASTPATH
+          - set firewall ipv4 forward filter rule 1 state established enable
+          - set firewall ipv4 forward filter rule 1 state related enable
+
+          - set firewall ipv6 forward filter rule 1 action offload
+          - set firewall ipv6 forward filter rule 1 offload-target FASTPATH
+          - set firewall ipv6 forward filter rule 1 state established enable
+          - set firewall ipv6 forward filter rule 1 state related enable
+
+          # --- Standard Forwarding Logic ---
+          # IPv4 LAN -> WAN
           - set firewall ipv4 name LAN-FORWARD default-action drop
           - set firewall ipv4 name LAN-FORWARD rule 10 action accept
-          - set firewall ipv4 name LAN-FORWARD rule 10 description 'Allow established/related from LAN'
-          - set firewall ipv4 name LAN-FORWARD rule 10 state established
-          - set firewall ipv4 name LAN-FORWARD rule 10 state related
+          - set firewall ipv4 name LAN-FORWARD rule 10 state established enable
+          - set firewall ipv4 name LAN-FORWARD rule 10 state related enable
           - set firewall ipv4 name LAN-FORWARD rule 20 action accept
-          - set firewall ipv4 name LAN-FORWARD rule 20 description 'Allow new connections from LAN to WAN'
           - set firewall ipv4 name LAN-FORWARD rule 20 outbound-interface group WAN
-
-          # Rules for traffic originating FROM the WAN
+          
+          # IPv4 WAN -> LAN
           - set firewall ipv4 name WAN-FORWARD default-action drop
           - set firewall ipv4 name WAN-FORWARD rule 10 action accept
-          - set firewall ipv4 name WAN-FORWARD rule 10 description 'Allow established/related from WAN'
-          - set firewall ipv4 name WAN-FORWARD rule 10 state established
-          - set firewall ipv4 name WAN-FORWARD rule 10 state related
+          - set firewall ipv4 name WAN-FORWARD rule 10 state established enable
+          - set firewall ipv4 name WAN-FORWARD rule 10 state related enable
           - set firewall ipv4 name WAN-FORWARD rule 20 action accept
-          - set firewall ipv4 name WAN-FORWARD rule 20 description 'Allow ICMP ping from WAN'
           - set firewall ipv4 name WAN-FORWARD rule 20 protocol icmp
 
-          # --- IPv6 Firewall Rulesets ---
-          # Rules for traffic originating FROM the LAN
+          # IPv4 VPN -> ANY
+          - set firewall ipv4 name VPN-FORWARD default-action drop
+          - set firewall ipv4 name VPN-FORWARD rule 10 action accept
+          - set firewall ipv4 name VPN-FORWARD rule 10 state established
+          - set firewall ipv4 name VPN-FORWARD rule 10 state related
+          - set firewall ipv4 name VPN-FORWARD rule 20 action accept
+          - set firewall ipv4 name VPN-FORWARD rule 20 description "Allow VPN clients to everywhere"
+
+          # IPv6 LAN -> WAN
           - set firewall ipv6 name LAN-FORWARD6 default-action drop
           - set firewall ipv6 name LAN-FORWARD6 rule 10 action accept
-          - set firewall ipv6 name LAN-FORWARD6 rule 10 description 'Allow established/related from LAN'
-          - set firewall ipv6 name LAN-FORWARD6 rule 10 state established
-          - set firewall ipv6 name LAN-FORWARD6 rule 10 state related
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 state established enable
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 state related enable
           - set firewall ipv6 name LAN-FORWARD6 rule 20 action accept
-          - set firewall ipv6 name LAN-FORWARD6 rule 20 description 'Allow all new IPv6 from LAN to WAN'
-          - set firewall ipv6 name LAN-FORWARD6 rule 20 source address {{ ipv6_prefix }}::/64
+          - set firewall ipv6 name LAN-FORWARD6 rule 20 protocol all
 
-          # Rules for traffic originating FROM the WAN
+          # IPv6 WAN -> LAN
           - set firewall ipv6 name WAN-FORWARD6 default-action drop
           - set firewall ipv6 name WAN-FORWARD6 rule 10 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 10 description 'Allow established/related from WAN'
-          - set firewall ipv6 name WAN-FORWARD6 rule 10 state established
-          - set firewall ipv6 name WAN-FORWARD6 rule 10 state related
-
-          # Allow essential ICMPv6 types for network operation
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 state established enable
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 state related enable
           - set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 20 description 'Allow ICMPv6 from WAN'
-          - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
-          
+          - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol ipv6-icmp
+          # qBittorrent Rule (Using Mask for Dynamic Prefix)
           - set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 description 'Allow qBittorrent'
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ ipv6_prefix }}:be24:11ff:fe4a:bfed
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address ::be24:11ff:fe4a:bfed/::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
 
-          # --- Apply Rulesets to the Forward Filter Chain ---
+          # --- IPv6 LOCAL (Protect Router & Allow DHCP/VPN) ---
+          - set firewall ipv6 name WAN-LOCAL6 default-action drop
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 state established
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 state related
+          - set firewall ipv6 name WAN-LOCAL6 rule 20 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 20 protocol ipv6-icmp
+          # Allow WireGuard
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 destination port {{ wg_port }}
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 protocol udp
+          # Allow DHCPv6 Response (Critical for Init7)
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 source port 547
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 destination port 546
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 protocol udp
+
+          # --- Apply Policies ---
           - set firewall ipv4 forward filter rule 10 action jump
           - set firewall ipv4 forward filter rule 10 inbound-interface group LAN
           - set firewall ipv4 forward filter rule 10 jump-target LAN-FORWARD
-
           - set firewall ipv4 forward filter rule 20 action jump
           - set firewall ipv4 forward filter rule 20 inbound-interface group WAN
           - set firewall ipv4 forward filter rule 20 jump-target WAN-FORWARD
+          - set firewall ipv4 forward filter rule 30 action jump
+          - set firewall ipv4 forward filter rule 30 inbound-interface group VPN
+          - set firewall ipv4 forward filter rule 30 jump-target VPN-FORWARD
 
           - set firewall ipv6 forward filter rule 10 action jump
           - set firewall ipv6 forward filter rule 10 inbound-interface group LAN
           - set firewall ipv6 forward filter rule 10 jump-target LAN-FORWARD6
-
           - set firewall ipv6 forward filter rule 20 action jump
           - set firewall ipv6 forward filter rule 20 inbound-interface group WAN
           - set firewall ipv6 forward filter rule 20 jump-target WAN-FORWARD6
 
-          # IPv6 RA and NDP Proxy
-          - set service router-advert interface {{ lan_interface }} prefix {{ ipv6_prefix }}::/64
-          - set service router-advert interface {{ lan_interface }} interval min 5
-          - set service router-advert interface {{ lan_interface }} interval max 10
-          - set service ndp-proxy interface {{ wan_interface }} prefix {{ ipv6_prefix }}::/64 mode auto
-          - set service ndp-proxy interface {{ wan_interface }} enable-router-bit
+          - set firewall ipv6 input filter rule 10 action jump
+          - set firewall ipv6 input filter rule 10 inbound-interface group WAN
+          - set firewall ipv6 input filter rule 10 jump-target WAN-LOCAL6
 
-          # SNMP Configuration
+          # ============================================================
+          # 4. NAT & ROUTING
+          # ============================================================
+          # LAN NAT
+          - set nat source rule 100 outbound-interface name {{ wan_interface }}
+          - set nat source rule 100 source address {{ lan_subnet }}
+          - set nat source rule 100 translation address masquerade
+          
+          # WireGuard NAT (IPv4 inside tunnel -> WAN)
+          - set nat source rule 110 outbound-interface name {{ wan_interface }}
+          - set nat source rule 110 source address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
+          - set nat source rule 110 translation address masquerade
+
+          # ============================================================
+          # 5. SNMPv3 (Strict Ordering)
+          # ============================================================
           - set service snmp listen-address {{ snmp_listen_address }}
           - set service snmp location '{{ snmp_location }}'
+          - set service snmp mib interface-max-real-interfaces 128
           - set service snmp v3 engineid '{{ snmp_engineid }}'
           - set service snmp v3 view all_view oid 1
           - set service snmp v3 group checkmk_group mode 'ro'
@@ -175,50 +239,12 @@
           - set service snmp v3 user {{ snmp_user }} privacy plaintext-password '{{ snmp_v3_password }}'
           - set service snmp v3 user {{ snmp_user }} privacy type 'aes'
 
-          # --- WireGuard Interface ---
-          - set interfaces wireguard {{ wg_interface }} address {{ wg_subnet }}
-          - set interfaces wireguard {{ wg_interface }} port {{ wg_port }}
-          - set interfaces wireguard {{ wg_interface }} private-key '{{ wg_server_private_key }}'
-          
-          # --- NAT (IPv4 Outbound) ---
-          # Even though the tunnel enters via IPv6, we want the inside to handle IPv4
-          - set nat source rule 110 outbound-interface name {{ wan_interface }}
-          - set nat source rule 110 source address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
-          - set nat source rule 110 translation address masquerade
-
-          # --- Firewall Groups ---
-          - set firewall group interface-group VPN interface {{ wg_interface }}
-
-          # --- Firewall IPv6 LOCAL (Crucial for your Public IPv6) ---
-          # We need to allow traffic destined TO the router on IPv6 UDP 51820
-          - set firewall ipv6 name WAN-LOCAL6 default-action drop
-          - set firewall ipv6 name WAN-LOCAL6 rule 10 action accept
-          - set firewall ipv6 name WAN-LOCAL6 rule 10 state established
-          - set firewall ipv6 name WAN-LOCAL6 rule 10 state related
-          - set firewall ipv6 name WAN-LOCAL6 rule 20 action accept
-          - set firewall ipv6 name WAN-LOCAL6 rule 20 protocol icmpv6
-          # Allow WireGuard Handshake over IPv6
-          - set firewall ipv6 name WAN-LOCAL6 rule 30 action accept
-          - set firewall ipv6 name WAN-LOCAL6 rule 30 destination port {{ wg_port }}
-          - set firewall ipv6 name WAN-LOCAL6 rule 30 protocol udp
-
-          # Attach IPv6 Local Policy
-          - set firewall ipv6 input filter rule 10 action jump
-          - set firewall ipv6 input filter rule 10 inbound-interface group WAN
-          - set firewall ipv6 input filter rule 10 jump-target WAN-LOCAL6
-
-          # --- Firewall Forwarding (VPN Access) ---
-          - set firewall ipv4 name VPN-FORWARD default-action drop
-          - set firewall ipv4 name VPN-FORWARD rule 10 action accept
-          - set firewall ipv4 name VPN-FORWARD rule 10 state established
-          - set firewall ipv4 name VPN-FORWARD rule 10 state related
-          - set firewall ipv4 name VPN-FORWARD rule 20 action accept
-          - set firewall ipv4 name VPN-FORWARD rule 20 description "Allow VPN clients to everywhere"
-          
-          # Attach Forwarding Policy
-          - set firewall ipv4 forward filter rule 30 action jump
-          - set firewall ipv4 forward filter rule 30 inbound-interface group VPN
-          - set firewall ipv4 forward filter rule 30 jump-target VPN-FORWARD
+          # ============================================================
+          # 6. CONTAINER & SERVICES
+          # ============================================================
+          # RA for IPv6 Clients (Using PD prefix)
+          - set service router-advert interface {{ lan_interface }} prefix ::/64 valid-lifetime 172800
+          - set service router-advert interface {{ lan_interface }} name-server {{ vyos_lan_ip }}
 
     - name: Configure WireGuard Peers
       vyos.vyos.vyos_config:
