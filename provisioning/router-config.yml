@@ -252,6 +252,16 @@
           - set service router-advert interface {{ lan_interface }} prefix ::/64 valid-lifetime 172800
           - set service router-advert interface {{ lan_interface }} name-server fe80::be24:11ff:fe1c:ecb6
 
+          # 7. Cloudflare Dynamic DNS for wireguard
+          - set service dns dynamic name cloudflare host-name vpn.enucatl.com
+          - set service dns dynamic name cloudflare address interface eth3
+          - set service dns dynamic name cloudflare protocol cloudflare
+          - set service dns dynamic name cloudflare username token
+          - set service dns dynamic name cloudflare password '{{ cloudflare_api_token }}'
+          - set service dns dynamic name cloudflare zone enucatl.com
+          - set service dns dynamic name cloudflare ip-version both
+
+
     - name: Configure WireGuard Peers
       vyos.vyos.vyos_config:
         # Save config after every peer add
