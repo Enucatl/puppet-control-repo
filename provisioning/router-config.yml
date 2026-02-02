@@ -38,6 +38,9 @@
     adguard_image: "docker.io/adguard/adguardhome:latest"
     local_adguard_config_path: "/tmp/AdGuardHome.yaml.tmp"
 
+    # qbittorrent
+    qbittorrent_pc: "10.0.0.128"
+
   tasks:
 
     - name: >
@@ -146,6 +149,11 @@
           - set firewall ipv4 name WAN-FORWARD rule 10 state related
           - set firewall ipv4 name WAN-FORWARD rule 20 action accept
           - set firewall ipv4 name WAN-FORWARD rule 20 protocol icmp
+          - set firewall ipv4 name WAN-FORWARD rule 30 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 30 description 'Allow qBittorrent'
+          - set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ qbittorrent_pc }}
+          - set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881
+          - set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
 
           # IPv4 VPN -> ANY
           - set firewall ipv4 name VPN-FORWARD default-action drop
@@ -229,6 +237,13 @@
           - set nat source rule 110 outbound-interface name {{ wan_interface }}
           - set nat source rule 110 source address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
           - set nat source rule 110 translation address masquerade
+
+          # Port Forwarding (DNAT)
+          - set nat destination rule 10 description 'qBittorrent'
+          - set nat destination rule 10 destination port 6881
+          - set nat destination rule 10 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 10 protocol tcp_udp
+          - set nat destination rule 10 translation address {{ qbittorrent_pc }}
 
           # ============================================================
           # 5. SNMPv3 (Strict Ordering)
