@@ -6,11 +6,27 @@ lookup_options:
     merge: deep
 
 classes:
+  - docker
   - profile::docker_host
 
-freeipa_users::user_groups:
-  user:
-    - docker
+docker::version: latest
+docker::docker_users:
+  - user
+  - user_l
+docker::ipv6: true
+docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:2000::/64"
+docker::log_level: info
+docker::log_driver: 'json-file'
+docker::log_opt:
+  - 'max-size=10m'
+  - 'max-file=3'
+docker::extra_parameters:
+  - "--experimental=false"
+  - "--ip6tables=true"
+  - "--default-address-pool base=172.17.0.0/12,size=20"
+  - "--default-address-pool base=%{lookup('ipv6-prefix')}:1000::/52,size=64"
+  - "--userland-proxy=false"
+  - "--userns-remap=default"
 
 nfs_config::server_exports:
   '/scratch':
