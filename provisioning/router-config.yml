@@ -41,6 +41,10 @@
     # qbittorrent
     qbittorrent_pc: "10.0.0.128"
 
+    # Privacy Node (Tor/I2Pd)
+    privacy_node_ip: "10.0.0.128"
+    privacy_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
+
   tasks:
 
     - name: >
@@ -154,6 +158,22 @@
           - set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ qbittorrent_pc }}
           - set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881
           - set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
+          # IPv4 Tor & I2Pd
+          - set firewall ipv4 name WAN-FORWARD rule 40 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 40 description 'Tor ORPort'
+          - set firewall ipv4 name WAN-FORWARD rule 40 destination address {{ privacy_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 40 destination port 9001
+          - set firewall ipv4 name WAN-FORWARD rule 40 protocol tcp
+          - set firewall ipv4 name WAN-FORWARD rule 41 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 41 description 'Tor DirPort'
+          - set firewall ipv4 name WAN-FORWARD rule 41 destination address {{ privacy_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 41 destination port 9030
+          - set firewall ipv4 name WAN-FORWARD rule 41 protocol tcp
+          - set firewall ipv4 name WAN-FORWARD rule 42 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 42 description 'Allow I2Pd Node'
+          - set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ privacy_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 42 destination port 10001
+          - set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
 
           # IPv4 VPN -> ANY
           - set firewall ipv4 name VPN-FORWARD default-action drop
@@ -184,6 +204,22 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address ::be24:11ff:fe4a:bfed-::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
+          # IPv6 Tor & I2Pd (Using your suffix mask for dynamic PD)
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 description 'Tor ORPort'
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination port 9001
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination address {{ privacy_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
+          - set firewall ipv6 name WAN-FORWARD6 rule 41 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 41 description 'Tor DirPort'
+          - set firewall ipv6 name WAN-FORWARD6 rule 41 destination port 9030
+          - set firewall ipv6 name WAN-FORWARD6 rule 41 destination address {{ privacy_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 41 protocol tcp
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node IPv6'
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 10001
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ privacy_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
 
           # --- IPv6 LOCAL (Protect Router & Allow DHCP/VPN) ---
           - set firewall ipv6 name WAN-LOCAL6 default-action drop
@@ -244,6 +280,25 @@
           - set nat destination rule 10 inbound-interface name {{ wan_interface }}
           - set nat destination rule 10 protocol tcp_udp
           - set nat destination rule 10 translation address {{ qbittorrent_pc }}
+          # DNAT for Tor
+          - set nat destination rule 20 description 'Tor ORPort'
+          - set nat destination rule 20 destination port 9001
+          - set nat destination rule 20 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 20 protocol tcp
+          - set nat destination rule 20 translation address {{ privacy_node_ip }}
+
+          - set nat destination rule 21 description 'Tor DirPort'
+          - set nat destination rule 21 destination port 9030
+          - set nat destination rule 21 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 21 protocol tcp
+          - set nat destination rule 21 translation address {{ privacy_node_ip }}
+
+          # DNAT for I2Pd
+          - set nat destination rule 22 description 'I2Pd Node'
+          - set nat destination rule 22 destination port 10001
+          - set nat destination rule 22 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 22 protocol tcp_udp
+          - set nat destination rule 22 translation address {{ privacy_node_ip }}
 
           # ============================================================
           # 5. SNMPv3 (Strict Ordering)
