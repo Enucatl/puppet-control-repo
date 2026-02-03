@@ -6,27 +6,11 @@ lookup_options:
     merge: deep
 
 classes:
-  - docker
   - profile::docker_host
 
-docker::version: latest
-docker::docker_users:
-  - user
-  - user_l
-docker::ipv6: true
-docker::ipv6_cidr: "%{lookup('ipv6-prefix')}:2000::/64"
-docker::log_level: info
-docker::log_driver: 'json-file'
-docker::log_opt:
-  - 'max-size=10m'
-  - 'max-file=3'
-docker::extra_parameters:
-  - "--experimental=false"
-  - "--ip6tables=true"
-  - "--default-address-pool base=172.17.0.0/12,size=20"
-  - "--default-address-pool base=%{lookup('ipv6-prefix')}:1000::/52,size=64"
-  - "--userland-proxy=false"
-  - "--userns-remap=default"
+freeipa_users::user_groups:
+  user:
+    - docker
 
 nfs_config::server_exports:
   '/scratch':
@@ -40,7 +24,23 @@ nfs_config::client_mounts:
   '/export/Documents':
     server: 'forbearance.home.arpa'
 
+packages::sources:
+  docker:
+    comment: 'Official Docker Repository'
+    location: 'https://download.docker.com/linux/ubuntu'
+    release: "%{facts.os.distro.codename}"
+    repos: 'stable'
+    key:
+      id: '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
+      source: 'https://download.docker.com/linux/ubuntu/gpg'
+      ensure: absent
+
 packages::list:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
   - ffmpeg
   - parallel
   - python3-docker

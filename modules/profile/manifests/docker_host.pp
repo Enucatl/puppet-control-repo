@@ -3,7 +3,6 @@ class profile::docker_host (
   String  $pictures_smb_password = lookup('pictures::smbpasswd'),
 ) {
 
-  require docker
   require profile::common
   require ::samba
   require posix_acl::requirements
@@ -45,6 +44,13 @@ class profile::docker_host (
   # 3. Docker & Infrastructure Fixes
   # ------------------------------------------------------------------
   
+  # Ensure Service is running (The 'docker' class usually handles this, 
+  # but site.pp had explicit declaration, so preserving it here)
+  service { 'docker':
+    ensure => running,
+    enable => true,
+  }
+
   # Allow Protonmail Bridge container to read the docker key
   # We subscribe to Vault_cert['docker'] which is created by the iterator above
   posix_acl { "${profile::common::vault_certs_default_location}/docker_key.pem":
