@@ -51,19 +51,9 @@ mod 'treydock/yum_cron',                '8.0.0'
 # mod 'apache',
 #  git:    'https://github.com/puppetlabs/puppetlabs-apache',
 #  commit: '1b6f89afdde0df7f9433a163d5c4b5328eac5779'
-mod 'tor',
-    git: 'https://gitlab.com/enucatl/tor.git',
-    branch: 'master'
 mod 'vault_secrets',
     git: 'https://github.com/enucatl/vault.git',
     branch: 'master'
-mod 'i2pd',
-    git: 'https://github.com/enucatl/i2pd.git',
-    branch: 'main'
 mod 'freeipa',
     git: 'https://github.com/enucatl/puppet-freeipa.git',
     branch: 'dev'
-mod 'puppet-libvirt',
-    git: 'https://github.com/enucatl/puppet-libvirt.git',
-    branch: 'master'
-
