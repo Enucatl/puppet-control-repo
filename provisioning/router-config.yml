@@ -9,7 +9,6 @@
     # --- INTERFACES ---
     wan_interface: "eth3"       # Mellanox Port 1 (New WAN)
     lan_interface: "eth1"       # Intel Port (Existing LAN)
-    # old_wan_interface: "eth0" # (Optional: just to remember what it was)
 
     # --- IP CONFIGURATION ---
     vyos_lan_ip: "10.0.0.1/24"
@@ -335,6 +334,14 @@
           - set nat destination rule 22 protocol tcp_udp
           - set nat destination rule 22 translation address {{ docker_node_ip }}
           ## Firewall
+          - set firewall ipv4 name WAN-FORWARD rule 39 action drop
+          - set firewall ipv4 name WAN-FORWARD rule 39 state new
+          - set firewall ipv4 name WAN-FORWARD rule 39 description 'DDOS prevention'
+          - set firewall ipv4 name WAN-FORWARD rule 39 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 39 destination port 9001,9030,10001
+          - set firewall ipv4 name WAN-FORWARD rule 39 recent count 50
+          - set firewall ipv4 name WAN-FORWARD rule 39 recent time minute
+          - set firewall ipv4 name WAN-FORWARD rule 39 protocol tcp_udp
           - set firewall ipv4 name WAN-FORWARD rule 40 action accept
           - set firewall ipv4 name WAN-FORWARD rule 40 description 'Tor ORPort'
           - set firewall ipv4 name WAN-FORWARD rule 40 destination address {{ docker_node_ip }}
@@ -345,6 +352,15 @@
           - set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ docker_node_ip }}
           - set firewall ipv4 name WAN-FORWARD rule 42 destination port 10001
           - set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 action drop
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 state new
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 description 'DDOS prevention'
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 destination address-mask ::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 destination port 9001,9030,10001
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 recent count 50
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 recent time minute
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 protocol tcp_udp
           - set firewall ipv6 name WAN-FORWARD6 rule 40 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 40 description 'Tor ORPort'
           - set firewall ipv6 name WAN-FORWARD6 rule 40 destination port 9001,9030
@@ -352,7 +368,7 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 40 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
           - set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node IPv6'
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node'
           - set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 10001
           - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ docker_node_ipv6_suffix }}
           - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address-mask ::ffff:ffff:ffff:ffff
@@ -363,9 +379,9 @@
         # Save config after every peer add
         save: true 
         lines:
-          - set interfaces wireguard {{ wg_interface }} peer '{{ item.pubkey }}' public-key '{{ item.pubkey }}'
+          - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} public-key {{ item.pubkey }}
           - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} allowed-ips {{ item.ip }}
-          - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} description '{{ item.name }}'
+          - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} description {{ item.name }}
           - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} persistent-keepalive 15
       # This loops over the array, running the commands for each peer
       loop: "{{ wg_peers }}"
