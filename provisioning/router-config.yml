@@ -291,7 +291,8 @@
           - set firewall ipv4 name WAN-FORWARD rule 50 protocol udp
           - set firewall ipv6 name WAN-FORWARD6 rule 50 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 50 destination port 9987
-          - set firewall ipv6 name WAN-FORWARD6 rule 50 destination address {{ ipv6_prefix }}:1005::3
+          - set firewall ipv6 name WAN-FORWARD6 rule 50 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name WAN-FORWARD6 rule 50 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 50 protocol udp
 
           # QBITTORRENT
@@ -309,7 +310,8 @@
           - set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
           - set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
 
           # TOR & I2PD
@@ -338,12 +340,14 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 40 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 40 description 'Tor ORPort'
           - set firewall ipv6 name WAN-FORWARD6 rule 40 destination port 9001,9030
-          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination address {{ ipv6_prefix }}:1004::2
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
           - set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node IPv6'
           - set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 10001
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ ipv6_prefix }}:1003::2
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
 
     - name: Configure WireGuard Peers
