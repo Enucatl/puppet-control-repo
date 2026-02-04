@@ -14,6 +14,7 @@
     # --- IP CONFIGURATION ---
     vyos_lan_ip: "10.0.0.1/24"
     lan_subnet: "10.0.0.0/24"
+    vyos_ipv6: "fe80::be24:11ff:fe1c:ecb6"
 
     # --- WIREGUARD ---
     wg_interface: "wg0"
@@ -29,7 +30,6 @@
     snmp_location: "VyOS Datacenter"
     snmp_engineid: "800000000102030405060710" 
     snmp_user: "vyos"
-    # checkmk_server_ip: "10.0.0.5" # Add this if you use the ACL in the script below
 
     # --- ADGUARD ---
     adguard_data_path: "/config/containers/adguard"
@@ -38,12 +38,8 @@
     adguard_image: "docker.io/adguard/adguardhome:latest"
     local_adguard_config_path: "/tmp/AdGuardHome.yaml.tmp"
 
-    # qbittorrent
-    qbittorrent_pc: "10.0.0.128"
-
-    # Privacy Node (Tor/I2Pd)
-    privacy_node_ip: "10.0.0.128"
-    privacy_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
+    docker_node_ip: "10.0.0.128"
+    docker_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
 
   tasks:
 
@@ -153,27 +149,6 @@
           - set firewall ipv4 name WAN-FORWARD rule 10 state related
           - set firewall ipv4 name WAN-FORWARD rule 20 action accept
           - set firewall ipv4 name WAN-FORWARD rule 20 protocol icmp
-          - set firewall ipv4 name WAN-FORWARD rule 30 action accept
-          - set firewall ipv4 name WAN-FORWARD rule 30 description 'Allow qBittorrent'
-          - set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ qbittorrent_pc }}
-          - set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881
-          - set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
-          # IPv4 Tor & I2Pd
-          - set firewall ipv4 name WAN-FORWARD rule 40 action accept
-          - set firewall ipv4 name WAN-FORWARD rule 40 description 'Tor ORPort'
-          - set firewall ipv4 name WAN-FORWARD rule 40 destination address {{ privacy_node_ip }}
-          - set firewall ipv4 name WAN-FORWARD rule 40 destination port 9001
-          - set firewall ipv4 name WAN-FORWARD rule 40 protocol tcp
-          - set firewall ipv4 name WAN-FORWARD rule 41 action accept
-          - set firewall ipv4 name WAN-FORWARD rule 41 description 'Tor DirPort'
-          - set firewall ipv4 name WAN-FORWARD rule 41 destination address {{ privacy_node_ip }}
-          - set firewall ipv4 name WAN-FORWARD rule 41 destination port 9030
-          - set firewall ipv4 name WAN-FORWARD rule 41 protocol tcp
-          - set firewall ipv4 name WAN-FORWARD rule 42 action accept
-          - set firewall ipv4 name WAN-FORWARD rule 42 description 'Allow I2Pd Node'
-          - set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ privacy_node_ip }}
-          - set firewall ipv4 name WAN-FORWARD rule 42 destination port 10001
-          - set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
 
           # IPv4 VPN -> ANY
           - set firewall ipv4 name VPN-FORWARD default-action drop
@@ -189,6 +164,7 @@
           - set firewall ipv6 name LAN-FORWARD6 rule 10 state established
           - set firewall ipv6 name LAN-FORWARD6 rule 10 state related
           - set firewall ipv6 name LAN-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name LAN-FORWARD6 rule 20 source address {{ ipv6_prefix }}::/48
           - set firewall ipv6 name LAN-FORWARD6 rule 20 outbound-interface group WAN
 
           # IPv6 WAN -> LAN
@@ -198,28 +174,6 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 10 state related
           - set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
-
-          # qBittorrent Rule (Using Mask for Dynamic Prefix)
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address ::be24:11ff:fe4a:bfed-::ffff:ffff:ffff:ffff
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
-          # IPv6 Tor & I2Pd (Using your suffix mask for dynamic PD)
-          - set firewall ipv6 name WAN-FORWARD6 rule 40 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 40 description 'Tor ORPort'
-          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination port 9001
-          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination address {{ privacy_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
-          - set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
-          - set firewall ipv6 name WAN-FORWARD6 rule 41 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 41 description 'Tor DirPort'
-          - set firewall ipv6 name WAN-FORWARD6 rule 41 destination port 9030
-          - set firewall ipv6 name WAN-FORWARD6 rule 41 destination address {{ privacy_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
-          - set firewall ipv6 name WAN-FORWARD6 rule 41 protocol tcp
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node IPv6'
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 10001
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ privacy_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
 
           # --- IPv6 LOCAL (Protect Router & Allow DHCP/VPN) ---
           - set firewall ipv6 name WAN-LOCAL6 default-action drop
@@ -274,31 +228,10 @@
           - set nat source rule 110 source address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
           - set nat source rule 110 translation address masquerade
 
-          # Port Forwarding (DNAT)
-          - set nat destination rule 10 description 'qBittorrent'
-          - set nat destination rule 10 destination port 6881
-          - set nat destination rule 10 inbound-interface name {{ wan_interface }}
-          - set nat destination rule 10 protocol tcp_udp
-          - set nat destination rule 10 translation address {{ qbittorrent_pc }}
-          # DNAT for Tor
-          - set nat destination rule 20 description 'Tor ORPort'
-          - set nat destination rule 20 destination port 9001
-          - set nat destination rule 20 inbound-interface name {{ wan_interface }}
-          - set nat destination rule 20 protocol tcp
-          - set nat destination rule 20 translation address {{ privacy_node_ip }}
-
-          - set nat destination rule 21 description 'Tor DirPort'
-          - set nat destination rule 21 destination port 9030
-          - set nat destination rule 21 inbound-interface name {{ wan_interface }}
-          - set nat destination rule 21 protocol tcp
-          - set nat destination rule 21 translation address {{ privacy_node_ip }}
-
-          # DNAT for I2Pd
-          - set nat destination rule 22 description 'I2Pd Node'
-          - set nat destination rule 22 destination port 10001
-          - set nat destination rule 22 inbound-interface name {{ wan_interface }}
-          - set nat destination rule 22 protocol tcp_udp
-          - set nat destination rule 22 translation address {{ privacy_node_ip }}
+          # --- ipv6 Routing for Docker Subnets ---
+          # To find the containers, talk to the Docker Server
+          - set protocols static route6 {{ ipv6_prefix }}:1000::/52 next-hop 'fe80{{ docker_node_ipv6_suffix }}' interface {{ lan_interface }}
+          - set protocols static route6 {{ ipv6_prefix }}:2000::/64 next-hop 'fe80{{ docker_node_ipv6_suffix }}' interface {{ lan_interface }}
 
           # ============================================================
           # 5. SNMPv3 (Strict Ordering)
@@ -320,7 +253,7 @@
           # ============================================================
           # RA for IPv6 Clients (Using PD prefix)
           - set service router-advert interface {{ lan_interface }} prefix ::/64 valid-lifetime 172800
-          - set service router-advert interface {{ lan_interface }} name-server fe80::be24:11ff:fe1c:ecb6
+          - set service router-advert interface {{ lan_interface }} name-server '{{ vyos_ipv6 }}'
 
           # 7. Cloudflare Dynamic DNS for wireguard
           - set service dns dynamic name cloudflare host-name vpn.enucatl.com
@@ -331,6 +264,87 @@
           - set service dns dynamic name cloudflare zone enucatl.com
           - set service dns dynamic name cloudflare ip-version both
 
+          # ============================================================
+          # 7. Application specific rules
+          # ============================================================
+
+          # TEAMSPEAK
+          ## Dynamic DNS
+          - set service dns dynamic name cloudflare host-name teamspeak.enucatl.com
+          - set service dns dynamic name cloudflare address interface eth3
+          - set service dns dynamic name cloudflare protocol cloudflare
+          - set service dns dynamic name cloudflare username token
+          - set service dns dynamic name cloudflare password '{{ cloudflare_api_token }}'
+          - set service dns dynamic name cloudflare zone enucatl.com
+          - set service dns dynamic name cloudflare ip-version ipv4
+          ## NAT
+          - set nat destination rule 30 description 'teamspeak'
+          - set nat destination rule 30 destination port 9987
+          - set nat destination rule 30 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 30 protocol udp
+          - set nat destination rule 30 translation address {{ docker_node_ip }}
+          ## Firewall
+          - set firewall ipv4 name WAN-FORWARD rule 50 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 50 description 'Allow teamspeak'
+          - set firewall ipv4 name WAN-FORWARD rule 50 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 50 destination port 9987
+          - set firewall ipv4 name WAN-FORWARD rule 50 protocol udp
+          - set firewall ipv6 name WAN-FORWARD6 rule 50 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 50 destination port 9987
+          - set firewall ipv6 name WAN-FORWARD6 rule 50 destination address {{ ipv6_prefix }}:1005::3
+          - set firewall ipv6 name WAN-FORWARD6 rule 50 protocol udp
+
+          # QBITTORRENT
+          ## NAT
+          - set nat destination rule 10 description 'qBittorrent'
+          - set nat destination rule 10 destination port 6881
+          - set nat destination rule 10 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 10 protocol tcp_udp
+          - set nat destination rule 10 translation address {{ docker_node_ip }}
+          # Firewall
+          - set firewall ipv4 name WAN-FORWARD rule 30 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 30 description 'Allow qBittorrent'
+          - set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881
+          - set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}-::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
+
+          # TOR & I2PD
+          ## NAT
+          - set nat destination rule 20 description 'Tor Ports'
+          - set nat destination rule 20 destination port 9001,9030
+          - set nat destination rule 20 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 20 protocol tcp
+          - set nat destination rule 20 translation address {{ docker_node_ip }}
+          - set nat destination rule 22 description 'I2Pd Node'
+          - set nat destination rule 22 destination port 10001
+          - set nat destination rule 22 inbound-interface name {{ wan_interface }}
+          - set nat destination rule 22 protocol tcp_udp
+          - set nat destination rule 22 translation address {{ docker_node_ip }}
+          ## Firewall
+          - set firewall ipv4 name WAN-FORWARD rule 40 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 40 description 'Tor ORPort'
+          - set firewall ipv4 name WAN-FORWARD rule 40 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 40 destination port 9001,9030
+          - set firewall ipv4 name WAN-FORWARD rule 40 protocol tcp
+          - set firewall ipv4 name WAN-FORWARD rule 42 action accept
+          - set firewall ipv4 name WAN-FORWARD rule 42 description 'Allow I2Pd Node'
+          - set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 42 destination port 10001
+          - set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 description 'Tor ORPort'
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination port 9001,9030
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 destination address {{ ipv6_prefix }}:1004::2
+          - set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node IPv6'
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 10001
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ ipv6_prefix }}:1003::2
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
 
     - name: Configure WireGuard Peers
       vyos.vyos.vyos_config:
