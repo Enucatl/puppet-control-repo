@@ -9,6 +9,7 @@
     # --- INTERFACES ---
     wan_interface: "eth3"       # Mellanox Port 1 (New WAN)
     lan_interface: "eth1"       # Intel Port (Existing LAN)
+    wan_mac: "9c:6b:00:c3:7a:d4"
 
     # --- IP CONFIGURATION ---
     vyos_lan_ip: "10.0.0.1/24"
@@ -76,12 +77,13 @@
           
           # --- WAN (Mellanox) ---
           - set interfaces ethernet {{ wan_interface }} description 'WAN - Init7 25G'
-          - set interfaces ethernet {{ wan_interface }} dhcpv6-options duid '00:03:00:01:9c:6b:00:c3:7a:d4'
+          - set interfaces ethernet {{ wan_interface }} hw-id '{{ wan_mac }}'
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options duid '00:03:00:01:{{ wan_mac }}'
           - set interfaces ethernet {{ wan_interface }} address dhcp
           - set interfaces ethernet {{ wan_interface }} address dhcpv6
           - set interfaces ethernet {{ wan_interface }} ipv6 address autoconf
           
-          # Hardware Offloads (Critical for speed)
+          # Hardware Offloads
           - set interfaces ethernet {{ wan_interface }} offload sg
           - set interfaces ethernet {{ wan_interface }} offload tso
           - set interfaces ethernet {{ wan_interface }} offload gso
@@ -91,7 +93,7 @@
           # IPv6 WAN (DHCPv6-PD)
           # Delegate the first /64 to the LAN interface automatically
           - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 length 48
-          - set interfaces ethernet {{ wan_interface }} dhcpv6-options rapid-commit
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options no-release
           - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }} sla-id 0
           - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }} address 1
           
@@ -132,6 +134,16 @@
           - set firewall ipv6 forward filter rule 1 state established
           - set firewall ipv6 forward filter rule 1 state related
 
+          # --- Drop Invalid State Packets ---
+          - set firewall ipv4 forward filter rule 2 action drop
+          - set firewall ipv4 forward filter rule 2 state invalid
+          - set firewall ipv6 forward filter rule 2 action drop
+          - set firewall ipv6 forward filter rule 2 state invalid
+
+          # --- Default Drop for Unmatched Forward Traffic ---
+          - set firewall ipv4 forward filter default-action drop
+          - set firewall ipv6 forward filter default-action drop
+
           # --- Standard Forwarding Logic ---
           # IPv4 LAN -> WAN
           - set firewall ipv4 name LAN-FORWARD default-action drop
@@ -157,13 +169,20 @@
           - set firewall ipv4 name VPN-FORWARD rule 20 action accept
           - set firewall ipv4 name VPN-FORWARD rule 20 description "Allow VPN clients to everywhere"
 
+          # IPv6 VPN -> ANY
+          - set firewall ipv6 name VPN-FORWARD6 default-action drop
+          - set firewall ipv6 name VPN-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name VPN-FORWARD6 rule 10 state established
+          - set firewall ipv6 name VPN-FORWARD6 rule 10 state related
+          - set firewall ipv6 name VPN-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name VPN-FORWARD6 rule 20 description "Allow VPN clients to everywhere"
+
           # IPv6 LAN -> WAN
           - set firewall ipv6 name LAN-FORWARD6 default-action drop
           - set firewall ipv6 name LAN-FORWARD6 rule 10 action accept
           - set firewall ipv6 name LAN-FORWARD6 rule 10 state established
           - set firewall ipv6 name LAN-FORWARD6 rule 10 state related
           - set firewall ipv6 name LAN-FORWARD6 rule 20 action accept
-          - set firewall ipv6 name LAN-FORWARD6 rule 20 source address {{ ipv6_prefix }}::/48
           - set firewall ipv6 name LAN-FORWARD6 rule 20 outbound-interface group WAN
 
           # IPv6 WAN -> LAN
@@ -174,8 +193,23 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
 
+          # --- IPv4 LOCAL (Protect Router from WAN) ---
+          - set firewall ipv4 name WAN-LOCAL default-action drop
+          - set firewall ipv4 name WAN-LOCAL rule 5 action drop
+          - set firewall ipv4 name WAN-LOCAL rule 5 state invalid
+          - set firewall ipv4 name WAN-LOCAL rule 10 action accept
+          - set firewall ipv4 name WAN-LOCAL rule 10 state established
+          - set firewall ipv4 name WAN-LOCAL rule 10 state related
+          - set firewall ipv4 name WAN-LOCAL rule 20 action accept
+          - set firewall ipv4 name WAN-LOCAL rule 20 protocol icmp
+          - set firewall ipv4 name WAN-LOCAL rule 30 action accept
+          - set firewall ipv4 name WAN-LOCAL rule 30 destination port {{ wg_port }}
+          - set firewall ipv4 name WAN-LOCAL rule 30 protocol udp
+
           # --- IPv6 LOCAL (Protect Router & Allow DHCP/VPN) ---
           - set firewall ipv6 name WAN-LOCAL6 default-action drop
+          - set firewall ipv6 name WAN-LOCAL6 rule 5 action drop
+          - set firewall ipv6 name WAN-LOCAL6 rule 5 state invalid
           - set firewall ipv6 name WAN-LOCAL6 rule 10 action accept
           - set firewall ipv6 name WAN-LOCAL6 rule 10 state established
           - set firewall ipv6 name WAN-LOCAL6 rule 10 state related
@@ -209,7 +243,13 @@
           - set firewall ipv6 forward filter rule 20 action jump
           - set firewall ipv6 forward filter rule 20 inbound-interface group WAN
           - set firewall ipv6 forward filter rule 20 jump-target WAN-FORWARD6
+          - set firewall ipv6 forward filter rule 30 action jump
+          - set firewall ipv6 forward filter rule 30 inbound-interface group VPN
+          - set firewall ipv6 forward filter rule 30 jump-target VPN-FORWARD6
 
+          - set firewall ipv4 input filter rule 10 action jump
+          - set firewall ipv4 input filter rule 10 inbound-interface group WAN
+          - set firewall ipv4 input filter rule 10 jump-target WAN-LOCAL
           - set firewall ipv6 input filter rule 10 action jump
           - set firewall ipv6 input filter rule 10 inbound-interface group WAN
           - set firewall ipv6 input filter rule 10 jump-target WAN-LOCAL6
@@ -268,14 +308,6 @@
           # ============================================================
 
           # TEAMSPEAK
-          ## Dynamic DNS
-          - set service dns dynamic name cloudflare host-name teamspeak.enucatl.com
-          - set service dns dynamic name cloudflare address interface eth3
-          - set service dns dynamic name cloudflare protocol cloudflare
-          - set service dns dynamic name cloudflare username token
-          - set service dns dynamic name cloudflare password '{{ cloudflare_api_token }}'
-          - set service dns dynamic name cloudflare zone enucatl.com
-          - set service dns dynamic name cloudflare ip-version ipv4
           ## NAT
           - set nat destination rule 30 description 'teamspeak'
           - set nat destination rule 30 destination port 9987
@@ -283,11 +315,28 @@
           - set nat destination rule 30 protocol udp
           - set nat destination rule 30 translation address {{ docker_node_ip }}
           ## Firewall
+          - set firewall ipv4 name WAN-FORWARD rule 49 action drop
+          - set firewall ipv4 name WAN-FORWARD rule 49 state new
+          - set firewall ipv4 name WAN-FORWARD rule 49 description 'DDoS prevention TeamSpeak'
+          - set firewall ipv4 name WAN-FORWARD rule 49 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 49 destination port 9987
+          - set firewall ipv4 name WAN-FORWARD rule 49 recent count 100
+          - set firewall ipv4 name WAN-FORWARD rule 49 recent time minute
+          - set firewall ipv4 name WAN-FORWARD rule 49 protocol udp
           - set firewall ipv4 name WAN-FORWARD rule 50 action accept
           - set firewall ipv4 name WAN-FORWARD rule 50 description 'Allow teamspeak'
           - set firewall ipv4 name WAN-FORWARD rule 50 destination address {{ docker_node_ip }}
           - set firewall ipv4 name WAN-FORWARD rule 50 destination port 9987
           - set firewall ipv4 name WAN-FORWARD rule 50 protocol udp
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 action drop
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 state new
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 description 'DDoS prevention TeamSpeak'
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 destination address-mask ::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 destination port 9987
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 recent count 100
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 recent time minute
+          - set firewall ipv6 name WAN-FORWARD6 rule 49 protocol udp
           - set firewall ipv6 name WAN-FORWARD6 rule 50 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 50 destination port 9987
           - set firewall ipv6 name WAN-FORWARD6 rule 50 destination address {{ docker_node_ipv6_suffix }}
@@ -302,11 +351,28 @@
           - set nat destination rule 10 protocol tcp_udp
           - set nat destination rule 10 translation address {{ docker_node_ip }}
           # Firewall
+          - set firewall ipv4 name WAN-FORWARD rule 29 action drop
+          - set firewall ipv4 name WAN-FORWARD rule 29 state new
+          - set firewall ipv4 name WAN-FORWARD rule 29 description 'DDoS prevention qBittorrent'
+          - set firewall ipv4 name WAN-FORWARD rule 29 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name WAN-FORWARD rule 29 destination port 6881
+          - set firewall ipv4 name WAN-FORWARD rule 29 recent count 100
+          - set firewall ipv4 name WAN-FORWARD rule 29 recent time minute
+          - set firewall ipv4 name WAN-FORWARD rule 29 protocol tcp_udp
           - set firewall ipv4 name WAN-FORWARD rule 30 action accept
           - set firewall ipv4 name WAN-FORWARD rule 30 description 'Allow qBittorrent'
           - set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ docker_node_ip }}
           - set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881
           - set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 action drop
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 state new
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 description 'DDoS prevention qBittorrent'
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 destination address-mask ::ffff:ffff:ffff:ffff
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 destination port 6881
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 recent count 100
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 recent time minute
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 protocol tcp_udp
           - set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
@@ -314,14 +380,6 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
 
           # TOR & I2PD
-          ## Dynamic DNS
-          - set service dns dynamic name cloudflare host-name tor.enucatl.com
-          - set service dns dynamic name cloudflare address interface eth3
-          - set service dns dynamic name cloudflare protocol cloudflare
-          - set service dns dynamic name cloudflare username token
-          - set service dns dynamic name cloudflare password '{{ cloudflare_api_token }}'
-          - set service dns dynamic name cloudflare zone enucatl.com
-          - set service dns dynamic name cloudflare ip-version ipv4
           ## NAT
           - set nat destination rule 20 description 'Tor Ports'
           - set nat destination rule 20 destination port 9001,9030
