@@ -50,7 +50,7 @@ freeipa::install::client::options:
 
 fail2ban::config_file_template: 'fail2ban_configuration/jail.conf.epp'
 fail2ban::jails:
-  ssh: {}
+  - ssh
 fail2ban::ignoreip:
   - '127.0.0.1/8'
   - '10.0.0.0/24'
