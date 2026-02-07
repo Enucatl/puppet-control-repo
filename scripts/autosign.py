@@ -1,6 +1,7 @@
 #!/opt/puppetlabs/puppet/venv/bin/python
 
 import os
+import re
 
 import click
 import hvac
@@ -15,7 +16,8 @@ import cryptography.x509
 )
 @click.option("--policy", default="puppet")
 @click.option("--verify", default="/etc/ssl/certs/ca-certificates.crt")
-def main(certname, input_file, vault_addr, policy, verify):
+@click.option("--domain", default="home.arpa")
+def main(certname, input_file, vault_addr, policy, verify, domain):
     """
     Check the challengePassword OID in a Certificate Signing Request (CSR)
     to verify if it's a valid token for HashiCorp Vault login.
@@ -52,7 +54,14 @@ def main(certname, input_file, vault_addr, policy, verify):
     ```
     """
 
-    _ = certname
+    domain_pattern = re.compile(
+        rf'^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.(dev\.)?{re.escape(domain)}$'
+    )
+    if not domain_pattern.match(certname):
+        raise ValueError(
+            f"certname '{certname}' does not match expected pattern <host>.[dev.]{domain}"
+        )
+
     csr_data = input_file.read()
     csr = cryptography.x509.load_pem_x509_csr(csr_data)
 
