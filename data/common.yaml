@@ -29,13 +29,13 @@ classes:
   - systemd
   - ssh
   - nisdomainname
+  - fail2ban
   - freeipa
   - freeipa::install::client
   - freeipa_users
   - postfix_configuration
   - profile::alloy
   - profile::common
-  - fail2ban
   - puppet_configuration
 
 
