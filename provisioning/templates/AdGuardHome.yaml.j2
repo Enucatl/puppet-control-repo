@@ -41,14 +41,14 @@ dns:
   trusted_proxies:
     - 127.0.0.0/8
     - ::1/128
-  cache_enabled: false
+  cache_enabled: true
   cache_size: 4194304
   cache_ttl_min: 0
   cache_ttl_max: 0
   cache_optimistic: false
   bogus_nxdomain: []
   aaaa_disabled: false
-  enable_dnssec: false
+  enable_dnssec: true
   edns_client_subnet:
     custom_ip: ""
     enabled: false
@@ -173,9 +173,6 @@ filtering:
       answer: 10.0.0.128
       enabled: true
     - domain: 'pve-desktop.home.arpa'
-      answer: 10.0.0.11
-      enabled: true
-    - domain: 'dropbear.pve-desktop.home.arpa'
       answer: 10.0.0.11
       enabled: true
   safe_fs_patterns:
