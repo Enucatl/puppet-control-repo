@@ -35,6 +35,7 @@ classes:
   - postfix_configuration
   - profile::alloy
   - profile::common
+  - fail2ban
   - puppet_configuration
 
 
@@ -47,6 +48,20 @@ freeipa::install::client::options:
   principal: admin
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
+fail2ban::config_file_template: 'fail2ban_configuration/jail.conf.epp'
+fail2ban::jails:
+  ssh: {}
+fail2ban::ignoreip:
+  - '127.0.0.1/8'
+  - '10.0.0.0/24'
+fail2ban::bantime: '1h'
+fail2ban::maxretry: 5
+fail2ban::default_backend: systemd
+fail2ban::destemail: 'root@localhost'
+fail2ban::sender: 'fail2ban@localhost'
+fail2ban::iptables_chain: INPUT
+fail2ban::banaction: iptables-multiport
+fail2ban::action: action_
 fail2ban::sendmail_actions:
   actionstart: ""
   actionstop: ""
@@ -88,6 +103,7 @@ ssh::server_options:
   ListenAddress:
     - '0.0.0.0'
     - '[::]'
+  PasswordAuthentication: no
   PermitEmptyPasswords: no
   PermitRootLogin: no
   MaxAuthTries: 3
