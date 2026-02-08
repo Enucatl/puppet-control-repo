@@ -24,6 +24,7 @@ packages::list:
   - nemo
   - neovim
   - neovim-qt
+  - nmap
   - nodejs
   - npm
   - opus-tools
