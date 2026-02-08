@@ -56,6 +56,7 @@ packages::sources:
     release: 'stable'
     repos: 'main'
     key:
+      name: 'githubcli-archive-keyring.gpg'
       source: 'https://cli.github.com/packages/githubcli-archive-keyring.gpg'
 
 packages::ppas:
