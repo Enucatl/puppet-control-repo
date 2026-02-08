@@ -6,8 +6,9 @@ packages::list:
   - audacity
   - ansible-core
   - build-essential
-  - cargo
+  - calendar
   - calibre
+  - cargo
   - containerd.io
   - docker-buildx-plugin
   - docker-ce
