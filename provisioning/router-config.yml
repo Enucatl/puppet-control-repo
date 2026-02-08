@@ -346,7 +346,7 @@
           # QBITTORRENT
           ## NAT
           - set nat destination rule 10 description 'qBittorrent'
-          - set nat destination rule 10 destination port 6881
+          - set nat destination rule 10 destination port 6881,9000
           - set nat destination rule 10 inbound-interface name {{ wan_interface }}
           - set nat destination rule 10 protocol tcp_udp
           - set nat destination rule 10 translation address {{ docker_node_ip }}
@@ -355,26 +355,26 @@
           - set firewall ipv4 name WAN-FORWARD rule 29 state new
           - set firewall ipv4 name WAN-FORWARD rule 29 description 'DDoS prevention qBittorrent'
           - set firewall ipv4 name WAN-FORWARD rule 29 destination address {{ docker_node_ip }}
-          - set firewall ipv4 name WAN-FORWARD rule 29 destination port 6881
+          - set firewall ipv4 name WAN-FORWARD rule 29 destination port 6881,9000
           - set firewall ipv4 name WAN-FORWARD rule 29 recent count 100
           - set firewall ipv4 name WAN-FORWARD rule 29 recent time minute
           - set firewall ipv4 name WAN-FORWARD rule 29 protocol tcp_udp
           - set firewall ipv4 name WAN-FORWARD rule 30 action accept
           - set firewall ipv4 name WAN-FORWARD rule 30 description 'Allow qBittorrent'
           - set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ docker_node_ip }}
-          - set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881
+          - set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881,9000
           - set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
           - set firewall ipv6 name WAN-FORWARD6 rule 29 action drop
           - set firewall ipv6 name WAN-FORWARD6 rule 29 state new
           - set firewall ipv6 name WAN-FORWARD6 rule 29 description 'DDoS prevention qBittorrent'
           - set firewall ipv6 name WAN-FORWARD6 rule 29 destination address {{ docker_node_ipv6_suffix }}
           - set firewall ipv6 name WAN-FORWARD6 rule 29 destination address-mask ::ffff:ffff:ffff:ffff
-          - set firewall ipv6 name WAN-FORWARD6 rule 29 destination port 6881
+          - set firewall ipv6 name WAN-FORWARD6 rule 29 destination port 6881,9000
           - set firewall ipv6 name WAN-FORWARD6 rule 29 recent count 100
           - set firewall ipv6 name WAN-FORWARD6 rule 29 recent time minute
           - set firewall ipv6 name WAN-FORWARD6 rule 29 protocol tcp_udp
           - set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881
+          - set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881,9000
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
           - set firewall ipv6 name WAN-FORWARD6 rule 30 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
