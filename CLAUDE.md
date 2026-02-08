@@ -14,12 +14,7 @@ Pushing to the `production` branch on the Puppet server triggers the `post-recei
 # Manual deployment (on the Puppet server)
 sudo -u puppet r10k deploy environment --modules -v info
 sudo -u puppet /opt/puppetlabs/puppet/bin/puppet generate types --environment production
-
-# Regenerate Puppetfile from manual dependencies
-generate-puppetfile -p Puppetfile-without-deps
 ```
-
-Only `Puppetfile-without-deps` is manually edited. The full `Puppetfile` is generated output.
 
 ## Puppet Validation
 
