@@ -75,6 +75,7 @@ systemd::unit_files:
       Type=oneshot
       WorkingDirectory=/opt/docker/crabberbot
       ExecStartPre=/bin/sleep 5
+      ExecStartPre=/usr/bin/git config --global --add safe.directory /opt/docker/crabberbot
       ExecStart=/bin/bash -c 'CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
       ExecStart=/usr/bin/docker compose -f docker-compose.yml up -d
       StandardOutput=journal
