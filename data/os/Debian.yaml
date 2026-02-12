@@ -48,6 +48,8 @@ tidy::files:
   downloads:
     path: /home/user/Downloads
 
+unattended_upgrades::origins:
+  - "origin=*"
 unattended_upgrades::age:
   max: 14
 unattended_upgrades::auto:
