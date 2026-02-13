@@ -89,4 +89,3 @@ The `provisioning/` directory uses Ansible to handle tasks outside of Puppet's s
 ### 4. Automation
 *   **Autosigning:** The `scripts/autosign.py` script allows for secure, automated certificate signing for new nodes.
 *   **Git Hooks:** Pushing to the `production` branch on the server triggers the `post-receive` hook, which runs `r10k` to deploy the code live.
-

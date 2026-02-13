@@ -14,7 +14,7 @@ hierarchy:
       timeout: 20
       version: "v2"
       auth_path: "cert"
-      ca_trust: "/usr/local/share/ca-certificates/ipa-ca/CN=Docker_Home_Arpa_Root_CA_634702368810934143245700742467692493878270055232.pem"
+      ca_trust: "/usr/local/share/ca-certificates/ipa-ca/CN=Docker Home Arpa Root CA 634702368810934143245700742467692493878270055232.crt"
 
   - name: "Single node hostname only"
     path: "nodes/%{trusted.hostname}.yaml"
