@@ -41,6 +41,23 @@
     docker_node_ip: "10.0.0.128"
     docker_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
 
+    # --- SECRETS (from HashiCorp Vault kv/puppet) ---
+    _vault_kv_puppet: "{{ lookup('community.hashi_vault.vault_kv2_get', 'puppet', engine_mount_point='kv').secret }}"
+    ipv6_prefix: "{{ _vault_kv_puppet['ipv6-prefix'] }}"
+    snmp_v3_password: "{{ _vault_kv_puppet['snmp_v3_password'] }}"
+    wg_server_private_key: "{{ _vault_kv_puppet['wg_server_private_key'] }}"
+    cloudflare_api_token: "{{ _vault_kv_puppet['cloudflare_api_token'] }}"
+
+  pre_tasks:
+    - name: Verify secrets were retrieved from Vault
+      ansible.builtin.assert:
+        that:
+          - ipv6_prefix | length > 0
+          - snmp_v3_password | length > 0
+          - wg_server_private_key | length > 0
+          - cloudflare_api_token | length > 0
+        fail_msg: "Failed to retrieve secrets from HashiCorp Vault (kv/puppet)"
+
   tasks:
 
     - name: >
@@ -68,11 +85,17 @@
           # Wipe the OLD WAN interface (if it was eth0) so it doesn't conflict
           # - delete interfaces ethernet eth0 
 
-          # We do NOT delete eth1 (LAN) to keep SSH alive. 
+          # We do NOT delete eth1 (LAN) to keep SSH alive.
           # We just overwrite settings below.
 
           # ============================================================
-          # 2. INTERFACES & OFFLOADS (25Gbps Tuning)
+          # 2. SYSTEM LOGIN & SSH KEYS
+          # ============================================================
+          - set system login user vyos authentication public-keys user@ansible type ssh-ed25519
+          - set system login user vyos authentication public-keys user@ansible key AAAAC3NzaC1lZDI1NTE5AAAAIEot3u2cV0DaYXoTiFLyCQkEGixSVZhdzddnhbRtaPu/
+
+          # ============================================================
+          # 3. INTERFACES & OFFLOADS (25Gbps Tuning)
           # ============================================================
           
           # --- WAN (Mellanox) ---

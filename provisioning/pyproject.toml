@@ -6,6 +6,7 @@ requires-python = ">=3.10"
 dependencies = [
     "ansible",
     "ansible-pylibssh",
+    "hvac",         # Required for community.hashi_vault lookup plugin
     "jmespath",     # Required for the json_query filter
     "ncclient",     # Required for NETCONF (used by many network modules)
     "netaddr",      # Required for ipaddr filter
