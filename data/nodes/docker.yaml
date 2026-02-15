@@ -193,7 +193,3 @@ samba::shares:
     create_mask: '0660'
     directory_mask: '0770'
     valid_users: ['pictures']
-
-tidy::files:
-  downloads:
-    path: /home/user/Downloads
