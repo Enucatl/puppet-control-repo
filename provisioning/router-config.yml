@@ -40,6 +40,7 @@
 
     docker_node_ip: "10.0.0.128"
     docker_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
+    desktop_node_ipv6_suffix: "::be24:11ff:fef7:659b"
 
     # --- SECRETS (from HashiCorp Vault kv/puppet) ---
     _vault_kv_puppet: "{{ lookup('community.hashi_vault.vault_kv2_get', 'puppet', engine_mount_point='kv').secret }}"
@@ -295,6 +296,8 @@
           - set protocols static route6 {{ ipv6_prefix }}:1000::/52 next-hop 'fe80{{ docker_node_ipv6_suffix }}' interface {{ lan_interface }}
           - set protocols static route6 {{ ipv6_prefix }}:2000::/64 next-hop 'fe80{{ docker_node_ipv6_suffix }}' interface {{ lan_interface }}
 
+          - set protocols static route6 {{ ipv6_prefix }}:3000::/52 next-hop 'fe80{{ desktop_node_ipv6_suffix }}' interface {{ lan_interface }}
+          - set protocols static route6 {{ ipv6_prefix }}:4000::/64 next-hop 'fe80{{ desktop_node_ipv6_suffix }}' interface {{ lan_interface }}
           # ============================================================
           # 5. SNMPv3 (Strict Ordering)
           # ============================================================

@@ -8,3 +8,21 @@ nfs_config::client_mounts:
     server: 'docker.home.arpa'
   '/export/docker':
     server: 'docker.home.arpa'
+
+profile::common::sysctl_settings:
+  net.ipv6.conf.all.accept_redirects:
+    value: 0
+  net.ipv6.conf.default.accept_redirects:
+    value: 0
+  net.ipv6.conf.all.forwarding:
+    value: 1
+  net.ipv6.conf.default.forwarding:
+    value: 1
+  net.ipv6.conf.all.accept_ra:
+    value: 2
+  net.ipv6.conf.default.accept_ra:
+    value: 2
+  net.ipv6.conf.all.proxy_ndp:
+    value: 1
+  net.ipv6.conf.default.proxy_ndp:
+    value: 1
