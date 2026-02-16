@@ -15,4 +15,5 @@ if HOME="$(eval echo ~"$PAM_USER")" VAULT_TOKEN="$(cat "$(eval echo ~"$PAM_USER"
 fi
 
 # pam_exec exposes PAM_USER; password is on stdin
-HOME="$(eval echo ~"$PAM_USER")" vault login -method=ldap -no-print username="$PAM_USER" password=- 2>/dev/null || true
+read -r PAM_PASSWORD
+HOME="$(eval echo ~"$PAM_USER")" vault login -method=ldap -no-print username="$PAM_USER" password="$PAM_PASSWORD" 2>/dev/null || true
