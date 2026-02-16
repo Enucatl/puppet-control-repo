@@ -1,6 +1,7 @@
 ---
 classes:
   - freeipa_firefox
+  - profile::vault_login
 
 packages::list:
   - audacity
