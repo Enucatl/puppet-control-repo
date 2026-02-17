@@ -36,6 +36,7 @@ packages::list:
   - ripgrep
   - shellcheck
   - silversearcher-ag
+  - units
   - virt-viewer
   - vlc
   - xclip
