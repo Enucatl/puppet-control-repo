@@ -8,6 +8,7 @@
   vars:
     # --- INTERFACES ---
     wan_interface: "eth3"       # Mellanox ConnectX-6 Dx port 1 (WAN, hostpci1 / 01:00.1)
+    wan_hw_id: "e8:eb:d3:08:d3:79"   # Mellanox port 1 hardware MAC (pins udev name)
     lan_interface: "eth1"       # virtio NIC via vmbr0 (LAN)
 
     # --- IP CONFIGURATION ---
@@ -100,6 +101,7 @@
           
           # --- WAN (Mellanox) ---
           - set interfaces ethernet {{ wan_interface }} description 'WAN - Init7 25G'
+          - set interfaces ethernet {{ wan_interface }} hw-id '{{ wan_hw_id }}'
           - set interfaces ethernet {{ wan_interface }} address dhcp
           - set interfaces ethernet {{ wan_interface }} address dhcpv6
           - set interfaces ethernet {{ wan_interface }} ipv6 address autoconf
