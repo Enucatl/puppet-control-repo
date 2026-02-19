@@ -413,7 +413,7 @@
           - set nat destination rule 20 protocol tcp
           - set nat destination rule 20 translation address {{ docker_node_ip }}
           - set nat destination rule 22 description 'I2Pd Node'
-          - set nat destination rule 22 destination port 10001
+          - set nat destination rule 22 destination port 11001
           - set nat destination rule 22 inbound-interface name {{ wan_interface }}
           - set nat destination rule 22 protocol tcp_udp
           - set nat destination rule 22 translation address {{ docker_node_ip }}
@@ -422,7 +422,7 @@
           - set firewall ipv4 name WAN-FORWARD rule 39 state new
           - set firewall ipv4 name WAN-FORWARD rule 39 description 'DDOS prevention'
           - set firewall ipv4 name WAN-FORWARD rule 39 destination address {{ docker_node_ip }}
-          - set firewall ipv4 name WAN-FORWARD rule 39 destination port 9001,9030,10001
+          - set firewall ipv4 name WAN-FORWARD rule 39 destination port 9001,9030,11001
           - set firewall ipv4 name WAN-FORWARD rule 39 recent count 50
           - set firewall ipv4 name WAN-FORWARD rule 39 recent time minute
           - set firewall ipv4 name WAN-FORWARD rule 39 protocol tcp_udp
@@ -434,14 +434,14 @@
           - set firewall ipv4 name WAN-FORWARD rule 42 action accept
           - set firewall ipv4 name WAN-FORWARD rule 42 description 'Allow I2Pd Node'
           - set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ docker_node_ip }}
-          - set firewall ipv4 name WAN-FORWARD rule 42 destination port 10001
+          - set firewall ipv4 name WAN-FORWARD rule 42 destination port 11001
           - set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
           - set firewall ipv6 name WAN-FORWARD6 rule 39 action drop
           - set firewall ipv6 name WAN-FORWARD6 rule 39 state new
           - set firewall ipv6 name WAN-FORWARD6 rule 39 description 'DDOS prevention'
           - set firewall ipv6 name WAN-FORWARD6 rule 39 destination address {{ docker_node_ipv6_suffix }}
           - set firewall ipv6 name WAN-FORWARD6 rule 39 destination address-mask ::ffff:ffff:ffff:ffff
-          - set firewall ipv6 name WAN-FORWARD6 rule 39 destination port 9001,9030,10001
+          - set firewall ipv6 name WAN-FORWARD6 rule 39 destination port 9001,9030,11001
           - set firewall ipv6 name WAN-FORWARD6 rule 39 recent count 50
           - set firewall ipv6 name WAN-FORWARD6 rule 39 recent time minute
           - set firewall ipv6 name WAN-FORWARD6 rule 39 protocol tcp_udp
@@ -453,7 +453,7 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
           - set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
           - set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node'
-          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 10001
+          - set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 11001
           - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ docker_node_ipv6_suffix }}
           - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
