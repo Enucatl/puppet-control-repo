@@ -7,9 +7,9 @@
 
   vars:
     # --- INTERFACES ---
-    wan_interface: "eth3"       # Mellanox Port 1 (New WAN)
-    lan_interface: "eth1"       # Intel Port (Existing LAN)
-    wan_mac: "9c:6b:00:c3:7a:d4"
+    wan_interface: "eth3"       # Mellanox ConnectX-6 Dx port 1 (WAN, hostpci1 / 01:00.1)
+    lan_interface: "eth1"       # virtio NIC via vmbr0 (LAN)
+    wan_mac: "e8:eb:d3:08:d3:79"  # Mellanox hardware MAC (permaddr)
 
     # --- IP CONFIGURATION ---
     vyos_lan_ip: "10.0.0.1/24"
