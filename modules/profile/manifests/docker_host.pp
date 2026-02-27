@@ -1,11 +1,18 @@
 class profile::docker_host (
   String  $printer_smb_password  = lookup('printer::smbpasswd'),
   String  $pictures_smb_password = lookup('pictures::smbpasswd'),
+  Hash    $git_deploy_projects   = {},
 ) {
 
   require profile::common
   require ::samba
   require posix_acl::requirements
+
+  $git_deploy_projects.each |String $project, Hash $params| {
+    profile::docker_deploy { $project:
+      * => $params,
+    }
+  }
 
   # Trigger Traefik reload when certs change
   exec { "trigger_traefik_reload":
