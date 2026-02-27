@@ -50,39 +50,10 @@ packages::list:
 
 profile::alloy::enable_docker: true
 
-systemd::unit_files:
-  crabberbot-deploy.path:
-    content: |
-      [Unit]
-      Description=Watch for CrabberBot git pushes
-
-      [Path]
-      PathModified=/opt/docker/crabberbot/.git/refs/heads/main
-
-      [Install]
-      WantedBy=multi-user.target
-    enable: true
-    active: true
-  crabberbot-deploy.service:
-    content: |
-      [Unit]
-      Description=Rebuild and restart CrabberBot
-      Requires=docker.service
-      After=docker.service
-      After=network-online.target
-
-      [Service]
-      Type=oneshot
-      User=user
-      WorkingDirectory=/opt/docker/crabberbot
-      ExecStartPre=/bin/sleep 5
-      ExecStart=/bin/bash -c 'CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
-      ExecStart=/usr/bin/docker compose -f docker-compose.yml up -d
-      StandardOutput=journal
-      StandardError=journal
-      SyslogIdentifier=crabberbot-deploy
-    enable: false
-    active: false
+profile::docker_host::git_deploy_projects:
+  crabberbot:
+    pull: false
+    build_command: 'CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
 
 profile::common::cronjobs:
   # Remove unused Docker images, containers, networks, and build cache.
