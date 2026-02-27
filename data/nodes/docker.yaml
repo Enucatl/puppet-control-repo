@@ -51,9 +51,29 @@ packages::list:
 profile::alloy::enable_docker: true
 
 profile::docker_host::git_deploy_projects:
+  airflow: {}
+  authelia: {}
+  checkmk: {}
   crabberbot:
     pull: false
     build_command: 'CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
+  duplicati: {}
+  echo-server: {}
+  grafana-loki: {}
+  infra: {}
+  iventoy: {}
+  kms: {}
+  monerod: {}
+  paperless-ngx: {}
+  protonmail-bridge: {}
+  qbittorrent: {}
+  rclone: {}
+  rss-to-telegram-bot: {}
+  send-bills: {}
+  teamspeak: {}
+  tor-i2pd: {}
+  traefik: {}
+  unifi-network-application: {}
 
 profile::common::cronjobs:
   # Remove unused Docker images, containers, networks, and build cache.
