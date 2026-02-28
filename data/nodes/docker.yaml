@@ -64,12 +64,14 @@ profile::docker_host::git_deploy_projects:
   iventoy: {}
   kms: {}
   monerod: {}
-  paperless-ngx: {}
+  paperless-ngx:
+    compose_file: docker/compose/docker-compose.postgres-tika.yml
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
   rss-to-telegram-bot: {}
-  send-bills: {}
+  send-bills:
+    compose_file: docker-compose.yml
   teamspeak: {}
   tor-i2pd: {}
   traefik: {}
