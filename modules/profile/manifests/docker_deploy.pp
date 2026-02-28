@@ -47,7 +47,7 @@ define profile::docker_deploy (
   $exec_start_str = join($pull_exec + $build_exec + ["ExecStart=${compose_cmd} up -d"], "\n")
 
   systemd::unit_file { "${name}-deploy.path":
-    content => @("UNIT")
+    content => @("UNIT"),
       [Unit]
       Description=Watch for ${name} git pushes
 
@@ -62,7 +62,7 @@ define profile::docker_deploy (
   }
 
   systemd::unit_file { "${name}-deploy.service":
-    content => @("UNIT")
+    content => @("UNIT"),
       [Unit]
       Description=Rebuild and restart ${name}
       Requires=docker.service
