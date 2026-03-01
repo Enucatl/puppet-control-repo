@@ -4,6 +4,7 @@
 # The resource title must match the project folder name under /opt/docker/.
 #
 # Parameters:
+#   ensure        - 'present' or 'absent' (default: 'present')
 #   branch        - Git branch to watch (default: 'main')
 #   run_as        - User that runs docker compose (default: 'user')
 #   pull          - Pull updated images before starting (default: false)
@@ -27,12 +28,13 @@
 #       compose_file: docker-compose.prod.yml
 #
 define profile::docker_deploy (
-  String           $branch        = 'main',
-  String           $run_as        = 'user',
-  Boolean          $pull          = true,
-  Optional[String] $build_command = undef,
-  Optional[String] $compose_file  = undef,
-  Optional[String] $env_file      = undef,
+  Enum['present','absent'] $ensure        = 'present',
+  String                   $branch        = 'main',
+  String                   $run_as        = 'user',
+  Boolean                  $pull          = true,
+  Optional[String]         $build_command = undef,
+  Optional[String]         $compose_file  = undef,
+  Optional[String]         $env_file      = undef,
 ) {
   $base_dir = "/opt/docker/${name}"
 
@@ -47,6 +49,7 @@ define profile::docker_deploy (
   $exec_start_str = join($pull_exec + $build_exec + ["ExecStart=${compose_cmd} up -d"], "\n")
 
   systemd::unit_file { "${name}-deploy.path":
+    ensure  => $ensure,
     content => @("UNIT"),
       [Unit]
       Description=Watch for ${name} git pushes
@@ -62,6 +65,7 @@ define profile::docker_deploy (
   }
 
   systemd::unit_file { "${name}-deploy.service":
+    ensure  => $ensure,
     content => @("UNIT"),
       [Unit]
       Description=Rebuild and restart ${name}
