@@ -79,6 +79,7 @@
     # would miss payload inspection. Verify with a large transfer + stats.log check
     # before enabling hardware offload.
     local_suricata_logrotate_path: "/tmp/suricata-logrotate.tmp"
+    local_suricata_disable_path: "/tmp/suricata-disable.conf.tmp"
 
     # --- ALLOY (log shipping to Loki) ---
     # Runs as a container on VyOS, tailing Suricata EVE JSON and system logs.
@@ -870,11 +871,13 @@
           - set service suricata interface {{ guest_interface }}
           - set service suricata log eve filename /var/log/suricata/eve.json
 
-          # Auto-update ET Open signatures daily at 02:00 so rules are current.
-          # vyatta-op-cmd-wrapper is required to run operational commands from cron.
+          # Auto-update ET Open signatures daily at 02:00.
+          # Calls suricata-update directly (bypassing the VyOS CLI wrapper) so we
+          # can pass --disable-conf; the VyOS CLI has no suppress/threshold nodes
+          # in the current rolling release.
           - set system task-scheduler task update-ids-rules crontab-spec '0 2 * * *'
-          - set system task-scheduler task update-ids-rules executable path '/opt/vyatta/bin/vyatta-op-cmd-wrapper'
-          - set system task-scheduler task update-ids-rules executable arguments 'update suricata'
+          - set system task-scheduler task update-ids-rules executable path '/usr/bin/suricata-update'
+          - set system task-scheduler task update-ids-rules executable arguments '--disable-conf /config/suricata/disable.conf'
 
           # Rotate logs daily (or at 100 MB) via logrotate; config lives in
           # /config/ so it survives reboots. 3 AM chosen to run after the
@@ -1017,10 +1020,37 @@
         commands:
           - restart container dnsmasq
 
-    - name: Update Suricata signatures
+    - name: Generate Suricata disable config locally from template
+      delegate_to: localhost
+      ansible.builtin.template:
+        src: templates/suricata-disable.conf.j2
+        dest: "{{ local_suricata_disable_path }}"
+        mode: '0600'
+
+    - name: Upload Suricata disable config to VyOS
+      ansible.netcommon.net_put:
+        src: "{{ local_suricata_disable_path }}"
+        dest: "/tmp/suricata-disable.conf"
+
+    - name: Install Suricata disable config to persistent storage
       vyos.vyos.vyos_command:
         commands:
-          - update suricata
+          - mkdir -p /config/suricata
+          - sudo mv /tmp/suricata-disable.conf /config/suricata/disable.conf
+          - sudo chmod 0644 /config/suricata/disable.conf
+
+    - name: Clean up local temporary disable config
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ local_suricata_disable_path }}"
+        state: absent
+
+    - name: Update Suricata signatures and apply disable.conf
+      vyos.vyos.vyos_command:
+        commands:
+          - sudo /usr/bin/suricata-update --disable-conf /config/suricata/disable.conf
+      vars:
+        ansible_command_timeout: 300
 
     - name: Generate Suricata logrotate config locally from template
       delegate_to: localhost
