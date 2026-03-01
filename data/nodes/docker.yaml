@@ -51,7 +51,9 @@ packages::list:
 profile::alloy::enable_docker: true
 
 profile::docker_host::git_deploy_projects:
-  airflow: {}
+  airflow:
+    pull: true
+    build_command: "docker compose build"
   authelia: {}
   checkmk: {}
   crabberbot:
