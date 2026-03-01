@@ -15,27 +15,64 @@
     lan_subnet: "10.0.0.0/24"
     vyos_ipv6: "fe80::be24:11ff:fe1c:ecb6"
 
-    # --- WIREGUARD ---
+    # --- VLAN SEGMENTS ---
+    # VLAN ID = third octet of subnet for easy log correlation
+    trusted_wifi_vlan: "10"
+    trusted_wifi_ip: "10.0.10.1/24"
+    trusted_wifi_subnet: "10.0.10.0/24"
+
+    iot_vlan: "20"
+    iot_ip: "10.0.20.1/24"
+    iot_subnet: "10.0.20.0/24"
+
+    guest_vlan: "30"
+    guest_ip: "10.0.30.1/24"
+    guest_subnet: "10.0.30.0/24"
+
+    # --- WIREGUARD (moved to 10.0.200.0/24 to free up VLAN 10 numbering) ---
     wg_interface: "wg0"
     wg_port: "51820"
-    wg_subnet: "10.0.10.1/24"
+    wg_subnet: "10.0.200.1/24"
     wg_peers:
       - name: "phone"
         pubkey: "z4kWINsJrs2FY4q26DGErw6ECktgPEj6xoXT8UJsaRE="
-        ip: "10.0.10.2/32"
+        ip: "10.0.200.2/32"
 
-    # --- SNMP (Use the valid hex ID you found) ---
+    # --- SNMP ---
     snmp_listen_address: "10.0.0.1"
     snmp_location: "VyOS Datacenter"
-    snmp_engineid: "800000000102030405060710" 
+    snmp_engineid: "800000000102030405060710"
     snmp_user: "vyos"
 
-    # --- ADGUARD ---
+    # --- ADGUARD (DNS only; DHCP handled by dnsmasq) ---
+    # All segments point DNS to 10.0.0.1 (AdGuard on router via host networking).
+    # IOT-LOCAL and GUEST-LOCAL firewall chains allow port 53 inbound to router.
+    # AdGuard forwards home.arpa queries to dnsmasq for local hostname resolution.
     adguard_data_path: "/config/containers/adguard"
     adguard_dns_bind_hosts:
       - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
     adguard_image: "docker.io/adguard/adguardhome:latest"
     local_adguard_config_path: "/tmp/AdGuardHome.yaml.tmp"
+
+    # --- DNSMASQ (DHCPv4 + authoritative DNS for home.arpa) ---
+    # Runs as a container on VyOS with host networking.
+    # DNS on port 5300 to avoid conflict with AdGuard on port 53.
+    # Only resolves hostnames for addresses it has assigned via DHCP (IPv4 only).
+    dnsmasq_image: "docker.io/andyshinn/dnsmasq:latest"
+    dnsmasq_data_path: "/config/containers/dnsmasq"
+    dnsmasq_dns_port: "5300"
+    dhcp_domain: "home.arpa"
+    local_dnsmasq_config_path: "/tmp/dnsmasq.conf.tmp"
+
+    # DHCP ranges (.100-.200 on each subnet)
+    lan_dhcp_start: "10.0.0.100"
+    lan_dhcp_end: "10.0.0.200"
+    trusted_wifi_dhcp_start: "10.0.10.100"
+    trusted_wifi_dhcp_end: "10.0.10.200"
+    iot_dhcp_start: "10.0.20.100"
+    iot_dhcp_end: "10.0.20.200"
+    guest_dhcp_start: "10.0.30.100"
+    guest_dhcp_end: "10.0.30.200"
 
     docker_node_ip: "10.0.0.128"
     docker_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
@@ -63,13 +100,12 @@
     - name: >
         Send all configuration commands in a single batch
       vyos.vyos.vyos_config:
-        # Use 'save: false' to not have the config persist after reboot
         save: true
         lines:
           # ============================================================
           # 1. CLEANUP PHASE
           # ============================================================
-          # Remove old global settings to prevent conflicts
+          # Uncomment for initial setup or major resets:
           # - delete firewall
           # - delete nat
           # - delete container
@@ -77,13 +113,10 @@
           # - delete service router-advert
           # - delete service ndp-proxy
           # - delete service snmp
+          # - delete service dhcp-server
           # - delete system flowtable
-
-          # Wipe the NEW WAN interface to ensure clean slate
           # - delete interfaces ethernet {{ wan_interface }}
-          
-          # Wipe the OLD WAN interface (if it was eth0) so it doesn't conflict
-          # - delete interfaces ethernet eth0 
+          # - delete interfaces ethernet eth0
 
           # We do NOT delete eth1 (LAN) to keep SSH alive.
           # We just overwrite settings below.
@@ -95,86 +128,166 @@
           - set system login user vyos authentication public-keys user@ansible key AAAAC3NzaC1lZDI1NTE5AAAAIEot3u2cV0DaYXoTiFLyCQkEGixSVZhdzddnhbRtaPu/
 
           # ============================================================
-          # 3. INTERFACES & OFFLOADS (25Gbps Tuning)
+          # 3. INTERFACES
           # ============================================================
-          
-          # --- WAN (Mellanox) ---
+
+          # --- WAN (Mellanox 25G) ---
           - set interfaces ethernet {{ wan_interface }} description 'WAN - Init7 25G'
           - set interfaces ethernet {{ wan_interface }} address dhcp
           - set interfaces ethernet {{ wan_interface }} address dhcpv6
           - set interfaces ethernet {{ wan_interface }} ipv6 address autoconf
-          
-          # Hardware Offloads
+
+          # Hardware offloads
           - set interfaces ethernet {{ wan_interface }} offload sg
           - set interfaces ethernet {{ wan_interface }} offload tso
           - set interfaces ethernet {{ wan_interface }} offload gso
           - set interfaces ethernet {{ wan_interface }} offload gro
           - set interfaces ethernet {{ wan_interface }} offload hw-tc-offload
 
-          # IPv6 WAN (DHCPv6-PD)
-          # Delegate the first /64 to the LAN interface automatically
+          # DHCPv6-PD: sla-id fills the 16 bits between /48 and /64 boundary.
+          # sla-id values are decimal; VLAN IDs chosen to match third octet.
+          # Results: LAN=PREFIX::/64, TrustedWiFi=PREFIX:a::/64,
+          #          IoT=PREFIX:14::/64, Guest=PREFIX:1e::/64
           - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 length 48
           - set interfaces ethernet {{ wan_interface }} dhcpv6-options no-release
           - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }} sla-id 0
           - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }} address 1
-          
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ trusted_wifi_vlan }} sla-id {{ trusted_wifi_vlan }}
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ trusted_wifi_vlan }} address 1
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ iot_vlan }} sla-id {{ iot_vlan }}
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ iot_vlan }} address 1
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ guest_vlan }} sla-id {{ guest_vlan }}
+          - set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ guest_vlan }} address 1
 
-          # --- LAN (Intel) ---
-          - set interfaces ethernet {{ lan_interface }} description 'LAN'
+          # --- LAN (native untagged, wired trusted devices) ---
+          - set interfaces ethernet {{ lan_interface }} description 'LAN - Wired Trusted'
           - set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ip }}
-          # Note: We removed the static IPv6 address here. PD handles it now.
 
-          # --- WireGuard ---
+          # --- Trusted WiFi VLAN (phone and other trusted wireless) ---
+          - set interfaces ethernet {{ lan_interface }} vif {{ trusted_wifi_vlan }} description 'Trusted WiFi'
+          - set interfaces ethernet {{ lan_interface }} vif {{ trusted_wifi_vlan }} address {{ trusted_wifi_ip }}
+
+          # --- IoT VLAN ---
+          - set interfaces ethernet {{ lan_interface }} vif {{ iot_vlan }} description 'IoT'
+          - set interfaces ethernet {{ lan_interface }} vif {{ iot_vlan }} address {{ iot_ip }}
+
+          # --- Guest VLAN ---
+          - set interfaces ethernet {{ lan_interface }} vif {{ guest_vlan }} description 'Guest'
+          - set interfaces ethernet {{ lan_interface }} vif {{ guest_vlan }} address {{ guest_ip }}
+
+          # --- WireGuard (10.0.200.0/24) ---
           - set interfaces wireguard {{ wg_interface }} address {{ wg_subnet }}
           - set interfaces wireguard {{ wg_interface }} port {{ wg_port }}
           - set interfaces wireguard {{ wg_interface }} private-key '{{ wg_server_private_key }}'
 
           # ============================================================
-          # 3. FIREWALL & FLOWTABLES
+          # 4. FIREWALL & FLOWTABLES
           # ============================================================
-          
-          # --- Hardware Flowtable (Fastpath) ---
+
+          # --- Hardware Flowtable (Fastpath for established flows) ---
           - set firewall flowtable FASTPATH interface {{ wan_interface }}
           - set firewall flowtable FASTPATH interface {{ lan_interface }}
+          - set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
+          - set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ iot_vlan }}
+          - set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ guest_vlan }}
+          - set firewall flowtable FASTPATH interface {{ wg_interface }}
           - set firewall flowtable FASTPATH offload software
 
-          # Groups
+          # --- Interface Groups ---
           - set firewall group interface-group LAN interface {{ lan_interface }}
           - set firewall group interface-group WAN interface {{ wan_interface }}
           - set firewall group interface-group VPN interface {{ wg_interface }}
+          - set firewall group interface-group TRUSTED-WIFI interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
+          - set firewall group interface-group IOT interface {{ lan_interface }}.{{ iot_vlan }}
+          - set firewall group interface-group GUEST interface {{ lan_interface }}.{{ guest_vlan }}
 
-          # --- GLOBAL FORWARD (Offload Rule) ---
-          # Must be Rule 1 to bypass CPU for established traffic
+          # ============================================================
+          # IPv4 FORWARD FILTER
+          # Policy matrix (initiating direction; return traffic always allowed):
+          #   LAN          -> WAN ✓  Trusted-WiFi ✓  IoT ✗  Guest ✗
+          #   Trusted-WiFi -> WAN ✓  LAN ✓           IoT ✗  Guest ✗
+          #   IoT          -> WAN ✓  (everything else ✗)
+          #   Guest        -> WAN ✓  (everything else ✗)
+          #   VPN          -> WAN ✓  LAN ✓  Trusted-WiFi ✓  IoT ✗  Guest ✗
+          # ============================================================
+          - set firewall ipv4 forward filter default-action drop
+
+          # Rule 1: Offload established/related (bypass CPU for known flows)
           - set firewall ipv4 forward filter rule 1 action offload
           - set firewall ipv4 forward filter rule 1 offload-target FASTPATH
           - set firewall ipv4 forward filter rule 1 state established
           - set firewall ipv4 forward filter rule 1 state related
 
-          - set firewall ipv6 forward filter rule 1 action offload
-          - set firewall ipv6 forward filter rule 1 offload-target FASTPATH
-          - set firewall ipv6 forward filter rule 1 state established
-          - set firewall ipv6 forward filter rule 1 state related
-
-          # --- Drop Invalid State Packets ---
+          # Rule 2: Drop invalid state packets
           - set firewall ipv4 forward filter rule 2 action drop
           - set firewall ipv4 forward filter rule 2 state invalid
-          - set firewall ipv6 forward filter rule 2 action drop
-          - set firewall ipv6 forward filter rule 2 state invalid
 
-          # --- Default Drop for Unmatched Forward Traffic ---
-          - set firewall ipv4 forward filter default-action drop
-          - set firewall ipv6 forward filter default-action drop
+          # Dispatch to per-segment named chains
+          - set firewall ipv4 forward filter rule 10 action jump
+          - set firewall ipv4 forward filter rule 10 inbound-interface group LAN
+          - set firewall ipv4 forward filter rule 10 jump-target LAN-FORWARD
+          - set firewall ipv4 forward filter rule 20 action jump
+          - set firewall ipv4 forward filter rule 20 inbound-interface group WAN
+          - set firewall ipv4 forward filter rule 20 jump-target WAN-FORWARD
+          - set firewall ipv4 forward filter rule 30 action jump
+          - set firewall ipv4 forward filter rule 30 inbound-interface group VPN
+          - set firewall ipv4 forward filter rule 30 jump-target VPN-FORWARD
+          - set firewall ipv4 forward filter rule 40 action jump
+          - set firewall ipv4 forward filter rule 40 inbound-interface group TRUSTED-WIFI
+          - set firewall ipv4 forward filter rule 40 jump-target TRUSTED-WIFI-FORWARD
+          - set firewall ipv4 forward filter rule 50 action jump
+          - set firewall ipv4 forward filter rule 50 inbound-interface group IOT
+          - set firewall ipv4 forward filter rule 50 jump-target IOT-FORWARD
+          - set firewall ipv4 forward filter rule 60 action jump
+          - set firewall ipv4 forward filter rule 60 inbound-interface group GUEST
+          - set firewall ipv4 forward filter rule 60 jump-target GUEST-FORWARD
 
-          # --- Standard Forwarding Logic ---
-          # IPv4 LAN -> WAN
+          # ============================================================
+          # IPv4 NAMED CHAINS - FORWARD
+          # ============================================================
+
+          # --- LAN-FORWARD: Wired trusted -> WAN + Trusted WiFi ---
           - set firewall ipv4 name LAN-FORWARD default-action drop
           - set firewall ipv4 name LAN-FORWARD rule 10 action accept
           - set firewall ipv4 name LAN-FORWARD rule 10 state established
           - set firewall ipv4 name LAN-FORWARD rule 10 state related
           - set firewall ipv4 name LAN-FORWARD rule 20 action accept
           - set firewall ipv4 name LAN-FORWARD rule 20 outbound-interface group WAN
-          
-          # IPv4 WAN -> LAN
+          - set firewall ipv4 name LAN-FORWARD rule 30 action accept
+          - set firewall ipv4 name LAN-FORWARD rule 30 description 'LAN to Trusted WiFi'
+          - set firewall ipv4 name LAN-FORWARD rule 30 outbound-interface group TRUSTED-WIFI
+
+          # --- TRUSTED-WIFI-FORWARD: Phone -> WAN + LAN ---
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD default-action drop
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 action accept
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 state established
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 state related
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 20 action accept
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 20 description 'Trusted WiFi to WAN'
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 20 outbound-interface group WAN
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 action accept
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 description 'Trusted WiFi to LAN'
+          - set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 outbound-interface group LAN
+
+          # --- IOT-FORWARD: IoT -> WAN only ---
+          - set firewall ipv4 name IOT-FORWARD default-action drop
+          - set firewall ipv4 name IOT-FORWARD rule 10 action accept
+          - set firewall ipv4 name IOT-FORWARD rule 10 state established
+          - set firewall ipv4 name IOT-FORWARD rule 10 state related
+          - set firewall ipv4 name IOT-FORWARD rule 20 action accept
+          - set firewall ipv4 name IOT-FORWARD rule 20 description 'IoT to WAN'
+          - set firewall ipv4 name IOT-FORWARD rule 20 outbound-interface group WAN
+
+          # --- GUEST-FORWARD: Guest -> WAN only ---
+          - set firewall ipv4 name GUEST-FORWARD default-action drop
+          - set firewall ipv4 name GUEST-FORWARD rule 10 action accept
+          - set firewall ipv4 name GUEST-FORWARD rule 10 state established
+          - set firewall ipv4 name GUEST-FORWARD rule 10 state related
+          - set firewall ipv4 name GUEST-FORWARD rule 20 action accept
+          - set firewall ipv4 name GUEST-FORWARD rule 20 description 'Guest to WAN'
+          - set firewall ipv4 name GUEST-FORWARD rule 20 outbound-interface group WAN
+
+          # --- WAN-FORWARD: Inbound from internet (app rules appended in section 8) ---
           - set firewall ipv4 name WAN-FORWARD default-action drop
           - set firewall ipv4 name WAN-FORWARD rule 10 action accept
           - set firewall ipv4 name WAN-FORWARD rule 10 state established
@@ -182,39 +295,40 @@
           - set firewall ipv4 name WAN-FORWARD rule 20 action accept
           - set firewall ipv4 name WAN-FORWARD rule 20 protocol icmp
 
-          # IPv4 VPN -> ANY
+          # --- VPN-FORWARD: WireGuard clients -> WAN + LAN + Trusted WiFi ---
           - set firewall ipv4 name VPN-FORWARD default-action drop
           - set firewall ipv4 name VPN-FORWARD rule 10 action accept
           - set firewall ipv4 name VPN-FORWARD rule 10 state established
           - set firewall ipv4 name VPN-FORWARD rule 10 state related
           - set firewall ipv4 name VPN-FORWARD rule 20 action accept
-          - set firewall ipv4 name VPN-FORWARD rule 20 description "Allow VPN clients to everywhere"
+          - set firewall ipv4 name VPN-FORWARD rule 20 outbound-interface group WAN
+          - set firewall ipv4 name VPN-FORWARD rule 30 action accept
+          - set firewall ipv4 name VPN-FORWARD rule 30 description 'VPN to LAN'
+          - set firewall ipv4 name VPN-FORWARD rule 30 outbound-interface group LAN
+          - set firewall ipv4 name VPN-FORWARD rule 40 action accept
+          - set firewall ipv4 name VPN-FORWARD rule 40 description 'VPN to Trusted WiFi'
+          - set firewall ipv4 name VPN-FORWARD rule 40 outbound-interface group TRUSTED-WIFI
 
-          # IPv6 VPN -> ANY
-          - set firewall ipv6 name VPN-FORWARD6 default-action drop
-          - set firewall ipv6 name VPN-FORWARD6 rule 10 action accept
-          - set firewall ipv6 name VPN-FORWARD6 rule 10 state established
-          - set firewall ipv6 name VPN-FORWARD6 rule 10 state related
-          - set firewall ipv6 name VPN-FORWARD6 rule 20 action accept
-          - set firewall ipv6 name VPN-FORWARD6 rule 20 description "Allow VPN clients to everywhere"
+          # ============================================================
+          # IPv4 INPUT FILTER (protect router itself)
+          # LAN and Trusted WiFi have implicit full access (no LOCAL chain).
+          # IoT and Guest are locked down to DNS, DHCP, and NTP only.
+          # ============================================================
+          - set firewall ipv4 input filter rule 10 action jump
+          - set firewall ipv4 input filter rule 10 inbound-interface group WAN
+          - set firewall ipv4 input filter rule 10 jump-target WAN-LOCAL
+          - set firewall ipv4 input filter rule 20 action jump
+          - set firewall ipv4 input filter rule 20 inbound-interface group IOT
+          - set firewall ipv4 input filter rule 20 jump-target IOT-LOCAL
+          - set firewall ipv4 input filter rule 30 action jump
+          - set firewall ipv4 input filter rule 30 inbound-interface group GUEST
+          - set firewall ipv4 input filter rule 30 jump-target GUEST-LOCAL
 
-          # IPv6 LAN -> WAN
-          - set firewall ipv6 name LAN-FORWARD6 default-action drop
-          - set firewall ipv6 name LAN-FORWARD6 rule 10 action accept
-          - set firewall ipv6 name LAN-FORWARD6 rule 10 state established
-          - set firewall ipv6 name LAN-FORWARD6 rule 10 state related
-          - set firewall ipv6 name LAN-FORWARD6 rule 20 action accept
-          - set firewall ipv6 name LAN-FORWARD6 rule 20 outbound-interface group WAN
+          # ============================================================
+          # IPv4 NAMED CHAINS - LOCAL (router self-protection)
+          # ============================================================
 
-          # IPv6 WAN -> LAN
-          - set firewall ipv6 name WAN-FORWARD6 default-action drop
-          - set firewall ipv6 name WAN-FORWARD6 rule 10 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 10 state established
-          - set firewall ipv6 name WAN-FORWARD6 rule 10 state related
-          - set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
-          - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
-
-          # --- IPv4 LOCAL (Protect Router from WAN) ---
+          # --- WAN-LOCAL: Protect router from internet ---
           - set firewall ipv4 name WAN-LOCAL default-action drop
           - set firewall ipv4 name WAN-LOCAL rule 5 action drop
           - set firewall ipv4 name WAN-LOCAL rule 5 state invalid
@@ -227,36 +341,55 @@
           - set firewall ipv4 name WAN-LOCAL rule 30 destination port {{ wg_port }}
           - set firewall ipv4 name WAN-LOCAL rule 30 protocol udp
 
-          # --- IPv6 LOCAL (Protect Router & Allow DHCP/VPN) ---
-          - set firewall ipv6 name WAN-LOCAL6 default-action drop
-          - set firewall ipv6 name WAN-LOCAL6 rule 5 action drop
-          - set firewall ipv6 name WAN-LOCAL6 rule 5 state invalid
-          - set firewall ipv6 name WAN-LOCAL6 rule 10 action accept
-          - set firewall ipv6 name WAN-LOCAL6 rule 10 state established
-          - set firewall ipv6 name WAN-LOCAL6 rule 10 state related
-          - set firewall ipv6 name WAN-LOCAL6 rule 20 action accept
-          - set firewall ipv6 name WAN-LOCAL6 rule 20 protocol icmpv6
+          # --- IOT-LOCAL: DNS (53), DHCP (67), NTP (123) only ---
+          - set firewall ipv4 name IOT-LOCAL default-action drop
+          - set firewall ipv4 name IOT-LOCAL rule 10 action accept
+          - set firewall ipv4 name IOT-LOCAL rule 10 state established
+          - set firewall ipv4 name IOT-LOCAL rule 10 state related
+          - set firewall ipv4 name IOT-LOCAL rule 20 action accept
+          - set firewall ipv4 name IOT-LOCAL rule 20 description 'DNS'
+          - set firewall ipv4 name IOT-LOCAL rule 20 destination port 53
+          - set firewall ipv4 name IOT-LOCAL rule 20 protocol tcp_udp
+          - set firewall ipv4 name IOT-LOCAL rule 30 action accept
+          - set firewall ipv4 name IOT-LOCAL rule 30 description 'DHCP'
+          - set firewall ipv4 name IOT-LOCAL rule 30 destination port 67
+          - set firewall ipv4 name IOT-LOCAL rule 30 protocol udp
+          - set firewall ipv4 name IOT-LOCAL rule 40 action accept
+          - set firewall ipv4 name IOT-LOCAL rule 40 description 'NTP'
+          - set firewall ipv4 name IOT-LOCAL rule 40 destination port 123
+          - set firewall ipv4 name IOT-LOCAL rule 40 protocol udp
 
-          # Allow WireGuard
-          - set firewall ipv6 name WAN-LOCAL6 rule 30 action accept
-          - set firewall ipv6 name WAN-LOCAL6 rule 30 destination port {{ wg_port }}
-          - set firewall ipv6 name WAN-LOCAL6 rule 30 protocol udp
-          # Allow DHCPv6 Response (Critical for Init7)
-          - set firewall ipv6 name WAN-LOCAL6 rule 40 action accept
-          - set firewall ipv6 name WAN-LOCAL6 rule 40 source port 547
-          - set firewall ipv6 name WAN-LOCAL6 rule 40 destination port 546
-          - set firewall ipv6 name WAN-LOCAL6 rule 40 protocol udp
+          # --- GUEST-LOCAL: DNS (53), DHCP (67), NTP (123) only ---
+          - set firewall ipv4 name GUEST-LOCAL default-action drop
+          - set firewall ipv4 name GUEST-LOCAL rule 10 action accept
+          - set firewall ipv4 name GUEST-LOCAL rule 10 state established
+          - set firewall ipv4 name GUEST-LOCAL rule 10 state related
+          - set firewall ipv4 name GUEST-LOCAL rule 20 action accept
+          - set firewall ipv4 name GUEST-LOCAL rule 20 description 'DNS'
+          - set firewall ipv4 name GUEST-LOCAL rule 20 destination port 53
+          - set firewall ipv4 name GUEST-LOCAL rule 20 protocol tcp_udp
+          - set firewall ipv4 name GUEST-LOCAL rule 30 action accept
+          - set firewall ipv4 name GUEST-LOCAL rule 30 description 'DHCP'
+          - set firewall ipv4 name GUEST-LOCAL rule 30 destination port 67
+          - set firewall ipv4 name GUEST-LOCAL rule 30 protocol udp
+          - set firewall ipv4 name GUEST-LOCAL rule 40 action accept
+          - set firewall ipv4 name GUEST-LOCAL rule 40 description 'NTP'
+          - set firewall ipv4 name GUEST-LOCAL rule 40 destination port 123
+          - set firewall ipv4 name GUEST-LOCAL rule 40 protocol udp
 
-          # --- Apply Policies ---
-          - set firewall ipv4 forward filter rule 10 action jump
-          - set firewall ipv4 forward filter rule 10 inbound-interface group LAN
-          - set firewall ipv4 forward filter rule 10 jump-target LAN-FORWARD
-          - set firewall ipv4 forward filter rule 20 action jump
-          - set firewall ipv4 forward filter rule 20 inbound-interface group WAN
-          - set firewall ipv4 forward filter rule 20 jump-target WAN-FORWARD
-          - set firewall ipv4 forward filter rule 30 action jump
-          - set firewall ipv4 forward filter rule 30 inbound-interface group VPN
-          - set firewall ipv4 forward filter rule 30 jump-target VPN-FORWARD
+          # ============================================================
+          # IPv6 FORWARD FILTER
+          # Mirrors IPv4 policy exactly. With IPv6 there is no NAT —
+          # the firewall is the ONLY barrier between segments.
+          # ============================================================
+          - set firewall ipv6 forward filter default-action drop
+
+          - set firewall ipv6 forward filter rule 1 action offload
+          - set firewall ipv6 forward filter rule 1 offload-target FASTPATH
+          - set firewall ipv6 forward filter rule 1 state established
+          - set firewall ipv6 forward filter rule 1 state related
+          - set firewall ipv6 forward filter rule 2 action drop
+          - set firewall ipv6 forward filter rule 2 state invalid
 
           - set firewall ipv6 forward filter rule 10 action jump
           - set firewall ipv6 forward filter rule 10 inbound-interface group LAN
@@ -267,36 +400,188 @@
           - set firewall ipv6 forward filter rule 30 action jump
           - set firewall ipv6 forward filter rule 30 inbound-interface group VPN
           - set firewall ipv6 forward filter rule 30 jump-target VPN-FORWARD6
+          - set firewall ipv6 forward filter rule 40 action jump
+          - set firewall ipv6 forward filter rule 40 inbound-interface group TRUSTED-WIFI
+          - set firewall ipv6 forward filter rule 40 jump-target TRUSTED-WIFI-FORWARD6
+          - set firewall ipv6 forward filter rule 50 action jump
+          - set firewall ipv6 forward filter rule 50 inbound-interface group IOT
+          - set firewall ipv6 forward filter rule 50 jump-target IOT-FORWARD6
+          - set firewall ipv6 forward filter rule 60 action jump
+          - set firewall ipv6 forward filter rule 60 inbound-interface group GUEST
+          - set firewall ipv6 forward filter rule 60 jump-target GUEST-FORWARD6
 
-          - set firewall ipv4 input filter rule 10 action jump
-          - set firewall ipv4 input filter rule 10 inbound-interface group WAN
-          - set firewall ipv4 input filter rule 10 jump-target WAN-LOCAL
+          # ============================================================
+          # IPv6 NAMED CHAINS - FORWARD
+          # ============================================================
+
+          # --- LAN-FORWARD6 ---
+          - set firewall ipv6 name LAN-FORWARD6 default-action drop
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 state established
+          - set firewall ipv6 name LAN-FORWARD6 rule 10 state related
+          - set firewall ipv6 name LAN-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name LAN-FORWARD6 rule 20 outbound-interface group WAN
+          - set firewall ipv6 name LAN-FORWARD6 rule 30 action accept
+          - set firewall ipv6 name LAN-FORWARD6 rule 30 description 'LAN to Trusted WiFi'
+          - set firewall ipv6 name LAN-FORWARD6 rule 30 outbound-interface group TRUSTED-WIFI
+
+          # --- TRUSTED-WIFI-FORWARD6 ---
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 default-action drop
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 state established
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 state related
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 20 description 'Trusted WiFi to WAN'
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 20 outbound-interface group WAN
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 action accept
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 description 'Trusted WiFi to LAN'
+          - set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 outbound-interface group LAN
+
+          # --- IOT-FORWARD6 ---
+          - set firewall ipv6 name IOT-FORWARD6 default-action drop
+          - set firewall ipv6 name IOT-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name IOT-FORWARD6 rule 10 state established
+          - set firewall ipv6 name IOT-FORWARD6 rule 10 state related
+          - set firewall ipv6 name IOT-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name IOT-FORWARD6 rule 20 description 'IoT to WAN'
+          - set firewall ipv6 name IOT-FORWARD6 rule 20 outbound-interface group WAN
+
+          # --- GUEST-FORWARD6 ---
+          - set firewall ipv6 name GUEST-FORWARD6 default-action drop
+          - set firewall ipv6 name GUEST-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name GUEST-FORWARD6 rule 10 state established
+          - set firewall ipv6 name GUEST-FORWARD6 rule 10 state related
+          - set firewall ipv6 name GUEST-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name GUEST-FORWARD6 rule 20 description 'Guest to WAN'
+          - set firewall ipv6 name GUEST-FORWARD6 rule 20 outbound-interface group WAN
+
+          # --- WAN-FORWARD6 (app rules appended in section 8) ---
+          - set firewall ipv6 name WAN-FORWARD6 default-action drop
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 state established
+          - set firewall ipv6 name WAN-FORWARD6 rule 10 state related
+          - set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
+
+          # --- VPN-FORWARD6 ---
+          - set firewall ipv6 name VPN-FORWARD6 default-action drop
+          - set firewall ipv6 name VPN-FORWARD6 rule 10 action accept
+          - set firewall ipv6 name VPN-FORWARD6 rule 10 state established
+          - set firewall ipv6 name VPN-FORWARD6 rule 10 state related
+          - set firewall ipv6 name VPN-FORWARD6 rule 20 action accept
+          - set firewall ipv6 name VPN-FORWARD6 rule 20 outbound-interface group WAN
+          - set firewall ipv6 name VPN-FORWARD6 rule 30 action accept
+          - set firewall ipv6 name VPN-FORWARD6 rule 30 description 'VPN to LAN'
+          - set firewall ipv6 name VPN-FORWARD6 rule 30 outbound-interface group LAN
+          - set firewall ipv6 name VPN-FORWARD6 rule 40 action accept
+          - set firewall ipv6 name VPN-FORWARD6 rule 40 description 'VPN to Trusted WiFi'
+          - set firewall ipv6 name VPN-FORWARD6 rule 40 outbound-interface group TRUSTED-WIFI
+
+          # ============================================================
+          # IPv6 INPUT FILTER (protect router itself)
+          # ============================================================
           - set firewall ipv6 input filter rule 10 action jump
           - set firewall ipv6 input filter rule 10 inbound-interface group WAN
           - set firewall ipv6 input filter rule 10 jump-target WAN-LOCAL6
+          - set firewall ipv6 input filter rule 20 action jump
+          - set firewall ipv6 input filter rule 20 inbound-interface group IOT
+          - set firewall ipv6 input filter rule 20 jump-target IOT-LOCAL6
+          - set firewall ipv6 input filter rule 30 action jump
+          - set firewall ipv6 input filter rule 30 inbound-interface group GUEST
+          - set firewall ipv6 input filter rule 30 jump-target GUEST-LOCAL6
 
           # ============================================================
-          # 4. NAT & ROUTING
+          # IPv6 NAMED CHAINS - LOCAL
           # ============================================================
-          # LAN NAT
+
+          # --- WAN-LOCAL6: Protect router from internet ---
+          - set firewall ipv6 name WAN-LOCAL6 default-action drop
+          - set firewall ipv6 name WAN-LOCAL6 rule 5 action drop
+          - set firewall ipv6 name WAN-LOCAL6 rule 5 state invalid
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 state established
+          - set firewall ipv6 name WAN-LOCAL6 rule 10 state related
+          - set firewall ipv6 name WAN-LOCAL6 rule 20 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 20 protocol icmpv6
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 destination port {{ wg_port }}
+          - set firewall ipv6 name WAN-LOCAL6 rule 30 protocol udp
+          # Allow DHCPv6 Response (critical for Init7 prefix delegation)
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 action accept
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 description 'DHCPv6 Response (Init7)'
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 source port 547
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 destination port 546
+          - set firewall ipv6 name WAN-LOCAL6 rule 40 protocol udp
+
+          # --- IOT-LOCAL6: DNS (53), NTP (123), ICMPv6 for SLAAC/NDP ---
+          # No DHCPv6 needed: clients use SLAAC via RA with RDNSS option.
+          - set firewall ipv6 name IOT-LOCAL6 default-action drop
+          - set firewall ipv6 name IOT-LOCAL6 rule 10 action accept
+          - set firewall ipv6 name IOT-LOCAL6 rule 10 state established
+          - set firewall ipv6 name IOT-LOCAL6 rule 10 state related
+          - set firewall ipv6 name IOT-LOCAL6 rule 20 action accept
+          - set firewall ipv6 name IOT-LOCAL6 rule 20 description 'DNS'
+          - set firewall ipv6 name IOT-LOCAL6 rule 20 destination port 53
+          - set firewall ipv6 name IOT-LOCAL6 rule 20 protocol tcp_udp
+          - set firewall ipv6 name IOT-LOCAL6 rule 30 action accept
+          - set firewall ipv6 name IOT-LOCAL6 rule 30 description 'NTP'
+          - set firewall ipv6 name IOT-LOCAL6 rule 30 destination port 123
+          - set firewall ipv6 name IOT-LOCAL6 rule 30 protocol udp
+          # ICMPv6 required for RS (133) and NS (135) so SLAAC and NDP work
+          - set firewall ipv6 name IOT-LOCAL6 rule 40 action accept
+          - set firewall ipv6 name IOT-LOCAL6 rule 40 description 'ICMPv6 for SLAAC and NDP'
+          - set firewall ipv6 name IOT-LOCAL6 rule 40 protocol icmpv6
+
+          # --- GUEST-LOCAL6: DNS (53), NTP (123), ICMPv6 for SLAAC/NDP ---
+          - set firewall ipv6 name GUEST-LOCAL6 default-action drop
+          - set firewall ipv6 name GUEST-LOCAL6 rule 10 action accept
+          - set firewall ipv6 name GUEST-LOCAL6 rule 10 state established
+          - set firewall ipv6 name GUEST-LOCAL6 rule 10 state related
+          - set firewall ipv6 name GUEST-LOCAL6 rule 20 action accept
+          - set firewall ipv6 name GUEST-LOCAL6 rule 20 description 'DNS'
+          - set firewall ipv6 name GUEST-LOCAL6 rule 20 destination port 53
+          - set firewall ipv6 name GUEST-LOCAL6 rule 20 protocol tcp_udp
+          - set firewall ipv6 name GUEST-LOCAL6 rule 30 action accept
+          - set firewall ipv6 name GUEST-LOCAL6 rule 30 description 'NTP'
+          - set firewall ipv6 name GUEST-LOCAL6 rule 30 destination port 123
+          - set firewall ipv6 name GUEST-LOCAL6 rule 30 protocol udp
+          - set firewall ipv6 name GUEST-LOCAL6 rule 40 action accept
+          - set firewall ipv6 name GUEST-LOCAL6 rule 40 description 'ICMPv6 for SLAAC and NDP'
+          - set firewall ipv6 name GUEST-LOCAL6 rule 40 protocol icmpv6
+
+          # ============================================================
+          # 5. NAT & ROUTING
+          # ============================================================
+
+          # Masquerade all private subnets to WAN (IPv4 only; IPv6 is routed natively)
           - set nat source rule 100 outbound-interface name {{ wan_interface }}
           - set nat source rule 100 source address {{ lan_subnet }}
           - set nat source rule 100 translation address masquerade
-          
-          # WireGuard NAT (IPv4 inside tunnel -> WAN)
+
           - set nat source rule 110 outbound-interface name {{ wan_interface }}
           - set nat source rule 110 source address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
           - set nat source rule 110 translation address masquerade
 
-          # --- ipv6 Routing for Docker Subnets ---
-          # To find the containers, talk to the Docker Server
+          - set nat source rule 120 outbound-interface name {{ wan_interface }}
+          - set nat source rule 120 source address {{ trusted_wifi_subnet }}
+          - set nat source rule 120 translation address masquerade
+
+          - set nat source rule 130 outbound-interface name {{ wan_interface }}
+          - set nat source rule 130 source address {{ iot_subnet }}
+          - set nat source rule 130 translation address masquerade
+
+          - set nat source rule 140 outbound-interface name {{ wan_interface }}
+          - set nat source rule 140 source address {{ guest_subnet }}
+          - set nat source rule 140 translation address masquerade
+
+          # IPv6 routing for Docker/desktop subnets (unchanged)
           - set protocols static route6 {{ ipv6_prefix }}:1000::/52 next-hop 'fe80{{ docker_node_ipv6_suffix }}' interface {{ lan_interface }}
           - set protocols static route6 {{ ipv6_prefix }}:2000::/64 next-hop 'fe80{{ docker_node_ipv6_suffix }}' interface {{ lan_interface }}
-
           - set protocols static route6 {{ ipv6_prefix }}:3000::/52 next-hop 'fe80{{ desktop_node_ipv6_suffix }}' interface {{ lan_interface }}
           - set protocols static route6 {{ ipv6_prefix }}:4000::/64 next-hop 'fe80{{ desktop_node_ipv6_suffix }}' interface {{ lan_interface }}
+
           # ============================================================
-          # 5. SNMPv3 (Strict Ordering)
+          # 6. SNMPv3 (Strict Ordering)
           # ============================================================
           - set service snmp listen-address {{ snmp_listen_address }}
           - set service snmp location '{{ snmp_location }}'
@@ -311,13 +596,36 @@
           - set service snmp v3 user {{ snmp_user }} privacy type 'aes'
 
           # ============================================================
-          # 6. CONTAINER & SERVICES
+          # 7. SERVICES: Router Advertisements, DHCP, DNS, DDNS
           # ============================================================
-          # RA for IPv6 Clients (Using PD prefix)
+
+          # Router Advertisements (SLAAC + RDNSS for each segment).
+          # VIF interfaces share eth1's MAC so link-local is the same on all.
+          # DNS server advertised via RDNSS; clients query 10.0.0.1 (AdGuard).
           - set service router-advert interface {{ lan_interface }} prefix ::/64 valid-lifetime 172800
           - set service router-advert interface {{ lan_interface }} name-server '{{ vyos_ipv6 }}'
+          - set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} prefix ::/64 valid-lifetime 172800
+          - set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} name-server '{{ vyos_ipv6 }}'
+          - set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} prefix ::/64 valid-lifetime 172800
+          - set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} name-server '{{ vyos_ipv6 }}'
+          - set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} prefix ::/64 valid-lifetime 172800
+          - set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server '{{ vyos_ipv6 }}'
 
-          # 7. Cloudflare Dynamic DNS for wireguard
+          # dnsmasq container: DHCPv4 for all subnets + authoritative DNS for home.arpa.
+          # DNS on port {{ dnsmasq_dns_port }} to avoid conflict with AdGuard on 53.
+          # AdGuard upstream rule forwards home.arpa queries to 127.0.0.1:{{ dnsmasq_dns_port }}.
+          - set container name dnsmasq image {{ dnsmasq_image }}
+          - set container name dnsmasq restart on-failure
+          - set container name dnsmasq allow-host-networks
+          - set container name dnsmasq capability net-admin
+          - set container name dnsmasq volume dnsmasq_conf source '{{ dnsmasq_data_path }}/conf'
+          - set container name dnsmasq volume dnsmasq_conf mode ro
+          - set container name dnsmasq volume dnsmasq_conf destination '/etc/dnsmasq.d'
+          - set container name dnsmasq volume dnsmasq_leases source '{{ dnsmasq_data_path }}/leases'
+          - set container name dnsmasq volume dnsmasq_leases mode rw
+          - set container name dnsmasq volume dnsmasq_leases destination '/var/lib/dnsmasq'
+
+          # Cloudflare Dynamic DNS for WireGuard endpoint
           - set service dns dynamic name cloudflare host-name vpn.enucatl.com
           - set service dns dynamic name cloudflare address interface eth3
           - set service dns dynamic name cloudflare protocol cloudflare
@@ -327,7 +635,7 @@
           - set service dns dynamic name cloudflare ip-version both
 
           # ============================================================
-          # 7. Application specific rules
+          # 8. APPLICATION-SPECIFIC RULES (WAN port forwarding)
           # ============================================================
 
           # TEAMSPEAK
@@ -373,7 +681,7 @@
           - set nat destination rule 10 inbound-interface name {{ wan_interface }}
           - set nat destination rule 10 protocol tcp_udp
           - set nat destination rule 10 translation address {{ docker_node_ip }}
-          # Firewall
+          ## Firewall
           - set firewall ipv4 name WAN-FORWARD rule 29 action drop
           - set firewall ipv4 name WAN-FORWARD rule 29 state new
           - set firewall ipv4 name WAN-FORWARD rule 29 description 'DDoS prevention qBittorrent'
@@ -457,16 +765,13 @@
 
     - name: Configure WireGuard Peers
       vyos.vyos.vyos_config:
-        # Save config after every peer add
-        save: true 
+        save: true
         lines:
           - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} public-key {{ item.pubkey }}
           - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} allowed-ips {{ item.ip }}
           - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} description {{ item.name }}
           - set interfaces wireguard {{ wg_interface }} peer {{ item.pubkey }} persistent-keepalive 15
-      # This loops over the array, running the commands for each peer
       loop: "{{ wg_peers }}"
-      # Optional: Don't fail the whole playbook if one peer key is malformed
       ignore_errors: no
 
 
@@ -475,19 +780,17 @@
         commands:
           - mkdir -p '{{ adguard_data_path }}/work'
           - mkdir -p '{{ adguard_data_path }}/conf'
-          # - add container image {{ adguard_image }}
 
-    - name: Configure AdGuard Home container and update system DNS
+    - name: Configure AdGuard Home container (DNS only; DHCP handled by dnsmasq)
       vyos.vyos.vyos_config:
         save: true
         lines:
-          # - delete container
           - set container name adguard image {{ adguard_image }}
           - set container name adguard restart on-failure
           - set container name adguard allow-host-networks
           - set container name adguard capability net-raw
 
-          # --- Persistent Volumes ---
+          # Persistent volumes
           - set container name adguard volume adguard_work source '{{ adguard_data_path }}/work'
           - set container name adguard volume adguard_work mode rw
           - set container name adguard volume adguard_work destination /opt/adguardhome/work
@@ -495,12 +798,11 @@
           - set container name adguard volume adguard_conf mode rw
           - set container name adguard volume adguard_conf destination /opt/adguardhome/conf
 
-          # set the system DNS
+          # Router uses AdGuard for DNS
           - delete service dns forwarding
           - set system name-server {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 
     - name: Generate AdGuard config locally from template
-      # This task runs on your Ansible machine, not on VyOS
       delegate_to: localhost
       ansible.builtin.template:
         src: templates/AdGuardHome.yaml.j2
@@ -508,7 +810,6 @@
         mode: '0600'
 
     - name: Upload generated AdGuard config to VyOS
-      # net_put is designed for network devices and is more reliable
       ansible.netcommon.net_put:
         src: "{{ local_adguard_config_path }}"
         dest: "/tmp/AdGuardHome.yaml"
@@ -530,3 +831,39 @@
       vyos.vyos.vyos_command:
         commands:
           - restart container adguard
+
+    - name: Create necessary folders for dnsmasq
+      vyos.vyos.vyos_command:
+        commands:
+          - mkdir -p '{{ dnsmasq_data_path }}/conf'
+          - mkdir -p '{{ dnsmasq_data_path }}/leases'
+
+    - name: Generate dnsmasq config locally from template
+      delegate_to: localhost
+      ansible.builtin.template:
+        src: templates/dnsmasq.conf.j2
+        dest: "{{ local_dnsmasq_config_path }}"
+        mode: '0600'
+
+    - name: Upload generated dnsmasq config to VyOS
+      ansible.netcommon.net_put:
+        src: "{{ local_dnsmasq_config_path }}"
+        dest: "/tmp/dnsmasq.conf"
+
+    - name: Move dnsmasq config into place and set permissions
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo mv /tmp/dnsmasq.conf {{ dnsmasq_data_path }}/conf/dnsmasq.conf"
+          - "sudo chown root:vyattacfg {{ dnsmasq_data_path }}/conf/dnsmasq.conf"
+          - "sudo chmod 0644 {{ dnsmasq_data_path }}/conf/dnsmasq.conf"
+
+    - name: Clean up local temporary dnsmasq config
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ local_dnsmasq_config_path }}"
+        state: absent
+
+    - name: Restart dnsmasq container
+      vyos.vyos.vyos_command:
+        commands:
+          - restart container dnsmasq

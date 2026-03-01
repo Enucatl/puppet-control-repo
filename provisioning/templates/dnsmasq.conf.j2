@@ -1,0 +1,74 @@
+# dnsmasq configuration - managed by Ansible, do not edit manually
+#
+# Role: DHCPv4 for all segments + authoritative DNS for {{ dhcp_domain }}.
+# AdGuard Home forwards {{ dhcp_domain }} queries here (127.0.0.1:{{ dnsmasq_dns_port }}).
+# All other DNS is handled by AdGuard upstream.
+
+# ============================================================
+# DNS
+# ============================================================
+
+# Non-standard port to avoid conflict with AdGuard on 53
+port={{ dnsmasq_dns_port }}
+
+# Only answer DNS queries that arrive on configured interfaces
+bind-interfaces
+
+# Do not read upstream resolvers from /etc/resolv.conf — we are not a forwarder
+no-resolv
+
+# Do not read /etc/hosts — hostnames come from DHCP leases only
+no-hosts
+
+# Authoritative for this domain; never forward home.arpa queries upstream
+local=/{{ dhcp_domain }}/
+domain={{ dhcp_domain }}
+
+# Append domain to short hostnames in DHCP registrations
+expand-hosts
+
+# ============================================================
+# DHCP
+# ============================================================
+
+dhcp-leasefile=/var/lib/dnsmasq/dnsmasq.leases
+
+# Log DHCP events (visible via 'show container log dnsmasq' on VyOS)
+log-dhcp
+
+# Listen on all VLAN interfaces
+interface={{ lan_interface }}
+interface={{ lan_interface }}.{{ trusted_wifi_vlan }}
+interface={{ lan_interface }}.{{ iot_vlan }}
+interface={{ lan_interface }}.{{ guest_vlan }}
+
+# ---- LAN (native, wired trusted) ----
+# Tag set:lan is used to apply PXE options only to this subnet
+dhcp-range=set:lan,{{ lan_dhcp_start }},{{ lan_dhcp_end }},255.255.255.0,86400s
+dhcp-option=tag:lan,option:router,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:lan,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:lan,option:domain-name,{{ dhcp_domain }}
+# PXE boot for iVentoy
+# dhcp-match matches clients that identify as PXEClient; dhcp-boot applies to them
+dhcp-match=set:pxeclient,option:60,PXEClient
+dhcp-boot=tag:pxeclient,iventoy_loader_16000_uefi,,{{ docker_node_ip }}
+dhcp-option=tag:pxeclient,option:tftp-server,{{ docker_node_ip }}
+dhcp-option=tag:pxeclient,60,PXEClient
+
+# ---- Trusted WiFi (VLAN {{ trusted_wifi_vlan }}) ----
+dhcp-range=set:trusted-wifi,{{ trusted_wifi_dhcp_start }},{{ trusted_wifi_dhcp_end }},255.255.255.0,86400s
+dhcp-option=tag:trusted-wifi,option:router,{{ trusted_wifi_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:trusted-wifi,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:trusted-wifi,option:domain-name,{{ dhcp_domain }}
+
+# ---- IoT (VLAN {{ iot_vlan }}) ----
+# Short lease, no domain name — IoT devices do not need home.arpa resolution
+dhcp-range=set:iot,{{ iot_dhcp_start }},{{ iot_dhcp_end }},255.255.255.0,3600s
+dhcp-option=tag:iot,option:router,{{ iot_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:iot,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+
+# ---- Guest (VLAN {{ guest_vlan }}) ----
+# Short lease, no domain name
+dhcp-range=set:guest,{{ guest_dhcp_start }},{{ guest_dhcp_end }},255.255.255.0,3600s
+dhcp-option=tag:guest,option:router,{{ guest_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:guest,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}

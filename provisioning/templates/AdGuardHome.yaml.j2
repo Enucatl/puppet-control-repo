@@ -23,6 +23,8 @@ dns:
   refuse_any: true
   upstream_dns:
     - https://dns10.quad9.net/dns-query
+    # Forward home.arpa to dnsmasq, which auto-registers DHCPv4 leases as hostnames
+    - "[/{{ dhcp_domain }}/]127.0.0.1:{{ dnsmasq_dns_port }}"
   upstream_dns_file: ""
   bootstrap_dns:
     - 9.9.9.10
@@ -113,21 +115,19 @@ user_rules:
   # 2. Define the SRV Record pointing to port 3142
   - '||_apt_proxy._tcp.home.arpa^$dnsrewrite=NOERROR;SRV;0 0 3142 apt-cacher-ng.home.arpa'
 dhcp:
-  enabled: true
-  interface_name: eth1
+  # DHCP disabled: all subnets (LAN, Trusted WiFi, IoT, Guest) are now
+  # served by the VyOS native DHCP server. AdGuard handles DNS only.
+  enabled: false
+  interface_name: ""
   local_domain_name: home.arpa
   dhcpv4:
-    gateway_ip: "10.0.0.1"
-    subnet_mask: "255.255.255.0"
-    range_start: "10.0.0.100"
-    range_end: "10.0.0.200"
+    gateway_ip: ""
+    subnet_mask: ""
+    range_start: ""
+    range_end: ""
     lease_duration: 86400
     icmp_timeout_msec: 1000
-    options: 
-      - '15 text home.arpa'
-      - '60 text PXEClient'
-      - '66 text 10.0.0.128'
-      - '67 text iventoy_loader_16000_uefi'
+    options: []
   dhcpv6:
     range_start: ""
     lease_duration: 86400
