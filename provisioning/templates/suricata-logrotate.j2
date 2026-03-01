@@ -3,7 +3,14 @@
     size 100M
     rotate 7
     compress
+    delaycompress
     missingok
     notifempty
-    copytruncate
+    sharedscripts
+    postrotate
+        # Tell Suricata to close and reopen its log files.
+        # Without this, Suricata keeps writing to the renamed .1 file.
+        # || true so logrotate does not fail if the socket is temporarily unavailable.
+        /usr/bin/suricatasc -c reopen-log-files >/dev/null 2>&1 || true
+    endscript
 }
