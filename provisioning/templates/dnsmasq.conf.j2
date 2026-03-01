@@ -82,7 +82,20 @@ dhcp-option=tag:guest,option:router,{{ guest_ip | ansible.utils.ipaddr('address'
 dhcp-option=tag:guest,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 
 # ============================================================
+# STATIC DNS RECORDS (hosts with static IP config, no DHCP)
+# ============================================================
+
+address=/proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
+address=/dropbear.proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
+address=/pve-desktop.{{ dhcp_domain }}/{{ pve_desktop_ip }}
+address=/docker.{{ dhcp_domain }}/{{ docker_node_ip }}
+address=/freeipa.{{ dhcp_domain }}/{{ docker_node_ip }}
+address=/hcv.{{ dhcp_domain }}/{{ docker_node_ip }}
+
+# ============================================================
 # STATIC DHCP RESERVATIONS
 # ============================================================
 
 dhcp-host={{ docker_node_mac }},{{ docker_node_ip }},infinite
+dhcp-host={{ proxmox_mac }},{{ proxmox_ip }},infinite
+dhcp-host={{ pve_desktop_mac }},{{ pve_desktop_ip }},infinite
