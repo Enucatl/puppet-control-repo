@@ -1,0 +1,7 @@
+# Suppress noisy/benign protocol anomalies
+# suricata-update reads this file and strips matching SIDs before
+# writing the final rules set, so they never fire at runtime.
+2260001  # Applayer Wrong direction first Data
+2210042  # TIMEWAIT ACK with wrong seq (Printers/IoT)
+2210044  # Packet with invalid timestamp (Printers/IoT)
+2210020  # STREAM ESTABLISHED packet out of window (Offload noise)
