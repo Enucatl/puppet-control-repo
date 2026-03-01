@@ -179,6 +179,7 @@ samba::map_to_guest: 'Bad User'
 samba::package_ensure: 'installed'
 samba::hosts_allow:
    - '10.0.0.'
+   - '10.0.20.'
 samba::hosts_deny:
    - 'ALL'
 samba::shares:
