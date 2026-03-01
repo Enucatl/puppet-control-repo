@@ -89,6 +89,8 @@
     proxmox_mac: "9c:6b:00:c3:76:1d"
     pve_desktop_ip: "10.0.0.11"
     pve_desktop_mac: "b0:6e:bf:82:d5:1c"
+    printer_ip: "10.0.20.189"
+    printer_mac: "4c:eb:bd:46:ff:8c"
 
     # --- SECRETS (from HashiCorp Vault kv/puppet) ---
     _vault_kv_puppet: "{{ lookup('community.hashi_vault.vault_kv2_get', 'puppet', engine_mount_point='kv').secret }}"
