@@ -899,6 +899,7 @@
         commands:
           - mkdir -p '{{ dnsmasq_data_path }}/conf'
           - mkdir -p '{{ dnsmasq_data_path }}/leases'
+          - mkdir -p '{{ dnsmasq_data_path }}/log'
 
     - name: Generate dnsmasq config locally from template
       delegate_to: localhost
@@ -950,6 +951,9 @@
           - set container name dnsmasq volume dnsmasq_leases source '{{ dnsmasq_data_path }}/leases'
           - set container name dnsmasq volume dnsmasq_leases mode rw
           - set container name dnsmasq volume dnsmasq_leases destination '/var/lib/dnsmasq'
+          - set container name dnsmasq volume dnsmasq_log source '{{ dnsmasq_data_path }}/log'
+          - set container name dnsmasq volume dnsmasq_log mode rw
+          - set container name dnsmasq volume dnsmasq_log destination '/var/log/dnsmasq'
 
     - name: Restart dnsmasq container
       vyos.vyos.vyos_command:
@@ -1055,10 +1059,20 @@
           - set container name alloy volume alloy_vyos_logs mode ro
           - set container name alloy volume alloy_vyos_logs destination '/var/log/host'
 
-          # Suricata EVE JSON
+          # Suricata EVE JSON + stats
           - set container name alloy volume alloy_suricata_logs source '/tmp/suricata-logs'
           - set container name alloy volume alloy_suricata_logs mode ro
           - set container name alloy volume alloy_suricata_logs destination '/tmp/suricata-logs'
+
+          # AdGuard query log (work dir contains querylog.json)
+          - set container name alloy volume alloy_adguard_work source '{{ adguard_data_path }}/work'
+          - set container name alloy volume alloy_adguard_work mode ro
+          - set container name alloy volume alloy_adguard_work destination '/var/adguard/work'
+
+          # dnsmasq DHCP log
+          - set container name alloy volume alloy_dnsmasq_log source '{{ dnsmasq_data_path }}/log'
+          - set container name alloy volume alloy_dnsmasq_log mode ro
+          - set container name alloy volume alloy_dnsmasq_log destination '/var/dnsmasq/log'
 
     - name: Restart Alloy container
       vyos.vyos.vyos_command:
