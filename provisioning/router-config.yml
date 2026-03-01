@@ -75,6 +75,7 @@
     # AF_PACKET captures at the interface level, so FASTPATH-offloaded established
     # flows are still visible to Suricata despite bypassing netfilter.
     suricata_et_open_url: "https://rules.emergingthreats.net/open/suricata-7.0.3/emerging.rules.tar.gz"
+    local_suricata_logrotate_path: "/tmp/suricata-logrotate.tmp"
 
     # DHCP ranges (.100-.200 on each subnet)
     lan_dhcp_start: "10.0.0.100"
@@ -800,6 +801,13 @@
           - set service ids suricata mode ids
           - set service ids suricata rule-set emerging-threats url {{ suricata_et_open_url }}
 
+          # Rotate logs daily (or at 100 MB) via logrotate; config lives in
+          # /config/ so it survives reboots. 3 AM chosen to avoid overlap with
+          # the signature update window.
+          - set system task-scheduler task rotate-suricata-logs cron-spec '0 3 * * *'
+          - set system task-scheduler task rotate-suricata-logs executable path '/usr/sbin/logrotate'
+          - set system task-scheduler task rotate-suricata-logs executable arguments '/config/logrotate.d/suricata'
+
     - name: Configure WireGuard Peers
       vyos.vyos.vyos_config:
         save: true
@@ -937,3 +945,28 @@
           - update ids signatures
       vars:
         ansible_command_timeout: 300
+
+    - name: Generate Suricata logrotate config locally from template
+      delegate_to: localhost
+      ansible.builtin.template:
+        src: templates/suricata-logrotate.j2
+        dest: "{{ local_suricata_logrotate_path }}"
+        mode: '0600'
+
+    - name: Upload Suricata logrotate config to VyOS
+      ansible.netcommon.net_put:
+        src: "{{ local_suricata_logrotate_path }}"
+        dest: "/tmp/suricata-logrotate"
+
+    - name: Install Suricata logrotate config to persistent storage
+      vyos.vyos.vyos_command:
+        commands:
+          - mkdir -p /config/logrotate.d
+          - sudo mv /tmp/suricata-logrotate /config/logrotate.d/suricata
+          - sudo chmod 0644 /config/logrotate.d/suricata
+
+    - name: Clean up local temporary logrotate config
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ local_suricata_logrotate_path }}"
+        state: absent
