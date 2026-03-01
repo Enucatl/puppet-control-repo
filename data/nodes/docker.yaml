@@ -53,7 +53,7 @@ profile::alloy::enable_docker: true
 profile::docker_host::git_deploy_projects:
   airflow:
     pull: true
-    build_command: "docker compose build"
+    build_command: "docker compose build --build-arg AIRFLOW_VERSION=$(cat build/VERSION)"
   authelia: {}
   checkmk: {}
   crabberbot:
