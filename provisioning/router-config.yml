@@ -72,8 +72,12 @@
 
     # --- SURICATA IDS ---
     # Passive IDS mode (AF_PACKET) on IoT and Guest VLANs only.
-    # AF_PACKET captures at the interface level, so FASTPATH-offloaded established
-    # flows are still visible to Suricata despite bypassing netfilter.
+    # AF_PACKET taps at __netif_receive_skb_core, before the nftables flowtable
+    # hook, so software-offloaded established flows are still visible to Suricata.
+    # NOTE: if FASTPATH is ever switched to hardware offload the NIC itself handles
+    # established flows and AF_PACKET will only see the TCP handshake — Suricata
+    # would miss payload inspection. Verify with a large transfer + stats.log check
+    # before enabling hardware offload.
     suricata_et_open_url: "https://rules.emergingthreats.net/open/suricata-7.0.3/emerging.rules.tar.gz"
     local_suricata_logrotate_path: "/tmp/suricata-logrotate.tmp"
 
@@ -801,9 +805,15 @@
           - set service ids suricata mode ids
           - set service ids suricata rule-set emerging-threats url {{ suricata_et_open_url }}
 
+          # Auto-update ET Open signatures daily at 02:00 so rules are current.
+          # vyatta-op-cmd-wrapper is required to run operational commands from cron.
+          - set system task-scheduler task update-ids-rules cron-spec '0 2 * * *'
+          - set system task-scheduler task update-ids-rules executable path '/opt/vyatta/bin/vyatta-op-cmd-wrapper'
+          - set system task-scheduler task update-ids-rules executable arguments 'update ids signatures'
+
           # Rotate logs daily (or at 100 MB) via logrotate; config lives in
-          # /config/ so it survives reboots. 3 AM chosen to avoid overlap with
-          # the signature update window.
+          # /config/ so it survives reboots. 3 AM chosen to run after the
+          # signature update completes.
           - set system task-scheduler task rotate-suricata-logs cron-spec '0 3 * * *'
           - set system task-scheduler task rotate-suricata-logs executable path '/usr/sbin/logrotate'
           - set system task-scheduler task rotate-suricata-logs executable arguments '/config/logrotate.d/suricata'
