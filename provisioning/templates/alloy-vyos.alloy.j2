@@ -2,8 +2,11 @@
 // Managed by Ansible (router-config.yml). Do not edit manually.
 //
 // Sources:
-//   - VyOS syslog  → host /var/log    mounted read-only at /var/log/host
-//   - Suricata EVE → host /tmp/suricata-logs/eve.json
+//   - VyOS syslog       → host /var/log              mounted at /var/log/host
+//   - Suricata EVE JSON → host /tmp/suricata-logs/    mounted at /tmp/suricata-logs
+//   - Suricata stats    → host /tmp/suricata-logs/    mounted at /tmp/suricata-logs
+//   - AdGuard querylog  → host adguard work dir       mounted at /var/adguard/work
+//   - dnsmasq DHCP log  → host dnsmasq log dir        mounted at /var/dnsmasq/log
 
 // ============================================================
 // OUTPUT
@@ -90,5 +93,83 @@ loki.process "label_eve" {
     }
   }
 
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+// ============================================================
+// Suricata performance stats
+// Plain text; one stats block per interval. Useful for catching
+// ring buffer drops (capture.kernel_drops counter).
+// ============================================================
+
+local.file_match "suricata_stats" {
+  path_targets = [{
+    __path__ = "/tmp/suricata-logs/stats.log",
+    job      = "suricata-stats",
+    host     = "router.{{ dhcp_domain }}",
+  }]
+}
+
+loki.source.file "suricata_stats" {
+  targets    = local.file_match.suricata_stats.targets
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+// ============================================================
+// AdGuard Home query log
+// Work dir mounted read-only at /var/adguard/work.
+// dir_path in AdGuardHome.yaml is set to /opt/adguardhome/work
+// so the file lands at querylog.json in that directory.
+// ============================================================
+
+local.file_match "adguard_querylog" {
+  path_targets = [{
+    __path__ = "/var/adguard/work/querylog.json",
+    job      = "adguard",
+    host     = "router.{{ dhcp_domain }}",
+  }]
+}
+
+loki.source.file "adguard_querylog" {
+  targets    = local.file_match.adguard_querylog.targets
+  forward_to = [loki.process.label_adguard.receiver]
+}
+
+// Promote Result.IsFiltered as a label (true/false) so blocked queries
+// are a distinct stream. Domain (QH), client IP, and query type are left
+// in the log line body for LogQL json parsing.
+loki.process "label_adguard" {
+  stage.json {
+    expressions = {
+      filtered = "Result.IsFiltered",
+    }
+  }
+
+  stage.labels {
+    values = {
+      filtered = null,
+    }
+  }
+
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+// ============================================================
+// dnsmasq DHCP log
+// Log dir mounted read-only at /var/dnsmasq/log.
+// dnsmasq.conf sets log-facility=/var/log/dnsmasq/dnsmasq.log
+// inside the container, backed by this volume on the host.
+// ============================================================
+
+local.file_match "dnsmasq_dhcp" {
+  path_targets = [{
+    __path__ = "/var/dnsmasq/log/dnsmasq.log",
+    job      = "dnsmasq",
+    host     = "router.{{ dhcp_domain }}",
+  }]
+}
+
+loki.source.file "dnsmasq_dhcp" {
+  targets    = local.file_match.dnsmasq_dhcp.targets
   forward_to = [loki.write.remote_loki.receiver]
 }

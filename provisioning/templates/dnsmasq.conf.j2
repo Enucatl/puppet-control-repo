@@ -47,8 +47,9 @@ dhcp-authoritative
 
 dhcp-leasefile=/var/lib/dnsmasq/dnsmasq.leases
 
-# Log to stderr so output is visible via 'show container log dnsmasq'
-log-facility=-
+# Log to a file so Alloy can tail it; /var/log/dnsmasq is a dedicated
+# volume mount backed by {{ dnsmasq_data_path }}/log on the VyOS host.
+log-facility=/var/log/dnsmasq/dnsmasq.log
 # Log DHCP events
 log-dhcp
 
