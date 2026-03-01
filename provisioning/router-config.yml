@@ -6,6 +6,9 @@
     - vars/secrets.yml
 
   vars:
+    # Network CLI command timeout — the main config batch is large
+    ansible_command_timeout: 120
+
     # --- INTERFACES ---
     wan_interface: "eth3"       # Mellanox ConnectX-6 Dx port 1 (WAN, hostpci1 / 01:00.1)
     lan_interface: "eth1"       # virtio NIC via vmbr0 (LAN)
@@ -611,20 +614,6 @@
           - set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} prefix ::/64 valid-lifetime 172800
           - set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server '{{ vyos_ipv6 }}'
 
-          # dnsmasq container: DHCPv4 for all subnets + authoritative DNS for home.arpa.
-          # DNS on port {{ dnsmasq_dns_port }} to avoid conflict with AdGuard on 53.
-          # AdGuard upstream rule forwards home.arpa queries to 127.0.0.1:{{ dnsmasq_dns_port }}.
-          - set container name dnsmasq image {{ dnsmasq_image }}
-          - set container name dnsmasq restart on-failure
-          - set container name dnsmasq allow-host-networks
-          - set container name dnsmasq capability net-admin
-          - set container name dnsmasq volume dnsmasq_conf source '{{ dnsmasq_data_path }}/conf'
-          - set container name dnsmasq volume dnsmasq_conf mode ro
-          - set container name dnsmasq volume dnsmasq_conf destination '/etc/dnsmasq.d'
-          - set container name dnsmasq volume dnsmasq_leases source '{{ dnsmasq_data_path }}/leases'
-          - set container name dnsmasq volume dnsmasq_leases mode rw
-          - set container name dnsmasq volume dnsmasq_leases destination '/var/lib/dnsmasq'
-
           # Cloudflare Dynamic DNS for WireGuard endpoint
           - set service dns dynamic name cloudflare host-name vpn.enucatl.com
           - set service dns dynamic name cloudflare address interface eth3
@@ -862,6 +851,31 @@
       ansible.builtin.file:
         path: "{{ local_dnsmasq_config_path }}"
         state: absent
+
+    # Image must be pulled before the container can be configured.
+    # VyOS validates the image exists locally at commit time.
+    - name: Pull dnsmasq container image
+      vyos.vyos.vyos_command:
+        commands:
+          - add container image {{ dnsmasq_image }}
+      vars:
+        ansible_command_timeout: 300
+
+    - name: Configure dnsmasq container
+      vyos.vyos.vyos_config:
+        save: true
+        lines:
+          # Folders and config file are already in place at this point
+          - set container name dnsmasq image {{ dnsmasq_image }}
+          - set container name dnsmasq restart on-failure
+          - set container name dnsmasq allow-host-networks
+          - set container name dnsmasq capability net-admin
+          - set container name dnsmasq volume dnsmasq_conf source '{{ dnsmasq_data_path }}/conf'
+          - set container name dnsmasq volume dnsmasq_conf mode ro
+          - set container name dnsmasq volume dnsmasq_conf destination '/etc/dnsmasq.d'
+          - set container name dnsmasq volume dnsmasq_leases source '{{ dnsmasq_data_path }}/leases'
+          - set container name dnsmasq volume dnsmasq_leases mode rw
+          - set container name dnsmasq volume dnsmasq_leases destination '/var/lib/dnsmasq'
 
     - name: Restart dnsmasq container
       vyos.vyos.vyos_command:
