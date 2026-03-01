@@ -5,14 +5,21 @@
 # All other DNS is handled by AdGuard upstream.
 
 # ============================================================
-# DNS
+# DNS & INTERFACES
 # ============================================================
 
 # Non-standard port to avoid conflict with AdGuard on 53
 port={{ dnsmasq_dns_port }}
 
-# Only answer DNS queries that arrive on configured interfaces
-bind-interfaces
+# Explicitly listen only on LAN-side interfaces — never WAN or VPN
+interface={{ lan_interface }}
+interface={{ trusted_wifi_interface }}
+interface={{ iot_interface }}
+interface={{ guest_interface }}
+
+# bind-dynamic binds to listed interfaces as they come up and ignores
+# unlisted ones; superior to bind-interfaces for host-networking containers
+bind-dynamic
 
 # Do not read upstream resolvers from /etc/resolv.conf — we are not a forwarder
 no-resolv
@@ -31,16 +38,14 @@ expand-hosts
 # DHCP
 # ============================================================
 
+dhcp-authoritative
+
 dhcp-leasefile=/var/lib/dnsmasq/dnsmasq.leases
 
-# Log DHCP events (visible via 'show container log dnsmasq' on VyOS)
+# Log to stderr so output is visible via 'show container log dnsmasq'
+log-facility=-
+# Log DHCP events
 log-dhcp
-
-# Listen on all VLAN interfaces
-interface={{ lan_interface }}
-interface={{ lan_interface }}.{{ trusted_wifi_vlan }}
-interface={{ lan_interface }}.{{ iot_vlan }}
-interface={{ lan_interface }}.{{ guest_vlan }}
 
 # ---- LAN (native, wired trusted) ----
 # Tag set:lan is used to apply PXE options only to this subnet
@@ -48,12 +53,15 @@ dhcp-range=set:lan,{{ lan_dhcp_start }},{{ lan_dhcp_end }},255.255.255.0,86400s
 dhcp-option=tag:lan,option:router,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 dhcp-option=tag:lan,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 dhcp-option=tag:lan,option:domain-name,{{ dhcp_domain }}
+
 # PXE boot for iVentoy
-# dhcp-match matches clients that identify as PXEClient; dhcp-boot applies to them
-dhcp-match=set:pxeclient,60,PXEClient
-dhcp-boot=tag:pxeclient,iventoy_loader_16000_uefi,,{{ docker_node_ip }}
-dhcp-option=tag:pxeclient,option:tftp-server,{{ docker_node_ip }}
-dhcp-option=tag:pxeclient,60,PXEClient
+# dhcp-vendorclass is the proper directive for Option 60 matches
+dhcp-vendorclass=set:pxeclient,PXEClient
+
+# By combining tag:lan and tag:pxeclient, we ensure iVentoy is only served to the LAN subnet
+dhcp-boot=tag:lan,tag:pxeclient,iventoy_loader_16000_uefi,,{{ docker_node_ip }}
+dhcp-option=tag:lan,tag:pxeclient,option:tftp-server,{{ docker_node_ip }}
+dhcp-option=tag:lan,tag:pxeclient,60,PXEClient
 
 # ---- Trusted WiFi (VLAN {{ trusted_wifi_vlan }}) ----
 dhcp-range=set:trusted-wifi,{{ trusted_wifi_dhcp_start }},{{ trusted_wifi_dhcp_end }},255.255.255.0,86400s
