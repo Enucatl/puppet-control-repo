@@ -111,7 +111,7 @@ filters:
 whitelist_filters: []
 user_rules:
   # 1. Define the IP of the Proxy Server (Change 10.0.0.128 if needed)
-  - '||apt-cacher-ng.home.arpa^$dnsrewrite=NOERROR;A;10.0.0.128'
+  - '||apt-cacher-ng.home.arpa^$dnsrewrite=NOERROR;A;{{ docker_node_ip }}'
   # 2. Define the SRV Record pointing to port 3142
   - '||_apt_proxy._tcp.home.arpa^$dnsrewrite=NOERROR;SRV;0 0 3142 apt-cacher-ng.home.arpa'
 dhcp:
@@ -153,28 +153,7 @@ filtering:
   blocking_mode: default
   parental_block_host: family-block.dns.adguard.com
   safebrowsing_block_host: standard-block.dns.adguard.com
-  rewrites:
-    - domain: dropbear.proxmox.home.arpa
-      answer: 10.0.0.10
-      enabled: true
-    - domain: proxmox.home.arpa
-      answer: 10.0.0.10
-      enabled: true
-    - domain: '*.nuc10i7fnh.home.arpa'
-      answer: 10.0.0.109
-      enabled: true
-    - domain: '*.docker.home.arpa'
-      answer: 10.0.0.128
-      enabled: true
-    - domain: 'freeipa.home.arpa'
-      answer: 10.0.0.128
-      enabled: true
-    - domain: 'hcv.home.arpa'
-      answer: 10.0.0.128
-      enabled: true
-    - domain: 'pve-desktop.home.arpa'
-      answer: 10.0.0.11
-      enabled: true
+  rewrites: []
   safe_fs_patterns:
     - /opt/adguardhome/work/userfilters/*
   safebrowsing_cache_size: 1048576
