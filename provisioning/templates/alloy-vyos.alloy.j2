@@ -3,8 +3,8 @@
 //
 // Sources:
 //   - VyOS syslog       → host /var/log              mounted at /var/log/host
-//   - Suricata EVE JSON → host /tmp/suricata-logs/    mounted at /tmp/suricata-logs
-//   - Suricata stats    → host /tmp/suricata-logs/    mounted at /tmp/suricata-logs
+//   - Suricata EVE JSON → host /var/log/suricata/     mounted at /var/log/suricata
+//   - Suricata stats    → host /var/log/suricata/     mounted at /var/log/suricata
 //   - AdGuard querylog  → host adguard work dir       mounted at /var/adguard/work
 //   - dnsmasq DHCP log  → host dnsmasq log dir        mounted at /var/dnsmasq/log
 
@@ -66,7 +66,7 @@ loki.source.file "vyos_syslog" {
 
 local.file_match "suricata_eve" {
   path_targets = [{
-    __path__ = "/tmp/suricata-logs/eve.json",
+    __path__ = "/var/log/suricata/eve.json",
     job      = "suricata",
     host     = "router.{{ dhcp_domain }}",
   }]
@@ -104,7 +104,7 @@ loki.process "label_eve" {
 
 local.file_match "suricata_stats" {
   path_targets = [{
-    __path__ = "/tmp/suricata-logs/stats.log",
+    __path__ = "/var/log/suricata/stats.log",
     job      = "suricata-stats",
     host     = "router.{{ dhcp_domain }}",
   }]
