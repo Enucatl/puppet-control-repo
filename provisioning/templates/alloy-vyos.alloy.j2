@@ -1,0 +1,94 @@
+// Alloy configuration for VyOS router.
+// Managed by Ansible (router-config.yml). Do not edit manually.
+//
+// Sources:
+//   - VyOS syslog  → host /var/log    mounted read-only at /var/log/host
+//   - Suricata EVE → host /tmp/suricata-logs/eve.json
+
+// ============================================================
+// OUTPUT
+// ============================================================
+
+loki.write "remote_loki" {
+  endpoint {
+    url = "{{ loki_url }}"
+
+    // VyOS is not a FreeIPA client so its container trust store does not
+    // include the internal CA. Safe to skip on a non-routable address.
+    tls_config {
+      insecure_skip_verify = true
+    }
+
+    batch_wait = "1s"
+    batch_size = "512KB"
+  }
+
+  wal {
+    enabled         = true
+    max_segment_age = "1h"
+  }
+}
+
+// ============================================================
+// VyOS system logs
+// Host /var/log is mounted read-only at /var/log/host to avoid
+// shadowing the container's own /var/log directory.
+// ============================================================
+
+local.file_match "vyos_syslog" {
+  path_targets = [
+    {
+      // Main syslog — no .log extension on VyOS/Debian
+      __path__ = "/var/log/host/messages",
+      job      = "vyos-syslog",
+      host     = "router.{{ dhcp_domain }}",
+    },
+    {
+      // auth, daemon, kern, etc.
+      __path__ = "/var/log/host/*.log",
+      job      = "vyos-syslog",
+      host     = "router.{{ dhcp_domain }}",
+    },
+  ]
+}
+
+loki.source.file "vyos_syslog" {
+  targets    = local.file_match.vyos_syslog.targets
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+// ============================================================
+// Suricata EVE JSON
+// ============================================================
+
+local.file_match "suricata_eve" {
+  path_targets = [{
+    __path__ = "/tmp/suricata-logs/eve.json",
+    job      = "suricata",
+    host     = "router.{{ dhcp_domain }}",
+  }]
+}
+
+loki.source.file "suricata_eve" {
+  targets    = local.file_match.suricata_eve.targets
+  forward_to = [loki.process.label_eve.receiver]
+}
+
+// Promote event_type as a label for efficient stream filtering in Grafana.
+// IP addresses, ports, and signatures are intentionally left in the log
+// line body — query them via LogQL's | json parser to avoid high cardinality.
+loki.process "label_eve" {
+  stage.json {
+    expressions = {
+      event_type = "event_type",
+    }
+  }
+
+  stage.labels {
+    values = {
+      event_type = null,
+    }
+  }
+
+  forward_to = [loki.write.remote_loki.receiver]
+}
