@@ -177,6 +177,11 @@ samba::server_string: 'docker'
 samba::security: 'user'
 samba::map_to_guest: 'Bad User'
 samba::package_ensure: 'installed'
+samba::extra_global_options:
+  # Reject NTLMv1 — it is crackable offline and vulnerable to relay attacks.
+  # Suricata (ET INFO NTLMv1 Session Setup Response) flagged the printer
+  # using NTLMv1; this forces NTLMv2 for all clients.
+  'ntlm auth': 'ntlmv2-only'
 samba::hosts_allow:
    - '10.0.0.'
    - '10.0.20.'

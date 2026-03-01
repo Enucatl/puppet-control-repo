@@ -806,6 +806,66 @@
           # WAN is deliberately excluded — internet-side noise would
           # overwhelm alerts; internal misbehaviour is what matters here.
           # ============================================================
+          # home-net tells Suricata which addresses are "internal".
+          # Required by the validator and used by virtually every rule.
+          # IPv4 internal ranges
+          - set service suricata address-group home-net address {{ lan_subnet }}
+          - set service suricata address-group home-net address {{ trusted_wifi_subnet }}
+          - set service suricata address-group home-net address {{ iot_subnet }}
+          - set service suricata address-group home-net address {{ guest_subnet }}
+          - set service suricata address-group home-net address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
+          # IPv6: /48 prefix delegation covers all VLANs and routed subnets;
+          # fe80::/10 covers link-local addresses seen on all interfaces
+          - set service suricata address-group home-net address {{ ipv6_prefix }}::/48
+          - set service suricata address-group home-net address fe80::/10
+          # external-net = everything that is NOT home-net (i.e. the internet).
+          # Maps to Suricata's $EXTERNAL_NET variable used by most ET Open rules.
+          # 'group' sub-node accepts group references with negation; 'address'
+          # only accepts literal IP/CIDR values.
+          - set service suricata address-group external-net group '!home-net'
+          # Server address-groups mirror the standard suricata.yaml defaults
+          # ($HTTP_SERVERS, $SMTP_SERVERS, etc. = $HOME_NET). Without these,
+          # ET Open rules that reference them fail to parse and Suricata aborts.
+          - set service suricata address-group http-servers group home-net
+          - set service suricata address-group smtp-servers group home-net
+          - set service suricata address-group sql-servers group home-net
+          - set service suricata address-group dns-servers group home-net
+          - set service suricata address-group telnet-servers group home-net
+          - set service suricata address-group dc-servers group home-net
+          - set service suricata address-group modbus-server group home-net
+          - set service suricata address-group modbus-client group home-net
+          - set service suricata address-group dnp3-server group home-net
+          - set service suricata address-group dnp3-client group home-net
+          - set service suricata address-group enip-server group home-net
+          - set service suricata address-group enip-client group home-net
+          # AIM servers live on the internet, not on home-net
+          - set service suricata address-group aim-servers group external-net
+          # Port-groups define what Suricata's rule variables ($HTTP_PORTS etc.)
+          # expand to. They do NOT limit which traffic is inspected — Suricata
+          # sees all traffic on the monitored interfaces regardless.
+          # Broad coverage here means more ET Open rules fire correctly.
+          # At least one port-group is required by the VyOS validator.
+          - set service suricata port-group http-ports port 80
+          - set service suricata port-group http-ports port 443
+          - set service suricata port-group http-ports port 8080
+          - set service suricata port-group http-ports port 8000
+          - set service suricata port-group http-ports port 8008
+          - set service suricata port-group http-ports port 8888
+          - set service suricata port-group ftp-ports port 21
+          - set service suricata port-group ftp-ports port 990
+          - set service suricata port-group ssh-ports port 22
+          - set service suricata port-group dns-ports port 53
+          - set service suricata port-group dns-ports port 5353
+          - set service suricata port-group smtp-ports port 25
+          - set service suricata port-group smtp-ports port 465
+          - set service suricata port-group smtp-ports port 587
+          - set service suricata port-group modbus-ports port 502
+          - set service suricata port-group dnp3-ports port 20000
+          - set service suricata port-group oracle-ports port 1521
+          # Tunnel encapsulation ports — required by ET Open tunnel/evasion rules
+          - set service suricata port-group teredo-ports port 3544
+          - set service suricata port-group geneve-ports port 6081
+          - set service suricata port-group vxlan-ports port 4789
           - set service suricata interface {{ iot_interface }}
           - set service suricata interface {{ guest_interface }}
           - set service suricata log eve filename /var/log/suricata/eve.json
@@ -859,7 +919,6 @@
           - set container name adguard volume adguard_conf destination /opt/adguardhome/conf
 
           # Router uses AdGuard for DNS
-          - delete service dns forwarding
           - set system name-server {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 
     - name: Generate AdGuard config locally from template
@@ -962,8 +1021,6 @@
       vyos.vyos.vyos_command:
         commands:
           - update suricata
-      vars:
-        ansible_command_timeout: 300
 
     - name: Generate Suricata logrotate config locally from template
       delegate_to: localhost
