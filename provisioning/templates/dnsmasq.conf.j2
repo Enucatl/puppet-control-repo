@@ -97,6 +97,6 @@ address=/hcv.{{ dhcp_domain }}/{{ docker_node_ip }}
 # ============================================================
 
 dhcp-host={{ docker_node_mac }},{{ docker_node_ip }},infinite
-dhcp-host={{ printer_mac }},printer,{{ printer_ip }},infinite
+dhcp-host={{ printer_mac }},{{ printer_ip }},infinite
 dhcp-host={{ proxmox_mac }},{{ proxmox_ip }},infinite
 dhcp-host={{ pve_desktop_mac }},{{ pve_desktop_ip }},infinite
