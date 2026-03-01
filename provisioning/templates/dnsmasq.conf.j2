@@ -50,7 +50,7 @@ dhcp-option=tag:lan,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('add
 dhcp-option=tag:lan,option:domain-name,{{ dhcp_domain }}
 # PXE boot for iVentoy
 # dhcp-match matches clients that identify as PXEClient; dhcp-boot applies to them
-dhcp-match=set:pxeclient,option:60,PXEClient
+dhcp-match=set:pxeclient,60,PXEClient
 dhcp-boot=tag:pxeclient,iventoy_loader_16000_uefi,,{{ docker_node_ip }}
 dhcp-option=tag:pxeclient,option:tftp-server,{{ docker_node_ip }}
 dhcp-option=tag:pxeclient,60,PXEClient
