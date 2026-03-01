@@ -246,6 +246,10 @@
       },
       "transformations": [
         {
+          "id": "organize",
+          "options": { "excludeByName": { "Time": true } }
+        },
+        {
           "id": "rowsToFields",
           "options": { "nameField": "alert_signature", "valueField": "Value #A" }
         }
@@ -285,6 +289,10 @@
         "valueMode": "color"
       },
       "transformations": [
+        {
+          "id": "organize",
+          "options": { "excludeByName": { "Time": true } }
+        },
         {
           "id": "rowsToFields",
           "options": { "nameField": "src_ip", "valueField": "Value #A" }
@@ -342,6 +350,10 @@
         "tooltip": { "mode": "single" }
       },
       "transformations": [
+        {
+          "id": "organize",
+          "options": { "excludeByName": { "Time": true } }
+        },
         {
           "id": "rowsToFields",
           "options": { "nameField": "alert_severity", "valueField": "Value #A" }
