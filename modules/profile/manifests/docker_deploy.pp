@@ -77,6 +77,7 @@ define profile::docker_deploy (
       Type=oneshot
       User=${run_as}
       WorkingDirectory=${base_dir}
+      Environment=COMPOSE_ENV_FILES=../.env,./.env
       ExecStartPre=/bin/sleep 5
       ${exec_start_str}
       StandardOutput=journal
