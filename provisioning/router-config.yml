@@ -269,9 +269,9 @@
           - set firewall ipv4 name LAN-FORWARD rule 30 description 'LAN to Trusted WiFi'
           - set firewall ipv4 name LAN-FORWARD rule 30 outbound-interface group TRUSTED-WIFI
           - set firewall ipv4 name LAN-FORWARD rule 40 action accept
-          - set firewall ipv4 name LAN-FORWARD rule 40 description 'LAN to printer on IoT (IPP + raw)'
+          - set firewall ipv4 name LAN-FORWARD rule 40 description 'LAN to IoT devices (printing + web UI)'
           - set firewall ipv4 name LAN-FORWARD rule 40 outbound-interface group IOT
-          - set firewall ipv4 name LAN-FORWARD rule 40 destination port '631,9100'
+          - set firewall ipv4 name LAN-FORWARD rule 40 destination port '80,443,631,9100'
           - set firewall ipv4 name LAN-FORWARD rule 40 protocol tcp
 
           # --- TRUSTED-WIFI-FORWARD: Phone -> WAN + LAN ---
@@ -294,6 +294,11 @@
           - set firewall ipv4 name IOT-FORWARD rule 20 action accept
           - set firewall ipv4 name IOT-FORWARD rule 20 description 'IoT to WAN'
           - set firewall ipv4 name IOT-FORWARD rule 20 outbound-interface group WAN
+          - set firewall ipv4 name IOT-FORWARD rule 30 action accept
+          - set firewall ipv4 name IOT-FORWARD rule 30 description 'Printer to Samba on docker'
+          - set firewall ipv4 name IOT-FORWARD rule 30 destination address {{ docker_node_ip }}
+          - set firewall ipv4 name IOT-FORWARD rule 30 destination port '445,139'
+          - set firewall ipv4 name IOT-FORWARD rule 30 protocol tcp
 
           # --- GUEST-FORWARD: Guest -> WAN only ---
           - set firewall ipv4 name GUEST-FORWARD default-action drop
@@ -442,9 +447,9 @@
           - set firewall ipv6 name LAN-FORWARD6 rule 30 description 'LAN to Trusted WiFi'
           - set firewall ipv6 name LAN-FORWARD6 rule 30 outbound-interface group TRUSTED-WIFI
           - set firewall ipv6 name LAN-FORWARD6 rule 40 action accept
-          - set firewall ipv6 name LAN-FORWARD6 rule 40 description 'LAN to printer on IoT (IPP + raw)'
+          - set firewall ipv6 name LAN-FORWARD6 rule 40 description 'LAN to IoT devices (printing + web UI)'
           - set firewall ipv6 name LAN-FORWARD6 rule 40 outbound-interface group IOT
-          - set firewall ipv6 name LAN-FORWARD6 rule 40 destination port '631,9100'
+          - set firewall ipv6 name LAN-FORWARD6 rule 40 destination port '80,443,631,9100'
           - set firewall ipv6 name LAN-FORWARD6 rule 40 protocol tcp
 
           # --- TRUSTED-WIFI-FORWARD6 ---
@@ -467,6 +472,11 @@
           - set firewall ipv6 name IOT-FORWARD6 rule 20 action accept
           - set firewall ipv6 name IOT-FORWARD6 rule 20 description 'IoT to WAN'
           - set firewall ipv6 name IOT-FORWARD6 rule 20 outbound-interface group WAN
+          - set firewall ipv6 name IOT-FORWARD6 rule 30 action accept
+          - set firewall ipv6 name IOT-FORWARD6 rule 30 description 'Printer to Samba on docker'
+          - set firewall ipv6 name IOT-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
+          - set firewall ipv6 name IOT-FORWARD6 rule 30 destination port '445,139'
+          - set firewall ipv6 name IOT-FORWARD6 rule 30 protocol tcp
 
           # --- GUEST-FORWARD6 ---
           - set firewall ipv6 name GUEST-FORWARD6 default-action drop
