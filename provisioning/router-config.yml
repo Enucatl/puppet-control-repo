@@ -812,14 +812,14 @@
 
           # Auto-update ET Open signatures daily at 02:00 so rules are current.
           # vyatta-op-cmd-wrapper is required to run operational commands from cron.
-          - set system task-scheduler task update-ids-rules cron-spec '0 2 * * *'
+          - set system task-scheduler task update-ids-rules crontab-spec '0 2 * * *'
           - set system task-scheduler task update-ids-rules executable path '/opt/vyatta/bin/vyatta-op-cmd-wrapper'
           - set system task-scheduler task update-ids-rules executable arguments 'update suricata'
 
           # Rotate logs daily (or at 100 MB) via logrotate; config lives in
           # /config/ so it survives reboots. 3 AM chosen to run after the
           # signature update completes.
-          - set system task-scheduler task rotate-suricata-logs cron-spec '0 3 * * *'
+          - set system task-scheduler task rotate-suricata-logs crontab-spec '0 3 * * *'
           - set system task-scheduler task rotate-suricata-logs executable path '/usr/sbin/logrotate'
           - set system task-scheduler task rotate-suricata-logs executable arguments '/config/logrotate.d/suricata'
 
