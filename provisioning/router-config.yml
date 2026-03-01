@@ -78,7 +78,6 @@
     # established flows and AF_PACKET will only see the TCP handshake — Suricata
     # would miss payload inspection. Verify with a large transfer + stats.log check
     # before enabling hardware offload.
-    suricata_et_open_url: "https://rules.emergingthreats.net/open/suricata-7.0.3/emerging.rules.tar.gz"
     local_suricata_logrotate_path: "/tmp/suricata-logrotate.tmp"
 
     # --- ALLOY (log shipping to Loki) ---
@@ -807,16 +806,15 @@
           # WAN is deliberately excluded — internet-side noise would
           # overwhelm alerts; internal misbehaviour is what matters here.
           # ============================================================
-          - set service ids suricata interface {{ iot_interface }}
-          - set service ids suricata interface {{ guest_interface }}
-          - set service ids suricata mode ids
-          - set service ids suricata rule-set emerging-threats url {{ suricata_et_open_url }}
+          - set service suricata interface {{ iot_interface }}
+          - set service suricata interface {{ guest_interface }}
+          - set service suricata log eve filename /var/log/suricata/eve.json
 
           # Auto-update ET Open signatures daily at 02:00 so rules are current.
           # vyatta-op-cmd-wrapper is required to run operational commands from cron.
           - set system task-scheduler task update-ids-rules cron-spec '0 2 * * *'
           - set system task-scheduler task update-ids-rules executable path '/opt/vyatta/bin/vyatta-op-cmd-wrapper'
-          - set system task-scheduler task update-ids-rules executable arguments 'update ids signatures'
+          - set system task-scheduler task update-ids-rules executable arguments 'update suricata'
 
           # Rotate logs daily (or at 100 MB) via logrotate; config lives in
           # /config/ so it survives reboots. 3 AM chosen to run after the
@@ -960,10 +958,10 @@
         commands:
           - restart container dnsmasq
 
-    - name: Update Suricata IDS signatures
+    - name: Update Suricata signatures
       vyos.vyos.vyos_command:
         commands:
-          - update ids signatures
+          - update suricata
       vars:
         ansible_command_timeout: 300
 
@@ -1060,9 +1058,9 @@
           - set container name alloy volume alloy_vyos_logs destination '/var/log/host'
 
           # Suricata EVE JSON + stats
-          - set container name alloy volume alloy_suricata_logs source '/tmp/suricata-logs'
+          - set container name alloy volume alloy_suricata_logs source '/var/log/suricata'
           - set container name alloy volume alloy_suricata_logs mode ro
-          - set container name alloy volume alloy_suricata_logs destination '/tmp/suricata-logs'
+          - set container name alloy volume alloy_suricata_logs destination '/var/log/suricata'
 
           # AdGuard query log (work dir contains querylog.json)
           - set container name alloy volume alloy_adguard_work source '{{ adguard_data_path }}/work'
