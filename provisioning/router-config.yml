@@ -81,6 +81,13 @@
     suricata_et_open_url: "https://rules.emergingthreats.net/open/suricata-7.0.3/emerging.rules.tar.gz"
     local_suricata_logrotate_path: "/tmp/suricata-logrotate.tmp"
 
+    # --- ALLOY (log shipping to Loki) ---
+    # Runs as a container on VyOS, tailing Suricata EVE JSON and system logs.
+    alloy_image: "docker.io/grafana/alloy:latest"
+    alloy_data_path: "/config/containers/alloy"
+    loki_url: "https://loki.docker.home.arpa/loki/api/v1/push"
+    local_alloy_config_path: "/tmp/alloy-vyos.alloy.tmp"
+
     # DHCP ranges (.100-.200 on each subnet)
     lan_dhcp_start: "10.0.0.100"
     lan_dhcp_end: "10.0.0.200"
@@ -980,3 +987,80 @@
       ansible.builtin.file:
         path: "{{ local_suricata_logrotate_path }}"
         state: absent
+
+    # ============================================================
+    # ALLOY — ship VyOS syslog + Suricata EVE JSON to Loki
+    # ============================================================
+
+    - name: Create necessary folders for alloy
+      vyos.vyos.vyos_command:
+        commands:
+          - mkdir -p '{{ alloy_data_path }}/conf'
+          - mkdir -p '{{ alloy_data_path }}/data'
+
+    - name: Generate Alloy config locally from template
+      delegate_to: localhost
+      ansible.builtin.template:
+        src: templates/alloy-vyos.alloy.j2
+        dest: "{{ local_alloy_config_path }}"
+        mode: '0600'
+
+    - name: Upload Alloy config to VyOS
+      ansible.netcommon.net_put:
+        src: "{{ local_alloy_config_path }}"
+        dest: "/tmp/alloy-vyos.alloy"
+
+    - name: Install Alloy config into persistent storage
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo mv /tmp/alloy-vyos.alloy {{ alloy_data_path }}/conf/config.alloy"
+          - "sudo chown root:vyattacfg {{ alloy_data_path }}/conf/config.alloy"
+          - "sudo chmod 0644 {{ alloy_data_path }}/conf/config.alloy"
+
+    - name: Clean up local temporary Alloy config
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ local_alloy_config_path }}"
+        state: absent
+
+    - name: Pull Alloy container image
+      vyos.vyos.vyos_command:
+        commands:
+          - add container image {{ alloy_image }}
+      vars:
+        ansible_command_timeout: 300
+
+    - name: Configure Alloy container
+      vyos.vyos.vyos_config:
+        save: true
+        lines:
+          - set container name alloy image {{ alloy_image }}
+          - set container name alloy restart on-failure
+          - set container name alloy allow-host-networks
+          - set container name alloy environment GOMEMLIMIT value '256MiB'
+
+          # Config dir; default Alloy CMD reads /etc/alloy/config.alloy
+          - set container name alloy volume alloy_conf source '{{ alloy_data_path }}/conf'
+          - set container name alloy volume alloy_conf mode ro
+          - set container name alloy volume alloy_conf destination '/etc/alloy'
+
+          # Persistent WAL so in-flight log lines survive container restarts
+          - set container name alloy volume alloy_data source '{{ alloy_data_path }}/data'
+          - set container name alloy volume alloy_data mode rw
+          - set container name alloy volume alloy_data destination '/var/lib/alloy/data'
+
+          # VyOS system logs — mounted at /var/log/host, not /var/log,
+          # to avoid shadowing the container's own log directory
+          - set container name alloy volume alloy_vyos_logs source '/var/log'
+          - set container name alloy volume alloy_vyos_logs mode ro
+          - set container name alloy volume alloy_vyos_logs destination '/var/log/host'
+
+          # Suricata EVE JSON
+          - set container name alloy volume alloy_suricata_logs source '/tmp/suricata-logs'
+          - set container name alloy volume alloy_suricata_logs mode ro
+          - set container name alloy volume alloy_suricata_logs destination '/tmp/suricata-logs'
+
+    - name: Restart Alloy container
+      vyos.vyos.vyos_command:
+        commands:
+          - restart container alloy
