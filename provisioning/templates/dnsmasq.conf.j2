@@ -80,3 +80,9 @@ dhcp-option=tag:iot,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('add
 dhcp-range=set:guest,{{ guest_dhcp_start }},{{ guest_dhcp_end }},255.255.255.0,3600s
 dhcp-option=tag:guest,option:router,{{ guest_ip | ansible.utils.ipaddr('address') }}
 dhcp-option=tag:guest,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+
+# ============================================================
+# STATIC DHCP RESERVATIONS
+# ============================================================
+
+dhcp-host={{ docker_node_mac }},{{ docker_node_ip }},infinite

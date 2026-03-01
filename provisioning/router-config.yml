@@ -81,6 +81,7 @@
     guest_dhcp_end: "10.0.30.200"
 
     docker_node_ip: "10.0.0.128"
+    docker_node_mac: "bc:24:11:4a:bf:ed"
     docker_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
     desktop_node_ipv6_suffix: "::be24:11ff:fef7:659b"
 
