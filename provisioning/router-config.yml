@@ -70,6 +70,12 @@
     dhcp_domain: "home.arpa"
     local_dnsmasq_config_path: "/tmp/dnsmasq.conf.tmp"
 
+    # --- SURICATA IDS ---
+    # Passive IDS mode (AF_PACKET) on IoT and Guest VLANs only.
+    # AF_PACKET captures at the interface level, so FASTPATH-offloaded established
+    # flows are still visible to Suricata despite bypassing netfilter.
+    suricata_et_open_url: "https://rules.emergingthreats.net/open/suricata-7.0.3/emerging.rules.tar.gz"
+
     # DHCP ranges (.100-.200 on each subnet)
     lan_dhcp_start: "10.0.0.100"
     lan_dhcp_end: "10.0.0.200"
@@ -783,6 +789,17 @@
           - set firewall ipv6 name WAN-FORWARD6 rule 42 destination address-mask ::ffff:ffff:ffff:ffff
           - set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
 
+          # ============================================================
+          # 9. IDS (SURICATA)
+          # Monitor IoT and Guest VLANs in passive IDS mode.
+          # WAN is deliberately excluded — internet-side noise would
+          # overwhelm alerts; internal misbehaviour is what matters here.
+          # ============================================================
+          - set service ids suricata interface {{ iot_interface }}
+          - set service ids suricata interface {{ guest_interface }}
+          - set service ids suricata mode ids
+          - set service ids suricata rule-set emerging-threats url {{ suricata_et_open_url }}
+
     - name: Configure WireGuard Peers
       vyos.vyos.vyos_config:
         save: true
@@ -913,3 +930,10 @@
       vyos.vyos.vyos_command:
         commands:
           - restart container dnsmasq
+
+    - name: Update Suricata IDS signatures
+      vyos.vyos.vyos_command:
+        commands:
+          - update ids signatures
+      vars:
+        ansible_command_timeout: 300
