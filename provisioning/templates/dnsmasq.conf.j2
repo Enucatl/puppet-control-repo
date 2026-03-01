@@ -29,6 +29,11 @@ no-hosts
 
 # Authoritative for this domain; never forward home.arpa queries upstream
 local=/{{ dhcp_domain }}/
+# Authoritative for reverse zones covering all four subnets
+local=/0.0.10.in-addr.arpa/
+local=/10.0.10.in-addr.arpa/
+local=/20.0.10.in-addr.arpa/
+local=/30.0.10.in-addr.arpa/
 domain={{ dhcp_domain }}
 
 # Append domain to short hostnames in DHCP registrations
