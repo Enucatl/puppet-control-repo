@@ -1,7 +1,37 @@
-# Suppress noisy/benign protocol anomalies
+# =======================================================================
+# SURICATA TUNING: COMMON HOME / IOT / OFFLOADING FALSE POSITIVES
+# =======================================================================
 # suricata-update reads this file and strips matching SIDs before
-# writing the final rules set, so they never fire at runtime.
-2260001  # Applayer Wrong direction first Data
-2210042  # TIMEWAIT ACK with wrong seq (Printers/IoT)
-2210044  # Packet with invalid timestamp (Printers/IoT)
-2210020  # STREAM ESTABLISHED packet out of window (Offload noise)
+# writing the final ruleset, so they never fire at runtime.
+
+# --- 1. TCP/Stream Engine Anomalies (Caused by cheap IoT NICs & VM Offloading) ---
+# When Linux GRO/LRO clumps packets together, or IoT devices hard-close connections,
+# the Suricata stream-tracking engine gets pedantic and throws these protocol errors.
+2260001  # SURICATA Applayer Wrong direction first Data
+2210042  # SURICATA STREAM TIMEWAIT ACK with wrong seq
+2210044  # SURICATA STREAM Packet with invalid timestamp
+2210045  # SURICATA STREAM Packet with invalid ack
+2210020  # SURICATA STREAM ESTABLISHED packet out of window
+2210029  # SURICATA STREAM ESTABLISHED RST out of window
+2210008  # SURICATA STREAM 3way handshake wrong seq wrong ack (Mobile devices roaming)
+2210010  # SURICATA STREAM 3way handshake SYNACK with wrong ack
+
+# --- 2. Smart Home / IoT Broadcast Chatter ---
+# Smart TVs, printers, and media players constantly yell their presence
+# to the local network using UPnP and SSDP. These are safe on an internal VLAN.
+2013028  # ET POLICY UPnP SUBSCRIBE method
+2013031  # ET POLICY UPnP NOTIFY method
+2224005  # SURICATA DNS malformed request data (mDNS / Bonjour traffic often triggers this)
+2230009  # SURICATA HTTP response has no URI (Often triggered by weird SSDP responses)
+
+# --- 3. Mobile Device / VoIP Traffic (STUN / WebRTC) ---
+# WhatsApp, FaceTime, Discord, and WebRTC use STUN to punch holes through NAT.
+# EmergingThreats flags these as "INFO", but mobile phones spam them constantly.
+2011507  # ET INFO Session Traversal Utilities for NAT (STUN Binding Request)
+2016149  # ET INFO Session Traversal Utilities for NAT (STUN Binding Response)
+
+# --- 4. Harmless TLS / Crypto Warnings ---
+# Modern browsers and apps frequently negotiate TLS closures abruptly, or use
+# newer QUIC protocols that Suricata sometimes misclassifies.
+2221010  # SURICATA TLS error message warning
+2221029  # SURICATA TLS invalid record type

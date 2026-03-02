@@ -80,6 +80,7 @@
     # before enabling hardware offload.
     local_suricata_logrotate_path: "/tmp/suricata-logrotate.tmp"
     local_suricata_disable_path: "/tmp/suricata-disable.conf.tmp"
+    local_suricata_update_script_path: "/tmp/suricata-update.sh.tmp"
 
     # --- ALLOY (log shipping to Loki) ---
     # Runs as a container on VyOS, tailing Suricata EVE JSON and system logs.
@@ -128,6 +129,31 @@
         fail_msg: "Failed to retrieve secrets from HashiCorp Vault (kv/puppet)"
 
   tasks:
+
+    - name: Generate Suricata update script locally from template
+      delegate_to: localhost
+      ansible.builtin.template:
+        src: templates/suricata-update.sh.j2
+        dest: "{{ local_suricata_update_script_path }}"
+        mode: '0600'
+
+    - name: Upload Suricata update script to VyOS
+      ansible.netcommon.net_put:
+        src: "{{ local_suricata_update_script_path }}"
+        dest: "/tmp/suricata-update.sh"
+
+    - name: Install Suricata update script to persistent storage
+      vyos.vyos.vyos_command:
+        commands:
+          - mkdir -p /config/scripts
+          - sudo mv /tmp/suricata-update.sh /config/scripts/suricata-update.sh
+          - sudo chmod 0755 /config/scripts/suricata-update.sh
+
+    - name: Clean up local temporary update script
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ local_suricata_update_script_path }}"
+        state: absent
 
     - name: >
         Send all configuration commands in a single batch
@@ -871,13 +897,11 @@
           - set service suricata interface {{ guest_interface }}
           - set service suricata log eve filename /var/log/suricata/eve.json
 
-          # Auto-update ET Open signatures daily at 02:00.
-          # Calls suricata-update directly (bypassing the VyOS CLI wrapper) so we
-          # can pass --disable-conf; the VyOS CLI has no suppress/threshold nodes
-          # in the current rolling release.
+          # Auto-update ET Open signatures daily at 02:00, then restart Suricata
+          # to load the new ruleset. A small wrapper script handles both steps
+          # so the task-scheduler only needs one entry.
           - set system task-scheduler task update-ids-rules crontab-spec '0 2 * * *'
-          - set system task-scheduler task update-ids-rules executable path '/usr/bin/suricata-update'
-          - set system task-scheduler task update-ids-rules executable arguments '--disable-conf /config/suricata/disable.conf'
+          - set system task-scheduler task update-ids-rules executable path '/config/scripts/suricata-update.sh'
 
           # Rotate logs daily (or at 100 MB) via logrotate; config lives in
           # /config/ so it survives reboots. 3 AM chosen to run after the
@@ -1045,10 +1069,10 @@
         path: "{{ local_suricata_disable_path }}"
         state: absent
 
-    - name: Update Suricata signatures and apply disable.conf
+    - name: Update Suricata signatures and restart to apply new ruleset
       vyos.vyos.vyos_command:
         commands:
-          - sudo /usr/bin/suricata-update --disable-conf /config/suricata/disable.conf
+          - sudo /config/scripts/suricata-update.sh
       vars:
         ansible_command_timeout: 300
 
