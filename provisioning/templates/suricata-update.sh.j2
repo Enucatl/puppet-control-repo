@@ -1,0 +1,5 @@
+#!/bin/sh
+# Update Suricata signatures and restart to load the new ruleset.
+# Managed by Ansible — do not edit manually.
+/usr/bin/suricata-update --disable-conf /config/suricata/disable.conf
+/usr/bin/vbash -ic "restart suricata"

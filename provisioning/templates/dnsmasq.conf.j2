@@ -91,6 +91,7 @@ dhcp-option=tag:guest,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('a
 # STATIC DNS RECORDS (hosts with static IP config, no DHCP)
 # ============================================================
 
+address=/router.{{ dhcp_domain }}/{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 address=/proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
 address=/dropbear.proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
 address=/pve-desktop.{{ dhcp_domain }}/{{ pve_desktop_ip }}
