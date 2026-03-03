@@ -1,0 +1,25 @@
+---
+# Pull container images before applying the VyOS config.
+# VyOS validates that the image exists locally at commit time, so images
+# must be present before the vyos_config task runs.
+
+- name: Pull dnsmasq container image
+  vyos.vyos.vyos_command:
+    commands:
+      - add container image {{ dnsmasq_image }}
+  vars:
+    ansible_command_timeout: 300
+
+- name: Pull Alloy container image
+  vyos.vyos.vyos_command:
+    commands:
+      - add container image {{ alloy_image }}
+  vars:
+    ansible_command_timeout: 300
+
+- name: Pull AdGuard container image
+  vyos.vyos.vyos_command:
+    commands:
+      - add container image {{ adguard_image }}
+  vars:
+    ansible_command_timeout: 300

@@ -1,0 +1,395 @@
+set firewall flowtable FASTPATH interface {{ wan_interface }}
+set firewall flowtable FASTPATH interface {{ lan_interface }}
+set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
+set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ iot_vlan }}
+set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ guest_vlan }}
+set firewall flowtable FASTPATH interface {{ wg_interface }}
+set firewall flowtable FASTPATH offload software
+set firewall group interface-group GUEST interface {{ guest_interface }}
+set firewall group interface-group IOT interface {{ iot_interface }}
+set firewall group interface-group LAN interface {{ lan_interface }}
+set firewall group interface-group TRUSTED-WIFI interface {{ trusted_wifi_interface }}
+set firewall group interface-group VPN interface {{ wg_interface }}
+set firewall group interface-group WAN interface {{ wan_interface }}
+set firewall ipv4 forward filter default-action drop
+set firewall ipv4 forward filter rule 1 action offload
+set firewall ipv4 forward filter rule 1 offload-target FASTPATH
+set firewall ipv4 forward filter rule 1 state established
+set firewall ipv4 forward filter rule 1 state related
+set firewall ipv4 forward filter rule 2 action drop
+set firewall ipv4 forward filter rule 2 state invalid
+set firewall ipv4 forward filter rule 10 action jump
+set firewall ipv4 forward filter rule 10 inbound-interface group LAN
+set firewall ipv4 forward filter rule 10 jump-target LAN-FORWARD
+set firewall ipv4 forward filter rule 20 action jump
+set firewall ipv4 forward filter rule 20 inbound-interface group WAN
+set firewall ipv4 forward filter rule 20 jump-target WAN-FORWARD
+set firewall ipv4 forward filter rule 30 action jump
+set firewall ipv4 forward filter rule 30 inbound-interface group VPN
+set firewall ipv4 forward filter rule 30 jump-target VPN-FORWARD
+set firewall ipv4 forward filter rule 40 action jump
+set firewall ipv4 forward filter rule 40 inbound-interface group TRUSTED-WIFI
+set firewall ipv4 forward filter rule 40 jump-target TRUSTED-WIFI-FORWARD
+set firewall ipv4 forward filter rule 50 action jump
+set firewall ipv4 forward filter rule 50 inbound-interface group IOT
+set firewall ipv4 forward filter rule 50 jump-target IOT-FORWARD
+set firewall ipv4 forward filter rule 60 action jump
+set firewall ipv4 forward filter rule 60 inbound-interface group GUEST
+set firewall ipv4 forward filter rule 60 jump-target GUEST-FORWARD
+set firewall ipv4 input filter rule 10 action jump
+set firewall ipv4 input filter rule 10 inbound-interface group WAN
+set firewall ipv4 input filter rule 10 jump-target WAN-LOCAL
+set firewall ipv4 input filter rule 20 action jump
+set firewall ipv4 input filter rule 20 inbound-interface group IOT
+set firewall ipv4 input filter rule 20 jump-target IOT-LOCAL
+set firewall ipv4 input filter rule 30 action jump
+set firewall ipv4 input filter rule 30 inbound-interface group GUEST
+set firewall ipv4 input filter rule 30 jump-target GUEST-LOCAL
+set firewall ipv4 name GUEST-FORWARD default-action drop
+set firewall ipv4 name GUEST-FORWARD rule 10 action accept
+set firewall ipv4 name GUEST-FORWARD rule 10 state established
+set firewall ipv4 name GUEST-FORWARD rule 10 state related
+set firewall ipv4 name GUEST-FORWARD rule 20 action accept
+set firewall ipv4 name GUEST-FORWARD rule 20 description 'Guest to WAN'
+set firewall ipv4 name GUEST-FORWARD rule 20 outbound-interface group WAN
+set firewall ipv4 name GUEST-LOCAL default-action drop
+set firewall ipv4 name GUEST-LOCAL rule 10 action accept
+set firewall ipv4 name GUEST-LOCAL rule 10 state established
+set firewall ipv4 name GUEST-LOCAL rule 10 state related
+set firewall ipv4 name GUEST-LOCAL rule 20 action accept
+set firewall ipv4 name GUEST-LOCAL rule 20 description DNS
+set firewall ipv4 name GUEST-LOCAL rule 20 destination port 53
+set firewall ipv4 name GUEST-LOCAL rule 20 protocol tcp_udp
+set firewall ipv4 name GUEST-LOCAL rule 30 action accept
+set firewall ipv4 name GUEST-LOCAL rule 30 description DHCP
+set firewall ipv4 name GUEST-LOCAL rule 30 destination port 67
+set firewall ipv4 name GUEST-LOCAL rule 30 protocol udp
+set firewall ipv4 name GUEST-LOCAL rule 40 action accept
+set firewall ipv4 name GUEST-LOCAL rule 40 description NTP
+set firewall ipv4 name GUEST-LOCAL rule 40 destination port 123
+set firewall ipv4 name GUEST-LOCAL rule 40 protocol udp
+set firewall ipv4 name IOT-FORWARD default-action drop
+set firewall ipv4 name IOT-FORWARD rule 10 action accept
+set firewall ipv4 name IOT-FORWARD rule 10 state established
+set firewall ipv4 name IOT-FORWARD rule 10 state related
+set firewall ipv4 name IOT-FORWARD rule 20 action accept
+set firewall ipv4 name IOT-FORWARD rule 20 description 'IoT to WAN'
+set firewall ipv4 name IOT-FORWARD rule 20 outbound-interface group WAN
+set firewall ipv4 name IOT-FORWARD rule 30 action accept
+set firewall ipv4 name IOT-FORWARD rule 30 description 'Printer to Samba on docker'
+set firewall ipv4 name IOT-FORWARD rule 30 destination address {{ docker_node_ip }}
+set firewall ipv4 name IOT-FORWARD rule 30 destination port 445,139
+set firewall ipv4 name IOT-FORWARD rule 30 protocol tcp
+set firewall ipv4 name IOT-LOCAL default-action drop
+set firewall ipv4 name IOT-LOCAL rule 10 action accept
+set firewall ipv4 name IOT-LOCAL rule 10 state established
+set firewall ipv4 name IOT-LOCAL rule 10 state related
+set firewall ipv4 name IOT-LOCAL rule 20 action accept
+set firewall ipv4 name IOT-LOCAL rule 20 description DNS
+set firewall ipv4 name IOT-LOCAL rule 20 destination port 53
+set firewall ipv4 name IOT-LOCAL rule 20 protocol tcp_udp
+set firewall ipv4 name IOT-LOCAL rule 30 action accept
+set firewall ipv4 name IOT-LOCAL rule 30 description DHCP
+set firewall ipv4 name IOT-LOCAL rule 30 destination port 67
+set firewall ipv4 name IOT-LOCAL rule 30 protocol udp
+set firewall ipv4 name IOT-LOCAL rule 40 action accept
+set firewall ipv4 name IOT-LOCAL rule 40 description NTP
+set firewall ipv4 name IOT-LOCAL rule 40 destination port 123
+set firewall ipv4 name IOT-LOCAL rule 40 protocol udp
+set firewall ipv4 name LAN-FORWARD default-action drop
+set firewall ipv4 name LAN-FORWARD rule 10 action accept
+set firewall ipv4 name LAN-FORWARD rule 10 description 'Allow established/related from LAN'
+set firewall ipv4 name LAN-FORWARD rule 10 state established
+set firewall ipv4 name LAN-FORWARD rule 10 state related
+set firewall ipv4 name LAN-FORWARD rule 20 action accept
+set firewall ipv4 name LAN-FORWARD rule 20 description 'Allow new connections from LAN to WAN'
+set firewall ipv4 name LAN-FORWARD rule 20 outbound-interface group WAN
+set firewall ipv4 name LAN-FORWARD rule 30 action accept
+set firewall ipv4 name LAN-FORWARD rule 30 description 'LAN to Trusted WiFi'
+set firewall ipv4 name LAN-FORWARD rule 30 outbound-interface group TRUSTED-WIFI
+set firewall ipv4 name LAN-FORWARD rule 40 action accept
+set firewall ipv4 name LAN-FORWARD rule 40 description 'LAN to IoT devices (printing + web UI)'
+set firewall ipv4 name LAN-FORWARD rule 40 destination port 80,443,631,9100
+set firewall ipv4 name LAN-FORWARD rule 40 outbound-interface group IOT
+set firewall ipv4 name LAN-FORWARD rule 40 protocol tcp
+set firewall ipv4 name TRUSTED-WIFI-FORWARD default-action drop
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 action accept
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 state established
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 state related
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 20 action accept
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 20 description 'Trusted WiFi to WAN'
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 20 outbound-interface group WAN
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 action accept
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 description 'Trusted WiFi to LAN'
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 outbound-interface group LAN
+set firewall ipv4 name VPN-FORWARD default-action drop
+set firewall ipv4 name VPN-FORWARD rule 10 action accept
+set firewall ipv4 name VPN-FORWARD rule 10 state established
+set firewall ipv4 name VPN-FORWARD rule 10 state related
+set firewall ipv4 name VPN-FORWARD rule 20 action accept
+set firewall ipv4 name VPN-FORWARD rule 20 description 'Allow VPN clients to everywhere'
+set firewall ipv4 name VPN-FORWARD rule 20 outbound-interface group WAN
+set firewall ipv4 name VPN-FORWARD rule 30 action accept
+set firewall ipv4 name VPN-FORWARD rule 30 description 'VPN to LAN'
+set firewall ipv4 name VPN-FORWARD rule 30 outbound-interface group LAN
+set firewall ipv4 name VPN-FORWARD rule 40 action accept
+set firewall ipv4 name VPN-FORWARD rule 40 description 'VPN to Trusted WiFi'
+set firewall ipv4 name VPN-FORWARD rule 40 outbound-interface group TRUSTED-WIFI
+set firewall ipv4 name WAN-FORWARD default-action drop
+set firewall ipv4 name WAN-FORWARD rule 10 action accept
+set firewall ipv4 name WAN-FORWARD rule 10 description 'Allow established/related from WAN'
+set firewall ipv4 name WAN-FORWARD rule 10 state established
+set firewall ipv4 name WAN-FORWARD rule 10 state related
+set firewall ipv4 name WAN-FORWARD rule 20 action accept
+set firewall ipv4 name WAN-FORWARD rule 20 description 'Allow ICMP ping from WAN'
+set firewall ipv4 name WAN-FORWARD rule 20 protocol icmp
+set firewall ipv4 name WAN-FORWARD rule 29 action drop
+set firewall ipv4 name WAN-FORWARD rule 29 description 'DDoS prevention qBittorrent'
+set firewall ipv4 name WAN-FORWARD rule 29 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 29 destination port 6881,9000
+set firewall ipv4 name WAN-FORWARD rule 29 protocol tcp_udp
+set firewall ipv4 name WAN-FORWARD rule 29 recent count 100
+set firewall ipv4 name WAN-FORWARD rule 29 recent time minute
+set firewall ipv4 name WAN-FORWARD rule 29 state new
+set firewall ipv4 name WAN-FORWARD rule 30 action accept
+set firewall ipv4 name WAN-FORWARD rule 30 description 'Allow qBittorrent'
+set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881,9000
+set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
+set firewall ipv4 name WAN-FORWARD rule 39 action drop
+set firewall ipv4 name WAN-FORWARD rule 39 description 'DDOS prevention'
+set firewall ipv4 name WAN-FORWARD rule 39 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 39 destination port 9001,9030,11001
+set firewall ipv4 name WAN-FORWARD rule 39 protocol tcp_udp
+set firewall ipv4 name WAN-FORWARD rule 39 recent count 50
+set firewall ipv4 name WAN-FORWARD rule 39 recent time minute
+set firewall ipv4 name WAN-FORWARD rule 39 state new
+set firewall ipv4 name WAN-FORWARD rule 40 action accept
+set firewall ipv4 name WAN-FORWARD rule 40 description 'Tor ORPort'
+set firewall ipv4 name WAN-FORWARD rule 40 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 40 destination port 9001,9030
+set firewall ipv4 name WAN-FORWARD rule 40 protocol tcp
+set firewall ipv4 name WAN-FORWARD rule 42 action accept
+set firewall ipv4 name WAN-FORWARD rule 42 description 'Allow I2Pd Node'
+set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 42 destination port 11001
+set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
+set firewall ipv4 name WAN-FORWARD rule 49 action drop
+set firewall ipv4 name WAN-FORWARD rule 49 description 'DDoS prevention TeamSpeak'
+set firewall ipv4 name WAN-FORWARD rule 49 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 49 destination port 9987
+set firewall ipv4 name WAN-FORWARD rule 49 protocol udp
+set firewall ipv4 name WAN-FORWARD rule 49 recent count 100
+set firewall ipv4 name WAN-FORWARD rule 49 recent time minute
+set firewall ipv4 name WAN-FORWARD rule 49 state new
+set firewall ipv4 name WAN-FORWARD rule 50 action accept
+set firewall ipv4 name WAN-FORWARD rule 50 description 'Allow teamspeak'
+set firewall ipv4 name WAN-FORWARD rule 50 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 50 destination port 9987
+set firewall ipv4 name WAN-FORWARD rule 50 protocol udp
+set firewall ipv4 name WAN-LOCAL default-action drop
+set firewall ipv4 name WAN-LOCAL rule 5 action drop
+set firewall ipv4 name WAN-LOCAL rule 5 state invalid
+set firewall ipv4 name WAN-LOCAL rule 10 action accept
+set firewall ipv4 name WAN-LOCAL rule 10 state established
+set firewall ipv4 name WAN-LOCAL rule 10 state related
+set firewall ipv4 name WAN-LOCAL rule 20 action accept
+set firewall ipv4 name WAN-LOCAL rule 20 protocol icmp
+set firewall ipv4 name WAN-LOCAL rule 30 action accept
+set firewall ipv4 name WAN-LOCAL rule 30 destination port {{ wg_port }}
+set firewall ipv4 name WAN-LOCAL rule 30 protocol udp
+set firewall ipv6 forward filter default-action drop
+set firewall ipv6 forward filter rule 1 action offload
+set firewall ipv6 forward filter rule 1 offload-target FASTPATH
+set firewall ipv6 forward filter rule 1 state established
+set firewall ipv6 forward filter rule 1 state related
+set firewall ipv6 forward filter rule 2 action drop
+set firewall ipv6 forward filter rule 2 state invalid
+set firewall ipv6 forward filter rule 10 action jump
+set firewall ipv6 forward filter rule 10 inbound-interface group LAN
+set firewall ipv6 forward filter rule 10 jump-target LAN-FORWARD6
+set firewall ipv6 forward filter rule 20 action jump
+set firewall ipv6 forward filter rule 20 inbound-interface group WAN
+set firewall ipv6 forward filter rule 20 jump-target WAN-FORWARD6
+set firewall ipv6 forward filter rule 30 action jump
+set firewall ipv6 forward filter rule 30 inbound-interface group VPN
+set firewall ipv6 forward filter rule 30 jump-target VPN-FORWARD6
+set firewall ipv6 forward filter rule 40 action jump
+set firewall ipv6 forward filter rule 40 inbound-interface group TRUSTED-WIFI
+set firewall ipv6 forward filter rule 40 jump-target TRUSTED-WIFI-FORWARD6
+set firewall ipv6 forward filter rule 50 action jump
+set firewall ipv6 forward filter rule 50 inbound-interface group IOT
+set firewall ipv6 forward filter rule 50 jump-target IOT-FORWARD6
+set firewall ipv6 forward filter rule 60 action jump
+set firewall ipv6 forward filter rule 60 inbound-interface group GUEST
+set firewall ipv6 forward filter rule 60 jump-target GUEST-FORWARD6
+set firewall ipv6 input filter rule 10 action jump
+set firewall ipv6 input filter rule 10 inbound-interface group WAN
+set firewall ipv6 input filter rule 10 jump-target WAN-LOCAL6
+set firewall ipv6 input filter rule 20 action jump
+set firewall ipv6 input filter rule 20 inbound-interface group IOT
+set firewall ipv6 input filter rule 20 jump-target IOT-LOCAL6
+set firewall ipv6 input filter rule 30 action jump
+set firewall ipv6 input filter rule 30 inbound-interface group GUEST
+set firewall ipv6 input filter rule 30 jump-target GUEST-LOCAL6
+set firewall ipv6 name GUEST-FORWARD6 default-action drop
+set firewall ipv6 name GUEST-FORWARD6 rule 10 action accept
+set firewall ipv6 name GUEST-FORWARD6 rule 10 state established
+set firewall ipv6 name GUEST-FORWARD6 rule 10 state related
+set firewall ipv6 name GUEST-FORWARD6 rule 20 action accept
+set firewall ipv6 name GUEST-FORWARD6 rule 20 description 'Guest to WAN'
+set firewall ipv6 name GUEST-FORWARD6 rule 20 outbound-interface group WAN
+set firewall ipv6 name GUEST-LOCAL6 default-action drop
+set firewall ipv6 name GUEST-LOCAL6 rule 10 action accept
+set firewall ipv6 name GUEST-LOCAL6 rule 10 state established
+set firewall ipv6 name GUEST-LOCAL6 rule 10 state related
+set firewall ipv6 name GUEST-LOCAL6 rule 20 action accept
+set firewall ipv6 name GUEST-LOCAL6 rule 20 description DNS
+set firewall ipv6 name GUEST-LOCAL6 rule 20 destination port 53
+set firewall ipv6 name GUEST-LOCAL6 rule 20 protocol tcp_udp
+set firewall ipv6 name GUEST-LOCAL6 rule 30 action accept
+set firewall ipv6 name GUEST-LOCAL6 rule 30 description NTP
+set firewall ipv6 name GUEST-LOCAL6 rule 30 destination port 123
+set firewall ipv6 name GUEST-LOCAL6 rule 30 protocol udp
+set firewall ipv6 name GUEST-LOCAL6 rule 40 action accept
+set firewall ipv6 name GUEST-LOCAL6 rule 40 description 'ICMPv6 for SLAAC and NDP'
+set firewall ipv6 name GUEST-LOCAL6 rule 40 protocol icmpv6
+set firewall ipv6 name IOT-FORWARD6 default-action drop
+set firewall ipv6 name IOT-FORWARD6 rule 10 action accept
+set firewall ipv6 name IOT-FORWARD6 rule 10 state established
+set firewall ipv6 name IOT-FORWARD6 rule 10 state related
+set firewall ipv6 name IOT-FORWARD6 rule 20 action accept
+set firewall ipv6 name IOT-FORWARD6 rule 20 description 'IoT to WAN'
+set firewall ipv6 name IOT-FORWARD6 rule 20 outbound-interface group WAN
+set firewall ipv6 name IOT-FORWARD6 rule 30 action accept
+set firewall ipv6 name IOT-FORWARD6 rule 30 description 'Printer to Samba on docker'
+set firewall ipv6 name IOT-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name IOT-FORWARD6 rule 30 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name IOT-FORWARD6 rule 30 destination port 445,139
+set firewall ipv6 name IOT-FORWARD6 rule 30 protocol tcp
+set firewall ipv6 name IOT-LOCAL6 default-action drop
+set firewall ipv6 name IOT-LOCAL6 rule 10 action accept
+set firewall ipv6 name IOT-LOCAL6 rule 10 state established
+set firewall ipv6 name IOT-LOCAL6 rule 10 state related
+set firewall ipv6 name IOT-LOCAL6 rule 20 action accept
+set firewall ipv6 name IOT-LOCAL6 rule 20 description DNS
+set firewall ipv6 name IOT-LOCAL6 rule 20 destination port 53
+set firewall ipv6 name IOT-LOCAL6 rule 20 protocol tcp_udp
+set firewall ipv6 name IOT-LOCAL6 rule 30 action accept
+set firewall ipv6 name IOT-LOCAL6 rule 30 description NTP
+set firewall ipv6 name IOT-LOCAL6 rule 30 destination port 123
+set firewall ipv6 name IOT-LOCAL6 rule 30 protocol udp
+set firewall ipv6 name IOT-LOCAL6 rule 40 action accept
+set firewall ipv6 name IOT-LOCAL6 rule 40 description 'ICMPv6 for SLAAC and NDP'
+set firewall ipv6 name IOT-LOCAL6 rule 40 protocol icmpv6
+set firewall ipv6 name LAN-FORWARD6 default-action drop
+set firewall ipv6 name LAN-FORWARD6 rule 10 action accept
+set firewall ipv6 name LAN-FORWARD6 rule 10 state established
+set firewall ipv6 name LAN-FORWARD6 rule 10 state related
+set firewall ipv6 name LAN-FORWARD6 rule 20 action accept
+set firewall ipv6 name LAN-FORWARD6 rule 20 outbound-interface group WAN
+set firewall ipv6 name LAN-FORWARD6 rule 30 action accept
+set firewall ipv6 name LAN-FORWARD6 rule 30 description 'LAN to Trusted WiFi'
+set firewall ipv6 name LAN-FORWARD6 rule 30 outbound-interface group TRUSTED-WIFI
+set firewall ipv6 name LAN-FORWARD6 rule 40 action accept
+set firewall ipv6 name LAN-FORWARD6 rule 40 description 'LAN to IoT devices (printing + web UI)'
+set firewall ipv6 name LAN-FORWARD6 rule 40 destination port 80,443,631,9100
+set firewall ipv6 name LAN-FORWARD6 rule 40 outbound-interface group IOT
+set firewall ipv6 name LAN-FORWARD6 rule 40 protocol tcp
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 default-action drop
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 action accept
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 state established
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 state related
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 20 action accept
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 20 description 'Trusted WiFi to WAN'
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 20 outbound-interface group WAN
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 action accept
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 description 'Trusted WiFi to LAN'
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 outbound-interface group LAN
+set firewall ipv6 name VPN-FORWARD6 default-action drop
+set firewall ipv6 name VPN-FORWARD6 rule 10 action accept
+set firewall ipv6 name VPN-FORWARD6 rule 10 state established
+set firewall ipv6 name VPN-FORWARD6 rule 10 state related
+set firewall ipv6 name VPN-FORWARD6 rule 20 action accept
+set firewall ipv6 name VPN-FORWARD6 rule 20 description 'Allow VPN clients to everywhere'
+set firewall ipv6 name VPN-FORWARD6 rule 20 outbound-interface group WAN
+set firewall ipv6 name VPN-FORWARD6 rule 30 action accept
+set firewall ipv6 name VPN-FORWARD6 rule 30 description 'VPN to LAN'
+set firewall ipv6 name VPN-FORWARD6 rule 30 outbound-interface group LAN
+set firewall ipv6 name VPN-FORWARD6 rule 40 action accept
+set firewall ipv6 name VPN-FORWARD6 rule 40 description 'VPN to Trusted WiFi'
+set firewall ipv6 name VPN-FORWARD6 rule 40 outbound-interface group TRUSTED-WIFI
+set firewall ipv6 name WAN-FORWARD6 default-action drop
+set firewall ipv6 name WAN-FORWARD6 rule 10 action accept
+set firewall ipv6 name WAN-FORWARD6 rule 10 description 'Allow established/related from WAN'
+set firewall ipv6 name WAN-FORWARD6 rule 10 state established
+set firewall ipv6 name WAN-FORWARD6 rule 10 state related
+set firewall ipv6 name WAN-FORWARD6 rule 20 action accept
+set firewall ipv6 name WAN-FORWARD6 rule 20 description 'Allow ICMPv6 from WAN'
+set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
+set firewall ipv6 name WAN-FORWARD6 rule 29 action drop
+set firewall ipv6 name WAN-FORWARD6 rule 29 description 'DDoS prevention qBittorrent'
+set firewall ipv6 name WAN-FORWARD6 rule 29 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 29 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 29 destination port 6881,9000
+set firewall ipv6 name WAN-FORWARD6 rule 29 protocol tcp_udp
+set firewall ipv6 name WAN-FORWARD6 rule 29 recent count 100
+set firewall ipv6 name WAN-FORWARD6 rule 29 recent time minute
+set firewall ipv6 name WAN-FORWARD6 rule 29 state new
+set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
+set firewall ipv6 name WAN-FORWARD6 rule 30 description 'Allow qBittorrent'
+set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 30 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881,9000
+set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
+set firewall ipv6 name WAN-FORWARD6 rule 39 action drop
+set firewall ipv6 name WAN-FORWARD6 rule 39 description 'DDOS prevention'
+set firewall ipv6 name WAN-FORWARD6 rule 39 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 39 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 39 destination port 9001,9030,11001
+set firewall ipv6 name WAN-FORWARD6 rule 39 protocol tcp_udp
+set firewall ipv6 name WAN-FORWARD6 rule 39 recent count 50
+set firewall ipv6 name WAN-FORWARD6 rule 39 recent time minute
+set firewall ipv6 name WAN-FORWARD6 rule 39 state new
+set firewall ipv6 name WAN-FORWARD6 rule 40 action accept
+set firewall ipv6 name WAN-FORWARD6 rule 40 description 'Tor ORPort'
+set firewall ipv6 name WAN-FORWARD6 rule 40 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 40 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 40 destination port 9001,9030
+set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
+set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
+set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node'
+set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 42 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 11001
+set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
+set firewall ipv6 name WAN-FORWARD6 rule 49 action drop
+set firewall ipv6 name WAN-FORWARD6 rule 49 description 'DDoS prevention TeamSpeak'
+set firewall ipv6 name WAN-FORWARD6 rule 49 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 49 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 49 destination port 9987
+set firewall ipv6 name WAN-FORWARD6 rule 49 protocol udp
+set firewall ipv6 name WAN-FORWARD6 rule 49 recent count 100
+set firewall ipv6 name WAN-FORWARD6 rule 49 recent time minute
+set firewall ipv6 name WAN-FORWARD6 rule 49 state new
+set firewall ipv6 name WAN-FORWARD6 rule 50 action accept
+set firewall ipv6 name WAN-FORWARD6 rule 50 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 50 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 50 destination port 9987
+set firewall ipv6 name WAN-FORWARD6 rule 50 protocol udp
+set firewall ipv6 name WAN-LOCAL6 default-action drop
+set firewall ipv6 name WAN-LOCAL6 rule 5 action drop
+set firewall ipv6 name WAN-LOCAL6 rule 5 state invalid
+set firewall ipv6 name WAN-LOCAL6 rule 10 action accept
+set firewall ipv6 name WAN-LOCAL6 rule 10 state established
+set firewall ipv6 name WAN-LOCAL6 rule 10 state related
+set firewall ipv6 name WAN-LOCAL6 rule 20 action accept
+set firewall ipv6 name WAN-LOCAL6 rule 20 protocol icmpv6
+set firewall ipv6 name WAN-LOCAL6 rule 30 action accept
+set firewall ipv6 name WAN-LOCAL6 rule 30 destination port {{ wg_port }}
+set firewall ipv6 name WAN-LOCAL6 rule 30 protocol udp
+set firewall ipv6 name WAN-LOCAL6 rule 40 action accept
+set firewall ipv6 name WAN-LOCAL6 rule 40 description 'DHCPv6 Response (Init7)'
+set firewall ipv6 name WAN-LOCAL6 rule 40 destination port 546
+set firewall ipv6 name WAN-LOCAL6 rule 40 protocol udp
+set firewall ipv6 name WAN-LOCAL6 rule 40 source port 547

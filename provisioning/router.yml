@@ -1,0 +1,64 @@
+---
+- name: Configure VyOS Router
+  hosts: router
+  gather_facts: no
+  vars_files:
+    - vars/secrets.yml
+
+  vars:
+    # --- SECRETS (from HashiCorp Vault kv/puppet) ---
+    _vault_kv_puppet: "{{ lookup('community.hashi_vault.vault_kv2_get', 'puppet', engine_mount_point='kv').secret }}"
+    ipv6_prefix: "{{ _vault_kv_puppet['ipv6-prefix'] }}"
+    snmp_v3_password: "{{ _vault_kv_puppet['snmp_v3_password'] }}"
+    wg_server_private_key: "{{ _vault_kv_puppet['wg_server_private_key'] }}"
+    cloudflare_api_token: "{{ _vault_kv_puppet['cloudflare_api_token'] }}"
+
+  pre_tasks:
+    - name: Verify secrets were retrieved from Vault
+      ansible.builtin.assert:
+        that:
+          - ipv6_prefix | length > 0
+          - snmp_v3_password | length > 0
+          - wg_server_private_key | length > 0
+          - cloudflare_api_token | length > 0
+        fail_msg: "Failed to retrieve secrets from HashiCorp Vault (kv/puppet)"
+
+  tasks:
+    - name: Prepare file system and persistent directories
+      ansible.builtin.import_tasks: tasks/01_setup_dirs.yml
+
+    - name: Template and upload application configs and scripts
+      ansible.builtin.import_tasks: tasks/02_push_files.yml
+
+    - name: Pre-pull container images
+      ansible.builtin.import_tasks: tasks/03_pull_images.yml
+
+    - name: Diff config against running (load + compare, no commit)
+      ansible.builtin.import_tasks: tasks/diff_vyos.yml
+      tags: [diff, never]
+
+    - name: Apply declarative VyOS configuration
+      ansible.builtin.import_tasks: tasks/04_apply_vyos.yml
+      tags: [apply]
+
+    - name: Update Suricata signatures and restart to apply new ruleset
+      vyos.vyos.vyos_command:
+        commands:
+          - sudo /config/scripts/suricata-update.sh
+      vars:
+        ansible_command_timeout: 300
+
+    - name: Restart AdGuard container
+      vyos.vyos.vyos_command:
+        commands:
+          - restart container adguard
+
+    - name: Restart dnsmasq container
+      vyos.vyos.vyos_command:
+        commands:
+          - restart container dnsmasq
+
+    - name: Restart Alloy container
+      vyos.vyos.vyos_command:
+        commands:
+          - restart container alloy

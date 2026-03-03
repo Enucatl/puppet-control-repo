@@ -1,0 +1,103 @@
+---
+# Network CLI command timeout — the main config batch is large
+ansible_command_timeout: 120
+
+# --- INTERFACES ---
+wan_interface: "eth3"       # Mellanox ConnectX-6 Dx port 1 (WAN, hostpci1 / 01:00.1)
+wan_mac: "e8:eb:d3:08:d3:79"
+lan_interface: "eth1"       # virtio NIC via vmbr0 (LAN)
+lan_mac: "bc:24:11:1c:ec:b6"
+eth0_mac: "9c:6b:00:c3:7a:d4"  # unused NIC
+eth2_mac: "e8:eb:d3:08:d3:78"  # unused NIC
+
+# --- IP CONFIGURATION ---
+vyos_lan_ip: "10.0.0.1/24"
+lan_subnet: "10.0.0.0/24"
+vyos_ipv6: "fe80::be24:11ff:fe1c:ecb6"
+
+# --- VLAN SEGMENTS ---
+# VLAN ID = third octet of subnet for easy log correlation
+trusted_wifi_vlan: "10"
+trusted_wifi_ip: "10.0.{{ trusted_wifi_vlan }}.1/24"
+trusted_wifi_subnet: "10.0.{{ trusted_wifi_vlan }}.0/24"
+trusted_wifi_interface: "{{ lan_interface }}.{{ trusted_wifi_vlan }}"
+
+iot_vlan: "20"
+iot_ip: "10.0.{{ iot_vlan }}.1/24"
+iot_subnet: "10.0.{{ iot_vlan }}.0/24"
+iot_interface: "{{ lan_interface }}.{{ iot_vlan }}"
+
+guest_vlan: "30"
+guest_ip: "10.0.{{ guest_vlan }}.1/24"
+guest_subnet: "10.0.{{ guest_vlan }}.0/24"
+guest_interface: "{{ lan_interface }}.{{ guest_vlan }}"
+
+# --- WIREGUARD (moved to 10.0.200.0/24 to free up VLAN 10 numbering) ---
+wg_interface: "wg0"
+wg_port: "51820"
+wg_subnet: "10.0.200.1/24"
+wg_peers:
+  - name: "phone"
+    pubkey: "z4kWINsJrs2FY4q26DGErw6ECktgPEj6xoXT8UJsaRE="
+    ip: "10.0.200.2/32"
+
+# --- SNMP ---
+snmp_listen_address: "10.0.0.1"
+snmp_location: "VyOS Datacenter"
+snmp_engineid: "800000000102030405060710"
+snmp_user: "vyos"
+
+# --- ADGUARD (DNS only; DHCP handled by dnsmasq) ---
+# All segments point DNS to 10.0.0.1 (AdGuard on router via host networking).
+# IOT-LOCAL and GUEST-LOCAL firewall chains allow port 53 inbound to router.
+# AdGuard forwards home.arpa queries to dnsmasq for local hostname resolution.
+adguard_data_path: "/config/containers/adguard"
+adguard_dns_bind_hosts:
+  - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+adguard_image: "docker.io/adguard/adguardhome:latest"
+
+# --- DNSMASQ (DHCPv4 + authoritative DNS for home.arpa) ---
+# Runs as a container on VyOS with host networking.
+# DNS on port 5300 to avoid conflict with AdGuard on port 53.
+# Only resolves hostnames for addresses it has assigned via DHCP (IPv4 only).
+dnsmasq_image: "docker.io/andyshinn/dnsmasq:latest"
+dnsmasq_data_path: "/config/containers/dnsmasq"
+dnsmasq_dns_port: "5300"
+dhcp_domain: "home.arpa"
+
+# --- SURICATA IDS ---
+# Passive IDS mode (AF_PACKET) on IoT and Guest VLANs only.
+# AF_PACKET taps at __netif_receive_skb_core, before the nftables flowtable
+# hook, so software-offloaded established flows are still visible to Suricata.
+# NOTE: if FASTPATH is ever switched to hardware offload the NIC itself handles
+# established flows and AF_PACKET will only see the TCP handshake — Suricata
+# would miss payload inspection. Verify with a large transfer + stats.log check
+# before enabling hardware offload.
+
+# --- ALLOY (log shipping to Loki) ---
+# Runs as a container on VyOS, tailing Suricata EVE JSON and system logs.
+alloy_image: "docker.io/grafana/alloy:latest"
+alloy_data_path: "/config/containers/alloy"
+loki_url: "https://loki.docker.home.arpa/loki/api/v1/push"
+
+# DHCP ranges (.100-.200 on each subnet)
+lan_dhcp_start: "10.0.0.100"
+lan_dhcp_end: "10.0.0.200"
+trusted_wifi_dhcp_start: "10.0.10.100"
+trusted_wifi_dhcp_end: "10.0.10.200"
+iot_dhcp_start: "10.0.20.100"
+iot_dhcp_end: "10.0.20.200"
+guest_dhcp_start: "10.0.30.100"
+guest_dhcp_end: "10.0.30.200"
+
+docker_node_ip: "10.0.0.128"
+docker_node_mac: "bc:24:11:4a:bf:ed"
+docker_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
+desktop_node_ipv6_suffix: "::be24:11ff:fef7:659b"
+
+proxmox_ip: "10.0.0.10"
+proxmox_mac: "9c:6b:00:c3:76:1d"
+pve_desktop_ip: "10.0.0.11"
+pve_desktop_mac: "b0:6e:bf:82:d5:1c"
+printer_ip: "10.0.20.189"
+printer_mac: "4c:eb:bd:46:ff:8c"
