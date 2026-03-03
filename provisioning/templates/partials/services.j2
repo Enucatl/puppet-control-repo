@@ -1,0 +1,83 @@
+set service dns dynamic name cloudflare address interface {{ wan_interface }}
+set service dns dynamic name cloudflare host-name vpn.enucatl.com
+set service dns dynamic name cloudflare ip-version both
+set service dns dynamic name cloudflare password '{{ cloudflare_api_token }}'
+set service dns dynamic name cloudflare protocol cloudflare
+set service dns dynamic name cloudflare username token
+set service dns dynamic name cloudflare zone enucatl.com
+set service ntp allow-client address 127.0.0.0/8
+set service ntp allow-client address 169.254.0.0/16
+set service ntp allow-client address 10.0.0.0/8
+set service ntp allow-client address 172.16.0.0/12
+set service ntp allow-client address 192.168.0.0/16
+set service ntp allow-client address ::1/128
+set service ntp allow-client address fe80::/10
+set service ntp allow-client address fc00::/7
+set service ntp server time1.vyos.net
+set service ntp server time2.vyos.net
+set service ntp server time3.vyos.net
+set service router-advert interface {{ lan_interface }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }} prefix ::/64 valid-lifetime 172800
+set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} prefix ::/64 valid-lifetime 172800
+set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} prefix ::/64 valid-lifetime 172800
+set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} prefix ::/64 valid-lifetime 172800
+set service snmp listen-address {{ snmp_listen_address }}
+set service snmp location '{{ snmp_location }}'
+set service snmp v3 engineid {{ snmp_engineid }}
+set service snmp v3 group checkmk_group mode ro
+set service snmp v3 group checkmk_group view all_view
+set service snmp v3 user {{ snmp_user }} auth plaintext-password '{{ snmp_v3_password }}'
+set service snmp v3 user {{ snmp_user }} auth type sha
+set service snmp v3 user {{ snmp_user }} group checkmk_group
+set service snmp v3 user {{ snmp_user }} privacy plaintext-password '{{ snmp_v3_password }}'
+set service snmp v3 user {{ snmp_user }} privacy type aes
+set service snmp v3 view all_view oid 1
+set service ssh listen-address 0.0.0.0
+set service ssh listen-address ::
+set service suricata address-group aim-servers group external-net
+set service suricata address-group dc-servers group home-net
+set service suricata address-group dnp3-client group home-net
+set service suricata address-group dnp3-server group home-net
+set service suricata address-group dns-servers group home-net
+set service suricata address-group enip-client group home-net
+set service suricata address-group enip-server group home-net
+set service suricata address-group external-net group '!home-net'
+set service suricata address-group home-net address {{ lan_subnet }}
+set service suricata address-group home-net address {{ trusted_wifi_subnet }}
+set service suricata address-group home-net address {{ iot_subnet }}
+set service suricata address-group home-net address {{ guest_subnet }}
+set service suricata address-group home-net address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
+set service suricata address-group home-net address {{ ipv6_prefix }}::/48
+set service suricata address-group home-net address fe80::/10
+set service suricata address-group http-servers group home-net
+set service suricata address-group modbus-client group home-net
+set service suricata address-group modbus-server group home-net
+set service suricata address-group smtp-servers group home-net
+set service suricata address-group sql-servers group home-net
+set service suricata address-group telnet-servers group home-net
+set service suricata interface {{ iot_interface }}
+set service suricata interface {{ guest_interface }}
+set service suricata log eve filename /var/log/suricata/eve.json
+set service suricata port-group dnp3-ports port 20000
+set service suricata port-group dns-ports port 53
+set service suricata port-group dns-ports port 5353
+set service suricata port-group ftp-ports port 21
+set service suricata port-group ftp-ports port 990
+set service suricata port-group geneve-ports port 6081
+set service suricata port-group http-ports port 80
+set service suricata port-group http-ports port 443
+set service suricata port-group http-ports port 8000
+set service suricata port-group http-ports port 8008
+set service suricata port-group http-ports port 8080
+set service suricata port-group http-ports port 8888
+set service suricata port-group modbus-ports port 502
+set service suricata port-group oracle-ports port 1521
+set service suricata port-group smtp-ports port 25
+set service suricata port-group smtp-ports port 465
+set service suricata port-group smtp-ports port 587
+set service suricata port-group ssh-ports port 22
+set service suricata port-group teredo-ports port 3544
+set service suricata port-group vxlan-ports port 4789

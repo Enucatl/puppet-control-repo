@@ -1,0 +1,46 @@
+set container name adguard allow-host-networks
+set container name adguard capability net-raw
+set container name adguard image {{ adguard_image }}
+set container name adguard restart on-failure
+set container name adguard volume adguard_conf destination /opt/adguardhome/conf
+set container name adguard volume adguard_conf mode rw
+set container name adguard volume adguard_conf source {{ adguard_data_path }}/conf
+set container name adguard volume adguard_work destination /opt/adguardhome/work
+set container name adguard volume adguard_work mode rw
+set container name adguard volume adguard_work source {{ adguard_data_path }}/work
+set container name alloy allow-host-networks
+set container name alloy environment GOMEMLIMIT value 256MiB
+set container name alloy image {{ alloy_image }}
+set container name alloy restart on-failure
+set container name alloy volume alloy_adguard_work destination /var/adguard/work
+set container name alloy volume alloy_adguard_work mode ro
+set container name alloy volume alloy_adguard_work source {{ adguard_data_path }}/work
+set container name alloy volume alloy_conf destination /etc/alloy
+set container name alloy volume alloy_conf mode ro
+set container name alloy volume alloy_conf source {{ alloy_data_path }}/conf
+set container name alloy volume alloy_data destination /var/lib/alloy/data
+set container name alloy volume alloy_data mode rw
+set container name alloy volume alloy_data source {{ alloy_data_path }}/data
+set container name alloy volume alloy_dnsmasq_log destination /var/dnsmasq/log
+set container name alloy volume alloy_dnsmasq_log mode ro
+set container name alloy volume alloy_dnsmasq_log source {{ dnsmasq_data_path }}/log
+set container name alloy volume alloy_suricata_logs destination /var/log/suricata
+set container name alloy volume alloy_suricata_logs mode ro
+set container name alloy volume alloy_suricata_logs source /var/log/suricata
+set container name alloy volume alloy_vyos_logs destination /var/log/host
+set container name alloy volume alloy_vyos_logs mode ro
+set container name alloy volume alloy_vyos_logs source /var/log
+set container name dnsmasq allow-host-networks
+set container name dnsmasq capability net-admin
+set container name dnsmasq capability net-raw
+set container name dnsmasq image {{ dnsmasq_image }}
+set container name dnsmasq restart on-failure
+set container name dnsmasq volume dnsmasq_conf destination /etc/dnsmasq.d
+set container name dnsmasq volume dnsmasq_conf mode ro
+set container name dnsmasq volume dnsmasq_conf source {{ dnsmasq_data_path }}/conf
+set container name dnsmasq volume dnsmasq_leases destination /var/lib/dnsmasq
+set container name dnsmasq volume dnsmasq_leases mode rw
+set container name dnsmasq volume dnsmasq_leases source {{ dnsmasq_data_path }}/leases
+set container name dnsmasq volume dnsmasq_log destination /var/log/dnsmasq
+set container name dnsmasq volume dnsmasq_log mode rw
+set container name dnsmasq volume dnsmasq_log source {{ dnsmasq_data_path }}/log

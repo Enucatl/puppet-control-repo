@@ -1,0 +1,94 @@
+---
+# Template all app configs locally, push them to VyOS, and install them to
+# persistent storage in one pass. Using a loop eliminates the repeated
+# template → upload → install → cleanup pattern from the old playbook.
+
+# ============================================================
+# STEP 1: Template all files locally to /tmp/
+# ============================================================
+- name: Template app configs locally
+  delegate_to: localhost
+  ansible.builtin.template:
+    src: "templates/app_configs/{{ item.src }}"
+    dest: "/tmp/{{ item.dest }}"
+    mode: "0600"
+  loop:
+    - { src: "AdGuardHome.yaml.j2",        dest: "AdGuardHome.yaml" }
+    - { src: "dnsmasq.conf.j2",            dest: "dnsmasq.conf" }
+    - { src: "alloy-vyos.alloy.j2",        dest: "config.alloy" }
+    - { src: "suricata-update.sh.j2",      dest: "suricata-update.sh" }
+    - { src: "suricata-disable.conf.j2",   dest: "suricata-disable.conf" }
+    - { src: "suricata-logrotate.j2",      dest: "suricata-logrotate" }
+
+# ============================================================
+# STEP 2: Upload all files to /tmp/ on VyOS
+# ============================================================
+- name: Upload app configs to VyOS
+  ansible.netcommon.net_put:
+    src: "/tmp/{{ item }}"
+    dest: "/tmp/{{ item }}"
+  loop:
+    - AdGuardHome.yaml
+    - dnsmasq.conf
+    - config.alloy
+    - suricata-update.sh
+    - suricata-disable.conf
+    - suricata-logrotate
+
+# ============================================================
+# STEP 3: Install each file to its persistent destination
+# ============================================================
+- name: Install AdGuard config
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/AdGuardHome.yaml {{ adguard_data_path }}/conf/AdGuardHome.yaml
+      - sudo chown root:vyattacfg {{ adguard_data_path }}/conf/AdGuardHome.yaml
+      - sudo chmod 0600 {{ adguard_data_path }}/conf/AdGuardHome.yaml
+
+- name: Install dnsmasq config
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/dnsmasq.conf {{ dnsmasq_data_path }}/conf/dnsmasq.conf
+      - sudo chown root:vyattacfg {{ dnsmasq_data_path }}/conf/dnsmasq.conf
+      - sudo chmod 0644 {{ dnsmasq_data_path }}/conf/dnsmasq.conf
+
+- name: Install Alloy config
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/config.alloy {{ alloy_data_path }}/conf/config.alloy
+      - sudo chown root:vyattacfg {{ alloy_data_path }}/conf/config.alloy
+      - sudo chmod 0644 {{ alloy_data_path }}/conf/config.alloy
+
+- name: Install Suricata update script
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/suricata-update.sh /config/scripts/suricata-update.sh
+      - sudo chmod 0755 /config/scripts/suricata-update.sh
+
+- name: Install Suricata disable config
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/suricata-disable.conf /config/suricata/disable.conf
+      - sudo chmod 0644 /config/suricata/disable.conf
+
+- name: Install Suricata logrotate config
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/suricata-logrotate /config/logrotate.d/suricata
+      - sudo chmod 0644 /config/logrotate.d/suricata
+
+# ============================================================
+# STEP 4: Clean up local temporary files
+# ============================================================
+- name: Clean up local temporary files
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: "/tmp/{{ item }}"
+    state: absent
+  loop:
+    - AdGuardHome.yaml
+    - dnsmasq.conf
+    - config.alloy
+    - suricata-update.sh
+    - suricata-disable.conf
+    - suricata-logrotate

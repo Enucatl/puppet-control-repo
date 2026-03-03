@@ -1,0 +1,27 @@
+---
+# Apply the full VyOS configuration via set/delete commands.
+# Template is rendered locally first (vyos_config src: does not process Jinja2),
+# then handed to vyos_config which sends each line as a configure-mode command,
+# commits, and saves. backup: yes saves the pre-change running config first.
+
+- name: Render VyOS config locally
+  delegate_to: localhost
+  check_mode: no
+  ansible.builtin.template:
+    src: templates/vyos-config.j2
+    dest: /tmp/vyos-config.rendered
+    mode: "0600"
+
+- name: Apply VyOS configuration
+  vyos.vyos.vyos_config:
+    src: /tmp/vyos-config.rendered
+    save: yes
+    backup: yes
+  tags: [apply_commit]
+
+- name: Remove rendered config from local
+  delegate_to: localhost
+  check_mode: no
+  ansible.builtin.file:
+    path: /tmp/vyos-config.rendered
+    state: absent

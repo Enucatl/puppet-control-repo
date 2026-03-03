@@ -1,0 +1,56 @@
+---
+# Safe diff: fetch current config as set-commands + local template render + local diff.
+# Apples-to-apples comparison: both sides in set-command format.
+# Never enters configure mode, never touches the running config.
+# Run with:
+#   ansible-playbook router.yml --tags diff --vault-password-file vars/password
+
+- name: Fetch current VyOS config as set commands
+  vyos.vyos.vyos_command:
+    commands:
+      - show configuration commands
+  register: current_config
+
+- name: Save current config commands to local temp file
+  delegate_to: localhost
+  ansible.builtin.copy:
+    content: "{{ current_config.stdout[0] }}"
+    dest: /tmp/config.current.cmds.raw
+
+- name: Render target config locally from template
+  delegate_to: localhost
+  ansible.builtin.template:
+    src: templates/vyos-config.j2
+    dest: /tmp/config.target.cmds.raw
+    mode: "0600"
+
+- name: Normalize quotes for clean comparison (VyOS always quotes values in show output)
+  delegate_to: localhost
+  ansible.builtin.shell:
+    cmd: |
+      sed "s/'//g; s/\x1b\[[0-9;]*m//g" /tmp/config.current.cmds.raw | grep -v '^$' | sort > /tmp/config.current.cmds
+      sed "s/'//g"                        /tmp/config.target.cmds.raw  | grep -v '^$' | sort > /tmp/config.target.cmds
+
+- name: Diff current vs target (exit code 1 = differences found, which is expected)
+  delegate_to: localhost
+  ansible.builtin.command:
+    cmd: diff -u /tmp/config.current.cmds /tmp/config.target.cmds
+  register: config_diff
+  changed_when: config_diff.rc == 1
+  failed_when: config_diff.rc > 1
+
+- name: Show diff
+  delegate_to: localhost
+  ansible.builtin.debug:
+    var: config_diff.stdout_lines
+
+- name: Clean up local temp files
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/config.current.cmds.raw
+    - /tmp/config.target.cmds.raw
+    - /tmp/config.current.cmds
+    - /tmp/config.target.cmds

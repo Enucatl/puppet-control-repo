@@ -1,0 +1,39 @@
+set nat destination rule 10 description qBittorrent
+set nat destination rule 10 destination port 6881,9000
+set nat destination rule 10 inbound-interface name {{ wan_interface }}
+set nat destination rule 10 protocol tcp_udp
+set nat destination rule 10 translation address {{ docker_node_ip }}
+set nat destination rule 20 description 'Tor Ports'
+set nat destination rule 20 destination port 9001,9030
+set nat destination rule 20 inbound-interface name {{ wan_interface }}
+set nat destination rule 20 protocol tcp
+set nat destination rule 20 translation address {{ docker_node_ip }}
+set nat destination rule 22 description 'I2Pd Node'
+set nat destination rule 22 destination port 11001
+set nat destination rule 22 inbound-interface name {{ wan_interface }}
+set nat destination rule 22 protocol tcp_udp
+set nat destination rule 22 translation address {{ docker_node_ip }}
+set nat destination rule 30 description teamspeak
+set nat destination rule 30 destination port 9987
+set nat destination rule 30 inbound-interface name {{ wan_interface }}
+set nat destination rule 30 protocol udp
+set nat destination rule 30 translation address {{ docker_node_ip }}
+set nat source rule 100 outbound-interface name {{ wan_interface }}
+set nat source rule 100 source address {{ lan_subnet }}
+set nat source rule 100 translation address masquerade
+set nat source rule 110 outbound-interface name {{ wan_interface }}
+set nat source rule 110 source address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
+set nat source rule 110 translation address masquerade
+set nat source rule 120 outbound-interface name {{ wan_interface }}
+set nat source rule 120 source address {{ trusted_wifi_subnet }}
+set nat source rule 120 translation address masquerade
+set nat source rule 130 outbound-interface name {{ wan_interface }}
+set nat source rule 130 source address {{ iot_subnet }}
+set nat source rule 130 translation address masquerade
+set nat source rule 140 outbound-interface name {{ wan_interface }}
+set nat source rule 140 source address {{ guest_subnet }}
+set nat source rule 140 translation address masquerade
+set protocols static route6 {{ ipv6_prefix }}:1000::/52 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:2000::/64 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:3000::/52 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:4000::/64 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
