@@ -85,7 +85,7 @@ profile::common::cronjobs:
   # Remove unused Docker images, containers, networks, and build cache.
   # --all: removes all unused images (not just dangling ones)
   # --force: skips the confirmation prompt
-  # --filter until=168h: only removes objects not used in the last 7 days,
+  # --filter until=Nh: only removes objects not used in the last N hours,
   #   giving recently-pulled but not-yet-started containers a grace period.
   # Volumes are intentionally excluded (no --volumes flag) to avoid data loss.
   docker-prune:
@@ -93,7 +93,7 @@ profile::common::cronjobs:
     hour: 3
     weekday: 'Sunday'
     user: root
-    command: '/usr/bin/docker system prune --all --force --filter until=168h 2>&1'
+    command: '/usr/bin/docker system prune --all --force 2>&1'
   # backup the hashicorp vault to a location that is picked up by duplicati
   vault-snapshot:
     minute: 0
