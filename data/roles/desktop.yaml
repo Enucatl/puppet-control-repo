@@ -3,8 +3,9 @@ classes:
   - freeipa_firefox
 
 packages::list:
-  - audacity
   - ansible-core
+  - antigravity
+  - audacity
   - build-essential
   - calendar
   - calibre
@@ -62,6 +63,15 @@ packages::sources:
     key:
       name: 'githubcli-archive-keyring.gpg'
       source: 'https://cli.github.com/packages/githubcli-archive-keyring.gpg'
+
+  antigravity:
+    comment: 'Antigravity Auto-Updater Repository'
+    location: 'https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/'
+    release: 'antigravity-debian'
+    repos: 'main'
+    key:
+      name: 'antigravity-repo-key.gpg'
+      source: 'https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg'
 
 packages::ppas:
   - 'ppa:neovim-ppa/unstable'
