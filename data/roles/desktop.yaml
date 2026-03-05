@@ -70,7 +70,7 @@ packages::sources:
     release: 'antigravity-debian'
     repos: 'main'
     key:
-      name: 'antigravity-repo-key.gpg'
+      name: 'antigravity-repo-key.asc'
       source: 'https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg'
 
 packages::ppas:
