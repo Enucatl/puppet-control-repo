@@ -33,6 +33,7 @@ guest_subnet: "10.0.{{ guest_vlan }}.0/24"
 guest_interface: "{{ lan_interface }}.{{ guest_vlan }}"
 
 # --- WIREGUARD (moved to 10.0.200.0/24 to free up VLAN 10 numbering) ---
+# IPv6 subnet: {ipv6_prefix}:c8::/64  (c8 = 200 hex, mirrors 10.0.200.x)
 wg_interface: "wg0"
 wg_port: "51820"
 wg_subnet: "10.0.200.1/24"
@@ -40,6 +41,7 @@ wg_peers:
   - name: "phone"
     pubkey: "z4kWINsJrs2FY4q26DGErw6ECktgPEj6xoXT8UJsaRE="
     ip: "10.0.200.2/32"
+    ipv6_host: "2"
 
 # --- SNMP ---
 snmp_listen_address: "10.0.0.1"

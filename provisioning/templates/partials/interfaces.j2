@@ -37,9 +37,11 @@ set interfaces loopback lo
 {% for peer in wg_peers %}
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} public-key '{{ peer.pubkey }}'
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} allowed-ips {{ peer.ip }}
+set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} allowed-ips {{ ipv6_prefix }}:c8::{{ peer.ipv6_host }}/128
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} description '{{ peer.name }}'
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} persistent-keepalive 15
 {% endfor %}
 set interfaces wireguard {{ wg_interface }} address {{ wg_subnet }}
+set interfaces wireguard {{ wg_interface }} address {{ ipv6_prefix }}:c8::1/64
 set interfaces wireguard {{ wg_interface }} port {{ wg_port }}
 set interfaces wireguard {{ wg_interface }} private-key '{{ wg_server_private_key }}'
