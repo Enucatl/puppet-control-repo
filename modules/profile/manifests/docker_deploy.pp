@@ -46,7 +46,7 @@ define profile::docker_deploy (
   # Assemble ExecStart lines in order: pull → custom build → up
   $pull_exec  = $pull          ? { true  => ["ExecStart=${compose_cmd} pull"], default => [] }
   $build_exec = $build_command ? { undef => [],                                default => ["ExecStart=/bin/bash -c '${build_command}'"] }
-  $exec_start_str = join($pull_exec + $build_exec + ["ExecStart=${compose_cmd} up -d"], "\n")
+  $exec_start_str = join($pull_exec + $build_exec + ["ExecStart=${compose_cmd} up -d --force-recreate"], "\n")
 
   systemd::unit_file { "${name}-deploy.path":
     ensure  => $ensure,
@@ -80,6 +80,7 @@ define profile::docker_deploy (
       Environment=COMPOSE_ENV_FILES=../.env,./.env
       ExecStartPre=/bin/sleep 5
       ${exec_start_str}
+      ExecStartPost=${compose_cmd} ps
       StandardOutput=journal
       StandardError=journal
       SyslogIdentifier=${name}-deploy
