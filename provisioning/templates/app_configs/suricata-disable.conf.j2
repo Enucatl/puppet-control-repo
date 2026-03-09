@@ -15,6 +15,9 @@
 2210029  # SURICATA STREAM ESTABLISHED RST out of window
 2210008  # SURICATA STREAM 3way handshake wrong seq wrong ack (Mobile devices roaming)
 2210010  # SURICATA STREAM 3way handshake SYNACK with wrong ack
+2210030  # SURICATA STREAM FIN invalid ack (TCP offloading / asymmetric routing)
+2210038  # SURICATA STREAM FIN out of window (TCP offloading / asymmetric routing)
+2210046  # SURICATA STREAM SHUTDOWN RST invalid ack (TCP offloading / long-lived conns)
 
 # --- 2. Smart Home / IoT Broadcast Chatter ---
 # Smart TVs, printers, and media players constantly yell their presence
@@ -27,8 +30,12 @@
 # --- 3. Mobile Device / VoIP Traffic (STUN / WebRTC) ---
 # WhatsApp, FaceTime, Discord, and WebRTC use STUN to punch holes through NAT.
 # EmergingThreats flags these as "INFO", but mobile phones spam them constantly.
+# The "non-standard high port" variant fires per-packet during ICE negotiation,
+# generating 60+ alerts per failed P2P candidate before the client falls back to relay.
 2011507  # ET INFO Session Traversal Utilities for NAT (STUN Binding Request)
 2016149  # ET INFO Session Traversal Utilities for NAT (STUN Binding Response)
+2033078  # ET INFO STUN Binding Request On Non-Standard High Port (WebRTC ICE candidates)
+2036220  # ET INFO Android Device Connectivity Check (normal captive-portal probe)
 
 # --- 4. Harmless TLS / Crypto Warnings ---
 # Modern browsers and apps frequently negotiate TLS closures abruptly, or use
