@@ -1,19 +1,6 @@
 ---
-lookup_options:
-  systemd::journald_settings:
-    merge: deep
-  puppet_configuration::settings:
-    merge: deep
-
 classes:
-  - profile::docker_host
-
-freeipa_users::user_groups:
-  user:
-    - docker
-
-kmod::list_of_loads:
-  'br_netfilter': {}
+  - profile::docker_node
 
 nfs_config::server_exports:
   '/scratch':
@@ -26,29 +13,6 @@ nfs_config::server_exports:
 nfs_config::client_mounts:
   '/export/Documents':
     server: 'forbearance.home.arpa'
-
-packages::sources:
-  docker:
-    comment: 'Official Docker Repository'
-    location: 'https://download.docker.com/linux/ubuntu'
-    release: "%{facts.os.distro.codename}"
-    repos: 'stable'
-    key:
-      id: '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
-      source: 'https://download.docker.com/linux/ubuntu/gpg'
-      ensure: absent
-
-packages::list:
-  - docker-ce
-  - docker-ce-cli
-  - containerd.io
-  - docker-buildx-plugin
-  - docker-compose-plugin
-  - ffmpeg
-  - parallel
-  - python3-docker
-
-profile::alloy::enable_docker: true
 
 profile::docker_host::git_deploy_projects:
   airflow:
@@ -82,18 +46,6 @@ profile::docker_host::git_deploy_projects:
   unifi-network-application: {}
 
 profile::common::cronjobs:
-  # Remove unused Docker images, containers, networks, and build cache.
-  # --all: removes all unused images (not just dangling ones)
-  # --force: skips the confirmation prompt
-  # --filter until=Nh: only removes objects not used in the last N hours,
-  #   giving recently-pulled but not-yet-started containers a grace period.
-  # Volumes are intentionally excluded (no --volumes flag) to avoid data loss.
-  docker-prune:
-    minute: 0
-    hour: 3
-    weekday: 'Sunday'
-    user: root
-    command: '/usr/bin/docker system prune --all --force 2>&1'
   # backup the hashicorp vault to a location that is picked up by duplicati
   vault-snapshot:
     minute: 0
@@ -107,24 +59,6 @@ profile::common::cronjobs:
     weekday: 'Monday'
     user: root
     command: '/opt/docker/paperless-ngx/scripts/backup.sh 2>&1'
-
-profile::common::sysctl_settings:
-  net.ipv6.conf.all.accept_redirects:
-    value: 0
-  net.ipv6.conf.default.accept_redirects:
-    value: 0
-  net.ipv6.conf.all.forwarding:
-    value: 1
-  net.ipv6.conf.default.forwarding:
-    value: 1
-  net.ipv6.conf.all.accept_ra:
-    value: 2
-  net.ipv6.conf.default.accept_ra:
-    value: 2
-  net.ipv6.conf.all.proxy_ndp:
-    value: 1
-  net.ipv6.conf.default.proxy_ndp:
-    value: 1
 
 profile::common::vault_certs_default_location: /opt/docker/traefik/data/certs
 profile::common::vault_certs_defaults:
@@ -145,18 +79,6 @@ profile::common::vault_certs:
     cert_data:
       common_name: '*.docker.home.arpa'
       alt_names: '*.docker.home.arpa,docker.home.arpa'
-
-promtail::scrape_configs_hash:
-  scrape_configs:
-    - job_name: docker
-      docker_sd_configs:
-        - host: unix:///var/run/docker.sock
-          refresh_interval: 5s
-      relabel_configs:
-        - source_labels: 
-            - "__meta_docker_container_name"
-          regex: "/(.*)"
-          target_label: 'container_name'
 
 puppet_configuration::settings:
   autosign:
@@ -197,7 +119,7 @@ samba::shares:
     force_user: 'printer'
     create_mask: '0666'
     directory_mask: '0777'
-        
+
   'shared_pictures':
     comment: 'Shared Pictures'
     path: '/scratch/shared_pictures'

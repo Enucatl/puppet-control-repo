@@ -12,6 +12,8 @@ lookup_options:
     merge: unique
   packages::sources:
     merge: deep
+  profile::common::cronjobs:
+    merge: deep
   profile::common::sysctl_settings:
     merge: deep
   profile::common::vault_certs:
