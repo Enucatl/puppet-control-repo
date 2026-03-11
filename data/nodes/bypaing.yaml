@@ -24,6 +24,7 @@ packages::sources:
 
 packages::list:
   - ubuntu-drivers-common
+  - nvidia-driver-580
   - nvidia-container-toolkit
 
 kmod::list_of_loads:
