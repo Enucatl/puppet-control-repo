@@ -20,7 +20,7 @@ class profile::nvidia_docker {
   # Wolf compose services must include:
   #   group_add: [input]
   # OPTIONS+=static_node ensures the device node exists before first use.
-  systemd::udev::rule { '99-uinput':
+  systemd::udev::rule { '99-uinput.rules':
     rules => [
       'KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"',
     ],
