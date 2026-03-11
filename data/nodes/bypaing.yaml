@@ -6,6 +6,9 @@
 classes:
   - profile::nvidia_docker
 
+packages::ppas:
+  - 'ppa:graphics-drivers/ppa'
+
 packages::sources:
   nvidia-container-toolkit:
     comment: 'NVIDIA Container Toolkit'
