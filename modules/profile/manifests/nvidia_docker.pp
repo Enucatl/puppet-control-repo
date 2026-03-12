@@ -3,6 +3,8 @@
 # Configures a Docker host with NVIDIA GPU support:
 #   - Creates a udev rule granting the 'input' group rw access to /dev/uinput
 #     (required for Wolf/Moonlight virtual controller/keyboard/mouse passthrough)
+#   - Accepts extra_udev_rules and posix_acls hashes from Hiera for node-specific
+#     device permission needs (e.g. DRI render node access for userns-remap)
 #
 # Prerequisites managed elsewhere:
 #   - nvidia headless drivers: installed via ubuntu-drivers (run manually once)
@@ -11,7 +13,10 @@
 #   - uinput kernel module: kmod::list_of_loads in node data
 #   - /etc/docker/daemon.json: managed by hand (nvidia default runtime + IPv6 config)
 #
-class profile::nvidia_docker {
+class profile::nvidia_docker (
+  Hash $extra_udev_rules = {},
+  Hash $posix_acls       = {},
+) {
 
   require profile::common
 
@@ -24,6 +29,15 @@ class profile::nvidia_docker {
     rules => [
       'KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"',
     ],
+  }
+
+  if $extra_udev_rules != {} {
+    create_resources('systemd::udev::rule', $extra_udev_rules)
+  }
+
+  if $posix_acls != {} {
+    require posix_acl::requirements
+    create_resources('posix_acl', $posix_acls)
   }
 
 }

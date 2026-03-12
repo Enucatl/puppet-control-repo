@@ -37,3 +37,35 @@ profile::docker_host::git_deploy_projects:
 
 kmod::list_of_loads:
   'uinput': {}
+
+# DRI render node access for Wolf containers running under userns-remap.
+# Container root (UID 0) maps to host UID 100000 (dockremap subuid start).
+# The udev rule re-applies the ACL on every boot/hotplug; posix_acl handles
+# the current session immediately on Puppet apply.
+profile::nvidia_docker::extra_udev_rules:
+  '99-wolf-dri.rules':
+    rules:
+      - 'SUBSYSTEM=="drm", KERNEL=="renderD*", RUN+="/usr/bin/setfacl -m u:100000:rw /dev/%k"'
+      - 'SUBSYSTEM=="drm", KERNEL=="card*",    RUN+="/usr/bin/setfacl -m u:100000:rw /dev/%k"'
+
+profile::nvidia_docker::posix_acls:
+  '/dev/dri/renderD128':
+    action: set
+    permission:
+      - 'user:100000:rw'
+    provider: posixacl
+  '/dev/dri/card0':
+    action: set
+    permission:
+      - 'user:100000:rw'
+    provider: posixacl
+  # Wolf runs as container root (host UID 100000) and needs write access to its
+  # config dir to migrate config files and generate key.pem/cert.pem on first run.
+  # The default ACL ensures new files Wolf creates inherit the same permission.
+  '/opt/docker/wolf/configs':
+    action: set
+    permission:
+      - 'user:100000:rwx'
+      - 'default:user:100000:rwx'
+    recurse: true
+    provider: posixacl
