@@ -67,5 +67,16 @@ profile::nvidia_docker::posix_acls:
     permission:
       - 'user:100000:rwx'
       - 'default:user:100000:rwx'
-    recurse: true
+    provider: posixacl
+  '/opt/docker/wolf/configs/player1':
+    action: set
+    permission:
+      - 'user:100000:rwx'
+      - 'default:user:100000:rwx'
+    provider: posixacl
+  '/opt/docker/wolf/configs/player2':
+    action: set
+    permission:
+      - 'user:100000:rwx'
+      - 'default:user:100000:rwx'
     provider: posixacl
