@@ -21,6 +21,7 @@ packages::sources:
       ensure: absent
 
 packages::list:
+  - acl
   - docker-ce
   - docker-ce-cli
   - containerd.io
