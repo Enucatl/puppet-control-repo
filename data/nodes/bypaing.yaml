@@ -27,5 +27,13 @@ packages::list:
   - nvidia-driver-580
   - nvidia-container-toolkit
 
+nfs_config::server_exports:
+  '/opt/docker':
+    clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,root_squash)'
+    atboot: true
+
+profile::docker_host::git_deploy_projects:
+  wolf: {}
+
 kmod::list_of_loads:
   'uinput': {}

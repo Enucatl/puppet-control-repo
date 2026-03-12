@@ -11,6 +11,8 @@ nfs_config::client_mounts:
     server: 'docker.home.arpa'
   '/export/docker':
     server: 'docker.home.arpa'
+  '/export/bypaing':
+    server: 'bypaing.home.arpa'
 
 profile::common::sysctl_settings:
   net.ipv6.conf.all.accept_redirects:
