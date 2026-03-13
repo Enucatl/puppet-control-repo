@@ -1,3 +1,6 @@
+packages::list:
+  - lm-sensors
+
 ssh::server_options:
   PermitRootLogin: prohibit-password
 
