@@ -4,6 +4,7 @@ class profile::common (
   String  $vault_certs_default_location = '/opt/certs',
   Hash    $sysctl_settings              = {},
   Hash    $cronjobs                     = {},
+  Hash    $services                     = {},
 ) {
 
   require vault_secrets::vault_cert
@@ -40,5 +41,9 @@ class profile::common (
 
   if !empty($cronjobs) {
     create_resources(cron, $cronjobs)
+  }
+
+  if !empty($services) {
+    create_resources(service, $services)
   }
 }
