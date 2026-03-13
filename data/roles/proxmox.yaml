@@ -1,6 +1,11 @@
 packages::list:
   - lm-sensors
 
+profile::common::services:
+  rpc-svcgssd:
+    ensure: stopped
+    enable: mask
+
 ssh::server_options:
   PermitRootLogin: prohibit-password
 
