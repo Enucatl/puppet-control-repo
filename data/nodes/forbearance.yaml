@@ -11,8 +11,8 @@ nfs_config::client_mounts:
     server: 'docker.home.arpa'
   '/export/docker':
     server: 'docker.home.arpa'
-  '/export/bypaing':
-    server: 'bypaing.home.arpa'
+  '/export/complex':
+    server: 'complex.home.arpa'
     share: '/export/docker'
 
 profile::common::sysctl_settings:
