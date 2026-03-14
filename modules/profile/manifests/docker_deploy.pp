@@ -1,5 +1,5 @@
 # Manages a systemd path+service pair that redeploys a docker compose project
-# whenever its git repo receives a push (i.e. refs/heads/<branch> is modified).
+# whenever a push to the remote is detected (i.e. refs/remotes/origin/<branch> is modified).
 #
 # The resource title must match the project folder name under /opt/docker/.
 #
@@ -52,10 +52,10 @@ define profile::docker_deploy (
     ensure  => $ensure,
     content => @("UNIT"),
       [Unit]
-      Description=Watch for ${name} git pushes
+      Description=Watch for ${name} remote git pushes
 
       [Path]
-      PathModified=${base_dir}/.git/refs/heads/${branch}
+      PathModified=${base_dir}/.git/refs/remotes/origin/${branch}
 
       [Install]
       WantedBy=multi-user.target
