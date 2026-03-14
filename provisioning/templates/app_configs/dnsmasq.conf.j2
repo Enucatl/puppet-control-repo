@@ -87,6 +87,8 @@ dhcp-option=tag:guest,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('a
 
 address=/router.{{ dhcp_domain }}/{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 address=/proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
+address=/proxmox-cortex.{{ dhcp_domain }}/10.0.0.12
+address=/dropbear.proxmox-cortex.{{ dhcp_domain }}/10.0.0.12
 address=/dropbear.proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
 address=/pve-desktop.{{ dhcp_domain }}/{{ pve_desktop_ip }}
 address=/docker.{{ dhcp_domain }}/{{ docker_node_ip }}
