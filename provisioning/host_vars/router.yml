@@ -99,6 +99,8 @@ desktop_node_ipv6_suffix: "::be24:11ff:fef7:659b"
 
 proxmox_ip: "10.0.0.10"
 proxmox_mac: "9c:6b:00:c3:76:1d"
+proxmox_cortex_ip: "10.0.0.12"
+proxmox_cortex_mac: "30:56:0f:5e:a9:de"
 pve_desktop_ip: "10.0.0.11"
 pve_desktop_mac: "b0:6e:bf:82:d5:1c"
 printer_ip: "10.0.20.189"
