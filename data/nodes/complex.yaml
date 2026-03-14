@@ -24,7 +24,7 @@ packages::sources:
 
 packages::list:
   - ubuntu-drivers-common
-  - nvidia-driver-580
+  - nvidia-driver-590
   - nvidia-container-toolkit
 
 nfs_config::server_exports:
