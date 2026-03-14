@@ -60,14 +60,8 @@ dhcp-option=tag:lan,option:router,{{ vyos_lan_ip | ansible.utils.ipaddr('address
 dhcp-option=tag:lan,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 dhcp-option=tag:lan,option:domain-name,{{ dhcp_domain }}
 
-# PXE boot for iVentoy
-# dhcp-vendorclass is the proper directive for Option 60 matches
-dhcp-vendorclass=set:pxeclient,PXEClient
-
-# By combining tag:lan and tag:pxeclient, we ensure iVentoy is only served to the LAN subnet
-dhcp-boot=tag:lan,tag:pxeclient,iventoy_loader_16000_uefi,,{{ docker_node_ip }}
-dhcp-option=tag:lan,tag:pxeclient,option:tftp-server,{{ docker_node_ip }}
-dhcp-option=tag:lan,tag:pxeclient,60,PXEClient
+# PXE boot for iVentoy — offered to all LAN clients; non-PXE devices ignore it
+dhcp-boot=tag:lan,iventoy_loader_16000_uefi,,{{ docker_node_ip }}
 
 # ---- Trusted WiFi (VLAN {{ trusted_wifi_vlan }}) ----
 dhcp-range=set:trusted-wifi,{{ trusted_wifi_dhcp_start }},{{ trusted_wifi_dhcp_end }},255.255.255.0,86400s
