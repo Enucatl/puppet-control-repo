@@ -3,6 +3,9 @@
 # node_type: docker  →  inherits data/roles/docker.yaml
 #   (profile::docker_host, docker packages, sysctl, cronjobs, alloy, promtail)
 
+profile::nvidia_docker::power_limit_watts: 400
+profile::nvidia_docker::temp_target_celsius: 80
+
 classes:
   - profile::nvidia_docker
 
