@@ -1,0 +1,9 @@
+---
+profile::common::cronjobs:
+  # startup the proxmox backup server on the other host
+  backup:
+    minute: 55
+    hour: 1
+    weekday: 'Monday'
+    user: root
+    command: '/var/lib/vz/snippets/wake-proxmox-cortex.sh > /var/log/wake-proxmox-cortex.log 2>&1'

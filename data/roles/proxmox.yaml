@@ -11,12 +11,3 @@ ssh::server_options:
 
 ssh::client_options:
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %h'
-
-profile::common::cronjobs:
-  # startup the proxmox backup server on the other host
-  pve-desktop-backup:
-    minute: 55
-    hour: 1
-    weekday: 'Monday'
-    user: root
-    command: '/var/lib/vz/snippets/wake-pve-desktop.sh >> /var/log/wake-pve-desktop.log 2>&1'
