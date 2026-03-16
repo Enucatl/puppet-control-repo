@@ -6,7 +6,7 @@ class profile::dropbear_initramfs (
     owner   => 'root',
     group   => 'root',
     mode    => '0600',
-    content => join($authorized_keys.map |$key| { "no-port-forwarding,no-agent-forwarding,no-x11-forwarding,command=\"/usr/bin/zfsunlock\" ${key}" }, "\n") + "\n",
+    content => epp('profile/dropbear_authorized_keys.epp', { 'authorized_keys' => $authorized_keys }),
     notify  => Exec['update-initramfs'],
   }
 
