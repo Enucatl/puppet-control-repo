@@ -48,9 +48,10 @@ def wait_for_port(host, port, timeout_secs, sleep_interval=2):
 @click.option(
     "--broadcast", default="10.0.0.255", help="Subnet broadcast address for WoL"
 )
-@click.option("--vm-id", default=None, type=int, help="ID of the Proxmox VM to start (omit to skip VM start)")
+@click.option("--vm-id", default=None, type=int, help="ID of the Proxmox VM to start (omit to skip)")
+@click.option("--ct-id", default=None, type=int, help="ID of the Proxmox LXC container to start (omit to skip)")
 @click.option("--shutdown-delay", default=0, help="Schedule shutdown N minutes after boot (0 = no shutdown)")
-def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown_delay):
+def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, shutdown_delay):
     """
     Automates the process of waking a Proxmox server, unlocking the ZFS root via Dropbear,
     starting a specific VM, and launching Sunshine.
@@ -133,7 +134,7 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown
     expect_script = textwrap.dedent(f"""
         log_user 1
         set timeout 15
-        spawn ssh -p 2222 {dropbear_host}
+        spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {dropbear_host}
         expect {{
             "password for rpool/ROOT" {{
                 send "$env(SERVER_PASS)\\r"
@@ -182,13 +183,22 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown
             click.echo("[!] Failed to start VM.", err=True)
             sys.exit(1)
 
-        # Wait max 180 seconds for VM SSH (Port 22)
-        click.echo(f"[-] Waiting for VM ({main_host}) to come online...")
-        if not wait_for_port(main_host, 22, 180, 5):
-            click.echo("[!] Timed out waiting for Main Host (VM).", err=True)
+    if ct_id is not None:
+        click.echo(f"[+] Proxmox Host is up. Starting container {ct_id}...")
+        try:
+            subprocess.check_call(f"ssh '{proxmox_host}' 'pct start {ct_id}'", shell=True)
+        except subprocess.CalledProcessError:
+            click.echo("[!] Failed to start container.", err=True)
             sys.exit(1)
-    else:
+
+    if vm_id is None and ct_id is None:
         click.echo("[+] Proxmox Host is up.")
+    elif main_host:
+        # Wait max 180 seconds for main host SSH (Port 22)
+        click.echo(f"[-] Waiting for main host ({main_host}) to come online...")
+        if not wait_for_port(main_host, 22, 180, 5):
+            click.echo("[!] Timed out waiting for main host.", err=True)
+            sys.exit(1)
 
     # Schedule shutdown if requested
     if shutdown_delay > 0:
