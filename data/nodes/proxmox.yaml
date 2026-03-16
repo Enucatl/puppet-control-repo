@@ -6,4 +6,4 @@ profile::common::cronjobs:
     hour: 1
     weekday: 'Monday'
     user: root
-    command: 'qm guest exec 200 -- bash -c "cd /opt/docker/puppet-control-repo/docker && uv run python vault/scripts/wake_on_lan.py --vm-id 100 --shutdown-delay 120" > /var/log/wake-proxmox-cortex.log 2>&1'
+    command: 'qm guest exec 200 -- bash -c "cd /opt/docker/puppet-control-repo/docker && uv run python vault/scripts/wake_on_lan.py --ct-id 100 --shutdown-delay 120" > /var/log/wake-proxmox-cortex.log 2>&1'
