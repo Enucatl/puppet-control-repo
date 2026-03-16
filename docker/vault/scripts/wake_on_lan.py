@@ -48,7 +48,7 @@ def wait_for_port(host, port, timeout_secs, sleep_interval=2):
 @click.option(
     "--broadcast", default="10.0.0.255", help="Subnet broadcast address for WoL"
 )
-@click.option("--vm-id", default=200, help="ID of the Proxmox VM to start")
+@click.option("--vm-id", default=None, type=int, help="ID of the Proxmox VM to start (omit to skip VM start)")
 @click.option("--shutdown-delay", default=0, help="Schedule shutdown N minutes after boot (0 = no shutdown)")
 def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown_delay):
     """
@@ -175,18 +175,21 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown
         click.echo("[!] Timed out waiting for Proxmox Host.", err=True)
         sys.exit(1)
 
-    click.echo(f"[+] Proxmox Host is up. Starting VM {vm_id}...")
-    try:
-        subprocess.check_call(f"ssh '{proxmox_host}' 'qm start {vm_id}'", shell=True)
-    except subprocess.CalledProcessError:
-        click.echo("[!] Failed to start VM.", err=True)
-        sys.exit(1)
+    if vm_id is not None:
+        click.echo(f"[+] Proxmox Host is up. Starting VM {vm_id}...")
+        try:
+            subprocess.check_call(f"ssh '{proxmox_host}' 'qm start {vm_id}'", shell=True)
+        except subprocess.CalledProcessError:
+            click.echo("[!] Failed to start VM.", err=True)
+            sys.exit(1)
 
-    # Wait max 180 seconds for VM SSH (Port 22)
-    click.echo(f"[-] Waiting for VM ({main_host}) to come online...")
-    if not wait_for_port(main_host, 22, 180, 5):
-        click.echo("[!] Timed out waiting for Main Host (VM).", err=True)
-        sys.exit(1)
+        # Wait max 180 seconds for VM SSH (Port 22)
+        click.echo(f"[-] Waiting for VM ({main_host}) to come online...")
+        if not wait_for_port(main_host, 22, 180, 5):
+            click.echo("[!] Timed out waiting for Main Host (VM).", err=True)
+            sys.exit(1)
+    else:
+        click.echo("[+] Proxmox Host is up.")
 
     # Schedule shutdown if requested
     if shutdown_delay > 0:
