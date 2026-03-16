@@ -1,0 +1,17 @@
+---
+profile::common::systemd_units:
+  wol-enp7s0.service:
+    content: |
+      [Unit]
+      Description=Enable Wake-on-LAN for enp7s0
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/sbin/ethtool -s enp7s0 wol g
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+    enable: true
+    active: true

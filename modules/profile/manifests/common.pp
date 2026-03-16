@@ -5,6 +5,7 @@ class profile::common (
   Hash    $sysctl_settings              = {},
   Hash    $cronjobs                     = {},
   Hash    $services                     = {},
+  Hash    $systemd_units                = {},
 ) {
 
   require vault_secrets::vault_cert
@@ -45,5 +46,11 @@ class profile::common (
 
   if !empty($services) {
     create_resources(service, $services)
+  }
+
+  $systemd_units.each |String $unit_name, Hash $config| {
+    systemd::unit_file { $unit_name:
+      * => $config,
+    }
   }
 }
