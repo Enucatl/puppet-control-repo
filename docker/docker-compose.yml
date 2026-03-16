@@ -1,0 +1,190 @@
+name: infra
+
+services:
+
+  vault:
+    image: hashicorp/vault:latest
+    userns_mode: host
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - vault_data:/vault/file
+      - ./vault/config:/vault/config
+      - certificates:/certificates
+    environment:
+      - VAULT_LOG_LEVEL=info
+      - VAULT_ADDR
+      - VAULT_CACERT
+    networks:
+      - infra
+    command: vault server -config /vault/config/vault-conf.hcl
+    #command: vault server -config /vault/config/vault-conf-insecure.hcl
+    healthcheck:
+      test: ["CMD-SHELL", "vault status -format=json | grep -q '\"initialized\": true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "checkmk_monitor=true"
+
+  vault-unsealer:
+    image: nicolaka/netshoot:v0.14
+    restart: unless-stopped
+    depends_on:
+      vault:
+        condition: service_healthy
+    environment:
+      - CURL_CA_BUNDLE=${VAULT_CACERT}
+      - KEYS_FILE
+      - VAULT_ADDR
+      - VAULT_CACERT
+    volumes:
+      - ./vault/scripts:/scripts
+      - certificates:/certificates
+    command: /scripts/unseal.sh
+    networks:
+      - infra
+
+  freeipa:
+    image: freeipa/freeipa-server:almalinux-10
+    container_name: freeipa
+    hostname: freeipa.home.arpa
+    restart: unless-stopped
+    networks:
+      - infra
+      - traefik_proxy
+    ports:
+      - "88:88"
+      - "88:88/udp"
+      - "389:389"
+      - "464:464"
+      - "464:464/udp"
+      - "636:636"
+    environment:
+      # first run this to generate the CSR
+      #- IPA_SERVER_INSTALL_OPTS=--unattended --realm HOME.ARPA --domain home.arpa --external-ca
+      - IPA_SERVER_INSTALL_OPTS=--external_cert_file=/data/ipa.crt --external_ca_file=/data/ca.crt
+      - PASSWORD
+    volumes:
+      - freeipa_data:/data
+      - certificates:/certificates
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+      - net.ipv6.conf.all.forwarding=1
+    healthcheck:
+      test: ["CMD-SHELL", "echo | openssl s_client -connect localhost:443 -servername freeipa.home.arpa 2>/dev/null | grep -q 'Verify return code: 0'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    labels:
+      - "checkmk_monitor=true"
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.tcp.routers.freeipa-secure.entrypoints=https"
+      - "traefik.tcp.routers.freeipa-secure.rule=HostSNI(`freeipa.home.arpa`)"
+      - "traefik.tcp.routers.freeipa-secure.tls=true"
+      - "traefik.tcp.routers.freeipa-secure.tls.passthrough=true"
+      - "traefik.tcp.services.freeipa-secure.loadbalancer.server.port=443"
+
+  apt-cacher-ng:
+    image: sameersbn/apt-cacher-ng:latest
+    container_name: apt-cacher-ng
+    ports:
+      - "3142:3142"
+    volumes:
+      - /scratch/apt-cacher-ng:/var/cache/apt-cacher-ng
+      - ./vault/scripts/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3142/acng-report.html || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # TEMPORARY CONTAINERS
+  # only to document one-off setup
+
+  # after running this, setup TLS for vault, changing the env and the config file
+  vault-pki-core-setup:
+    profiles:
+      - setup
+    image: hashicorp/vault:latest
+    userns_mode: host
+    restart: no
+    depends_on:
+      vault-unsealer:
+        condition: service_completed_successfully
+    environment:
+      - VAULT_ADDR
+      - KEYS_FILE
+    volumes:
+      - ./vault/scripts:/scripts
+      - certificates:/certificates
+    networks:
+      - infra
+    entrypoint: /scripts/01-pki-core-setup.sh
+
+  vault-pki-intermediate-setup:
+    profiles:
+      - setup
+    image: hashicorp/vault:latest
+    userns_mode: host
+    restart: "no"
+    depends_on:
+      vault-unsealer:
+        condition: service_completed_successfully
+    environment:
+      - KEYS_FILE
+      - VAULT_ADDR
+      - VAULT_CACERT
+    volumes:
+      - ./vault/scripts:/scripts
+      - certificates:/certificates
+    entrypoint: /scripts/02-pki-intermediate.sh
+    networks:
+      - infra
+
+  freeipa-sign-csr:
+    profiles:
+      - setup
+    image: hashicorp/vault:latest
+    userns_mode: host
+    restart: "no"
+    depends_on:
+      vault-unsealer:
+        condition: service_completed_successfully
+    environment:
+      - KEYS_FILE
+      - VAULT_ADDR
+      - VAULT_CACERT
+    volumes:
+      - ./vault/scripts:/scripts
+      - freeipa_data:/data
+      - certificates:/certificates
+    entrypoint: /scripts/04-sign-csr.sh
+    networks:
+      - infra
+
+networks:
+  infra:
+    name: infra
+    enable_ipv6: true
+    ipam:
+      driver: default
+  traefik_proxy:
+    name: traefik_proxy
+    enable_ipv6: true
+    attachable: true
+    ipam:
+      driver: default
+
+volumes:
+  vault_data:
+  freeipa_data:
+  certificates:

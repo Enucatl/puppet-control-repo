@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -x
+
+R10K=/opt/puppetlabs/puppet/bin/r10k
+PUPPET=/opt/puppetlabs/puppet/bin/puppet
+CONFDIR=/etc/puppetlabs/puppet
+CODEDIR=/etc/puppetlabs/code
+VARDIR=/opt/puppetlabs/puppet/cache
+
+BRANCHES="production dev"
+
+while read oldrev newrev ref
+do
+    for BRANCH in $BRANCHES
+    do
+        if [[ $ref = refs/heads/$BRANCH ]];
+        then
+            echo "Ref $ref received. Deploying ${BRANCH} branch..."
+            sudo -u puppet $R10K deploy environment --modules -v info
+            sudo -u puppet $PUPPET generate types \
+                --environment $BRANCH \
+                --confdir $CONFDIR \
+                --codedir $CODEDIR \
+                --vardir $VARDIR
+        fi
+    done
+done

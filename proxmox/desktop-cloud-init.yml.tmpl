@@ -1,0 +1,109 @@
+#cloud-config
+output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+
+packages:
+  - auto-apt-proxy
+  - gnupg
+
+write_files:
+  # CheckMK Installer
+  - path: /usr/local/bin/install-checkmk.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      export VAULT_TOKEN='${VM_TOKEN}'
+      export VAULT_ADDR='${VAULT_ADDR}'
+
+      CMK_DOMAIN='${CMK_DOMAIN}'
+      CMK_SITE='${CMK_SITE}'
+      REG_USER='${CMK_REG_USER}'
+      DOWNLOAD_PATH="/tmp/checkmk_agent.deb"
+      OS_TYPE="linux_deb"
+
+      echo "Fetching Secret from Vault..."
+      API_SECRET=$(vault kv get -field=checkmk::agent_registration_password kv/puppet)
+
+      API_URL="https://\${CMK_DOMAIN}/\${CMK_SITE}/check_mk/api/1.0"
+
+      echo "Downloading agent..."
+      curl -f -L -k -G \
+          --header "Authorization: Bearer \${REG_USER} \${API_SECRET}" \
+          --header "Accept: application/octet-stream" \
+          --data-urlencode "agent_type=generic" \
+          --data-urlencode "os_type=\${OS_TYPE}" \
+          -o "\$DOWNLOAD_PATH" \
+          "\${API_URL}/domain-types/agent/actions/download_by_host/invoke"
+
+      dpkg -i "\$DOWNLOAD_PATH"
+      apt-get install -f -y
+
+      echo "Registering agent with CheckMK (TLS)..."
+      cmk-agent-ctl register \
+          --hostname "\$(hostname).${DOMAIN_SUFFIX}" \
+          --server "\${CMK_DOMAIN}" \
+          --site "\${CMK_SITE}" \
+          --user "\${REG_USER}" \
+          --password "\${API_SECRET}" \
+          --trust-cert
+
+  # Puppet Enrollment Script
+  - path: /usr/local/bin/configure-puppet.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      NODE_TYPE="${1:-desktop}"
+      VAULT_TOKEN="${2}"
+      PUPPET_SERVER="${3:-${PUPPET_SERVER}}"
+
+      mkdir -p /etc/puppetlabs/puppet/
+      cat <<CSREOF > /etc/puppetlabs/puppet/csr_attributes.yaml
+      custom_attributes:
+        1.2.840.113549.1.9.7: "\${VAULT_TOKEN}"
+      CSREOF
+      chmod 0640 /etc/puppetlabs/puppet/csr_attributes.yaml
+
+      mkdir -p /etc/facter/facts.d/
+      echo "node_type=\${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
+
+      /opt/puppetlabs/bin/puppet config set server "\$PUPPET_SERVER" --section main
+      /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
+
+      systemctl enable puppet
+      /opt/puppetlabs/bin/puppet resource service puppet enable=true
+      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
+      /opt/puppetlabs/bin/puppet resource service puppet ensure=running
+
+runcmd:
+  - export DEBIAN_FRONTEND=noninteractive
+  - systemctl restart systemd-networkd
+  - /lib/systemd/systemd-networkd-wait-online --timeout=60
+  - sleep 5
+  - mkdir -p /run/sshd && chmod 755 /run/sshd
+
+  # Set hostname logic
+  - sed -i "s/^127.0.1.1.*/127.0.1.1 $(hostname).${DOMAIN_SUFFIX} $(hostname)/" /etc/hosts
+  - install -m 0755 -d /etc/apt/keyrings
+
+  # Repo Setup
+  - wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg
+  - echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+
+  - apt-get update
+  - apt-get install -y htop libnss-resolve linux-firmware linux-image-generic puppet-agent vault
+  - apt-get install -y --install-recommends ubuntu-desktop
+  - systemctl mask systemd-networkd-wait-online.service
+
+  # Puppet Setup
+  - /usr/local/bin/configure-puppet.sh desktop '${VM_TOKEN}' '${PUPPET_SERVER}'
+
+  - systemctl start qemu-guest-agent
+
+  # CheckMK Setup
+  - /usr/local/bin/install-checkmk.sh
+
+  # Desktop Finalization
+  - systemctl set-default graphical.target
+  - systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
