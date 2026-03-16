@@ -79,7 +79,7 @@ path "pki_int/*" {
 
 # --- KV v2 secrets engine ---
 path "kv/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
+  capabilities = ["create", "read", "update", "patch", "delete", "list"]
 }
 
 # --- LDAP auth configuration ---
