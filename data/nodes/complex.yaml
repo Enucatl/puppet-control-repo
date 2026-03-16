@@ -30,10 +30,6 @@ packages::list:
   - nvidia-driver-590-open
   - nvidia-container-toolkit
 
-nfs_config::client_mounts:
-  '/export/code':
-    server: 'forbearance.home.arpa'
-    share: '/home/user/code'
 
 profile::docker_host::git_deploy_projects:
   wolf: {}
