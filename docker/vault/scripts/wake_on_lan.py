@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import time
@@ -68,22 +69,23 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown
     vault_env.setdefault("VAULT_ADDR", "https://hcv.home.arpa:8200")
     vault_env.setdefault("VAULT_CACERT", "/etc/ssl/certs/ca-certificates.crt")
 
-    if not vault_env.get("VAULT_TOKEN"):
+    home = os.path.expanduser("~")
+    has_token = vault_env.get("VAULT_TOKEN") or os.path.exists(os.path.join(home, ".vault-token"))
+    if not has_token:
         click.echo("[-] No VAULT_TOKEN set, logging in via cert auth...")
         try:
             token_bytes = subprocess.check_output(
                 [
-                    "vault", "login", "-method=cert", "-no-print", "-format=json",
+                    "vault", "login", "-method=cert", "-format=json",
                     "-client-cert=/etc/puppetlabs/puppet/ssl/certs/docker.home.arpa.pem",
                     "-client-key=/etc/puppetlabs/puppet/ssl/private_keys/docker.home.arpa.pem",
                 ],
                 env=vault_env,
             )
-            import json
             vault_env["VAULT_TOKEN"] = json.loads(token_bytes)["auth"]["client_token"]
             click.echo("[+] Vault cert auth successful.")
-        except (subprocess.CalledProcessError, KeyError, json.JSONDecodeError):
-            click.echo("[!] Error: Vault cert auth failed. Exiting.", err=True)
+        except (subprocess.CalledProcessError, KeyError, json.JSONDecodeError) as e:
+            click.echo(f"[!] Error: Vault cert auth failed: {e}", err=True)
             sys.exit(1)
 
     # 2. Retrieve Password from Vault
