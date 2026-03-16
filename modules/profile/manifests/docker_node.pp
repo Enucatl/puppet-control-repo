@@ -59,7 +59,7 @@ class profile::docker_node (
     owner     => '110001', # 100000 (remap base) + 10001 (loki uid)
     group     => '110001',
     mode      => '0751',
-    subscribe => Service['docker'],
+    subscribe => Class['profile::docker_host'],
     recurse   => false,
   }
 
