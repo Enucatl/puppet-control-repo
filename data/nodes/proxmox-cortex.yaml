@@ -1,4 +1,11 @@
 ---
+classes:
+  - profile::dropbear_initramfs
+
+profile::dropbear_initramfs::authorized_keys:
+  - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO1zLY2stYvi4mF5lUjvvskARuI86SusWqaWyO2F3ioQ root@docker'
+  - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEot3u2cV0DaYXoTiFLyCQkEGixSVZhdzddnhbRtaPu/ 1423701+Enucatl@users.noreply.github.com'
+
 profile::common::systemd_units:
   wol-enp7s0.service:
     content: |
