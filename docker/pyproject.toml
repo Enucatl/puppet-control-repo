@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "infra"
+version = "0.1.0"
+description = ""
+dependencies = [
+    "click",
+]
+requires-python = ">=3.7"
+
+[tool.setuptools.packages.find]
+# This tells setuptools to only "see" the vault directory
+include = ["vault*"]
+
+[tool.setuptools]
+# This ensures it doesn't try to install the root as a package
+package-dir = {"" = "."}

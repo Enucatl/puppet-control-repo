@@ -1,0 +1,103 @@
+#cloud-config
+output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - gnupg
+  - htop
+  - jq
+  - tree
+  - vim
+  - qemu-guest-agent
+
+write_files:
+  - path: /usr/local/bin/configure-puppet.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      NODE_TYPE="${1:?node_type required}"
+      VAULT_TOKEN="${2:?vault_token required}"
+      PUPPET_SERVER="${3:-${PUPPET_SERVER}}"
+
+      mkdir -p /etc/puppetlabs/puppet/
+      cat <<CSREOF > /etc/puppetlabs/puppet/csr_attributes.yaml
+      custom_attributes:
+        1.2.840.113549.1.9.7: "${VAULT_TOKEN}"
+      CSREOF
+      chmod 0640 /etc/puppetlabs/puppet/csr_attributes.yaml
+
+      mkdir -p /etc/facter/facts.d/
+      echo "node_type=${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
+
+      /opt/puppetlabs/bin/puppet config set server "$PUPPET_SERVER" --section main
+      /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
+
+      systemctl enable puppet
+      /opt/puppetlabs/bin/puppet resource service puppet enable=true
+      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
+      /opt/puppetlabs/bin/puppet resource service puppet ensure=running
+
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "default-address-pools" : [
+          {
+            "base" : "172.17.0.0/12",
+            "size" : 20
+          },
+          {
+            "base" : "${IPV6_POOL}",
+            "size" : 64
+          }
+        ],
+        "experimental": true,
+        "fixed-cidr-v6": "${IPV6_FIXED}",
+        "ipv6": true,
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        },
+        "userns-remap": "default",
+        "userland-proxy": false
+      }
+
+runcmd:
+  - export DEBIAN_FRONTEND=noninteractive
+  - systemctl restart systemd-networkd
+  - /lib/systemd/systemd-networkd-wait-online --timeout=60
+  - sleep 5
+  - mkdir -p /run/sshd && chmod 755 /run/sshd
+  - sed -i "s/^127.0.1.1.*/127.0.1.1 $(hostname).${DOMAIN_SUFFIX} $(hostname)/" /etc/hosts
+
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+
+  - |
+    tee /etc/apt/sources.list.d/docker.sources <<EOF
+    Types: deb
+    URIs: https://download.docker.com/linux/ubuntu
+    Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+    Components: stable
+    Signed-By: /etc/apt/keyrings/docker.asc
+    EOF
+
+  - wget -O - https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+
+  - apt update
+  - apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin puppet-agent vault
+
+  - mkdir -p /home/user/docker
+  - /usr/local/bin/configure-puppet.sh '${NODE_TYPE}' '${VM_TOKEN}' '${PUPPET_SERVER}'
+
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - systemctl enable docker
+  - systemctl start docker
+
+final_message: "Host ready. IPv6 configured with ${IPV6_FIXED}"

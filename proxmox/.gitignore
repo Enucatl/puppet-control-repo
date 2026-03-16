@@ -1,0 +1,4 @@
+.claude
+generated*
+.env
+*.swp

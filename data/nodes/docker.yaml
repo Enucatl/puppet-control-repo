@@ -26,7 +26,8 @@ profile::docker_host::git_deploy_projects:
   duplicati: {}
   echo-server: {}
   grafana-loki: {}
-  infra: {}
+  puppet-control-repo:
+    compose_file: docker/docker-compose.yml
   iventoy: {}
   kms: {}
   monerod:
@@ -52,7 +53,7 @@ profile::common::cronjobs:
     hour: 1
     weekday: 'Monday'
     user: root
-    command: '/opt/docker/infra/vault/scripts/backup.sh 2>&1'
+    command: '/opt/docker/puppet-control-repo/docker/vault/scripts/backup.sh 2>&1'
   paperless-snapshot:
     minute: 0
     hour: 1

@@ -1,0 +1,51 @@
+#cloud-config
+output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+users:
+  - name: user_l
+    groups: sudo, docker
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - ${SSH_PUBLIC_KEY}
+
+# Create the authenticated APT source file.
+write_files:
+  - path: /etc/apt/auth.conf.d/puppet-core.conf
+    permissions: '0600'
+    content: |
+      machine apt-puppetcore.puppet.com
+      login forge-key
+      password ${FORGE_KEY}
+
+runcmd:
+  - export DEBIAN_FRONTEND=noninteractive
+  - systemctl restart systemd-networkd
+  - /lib/systemd/systemd-networkd-wait-online --timeout=120
+  - sleep 5
+
+  - apt-get update && apt-get -y upgrade && apt-get -y autoremove
+  - apt-get install -y apt-transport-https qemu-guest-agent
+
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+
+  # --- Install Puppet Agent ---
+  # Download directly to a known path
+  - wget -O /tmp/puppet.deb https://apt-puppetcore.puppet.com/public/puppet8-release-noble.deb
+
+  # Install the package
+  - dpkg -i /tmp/puppet.deb
+
+  # Clean up
+  - rm /tmp/puppet.deb
+
+  # Update and Install
+  - apt-get update
+  - apt-get install -y puppet-agent
+
+  # Enable Puppet (do not start)
+  - systemctl enable puppet
+
+  # Clean APT
+  - apt-get autoremove -y
+  - apt-get clean
