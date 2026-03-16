@@ -1,6 +1,6 @@
 class profile::docker_node (
-  String $printer_smb_password  = lookup('printer::smbpasswd'),
-  String $pictures_smb_password = lookup('pictures::smbpasswd'),
+  String $printer_smb_password  = lookup('profile::docker_host::printer_smb_password'),
+  String $pictures_smb_password = lookup('profile::docker_host::pictures_smb_password'),
 ) {
 
   require profile::common
