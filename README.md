@@ -119,7 +119,6 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 | `06-vault-puppet.sh` | Cert auth + KV v2 for Puppet |
 | `07-configure-sudo.sh` | FreeIPA sudo rules |
 | `08-vault-puppet-policy.sh` | Puppet Vault policy |
-| `09-ipa-users.sh` | Service accounts |
 | `10-vault-ldap.sh` | LDAP auth backend |
 | `11-vault-airflow.sh` | Airflow KV policy |
 | `13-vault-admin-policy.sh` | Admin policy + LDAP group mapping |

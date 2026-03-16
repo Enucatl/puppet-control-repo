@@ -2,6 +2,8 @@
 lookup_options:
   classes:
     merge: unique
+  freeipa_users::users:
+    merge: hash
   nfs_config::server_exports:
     merge: hash
   nfs_config::client_mounts:

@@ -49,8 +49,7 @@ Scripts are sequential and build on each other:
 6. `06-vault-puppet.sh` — Cert auth + KV v2 for Puppet
 7. `07-configure-sudo.sh` — FreeIPA sudo rules
 8. `08-vault-puppet-policy.sh` — Puppet Vault policy
-9. `09-ipa-users.sh` — Service accounts (ldap_ro, printer, airflow)
-10. `10-vault-ldap.sh` — LDAP auth backend wired to FreeIPA
+9. `10-vault-ldap.sh` — LDAP auth backend wired to FreeIPA
 11. `11-vault-airflow.sh` — Airflow KV read policy
 12. `13-vault-admin-policy.sh` — Admin Vault policy + LDAP group mapping
 
@@ -72,7 +71,7 @@ Other scripts: `unseal.sh` (auto-unseal loop), `backup.sh` (Vault backup with fs
 
 ### Bootstrap Order
 
-First-time setup: start Vault + unsealer → run `vault-pki-core-setup` (insecure mode) → switch Vault config to TLS → run `vault-pki-intermediate-setup` → generate FreeIPA CSR → run `freeipa-sign-csr` → start FreeIPA with signed certs → run remaining scripts (05-11, 13) against Vault directly. (Script 12 has been removed — NFS service principal registration is handled by Puppet.)
+First-time setup: start Vault + unsealer → run `vault-pki-core-setup` (insecure mode) → switch Vault config to TLS → run `vault-pki-intermediate-setup` → generate FreeIPA CSR → run `freeipa-sign-csr` → start FreeIPA with signed certs → run remaining scripts (05-08, 10-11, 13) against Vault directly. (Scripts 09 and 12 have been removed — IPA service account creation and NFS service principal registration are now handled by Puppet.)
 
 ## Conventions
 

@@ -106,6 +106,17 @@ puppet_configuration::settings:
     setting: external_nodes
     value: /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py
 
+freeipa_users::users:
+  ldap_ro:
+    first: ldap
+    last: ro
+  printer:
+    first: printer
+    last: printer
+  airflow:
+    first: airflow
+    last: airflow
+
 samba::workgroup: 'WORKGROUP'
 samba::server_string: 'docker'
 samba::security: 'user'
