@@ -30,6 +30,7 @@ profile::docker_host::git_deploy_projects:
     ensure: absent
   puppet-control-repo:
     compose_file: docker/docker-compose.yml
+    branch: production
   iventoy: {}
   kms: {}
   monerod:
