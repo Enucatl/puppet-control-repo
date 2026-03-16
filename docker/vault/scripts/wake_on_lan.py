@@ -48,18 +48,27 @@ def wait_for_port(host, port, timeout_secs, sleep_interval=2):
     "--broadcast", default="10.0.0.255", help="Subnet broadcast address for WoL"
 )
 @click.option("--vm-id", default=200, help="ID of the Proxmox VM to start")
-def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id):
+@click.option("--shutdown-delay", default=0, help="Schedule shutdown N minutes after boot (0 = no shutdown)")
+def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown_delay):
     """
     Automates the process of waking a Proxmox server, unlocking the ZFS root via Dropbear,
     starting a specific VM, and launching Sunshine.
     """
+
+    # 0. Check if server is already on
+    already_on = subprocess.call(
+        f"nc -z -w 2 {proxmox_host} 22", shell=True, stderr=subprocess.DEVNULL
+    ) == 0
+    if already_on:
+        click.echo("[+] Server is already running. Skipping wake sequence.")
+        return
 
     # 1. Retrieve Password from Vault
     click.echo("[-] Retrieving password from Vault...")
     try:
         # check_output is required here to capture the string; check_call only captures exit code.
         server_pass_bytes = subprocess.check_output(
-            "vault kv get -field=pve-desktop kv/bitwarden", shell=True
+            "vault kv get -field=proxmox-cortex kv/bitwarden", shell=True
         )
         server_pass = server_pass_bytes.decode("utf-8").strip()
     except subprocess.CalledProcessError:
@@ -153,6 +162,18 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id):
     if not wait_for_port(main_host, 22, 180, 5):
         click.echo("[!] Timed out waiting for Main Host (VM).", err=True)
         sys.exit(1)
+
+    # Schedule shutdown if requested
+    if shutdown_delay > 0:
+        click.echo(f"[-] Scheduling shutdown in {shutdown_delay} minutes...")
+        try:
+            subprocess.check_call(
+                f"ssh '{proxmox_host}' \"shutdown +{shutdown_delay} 'Automated shutdown'\"",
+                shell=True,
+            )
+        except subprocess.CalledProcessError:
+            click.echo("[!] Failed to schedule shutdown.", err=True)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

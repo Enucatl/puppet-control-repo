@@ -22,7 +22,7 @@ docker compose logs -f vault
 docker compose logs -f vault-unsealer
 
 # Python tooling (uses uv for dependency management)
-uv run python vault/scripts/launch_pve_desktop.py
+uv run python vault/scripts/wake_on_lan.py
 ```
 
 ## Architecture
@@ -56,7 +56,7 @@ Scripts are sequential and build on each other:
 
 13. `13-vault-admin-policy.sh` — Admin Vault policy + LDAP group mapping
 
-Other scripts: `unseal.sh` (auto-unseal loop), `backup.sh` (Vault backup with fs freeze), `launch_pve_desktop.py` (Proxmox VM automation), `config.sh` (shared constants sourced by all scripts).
+Other scripts: `unseal.sh` (auto-unseal loop), `backup.sh` (Vault backup with fs freeze), `wake_on_lan.py` (Proxmox VM automation), `config.sh` (shared constants sourced by all scripts).
 
 ### Networking
 
