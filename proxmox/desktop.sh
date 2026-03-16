@@ -45,7 +45,7 @@ NEW_VM_NAME=$(pick_vm_name "$LETTER")
 STORAGE="$DEFAULT_STORAGE"
 
 # Paths
-TEMPLATE_SRC="desktop-cloud-init.yml.tmpl"
+TEMPLATE_SRC="$SCRIPT_DIR/desktop-cloud-init.yml.tmpl"
 GENERATED_YAML="/var/lib/vz/snippets/generated-desktop-$VMID.yml"
 
 # Hardware

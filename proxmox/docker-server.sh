@@ -54,7 +54,7 @@ if [ -z "$VMID" ]; then
 fi
 
 STORAGE="$DEFAULT_STORAGE"
-TEMPLATE_SRC="docker-cloud-init.yml.tmpl"
+TEMPLATE_SRC="$SCRIPT_DIR/docker-cloud-init.yml.tmpl"
 GENERATED_YAML="/var/lib/vz/snippets/generated-docker-cloud-init-$VMID.yml"
 
 mkdir -p "$LOG_DIR"

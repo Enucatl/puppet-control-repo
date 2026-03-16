@@ -19,7 +19,7 @@ IMAGE_NAME="noble-server-cloudimg-amd64.img"
 IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 
 # Paths
-TEMPLATE_SRC="ubuntu-cloud-init.yml.tmpl"
+TEMPLATE_SRC="$SCRIPT_DIR/ubuntu-cloud-init.yml.tmpl"
 SNIPPET_PATH="/var/lib/vz/snippets/generated-ubuntu-cloud-init.yml"
 
 echo "--- Starting Template Build for VM $VMID ---"
