@@ -122,7 +122,6 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 | `09-ipa-users.sh` | Service accounts |
 | `10-vault-ldap.sh` | LDAP auth backend |
 | `11-vault-airflow.sh` | Airflow KV policy |
-| `12-ipa-nfs.sh` | NFS / FreeIPA config |
 | `13-vault-admin-policy.sh` | Admin policy + LDAP group mapping |
 
 `wake_on_lan.py` automates waking `proxmox-cortex`: sends a WoL packet, unlocks ZFS via Dropbear SSH, then optionally starts a VM (`--vm-id`) or LXC container (`--ct-id`).

@@ -52,9 +52,7 @@ Scripts are sequential and build on each other:
 9. `09-ipa-users.sh` — Service accounts (ldap_ro, printer, airflow)
 10. `10-vault-ldap.sh` — LDAP auth backend wired to FreeIPA
 11. `11-vault-airflow.sh` — Airflow KV read policy
-12. `12-ipa-nfs.sh` — NFS configuration for FreeIPA
-
-13. `13-vault-admin-policy.sh` — Admin Vault policy + LDAP group mapping
+12. `13-vault-admin-policy.sh` — Admin Vault policy + LDAP group mapping
 
 Other scripts: `unseal.sh` (auto-unseal loop), `backup.sh` (Vault backup with fs freeze), `wake_on_lan.py` (Proxmox VM automation), `config.sh` (shared constants sourced by all scripts).
 
@@ -74,7 +72,7 @@ Other scripts: `unseal.sh` (auto-unseal loop), `backup.sh` (Vault backup with fs
 
 ### Bootstrap Order
 
-First-time setup: start Vault + unsealer → run `vault-pki-core-setup` (insecure mode) → switch Vault config to TLS → run `vault-pki-intermediate-setup` → generate FreeIPA CSR → run `freeipa-sign-csr` → start FreeIPA with signed certs → run remaining scripts (05-12) against Vault directly.
+First-time setup: start Vault + unsealer → run `vault-pki-core-setup` (insecure mode) → switch Vault config to TLS → run `vault-pki-intermediate-setup` → generate FreeIPA CSR → run `freeipa-sign-csr` → start FreeIPA with signed certs → run remaining scripts (05-11, 13) against Vault directly. (Script 12 has been removed — NFS service principal registration is handled by Puppet.)
 
 ## Conventions
 
