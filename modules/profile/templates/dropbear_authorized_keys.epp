@@ -1,0 +1,4 @@
+<%- | Array[String] $authorized_keys | -%>
+<% $authorized_keys.each |$key| { -%>
+no-port-forwarding,no-agent-forwarding,no-x11-forwarding,command="/usr/bin/zfsunlock" <%= $key %>
+<% } -%>
