@@ -26,6 +26,8 @@ profile::docker_host::git_deploy_projects:
   duplicati: {}
   echo-server: {}
   grafana-loki: {}
+  infra:
+    ensure: absent
   puppet-control-repo:
     compose_file: docker/docker-compose.yml
   iventoy: {}
