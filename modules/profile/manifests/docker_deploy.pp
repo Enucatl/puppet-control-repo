@@ -60,8 +60,8 @@ define profile::docker_deploy (
       [Install]
       WantedBy=multi-user.target
       | UNIT
-    enable  => true,
-    active  => true,
+    enable  => $ensure == 'present',
+    active  => $ensure == 'present',
   }
 
   systemd::unit_file { "${name}-deploy.service":
