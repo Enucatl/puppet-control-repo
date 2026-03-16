@@ -48,6 +48,14 @@ profile::docker_host::git_deploy_projects:
   traefik: {}
   unifi-network-application: {}
 
+packages::list:
+  - qemu-guest-agent
+
+profile::common::services:
+  qemu-guest-agent:
+    ensure: running
+    enable: true
+
 profile::common::cronjobs:
   # backup the hashicorp vault to a location that is picked up by duplicati
   vault-snapshot:
