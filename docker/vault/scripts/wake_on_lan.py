@@ -64,15 +64,20 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown
         click.echo("[+] Server is already running. Skipping wake sequence.")
         return
 
-    # 1. Authenticate with Vault via cert auth (puppet cert)
     vault_env = os.environ.copy()
     vault_env.setdefault("VAULT_ADDR", "https://hcv.home.arpa:8200")
     vault_env.setdefault("VAULT_CACERT", "/etc/ssl/certs/ca-certificates.crt")
 
-    home = os.path.expanduser("~")
-    has_token = vault_env.get("VAULT_TOKEN") or os.path.exists(os.path.join(home, ".vault-token"))
-    if not has_token:
-        click.echo("[-] No VAULT_TOKEN set, logging in via cert auth...")
+    # 1. Retrieve Password from Vault (with cert auth fallback)
+    click.echo("[-] Retrieving password from Vault...")
+    try:
+        server_pass_bytes = subprocess.check_output(
+            "vault kv get -field=proxmox-cortex kv/puppet", shell=True, env=vault_env,
+            stderr=subprocess.DEVNULL,
+        )
+        server_pass = server_pass_bytes.decode("utf-8").strip()
+    except subprocess.CalledProcessError:
+        click.echo("[-] Vault read failed, attempting cert auth...")
         try:
             token_bytes = subprocess.check_output(
                 [
@@ -81,26 +86,20 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, shutdown
                     "-client-key=/etc/puppetlabs/puppet/ssl/private_keys/docker.home.arpa.pem",
                 ],
                 env=vault_env,
+                stderr=subprocess.DEVNULL,
             )
             vault_env["VAULT_TOKEN"] = json.loads(token_bytes)["auth"]["client_token"]
-            click.echo("[+] Vault cert auth successful.")
         except (subprocess.CalledProcessError, KeyError, json.JSONDecodeError) as e:
-            click.echo(f"[!] Error: Vault cert auth failed: {e}", err=True)
+            click.echo(f"[!] Vault cert auth failed: {e}", err=True)
             sys.exit(1)
-
-    # 2. Retrieve Password from Vault
-    click.echo("[-] Retrieving password from Vault...")
-    try:
-        # check_output is required here to capture the string; check_call only captures exit code.
-        server_pass_bytes = subprocess.check_output(
-            "vault kv get -field=proxmox-cortex kv/puppet", shell=True, env=vault_env
-        )
-        server_pass = server_pass_bytes.decode("utf-8").strip()
-    except subprocess.CalledProcessError:
-        click.echo(
-            "[!] Error: Could not retrieve password from Vault. Exiting.", err=True
-        )
-        sys.exit(1)
+        try:
+            server_pass_bytes = subprocess.check_output(
+                "vault kv get -field=proxmox-cortex kv/puppet", shell=True, env=vault_env,
+            )
+            server_pass = server_pass_bytes.decode("utf-8").strip()
+        except subprocess.CalledProcessError:
+            click.echo("[!] Error: Could not retrieve password from Vault. Exiting.", err=True)
+            sys.exit(1)
 
     if not server_pass:
         click.echo("[!] Error: Password variable is empty. Exiting.", err=True)
