@@ -45,6 +45,8 @@ classes:
 
 nisdomainname::domain: home.arpa
 
+nfs::nfs_v4_export_root_clients: '*.home.arpa(ro,fsid=root,no_subtree_check,async,root_squash,sec=krb5p)'
+
 freeipa::install::client::options:
   mkhomedir:
   domain: home.arpa
