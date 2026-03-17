@@ -14,6 +14,9 @@
 #                   absolute; omit to let docker compose auto-discover
 #   env_file      - Path to an env file passed via --env-file; omit to use
 #                   docker compose's default (.env in project dir)
+#   watch_dir     - Only redeploy if the last push touched files under this
+#                   subdirectory (relative to the repo root); omit to redeploy
+#                   on any push
 #
 # Example (Hiera, via profile::docker_host::git_deploy_projects):
 #
@@ -35,6 +38,7 @@ define profile::docker_deploy (
   Optional[String]         $build_command = undef,
   Optional[String]         $compose_file  = undef,
   Optional[String]         $env_file      = undef,
+  Optional[String]         $watch_dir     = undef,
 ) {
   $base_dir = "/opt/docker/${name}"
 
@@ -44,9 +48,13 @@ define profile::docker_deploy (
   $compose_cmd  = "/usr/bin/docker compose${envfile_flag}${file_flag}"
 
   # Assemble ExecStart lines in order: pull → custom build → up
-  $pull_exec  = $pull          ? { true  => ["ExecStart=${compose_cmd} pull"], default => [] }
-  $build_exec = $build_command ? { undef => [],                                default => ["ExecStart=/bin/bash -c '${build_command}'"] }
-  $exec_start_str = join($pull_exec + $build_exec + ["ExecStart=${compose_cmd} up -d --force-recreate"], "\n")
+  $pull_exec       = $pull          ? { true  => ["ExecStart=${compose_cmd} pull"], default => [] }
+  $build_exec      = $build_command ? { undef => [],                                default => ["ExecStart=/bin/bash -c '${build_command}'"] }
+  $exec_start_str  = join($pull_exec + $build_exec + ["ExecStart=${compose_cmd} up -d --force-recreate"], "\n")
+  $watch_dir_str   = $watch_dir ? {
+    undef   => '',
+    default => "ExecCondition=/bin/bash -c 'git diff --name-only HEAD@{1} HEAD -- ${watch_dir} | grep -q .'\n",
+  }
 
   systemd::unit_file { "${name}-deploy.path":
     ensure  => $ensure,
@@ -78,7 +86,7 @@ define profile::docker_deploy (
       User=${run_as}
       WorkingDirectory=${base_dir}
       Environment=COMPOSE_ENV_FILES=../.env,./.env
-      ExecStartPre=/bin/sleep 5
+      ${watch_dir_str}ExecStartPre=/bin/sleep 5
       ${exec_start_str}
       ExecStartPost=${compose_cmd} ps
       StandardOutput=journal

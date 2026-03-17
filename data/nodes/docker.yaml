@@ -31,6 +31,7 @@ profile::docker_host::git_deploy_projects:
   puppet-control-repo:
     compose_file: docker/docker-compose.yml
     branch: production
+    watch_dir: docker
   iventoy: {}
   kms: {}
   monerod:
