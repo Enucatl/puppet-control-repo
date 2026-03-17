@@ -31,9 +31,16 @@ packages::sources:
       source: 'https://nvidia.github.io/libnvidia-container/gpgkey'
 
 packages::list:
-  - ubuntu-drivers-common
-  - nvidia-driver-590-open
+  - libavcodec-dev
+  - libavdevice-dev
+  - libavfilter-dev
+  - libavformat-dev
+  - libavutil-dev
+  - libswresample-dev
+  - libswscale-dev
   - nvidia-container-toolkit
+  - nvidia-driver-590-open
+  - ubuntu-drivers-common
 
 
 profile::docker_host::git_deploy_projects:
