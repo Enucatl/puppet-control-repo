@@ -101,7 +101,7 @@ echo "[4/6] Applying Cloud-Init..."
 qm set "$VMID" \
     --cicustom "vendor=${SNIPPET_STORAGE}:snippets/$(basename "$GENERATED_YAML")" \
     --ipconfig0 "ip=dhcp" \
-    --ciuser user \
+    --ciuser user_l \
     --sshkey ~/.ssh/id_ed25519.pub
 
 # 5. Start and Wait for Logs
