@@ -1,6 +1,7 @@
 ---
 classes:
   - freeipa_firefox
+  - nfs_config
 
 packages::list:
   - ansible-core

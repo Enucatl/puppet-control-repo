@@ -1,6 +1,7 @@
 ---
 classes:
   - profile::docker_host
+  - nfs_config
 
 freeipa_users::user_groups:
   user:
