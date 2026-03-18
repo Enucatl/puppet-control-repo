@@ -36,10 +36,12 @@ packages::list:
   - libavfilter-dev
   - libavformat-dev
   - libavutil-dev
+  - libsox-dev
   - libswresample-dev
   - libswscale-dev
   - nvidia-container-toolkit
   - nvidia-driver-590-open
+  - portaudio19-dev
   - ubuntu-drivers-common
 
 
