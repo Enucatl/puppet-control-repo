@@ -37,6 +37,33 @@ uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file
 3. `--tags apply` to push it
 4. `--tags diff` again to confirm clean
 
+## Secrets (vars/secrets.yml)
+
+`vars/secrets.yml` is an Ansible Vault-encrypted file. The vault password is stored in `vars/password` (not committed). To recreate it:
+
+```bash
+rm vars/secrets.yml
+uv run ansible-vault create vars/secrets.yml --vault-password-file vars/password
+```
+
+### Required secrets
+
+`secrets.yml` contains only `adguard_users`. The other secrets (`ipv6_prefix`, `snmp_v3_password`, `wg_server_private_key`, `cloudflare_api_token`) are pulled at runtime from HashiCorp Vault (`vault kv get kv/puppet`).
+
+### Recovering adguard_users from the router
+
+```bash
+ssh vyos@router sudo cat /config/containers/adguard/conf/AdGuardHome.yaml | grep -A5 'users:'
+```
+
+This returns the username and bcrypt-hashed password. Add to `secrets.yml` as:
+
+```yaml
+adguard_users:
+  - name: admin
+    password: "$2y$..."
+```
+
 ## Manual deletes
 
 Add `delete ...` lines to `templates/partials/deletes.j2` for stale nodes that the set-command partials won't naturally overwrite (renamed peers, retired rules, removed features). Remove the line once confirmed absent on the router.
