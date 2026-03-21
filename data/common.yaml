@@ -40,6 +40,7 @@ classes:
   - postfix_configuration
   - profile::alloy
   - profile::common
+  - profile::dotfiles
   - puppet_configuration
 
 
