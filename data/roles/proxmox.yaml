@@ -1,6 +1,8 @@
 packages::list:
   - lm-sensors
 
+profile::dotfiles::username: root
+
 profile::common::services:
   rpc-svcgssd:
     ensure: stopped
