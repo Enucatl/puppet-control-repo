@@ -43,7 +43,6 @@ packages::list:
   - kitty
   - virt-viewer
   - vlc
-  - wezterm
   - xclip
   - xournalpp
   - wl-clipboard
@@ -79,4 +78,3 @@ packages::sources:
 packages::ppas:
   - 'ppa:neovim-ppa/unstable'
   - 'ppa:ubuntuhandbook1/audacity'
-  - 'ppa:wezfurlong/wezterm-nightly'
