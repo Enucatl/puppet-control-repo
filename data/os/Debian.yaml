@@ -19,6 +19,7 @@ packages::list:
   - python3-pip
   - python3-venv
   - rake
+  - ripgrep
   - vault
   - wakeonlan
   - wireguard-tools
