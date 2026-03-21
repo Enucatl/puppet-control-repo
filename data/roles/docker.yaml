@@ -20,6 +20,14 @@ packages::sources:
       id: '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
       source: 'https://download.docker.com/linux/ubuntu/gpg'
       ensure: absent
+  github-cli:
+    comment: 'Official GitHub CLI Repository'
+    location: 'https://cli.github.com/packages'
+    release: 'stable'
+    repos: 'main'
+    key:
+      name: 'githubcli-archive-keyring.gpg'
+      source: 'https://cli.github.com/packages/githubcli-archive-keyring.gpg'
 
 packages::list:
   - acl
@@ -29,6 +37,7 @@ packages::list:
   - docker-buildx-plugin
   - docker-compose-plugin
   - ffmpeg
+  - gh
   - parallel
   - python3-docker
 
