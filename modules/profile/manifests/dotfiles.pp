@@ -9,9 +9,7 @@ class profile::dotfiles (
   $home     = $username ? { 'root' => '/root', default => "/home/${username}" }
   $repo_dir = "${home}/.vim"
 
-  package { 'rake':
-    ensure => installed,
-  }
+  ensure_packages(['rake'])
 
   vcsrepo { $repo_dir:
     ensure   => latest,
