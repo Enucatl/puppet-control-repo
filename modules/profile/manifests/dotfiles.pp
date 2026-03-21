@@ -26,6 +26,7 @@ class profile::dotfiles (
     cwd         => $repo_dir,
     user        => $username,
     path        => ['/usr/bin', '/bin', '/usr/local/bin'],
+    environment => ["HOME=${home}"],
     refreshonly => true,
     subscribe   => Vcsrepo[$repo_dir],
     require     => Package['rake'],
