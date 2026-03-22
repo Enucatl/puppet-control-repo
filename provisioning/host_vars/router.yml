@@ -42,6 +42,10 @@ wg_peers:
     pubkey: "z4kWINsJrs2FY4q26DGErw6ECktgPEj6xoXT8UJsaRE="
     ip: "10.0.200.2/32"
     ipv6_host: "2"
+  - name: "riccardo"
+    pubkey: "JBOPBLHvd5bMY8nXq/iSuSDfSZSsrG1gtLKru6hq5EI="
+    ip: "10.0.200.3/32"
+    ipv6_host: "3"
 
 # --- SNMP ---
 snmp_listen_address: "10.0.0.1"
