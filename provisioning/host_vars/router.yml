@@ -46,6 +46,10 @@ wg_peers:
     pubkey: "JBOPBLHvd5bMY8nXq/iSuSDfSZSsrG1gtLKru6hq5EI="
     ip: "10.0.200.3/32"
     ipv6_host: "3"
+  - name: "test"
+    pubkey: "8VoxV8v8kpe9R8YN39p6DCJEi6kgIsJgeX41wONcy34="
+    ip: "10.0.200.4/32"
+    ipv6_host: "4"
 
 # --- SNMP ---
 snmp_listen_address: "10.0.0.1"
@@ -54,12 +58,13 @@ snmp_engineid: "800000000102030405060710"
 snmp_user: "vyos"
 
 # --- ADGUARD (DNS only; DHCP handled by dnsmasq) ---
-# All segments point DNS to 10.0.0.1 (AdGuard on router via host networking).
+# All segments point DNS to 10.0.0.1 / {ipv6_prefix}::1 (AdGuard on router via host networking).
 # IOT-LOCAL and GUEST-LOCAL firewall chains allow port 53 inbound to router.
 # AdGuard forwards home.arpa queries to dnsmasq for local hostname resolution.
 adguard_data_path: "/config/containers/adguard"
 adguard_dns_bind_hosts:
   - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+  - "{{ ipv6_prefix }}::1"
 adguard_image: "docker.io/adguard/adguardhome:latest"
 
 # --- DNSMASQ (DHCPv4 + authoritative DNS for home.arpa) ---
