@@ -41,6 +41,7 @@ class profile::common (
   }
 
   if !empty($cronjobs) {
+    resources { 'cron': purge => true }
     create_resources(cron, $cronjobs)
   }
 
