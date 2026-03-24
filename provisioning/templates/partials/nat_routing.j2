@@ -33,7 +33,9 @@ set nat source rule 130 translation address masquerade
 set nat source rule 140 outbound-interface name {{ wan_interface }}
 set nat source rule 140 source address {{ guest_subnet }}
 set nat source rule 140 translation address masquerade
-set protocols static route6 {{ ipv6_prefix }}:1000::/52 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:2000::/64 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:3000::/52 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:4000::/64 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a000::/56 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a100::/64 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a200::/56 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a300::/64 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:c000::/56 next-hop fe80{{ complex_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:c100::/64 next-hop fe80{{ complex_node_ipv6_suffix }} interface {{ lan_interface }}
