@@ -38,7 +38,7 @@ profile::docker_host::git_deploy_projects:
     pull: false
     build_command: "docker compose build"
   paperless-ngx:
-    compose_file: docker/compose/docker-compose.postgres-tika.yml
+    compose_file: docker/compose/docker-compose.yml
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
