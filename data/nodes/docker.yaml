@@ -37,7 +37,9 @@ profile::docker_host::git_deploy_projects:
   monerod:
     pull: false
     build_command: "docker compose build"
-  paperless-ai: {}
+  paperless-ai:
+    pull: false
+    build_command: "docker compose build --profile ai"
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
