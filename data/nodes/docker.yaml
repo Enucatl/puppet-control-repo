@@ -37,8 +37,7 @@ profile::docker_host::git_deploy_projects:
   monerod:
     pull: false
     build_command: "docker compose build"
-  paperless-ngx:
-    compose_file: docker/compose/docker-compose.yml
+  paperless-ai: {}
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
