@@ -46,6 +46,7 @@ packages::list:
 
 
 profile::docker_host::git_deploy_projects:
+  vllm: {}
   wolf: {}
 
 kmod::list_of_loads:
