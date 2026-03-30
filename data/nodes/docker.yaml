@@ -104,7 +104,6 @@ profile::common::posix_acls:
     action: set
     permission:
       - "user:100000:r--"
-    recurse: true
 
 puppet_configuration::settings:
   autosign:
