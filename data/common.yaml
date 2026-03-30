@@ -16,6 +16,8 @@ lookup_options:
     merge: deep
   profile::common::cronjobs:
     merge: deep
+  profile::common::posix_acls:
+    merge: deep
   profile::common::sysctl_settings:
     merge: deep
   profile::common::vault_certs:
@@ -160,6 +162,8 @@ packages::sources:
     key:
       name: 'grafana-alloy-archive-keyring.asc'
       source: 'https://apt.grafana.com/gpg.key'
+
+profile::common::posix_acls: {}
 
 tidy::defaults:
   age: 1w

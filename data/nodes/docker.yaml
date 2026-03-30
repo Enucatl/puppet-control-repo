@@ -94,6 +94,18 @@ profile::common::vault_certs:
       common_name: '*.docker.home.arpa'
       alt_names: '*.docker.home.arpa,docker.home.arpa'
 
+profile::common::posix_acls:
+  "/opt/docker/traefik/data/certs/docker_key.pem":
+    action: set
+    permission:
+      - "user:101001:r--"
+    subscribe: "Vault_cert[docker]"
+  "/opt/docker/paperless-ai/secrets":
+    action: set
+    permission:
+      - "user:100000:r--"
+    recurse: true
+
 puppet_configuration::settings:
   autosign:
     section: server

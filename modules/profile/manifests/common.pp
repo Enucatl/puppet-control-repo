@@ -6,6 +6,7 @@ class profile::common (
   Hash    $cronjobs                     = {},
   Hash    $services                     = {},
   Hash    $systemd_units                = {},
+  Hash    $posix_acls                   = {},
 ) {
 
   require vault_secrets::vault_cert
@@ -51,6 +52,14 @@ class profile::common (
 
   $systemd_units.each |String $unit_name, Hash $config| {
     systemd::unit_file { $unit_name:
+      * => $config,
+    }
+  }
+
+  # Create POSIX ACLs from hash
+  require posix_acl::requirements
+  $posix_acls.each |String $path, Hash $config| {
+    posix_acl { $path:
       * => $config,
     }
   }
