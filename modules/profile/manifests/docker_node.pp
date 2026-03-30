@@ -5,7 +5,6 @@ class profile::docker_node (
 
   require profile::common
   require ::samba
-  require posix_acl::requirements
 
   # Trigger Traefik reload when certs change
   exec { 'trigger_traefik_reload':
@@ -43,15 +42,6 @@ class profile::docker_node (
   # ------------------------------------------------------------------
   # Container-specific infrastructure
   # ------------------------------------------------------------------
-
-  # Allow Protonmail Bridge container to read the docker key
-  posix_acl { "${profile::common::vault_certs_default_location}/docker_key.pem":
-    action     => set,
-    permission => [
-      "user:101001:r--",
-    ],
-    subscribe  => Vault_cert['docker'],
-  }
 
   # Fix permissions for Loki volume so mapped users can write logs
   file { '/var/lib/docker/100000.100000/volumes/grafana-loki_loki_data/_data':
