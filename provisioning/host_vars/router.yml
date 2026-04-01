@@ -50,6 +50,10 @@ wg_peers:
     pubkey: "8VoxV8v8kpe9R8YN39p6DCJEi6kgIsJgeX41wONcy34="
     ip: "10.0.200.4/32"
     ipv6_host: "4"
+  - name: "andrea"
+    pubkey: "Q40QCIEYbIMYQR75kKgSNoyTQK7qyTFb8Di410ZBcRc="
+    ip: "10.0.200.5/32"
+    ipv6_host: "5"
 
 # --- SNMP ---
 snmp_listen_address: "10.0.0.1"
