@@ -1,3 +1,5 @@
+set container name adguard cpu-quota 0.5
+set container name adguard memory 512
 set container name adguard allow-host-networks
 set container name adguard capability net-raw
 set container name adguard image {{ adguard_image }}
@@ -8,6 +10,8 @@ set container name adguard volume adguard_conf source {{ adguard_data_path }}/co
 set container name adguard volume adguard_work destination /opt/adguardhome/work
 set container name adguard volume adguard_work mode rw
 set container name adguard volume adguard_work source {{ adguard_data_path }}/work
+set container name alloy cpu-quota 0.5
+set container name alloy memory 512
 set container name alloy allow-host-networks
 set container name alloy environment GOMEMLIMIT value 256MiB
 set container name alloy environment CUSTOM_ARGS value "--disable-reporting"
