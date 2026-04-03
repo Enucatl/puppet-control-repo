@@ -24,6 +24,11 @@ loki.write "remote_loki" {
 
     batch_wait = "1s"
     batch_size = "512KB"
+
+    // Backoff settings to prevent log storms during network outages.
+    // Exponential backoff increases retry interval from 30s to 5m max.
+    min_backoff = "30s"
+    max_backoff = "5m"
   }
 
   wal {
