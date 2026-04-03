@@ -10,6 +10,7 @@ set container name adguard volume adguard_work mode rw
 set container name adguard volume adguard_work source {{ adguard_data_path }}/work
 set container name alloy allow-host-networks
 set container name alloy environment GOMEMLIMIT value 256MiB
+set container name alloy environment CUSTOM_ARGS value "--disable-reporting"
 set container name alloy image {{ alloy_image }}
 set container name alloy restart on-failure
 set container name alloy volume alloy_adguard_work destination /var/adguard/work
