@@ -27,6 +27,22 @@ no-resolv
 # Do not read /etc/hosts — hostnames come from DHCP leases only
 no-hosts
 
+# ============================================================
+# DNS LIMITS & PERFORMANCE
+# ============================================================
+
+# Limit concurrent DNS queries to reduce load on upstream servers
+dns-forward-max=150
+
+# Cache failed lookups for 10 minutes to reduce upstream queries for non-existent domains
+neg-ttl=600
+
+# Set TTL for locally-served records (static hosts, DHCP)
+local-ttl=300
+
+# Increase cache size to reduce upstream queries
+cache-size=1000
+
 # Authoritative for this domain; never forward home.arpa queries upstream
 local=/{{ dhcp_domain }}/
 # Authoritative for reverse zones covering all four subnets
