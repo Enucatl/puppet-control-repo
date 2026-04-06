@@ -59,11 +59,14 @@ class profile::common (
   # Enable SSSD Kerberos ticket renewal so NFS krb5p mounts stay accessible
   # beyond the default 24h TGT lifetime. FreeIPA already issues 7-day renewable
   # tickets; this tells SSSD to actually renew them every hour.
+  # The Sssd augeas lens stores [domain/home.arpa] content under the 'domain'
+  # node (the name is tracked separately as a 'target' node), so the path is
+  # domain/krb5_* not domain/home.arpa/krb5_*.
   augeas { 'sssd_krb5_renewal':
     context => '/files/etc/sssd/sssd.conf',
     changes => [
-      'set domain/home.arpa/krb5_renewable_lifetime 7d',
-      'set domain/home.arpa/krb5_renew_interval 1h',
+      'set domain/krb5_renewable_lifetime 7d',
+      'set domain/krb5_renew_interval 1h',
     ],
     require => Class['freeipa::install::client'],
     notify  => Service['sssd'],
