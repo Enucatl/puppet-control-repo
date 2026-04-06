@@ -56,6 +56,19 @@ class profile::common (
     }
   }
 
+  # Enable SSSD Kerberos ticket renewal so NFS krb5p mounts stay accessible
+  # beyond the default 24h TGT lifetime. FreeIPA already issues 7-day renewable
+  # tickets; this tells SSSD to actually renew them every hour.
+  augeas { 'sssd_krb5_renewal':
+    context => '/files/etc/sssd/sssd.conf',
+    changes => [
+      'set domain/home.arpa/krb5_renewable_lifetime 7d',
+      'set domain/home.arpa/krb5_renew_interval 1h',
+    ],
+    require => Class['freeipa::install::client'],
+    notify  => Service['sssd'],
+  }
+
   # Create POSIX ACLs from hash
   require posix_acl::requirements
   $posix_acls.each |String $path, Hash $config| {
