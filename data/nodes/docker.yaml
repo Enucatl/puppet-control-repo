@@ -39,7 +39,8 @@ profile::docker_host::git_deploy_projects:
     build_command: "docker compose build"
   paperless-ai:
     pull: false
-    build_command: "docker compose build --profile ai"
+    build_command: "docker compose --profile ai build"
+    deploy_command: "docker compose --profile ai up -d --force-recreate"
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
