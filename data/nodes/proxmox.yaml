@@ -6,7 +6,7 @@ profile::common::cronjobs:
     hour: 1
     weekday: 'Monday'
     user: root
-    command: '/usr/sbin/qm guest exec 200 -- bash -c "cd /opt/docker/puppet-control-repo/docker && uv run python vault/scripts/wake_on_lan.py --ct-id 100 --shutdown-delay 120" > /var/log/wake-proxmox-cortex.log 2>&1 && /usr/sbin/pvesm set checkpoint --disable 1 > /var/log/pvesm-checkpoint-disable.log 2>&1'
+    command: '/usr/sbin/qm guest exec 200 --timeout 0 -- bash -lc "cd /opt/docker/puppet-control-repo/docker && HOME=/home/user /home/user/.local/bin/uv run python vault/scripts/wake_on_lan.py --ct-id 100 --shutdown-delay 120" > /var/log/wake-proxmox-cortex.log 2>&1 && /usr/sbin/pvesm set checkpoint --disable 1 > /var/log/pvesm-checkpoint-disable.log 2>&1'
   # enable checkpoint storage just before backup
   backup_enable_checkpoint:
     minute: 55

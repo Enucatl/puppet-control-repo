@@ -38,7 +38,9 @@ def wait_for_port(host, port, timeout_secs, sleep_interval=2):
     help="Hostname/IP for Dropbear SSH",
 )
 @click.option(
-    "--main-host", default="complex.home.arpa", help="Hostname/IP of the VM (Main OS)"
+    "--main-host",
+    default=None,
+    help="Hostname/IP to wait for after starting a VM or container (omit to skip)",
 )
 @click.option(
     "--proxmox-host",
@@ -53,8 +55,8 @@ def wait_for_port(host, port, timeout_secs, sleep_interval=2):
 @click.option("--shutdown-delay", default=0, help="Schedule shutdown N minutes after boot (0 = no shutdown)")
 def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, shutdown_delay):
     """
-    Automates the process of waking a Proxmox server, unlocking the ZFS root via Dropbear,
-    starting a specific VM, and launching Sunshine.
+    Automates waking a Proxmox server, unlocking the ZFS root via Dropbear,
+    and optionally starting a VM or LXC container.
     """
 
     # 0. Check if server is already on
