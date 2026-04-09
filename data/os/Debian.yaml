@@ -48,6 +48,14 @@ packages::sources:
       name: "hashicorp-archive-keyring.asc"
       source: "https://apt.releases.hashicorp.com/gpg"
 
+profile::common::cronjobs:
+  # Prune stale uv cache entries for the primary interactive user.
+  uv-cache-prune:
+    minute: 30
+    hour: 4
+    user: user
+    command: 'HOME=/home/user /home/user/.local/bin/uv cache prune 2>&1'
+
 tidy::files:
   downloads:
     path: /home/user/Downloads
