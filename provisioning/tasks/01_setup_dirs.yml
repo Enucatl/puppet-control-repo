@@ -35,3 +35,8 @@
   vyos.vyos.vyos_command:
     commands:
       - mkdir -p /config/logrotate.d
+
+- name: Create active systemd override directory for Suricata
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mkdir -p /etc/systemd/system/suricata.service.d

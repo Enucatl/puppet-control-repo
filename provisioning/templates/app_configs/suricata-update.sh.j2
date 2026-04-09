@@ -1,5 +1,66 @@
 #!/bin/sh
-# Update Suricata signatures and restart to load the new ruleset.
+# Update Suricata signatures and restart only after the new ruleset validates.
 # Managed by Ansible — do not edit manually.
-/usr/bin/suricata-update --disable-conf /config/suricata/disable.conf
-/usr/bin/vbash -ic "restart suricata"
+
+set -eu
+
+LOG_FILE="/config/suricata/update.log"
+RULES_FILE="/var/lib/suricata/rules/suricata.rules"
+BACKUP_FILE="/var/lib/suricata/rules/suricata.rules.bak"
+DISABLE_CONF="/config/suricata/disable.conf"
+
+log() {
+    printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
+}
+
+run_step() {
+    step_timeout="$1"
+    shift
+    log "RUN $*"
+    if ! timeout --foreground "$step_timeout" "$@"; then
+        log "FAIL $*"
+        exit 1
+    fi
+}
+
+exec >>"$LOG_FILE" 2>&1
+
+log "START suricata-update job"
+
+if [ -f "$RULES_FILE" ]; then
+    cp "$RULES_FILE" "$BACKUP_FILE"
+fi
+
+restore_backup() {
+    if [ -f "$BACKUP_FILE" ]; then
+        cp "$BACKUP_FILE" "$RULES_FILE"
+        log "RESTORED backup ruleset"
+    fi
+}
+
+run_step 10m /usr/bin/suricata-update update-sources
+run_step 5m /usr/bin/suricata-update enable-source et/open
+run_step 45m /usr/bin/suricata-update --disable-conf "$DISABLE_CONF"
+
+if ! timeout --foreground 5m sudo systemctl restart suricata; then
+    log "FAIL sudo systemctl restart suricata"
+    restore_backup
+    if ! timeout --foreground 5m sudo systemctl restart suricata; then
+        log "FAIL rollback sudo systemctl restart suricata"
+        exit 1
+    fi
+    log "DONE suricata-update job (rollback applied)"
+    exit 1
+fi
+
+if ! timeout --foreground 30s sudo systemctl is-active --quiet suricata; then
+    log "FAIL sudo systemctl is-active --quiet suricata"
+    restore_backup
+    if ! timeout --foreground 5m sudo systemctl restart suricata; then
+        log "FAIL rollback sudo systemctl restart suricata"
+        exit 1
+    fi
+    exit 1
+fi
+
+log "DONE suricata-update job"
