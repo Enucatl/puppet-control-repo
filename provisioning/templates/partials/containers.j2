@@ -13,6 +13,7 @@ set container name adguard volume adguard_work source {{ adguard_data_path }}/wo
 set container name alloy cpu-quota 0.5
 set container name alloy memory 512
 set container name alloy allow-host-networks
+set container name alloy log-driver none
 set container name alloy environment GOMEMLIMIT value 256MiB
 set container name alloy environment CUSTOM_ARGS value "--disable-reporting"
 set container name alloy image {{ alloy_image }}
@@ -32,6 +33,9 @@ set container name alloy volume alloy_dnsmasq_log source {{ dnsmasq_data_path }}
 set container name alloy volume alloy_suricata_logs destination /var/log/suricata
 set container name alloy volume alloy_suricata_logs mode ro
 set container name alloy volume alloy_suricata_logs source /var/log/suricata
+set container name alloy volume alloy_suricata_config destination /var/lib/suricata-config
+set container name alloy volume alloy_suricata_config mode ro
+set container name alloy volume alloy_suricata_config source /config/suricata
 set container name alloy volume alloy_vyos_logs destination /var/log/host
 set container name alloy volume alloy_vyos_logs mode ro
 set container name alloy volume alloy_vyos_logs source /var/log

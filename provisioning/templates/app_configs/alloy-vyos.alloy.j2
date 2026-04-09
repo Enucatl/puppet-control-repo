@@ -5,6 +5,7 @@
 //   - VyOS syslog       → host /var/log              mounted at /var/log/host
 //   - Suricata EVE JSON → host /var/log/suricata/     mounted at /var/log/suricata
 //   - Suricata stats    → host /var/log/suricata/     mounted at /var/log/suricata
+//   - Suricata updater  → host /config/suricata/      mounted at /var/lib/suricata-config
 //   - AdGuard querylog  → host adguard work dir       mounted at /var/adguard/work
 //   - dnsmasq DHCP log  → host dnsmasq log dir        mounted at /var/dnsmasq/log
 
@@ -117,6 +118,23 @@ local.file_match "suricata_stats" {
 
 loki.source.file "suricata_stats" {
   targets    = local.file_match.suricata_stats.targets
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+// ============================================================
+// Suricata updater log
+// ============================================================
+
+local.file_match "suricata_update" {
+  path_targets = [{
+    __path__ = "/var/lib/suricata-config/update.log",
+    job      = "suricata-update",
+    host     = "router.{{ dhcp_domain }}",
+  }]
+}
+
+loki.source.file "suricata_update" {
+  targets    = local.file_match.suricata_update.targets
   forward_to = [loki.write.remote_loki.receiver]
 }
 

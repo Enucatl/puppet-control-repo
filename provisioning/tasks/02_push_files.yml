@@ -19,6 +19,7 @@
     - { src: "suricata-update.sh.j2",      dest: "suricata-update.sh" }
     - { src: "suricata-disable.conf.j2",   dest: "suricata-disable.conf" }
     - { src: "suricata-logrotate.j2",      dest: "suricata-logrotate" }
+    - { src: "suricata-systemd-override.conf.j2", dest: "suricata-systemd-override.conf" }
 
 # ============================================================
 # STEP 2: Upload all files to /tmp/ on VyOS
@@ -34,6 +35,7 @@
     - suricata-update.sh
     - suricata-disable.conf
     - suricata-logrotate
+    - suricata-systemd-override.conf
 
 # ============================================================
 # STEP 3: Install each file to its persistent destination
@@ -77,6 +79,14 @@
       - sudo mv /tmp/suricata-logrotate /config/logrotate.d/suricata
       - sudo chmod 0644 /config/logrotate.d/suricata
 
+- name: Install Suricata systemd override
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/suricata-systemd-override.conf /etc/systemd/system/suricata.service.d/20-memorymax.conf
+      - sudo chown root:root /etc/systemd/system/suricata.service.d/20-memorymax.conf
+      - sudo chmod 0644 /etc/systemd/system/suricata.service.d/20-memorymax.conf
+      - sudo systemctl daemon-reload
+
 # ============================================================
 # STEP 4: Clean up local temporary files
 # ============================================================
@@ -92,3 +102,4 @@
     - suricata-update.sh
     - suricata-disable.conf
     - suricata-logrotate
+    - suricata-systemd-override.conf
