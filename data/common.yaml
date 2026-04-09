@@ -18,6 +18,8 @@ lookup_options:
     merge: deep
   profile::common::posix_acls:
     merge: deep
+  profile::common::ssh_authorized_keys:
+    merge: deep
   profile::common::sysctl_settings:
     merge: deep
   profile::common::vault_certs:

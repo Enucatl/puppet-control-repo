@@ -7,6 +7,7 @@ class profile::common (
   Hash    $services                     = {},
   Hash    $systemd_units                = {},
   Hash    $posix_acls                   = {},
+  Hash    $ssh_authorized_keys          = {},
 ) {
 
   require vault_secrets::vault_cert
@@ -48,6 +49,10 @@ class profile::common (
 
   if !empty($services) {
     create_resources(service, $services)
+  }
+
+  if !empty($ssh_authorized_keys) {
+    create_resources(ssh_authorized_key, $ssh_authorized_keys)
   }
 
   $systemd_units.each |String $unit_name, Hash $config| {
