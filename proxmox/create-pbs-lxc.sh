@@ -51,20 +51,20 @@ if [ -z "$VMID" ]; then
     VMID=$(pvesh get /cluster/nextid)
 fi
 
-CT_NAME="${CT_NAME_ARG:-checkpoint}"
+CT_NAME="${CT_NAME_ARG:-chronicle}"
 
 echo "--- Creating PBS LXC: CT $VMID ($CT_NAME) ---"
 echo "Cores: $CORES  Memory: ${MEMORY}MB  Root disk: ${DISK}GB"
 echo "Bind mount: $HOST_MOUNT -> $CT_MOUNT"
 echo ""
 
-# 1/5 Download Debian 12 template if not already present
-echo "[1/5] Checking for Debian 12 template..."
+# 1/5 Download Debian 13 template if not already present
+echo "[1/5] Checking for Debian 13 template..."
 TEMPLATE=$(pveam available --section system 2>/dev/null \
-    | awk '/debian-12-standard/ {print $2}' | sort -V | tail -1)
+    | awk '/debian-13-standard/ {print $2}' | sort -V | tail -1)
 
 if [ -z "$TEMPLATE" ]; then
-    echo "Error: Could not find debian-12-standard template in pveam."
+    echo "Error: Could not find debian-13-standard template in pveam."
     exit 1
 fi
 
@@ -86,7 +86,7 @@ pct create "$VMID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
     --swap 512 \
     --storage "$STORAGE" \
     --rootfs "${STORAGE}:${DISK}" \
-    --net0 "name=eth0,bridge=${BRIDGE},ip=dhcp,ip6=dhcp" \
+    --net0 "name=eth0,bridge=${BRIDGE},ip=dhcp,ip6=auto" \
     --onboot 1 \
     --ostype debian \
     --ssh-public-keys ~/.ssh/id_ed25519.pub \
@@ -117,16 +117,42 @@ set -e
 # Pre-create network interfaces file so ifupdown2 post-install does not hang in LXC
 printf 'auto lo\niface lo inet loopback\n' > /etc/network/interfaces
 
-echo '-- Adding Proxmox BS repository...'
-wget -q https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
-    -O /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+# Proxmox Backup Server's generated network config can still launch dhclient
+# for IPv6. Keep that non-blocking so PBS services are not held behind
+# network-online.target when DHCPv6 is unavailable and SLAAC/RA is enough.
+install -d /etc/network/ifupdown2/policy.d
+cat > /etc/network/ifupdown2/policy.d/dhcp-nowait.json <<'EOF'
+{
+  \"dhcp\": {
+    \"defaults\": {
+      \"dhcp-wait\": \"no\"
+    }
+  }
+}
+EOF
 
-echo 'deb http://download.proxmox.com/debian/pbs bookworm pbs-no-subscription' \
-    > /etc/apt/sources.list.d/pbs.list
+echo '-- Adding Proxmox BS repository...'
+wget -q https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg \
+    -O /usr/share/keyrings/proxmox-archive-keyring.gpg
+
+cat > /etc/apt/sources.list.d/proxmox.sources <<'EOF'
+Types: deb
+URIs: http://download.proxmox.com/debian/pbs
+Suites: trixie
+Components: pbs-no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+EOF
 
 echo '-- Installing packages...'
 apt-get update -qq
-DEBIAN_FRONTEND=noninteractive apt-get install -y proxmox-backup-server jq
+DEBIAN_FRONTEND=noninteractive apt-get install -y ifupdown2 proxmox-backup-server jq
+
+# PBS enables the enterprise repository by default. Disable it here so
+# later apt operations keep working on hosts using the no-subscription repo.
+if [ -f /etc/apt/sources.list.d/pbs-enterprise.sources ]; then
+    mv /etc/apt/sources.list.d/pbs-enterprise.sources \
+       /etc/apt/sources.list.d/pbs-enterprise.sources.disabled
+fi
 
 echo '-- Setting ownership of backup mount...'
 chown backup:backup ${CT_MOUNT}

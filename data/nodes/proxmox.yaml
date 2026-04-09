@@ -9,7 +9,7 @@ profile::common::systemd_units:
 
       [Service]
       Type=oneshot
-      ExecStart=/bin/bash -lc '/usr/sbin/qm guest exec 200 --timeout 0 -- bash -lc "cd /opt/docker/puppet-control-repo/docker && HOME=/home/user /home/user/.local/bin/uv run python vault/scripts/wake_on_lan.py --ct-id 100 --shutdown-delay 120" > /var/log/wake-proxmox-cortex.log 2>&1'
+      ExecStart=/bin/bash -lc '/usr/sbin/qm guest exec 200 --timeout 0 -- bash -lc "cd /opt/docker/puppet-control-repo/docker && HOME=/home/user /home/user/.local/bin/uv run python vault/scripts/wake_on_lan.py --ct-id 110 --shutdown-delay 120" > /var/log/wake-proxmox-cortex.log 2>&1'
 
   wake-proxmox-cortex.timer:
     content: |
@@ -26,48 +26,48 @@ profile::common::systemd_units:
     enable: true
     active: true
 
-  checkpoint-enable.service:
+  chronicle-enable.service:
     content: |
       [Unit]
-      Description=Enable checkpoint PBS storage before the weekly backup
+      Description=Enable chronicle PBS storage before the weekly backup
 
       [Service]
       Type=oneshot
-      ExecStart=/bin/bash -lc '/usr/sbin/pvesm set checkpoint --disable 0 > /var/log/pvesm-checkpoint-enable.log 2>&1'
+      ExecStart=/bin/bash -lc '/usr/sbin/pvesm set chronicle --disable 0 > /var/log/pvesm-chronicle-enable.log 2>&1'
 
-  checkpoint-enable.timer:
+  chronicle-enable.timer:
     content: |
       [Unit]
-      Description=Enable checkpoint PBS storage at 00:58 UTC on Monday
+      Description=Enable chronicle PBS storage at 00:58 UTC on Monday
 
       [Timer]
       OnCalendar=Mon *-*-* 00:58:00 UTC
       Persistent=true
-      Unit=checkpoint-enable.service
+      Unit=chronicle-enable.service
 
       [Install]
       WantedBy=timers.target
     enable: true
     active: true
 
-  checkpoint-disable.service:
+  chronicle-disable.service:
     content: |
       [Unit]
-      Description=Disable checkpoint PBS storage after the weekly backup window
+      Description=Disable chronicle PBS storage after the weekly backup window
 
       [Service]
       Type=oneshot
-      ExecStart=/bin/bash -lc '/usr/sbin/pvesm set checkpoint --disable 1 > /var/log/pvesm-checkpoint-disable.log 2>&1'
+      ExecStart=/bin/bash -lc '/usr/sbin/pvesm set chronicle --disable 1 > /var/log/pvesm-chronicle-disable.log 2>&1'
 
-  checkpoint-disable.timer:
+  chronicle-disable.timer:
     content: |
       [Unit]
-      Description=Disable checkpoint PBS storage at 03:00 UTC on Monday
+      Description=Disable chronicle PBS storage at 03:00 UTC on Monday
 
       [Timer]
       OnCalendar=Mon *-*-* 03:00:00 UTC
       Persistent=true
-      Unit=checkpoint-disable.service
+      Unit=chronicle-disable.service
 
       [Install]
       WantedBy=timers.target
