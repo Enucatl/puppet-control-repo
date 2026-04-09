@@ -9,6 +9,7 @@ classes:
 packages::list:
   - atool
   - auto-apt-proxy
+  - bubblewrap
   - expect
   - git
   - git-delta
