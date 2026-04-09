@@ -18,7 +18,7 @@ source "$SCRIPT_DIR/lib.sh"
 NAMESPACE=""
 STORAGE_ID=""
 JOB_ID=""
-SCHEDULE="mon 02:00"
+SCHEDULE="mon 01:00"
 RETENTION="keep-monthly=6"
 
 usage() {
@@ -27,7 +27,7 @@ usage() {
     echo "  -n  PBS namespace to store this cluster's backups in (e.g. proxmox, proxmox-cortex)"
     echo "  -S  Storage ID to register in PVE (default: pbs-<namespace>)"
     echo "  -j  Backup job ID (default: pbs-<namespace>-weekly)"
-    echo "  -s  Backup schedule in systemd timer format (default: mon 02:00)"
+    echo "  -s  Backup schedule in systemd timer format (default: mon 01:00)"
     echo "  -r  Retention policy (default: keep-monthly=6)"
     echo ""
     echo "Required .env vars: PBS_SERVER, PBS_DATASTORE, PBS_USER, PBS_TOKEN_NAME,"
