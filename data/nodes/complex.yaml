@@ -66,7 +66,7 @@ profile::common::systemd_units:
       User=user
       WorkingDirectory=/opt/docker/vllm
       Environment=COMPOSE_ENV_FILES=../.env,./.env
-      ExecStart=/usr/bin/docker compose up -d
+      ExecStart=/usr/bin/docker compose --profile extraction up -d
 
   vllm-weekly-up.timer:
     content: |
@@ -94,7 +94,7 @@ profile::common::systemd_units:
       User=user
       WorkingDirectory=/opt/docker/vllm
       Environment=COMPOSE_ENV_FILES=../.env,./.env
-      ExecStart=/usr/bin/docker compose down
+      ExecStart=/usr/bin/docker compose --profile extraction down
 
   vllm-weekly-down.timer:
     content: |
