@@ -124,3 +124,7 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 | `13-vault-admin-policy.sh` | Admin policy + LDAP group mapping |
 
 `wake_on_lan.py` automates waking `proxmox-cortex`: sends a WoL packet, unlocks ZFS via Dropbear SSH, then optionally starts a VM (`--vm-id`) or LXC container (`--ct-id`).
+
+## Security baseline
+
+This compose project uses the shared [docker-compose-security-baseline](https://github.com/Enucatl/docker-compose-security-baseline) for common container hardening defaults, including capabilities, no-new-privileges, memory/swap, and PID limits.
