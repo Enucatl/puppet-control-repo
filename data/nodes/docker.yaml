@@ -26,13 +26,12 @@ profile::docker_host::git_deploy_projects:
   duplicati: {}
   echo-server: {}
   grafana-loki: {}
-  infra:
-    ensure: absent
   puppet-control-repo:
     compose_file: docker/docker-compose.yml
     branch: production
     watch_dir: docker
-  iventoy: {}
+  iventoy:
+    ensure: absent
   kms: {}
   monerod:
     pull: false
@@ -49,7 +48,8 @@ profile::docker_host::git_deploy_projects:
   teamspeak: {}
   tor-i2pd: {}
   traefik: {}
-  unifi-network-application: {}
+  unifi-network-application:
+    ensure: absent
 
 packages::list:
   - qemu-guest-agent
