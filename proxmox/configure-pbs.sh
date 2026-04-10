@@ -11,7 +11,7 @@ set -euo pipefail
 
 DATASTORE_NAME=""
 DATASTORE_PATH=""
-NAMESPACES="proxmox,proxmox-cortex"
+NAMESPACES="chronicle,proxmox-cortex"
 USERNAME="backup"
 TOKEN_NAME="backup-token"
 
@@ -20,7 +20,7 @@ usage() {
     echo ""
     echo "  -d  Datastore name (e.g. backups)"
     echo "  -p  Filesystem path for the datastore (e.g. /mnt/backups)"
-    echo "  -n  Comma-separated namespace names to create (default: proxmox,proxmox-cortex)"
+    echo "  -n  Comma-separated namespace names to create (default: chronicle,proxmox-cortex)"
     echo "  -u  PBS username (default: backup)"
     echo "  -t  API token name (default: backup-token)"
     exit 1
@@ -42,7 +42,7 @@ done
 : "${DATASTORE_PATH:?-p DATASTORE_PATH is required}"
 
 PBS_USER="${USERNAME}@pbs"
-PBS_API="https://localhost:8007/api2/json"
+PBS_TOKEN="${PBS_USER}!${TOKEN_NAME}"
 
 echo "=== Proxmox Backup Server Setup ==="
 echo "Datastore:  $DATASTORE_NAME -> $DATASTORE_PATH"
@@ -57,6 +57,12 @@ if proxmox-backup-manager datastore list | grep -q "$DATASTORE_NAME"; then
     echo "  Already exists, skipping."
 else
     proxmox-backup-manager datastore create "$DATASTORE_NAME" "$DATASTORE_PATH"
+fi
+
+# When adopting an existing datastore, ensure the namespace parent is writable
+# by the PBS service user before future namespace changes.
+if [ -d "${DATASTORE_PATH}/ns" ]; then
+    chown backup:backup "${DATASTORE_PATH}/ns"
 fi
 
 # 2/5 Create backup user (password unused; API token is the auth method)
@@ -85,20 +91,36 @@ else
         | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 fi
 
-# 5/5 Create namespaces via the PBS API using the token
+# Grant the token its own ACL. PBS tokens do not automatically inherit all user ACLs
+# in every workflow, and PVE authenticates as this token, not as the user.
+echo "Granting DatastoreAdmin role to '$PBS_TOKEN' on '/datastore/$DATASTORE_NAME'..."
+proxmox-backup-manager acl update "/datastore/$DATASTORE_NAME" DatastoreAdmin \
+    --auth-id "$PBS_TOKEN"
+
+# 5/5 Create namespaces locally on PBS. PVE will not create missing namespaces
+# during backup; the backup fails with "namespace not found".
 echo "[5/5] Creating namespaces..."
 IFS=',' read -ra NS_LIST <<< "$NAMESPACES"
 for ns in "${NS_LIST[@]}"; do
     echo "  -> $ns"
-    RESPONSE=$(curl -s -k -o /dev/null -w "%{http_code}" \
-        -X POST "${PBS_API}/admin/datastore/${DATASTORE_NAME}/namespace" \
-        -H "Authorization: PBSAPIToken=${PBS_USER}!${TOKEN_NAME}:${TOKEN_VALUE}" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "ns=${ns}")
-    if [ "$RESPONSE" = "200" ]; then
-        echo "    OK"
+    if proxmox-backup-debug api get "/admin/datastore/${DATASTORE_NAME}/namespace" \
+        | awk '{print $2}' | grep -Fxq "$ns"; then
+        echo "    Already exists, skipping."
     else
-        echo "    Warning: HTTP $RESPONSE (namespace may already exist)"
+        # proxmox-backup-debug can panic formatting the create response on some
+        # PBS 4 builds even when creation succeeds, so verify after the call.
+        set +e
+        proxmox-backup-debug api create "/admin/datastore/${DATASTORE_NAME}/namespace" \
+            --name "$ns"
+        CREATE_STATUS=$?
+        set -e
+        if proxmox-backup-debug api get "/admin/datastore/${DATASTORE_NAME}/namespace" \
+            | awk '{print $2}' | grep -Fxq "$ns"; then
+            echo "    OK"
+        else
+            echo "    Failed creating namespace '$ns' (exit $CREATE_STATUS)" >&2
+            exit 1
+        fi
     fi
 done
 
@@ -119,7 +141,7 @@ echo "  PBS_TOKEN_VALUE=$TOKEN_VALUE"
 echo "  PBS_FINGERPRINT=$FINGERPRINT"
 echo ""
 echo "Then run on the proxmox cluster:"
-echo "  ./configure-pve-backups.sh -n proxmox"
+echo "  ./configure-pve-backups.sh -n chronicle -S chronicle"
 echo ""
 echo "And on the proxmox-cortex cluster:"
 echo "  ./configure-pve-backups.sh -n proxmox-cortex"
