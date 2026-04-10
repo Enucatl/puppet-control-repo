@@ -1,4 +1,8 @@
 ---
+profile::common::cronjobs:
+  uv-cache-prune:
+    ensure: absent
+
 profile::common::systemd_units:
   wake-proxmox-cortex.service:
     content: |
