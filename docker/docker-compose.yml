@@ -1,15 +1,33 @@
 name: infra
 
+x-vault-runtime: &vault-runtime
+  cap_add:
+    - IPC_LOCK
+    - CHOWN
+    - DAC_OVERRIDE
+    - FOWNER
+    - SETFCAP
+    - SETGID
+    - SETPCAP
+    - SETUID
+  ulimits:
+    memlock:
+      soft: -1
+      hard: -1
+
 services:
 
   vault:
+    <<: *vault-runtime
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: vault
     image: hashicorp/vault:latest
     userns_mode: host
     restart: unless-stopped
+    cpu_shares: 1536
     ports:
       - "8200:8200"
-    cap_add:
-      - IPC_LOCK
     volumes:
       - vault_data:/vault/file
       - ./vault/config:/vault/config
@@ -32,6 +50,9 @@ services:
       - "checkmk_monitor=true"
 
   vault-unsealer:
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: hardened-small
     image: nicolaka/netshoot:v0.14
     restart: unless-stopped
     depends_on:
@@ -50,10 +71,16 @@ services:
       - infra
 
   freeipa:
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: limits-xlarge
     image: freeipa/freeipa-server:almalinux-10
     container_name: freeipa
     hostname: freeipa.home.arpa
     restart: unless-stopped
+    cpu_shares: 1536
+    security_opt:
+      - no-new-privileges:true
     networks:
       - infra
       - traefik_proxy
@@ -92,6 +119,9 @@ services:
       - "traefik.tcp.services.freeipa-secure.loadbalancer.server.port=443"
 
   apt-cacher-ng:
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: root-chown-init
     image: sameersbn/apt-cacher-ng:latest
     container_name: apt-cacher-ng
     ports:
@@ -112,6 +142,10 @@ services:
 
   # after running this, setup TLS for vault, changing the env and the config file
   vault-pki-core-setup:
+    <<: *vault-runtime
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: vault
     profiles:
       - setup
     image: hashicorp/vault:latest
@@ -131,6 +165,10 @@ services:
     entrypoint: /scripts/01-pki-core-setup.sh
 
   vault-pki-intermediate-setup:
+    <<: *vault-runtime
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: vault
     profiles:
       - setup
     image: hashicorp/vault:latest
@@ -151,6 +189,10 @@ services:
       - infra
 
   freeipa-sign-csr:
+    <<: *vault-runtime
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: vault
     profiles:
       - setup
     image: hashicorp/vault:latest
