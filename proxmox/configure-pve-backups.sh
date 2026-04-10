@@ -24,7 +24,7 @@ RETENTION="keep-monthly=6"
 usage() {
     echo "Usage: $0 -n NAMESPACE [-S STORAGE_ID] [-j JOB_ID] [-s SCHEDULE] [-r RETENTION]"
     echo ""
-    echo "  -n  PBS namespace to store this cluster's backups in (e.g. proxmox, proxmox-cortex)"
+    echo "  -n  PBS namespace to store this cluster's backups in (e.g. chronicle, proxmox-cortex)"
     echo "  -S  Storage ID to register in PVE (default: pbs-<namespace>)"
     echo "  -j  Backup job ID (default: pbs-<namespace>-weekly)"
     echo "  -s  Backup schedule in systemd timer format (default: mon 01:00)"
