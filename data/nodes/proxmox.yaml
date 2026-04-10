@@ -7,13 +7,14 @@ profile::common::systemd_units:
   wake-proxmox-cortex.service:
     content: |
       [Unit]
-      Description=Wake proxmox-cortex and start the backup storage container
+      Description=Wake proxmox-cortex and start the weekly backup dependencies
       After=network-online.target
       Wants=network-online.target
 
       [Service]
       Type=oneshot
       ExecStart=/bin/bash -lc '/usr/sbin/qm guest exec 200 --timeout 0 -- bash -lc "cd /opt/docker/puppet-control-repo/docker && HOME=/home/user /home/user/.local/bin/uv run python vault/scripts/wake_on_lan.py --ct-id 110 --shutdown-delay 120" > /var/log/wake-proxmox-cortex.log 2>&1'
+      ExecStartPost=/bin/bash -lc 'ssh proxmox-cortex.home.arpa "qm status 200 | grep -q running || qm start 200"'
 
   wake-proxmox-cortex.timer:
     content: |
