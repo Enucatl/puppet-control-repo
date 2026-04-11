@@ -24,6 +24,8 @@ lookup_options:
     merge: deep
   profile::common::vault_certs:
     merge: deep
+  profile::user_toolchain::npm_globals:
+    merge: unique
   ssh::client_options:
     merge: deep
   ssh::server_options:

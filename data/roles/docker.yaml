@@ -2,6 +2,10 @@
 classes:
   - profile::docker_host
   - nfs_config
+  - profile::user_toolchain
+
+profile::user_toolchain::npm_globals:
+  - '@openai/codex'
 
 freeipa_users::user_groups:
   user:

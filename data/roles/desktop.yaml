@@ -2,6 +2,10 @@
 classes:
   - freeipa_firefox
   - nfs_config
+  - profile::user_toolchain
+
+profile::user_toolchain::npm_globals:
+  - '@openai/codex'
 
 packages::list:
   - ansible-core
