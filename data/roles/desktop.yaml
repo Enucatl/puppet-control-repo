@@ -35,6 +35,7 @@ packages::list:
   - nmap
   - nodejs
   - npm
+  - obs-studio
   - opus-tools
   - pavucontrol
   - pdftk-java
@@ -42,14 +43,12 @@ packages::list:
   - qpwgraph
   - ripgrep
   - shellcheck
-  - slurp
   - units
   - kitty
   - virt-viewer
   - vlc
   - xclip
   - xournalpp
-  - wf-recorder
   - wl-clipboard
 
 packages::sources:
