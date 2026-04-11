@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export HOME='<%= $home %>'
+export USER='<%= $username %>'
+export LOGNAME='<%= $username %>'
+export PROFILE=/dev/null
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+
+mkdir -p "$HOME/.cache/puppet" "$HOME/.local/bin"
+
+lock_file="$HOME/.cache/puppet/user-toolchain.lock"
+exec 9>"$lock_file"
+flock 9
+
+install_uv() {
+  if [ -x "$HOME/.local/bin/uv" ] && "$HOME/.local/bin/uv" self update; then
+    return
+  fi
+
+  curl -LsSf https://astral.sh/uv/install.sh \
+    | env UV_INSTALL_DIR="$HOME/.local/bin" UV_NO_MODIFY_PATH=1 sh
+}
+
+install_rustup() {
+  if [ ! -x "$HOME/.cargo/bin/rustup" ]; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --no-modify-path --default-toolchain '<%= $rust_toolchain %>'
+  fi
+
+  "$HOME/.cargo/bin/rustup" self update
+  "$HOME/.cargo/bin/rustup" update '<%= $rust_toolchain %>'
+  "$HOME/.cargo/bin/rustup" default '<%= $rust_toolchain %>'
+}
+
+install_nvm() {
+  export NVM_DIR="$HOME/.nvm"
+
+  if [ ! -d "$NVM_DIR/.git" ]; then
+    rm -rf "$NVM_DIR"
+    git clone https://github.com/nvm-sh/nvm.git "$NVM_DIR"
+  fi
+
+  git -C "$NVM_DIR" fetch --tags --prune origin
+  latest_tag="$(git -C "$NVM_DIR" tag -l 'v*' --sort=-v:refname | head -n 1)"
+  git -C "$NVM_DIR" checkout --force --quiet "$latest_tag"
+
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+
+  cat > "$NVM_DIR/default-packages" <<'NVM_DEFAULT_PACKAGES'
+<%- $npm_globals.each |$package| { -%>
+<%= $package %>
+<%- } -%>
+NVM_DEFAULT_PACKAGES
+
+  nvm install '<%= $node_version %>'
+  nvm alias default '<%= $node_version %>'
+  nvm use default
+
+  if ! nvm install-latest-npm; then
+    echo 'warning: npm@latest could not be installed for the active Node version' >&2
+  fi
+
+<%- $npm_globals.each |$package| { -%>
+  npm install -g '<%= $package %>@latest'
+<%- } -%>
+}
+
+<% if $manage_uv { -%>
+install_uv
+<% } -%>
+<% if $manage_rustup { -%>
+install_rustup
+<% } -%>
+<% if $manage_nvm { -%>
+install_nvm
+<% } -%>
