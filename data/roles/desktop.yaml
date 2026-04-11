@@ -42,6 +42,7 @@ packages::list:
   - qpwgraph
   - ripgrep
   - shellcheck
+  - slurp
   - units
   - kitty
   - virt-viewer
