@@ -48,6 +48,7 @@ packages::list:
   - vlc
   - xclip
   - xournalpp
+  - wf-recorder
   - wl-clipboard
 
 packages::sources:
