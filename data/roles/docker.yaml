@@ -5,6 +5,7 @@ classes:
   - profile::user_toolchain
 
 profile::user_toolchain::npm_globals:
+  - '@mermaid-js/mermaid-cli'
   - '@openai/codex'
 
 freeipa_users::user_groups:
