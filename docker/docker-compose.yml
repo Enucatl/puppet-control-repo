@@ -1,41 +1,30 @@
 name: infra
 
 x-vault-runtime: &vault-runtime
-  cap_add:
-    - IPC_LOCK
-    - CHOWN
-    - DAC_OVERRIDE
-    - FOWNER
-    - SETFCAP
-    - SETGID
-    - SETPCAP
-    - SETUID
-  ulimits:
-    memlock:
-      soft: -1
-      hard: -1
+  image: hashicorp/vault:latest
+  extends:
+    file: ../../compose-security-baseline/hardening.yml
+    service: hardened-large
+  user: 100:100
 
 services:
 
   vault:
     <<: *vault-runtime
-    extends:
-      file: ../../compose-security-baseline/hardening.yml
-      service: vault
-    image: hashicorp/vault:latest
-    userns_mode: host
-    restart: unless-stopped
     cpu_shares: 1536
     ports:
       - "8200:8200"
     volumes:
       - vault_data:/vault/file
+      - vault_logs:/vault/logs
       - ./vault/config:/vault/config
       - certificates:/certificates
     environment:
       - VAULT_LOG_LEVEL=info
       - VAULT_ADDR
       - VAULT_CACERT
+      - SKIP_CHOWN=true
+      - SKIP_SETCAP=true
     networks:
       - infra
     command: vault server -config /vault/config/vault-conf.hcl
@@ -54,7 +43,6 @@ services:
       file: ../../compose-security-baseline/hardening.yml
       service: hardened-small
     image: nicolaka/netshoot:v0.14
-    restart: unless-stopped
     depends_on:
       vault:
         condition: service_healthy
@@ -71,16 +59,14 @@ services:
       - infra
 
   freeipa:
-    extends:
-      file: ../../compose-security-baseline/hardening.yml
-      service: limits-xlarge
+    # no hardening on the docker image, it has to run privileged
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
     image: freeipa/freeipa-server:almalinux-10
     container_name: freeipa
     hostname: freeipa.home.arpa
-    restart: unless-stopped
     cpu_shares: 1536
-    security_opt:
-      - no-new-privileges:true
     networks:
       - infra
       - traefik_proxy
@@ -121,21 +107,19 @@ services:
   apt-cacher-ng:
     extends:
       file: ../../compose-security-baseline/hardening.yml
-      service: root-chown-init
-    image: sameersbn/apt-cacher-ng:latest
-    container_name: apt-cacher-ng
+      service: hardened-small
+    build:
+      context: ./apt-cacher-ng
+      dockerfile: Dockerfile
     ports:
-      - "3142:3142"
+      - 3142:3142
+    tmpfs: !reset
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /run:rw,noexec,nosuid,size=16m
+      - /run/apt-cacher-ng:rw,noexec,nosuid,size=16m,uid=101,gid=101
     volumes:
       - /scratch/apt-cacher-ng:/var/cache/apt-cacher-ng
       - ./vault/scripts/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3142/acng-report.html || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
   # TEMPORARY CONTAINERS
   # only to document one-off setup
@@ -143,13 +127,8 @@ services:
   # after running this, setup TLS for vault, changing the env and the config file
   vault-pki-core-setup:
     <<: *vault-runtime
-    extends:
-      file: ../../compose-security-baseline/hardening.yml
-      service: vault
     profiles:
       - setup
-    image: hashicorp/vault:latest
-    userns_mode: host
     restart: no
     depends_on:
       vault-unsealer:
@@ -166,14 +145,10 @@ services:
 
   vault-pki-intermediate-setup:
     <<: *vault-runtime
-    extends:
-      file: ../../compose-security-baseline/hardening.yml
-      service: vault
     profiles:
       - setup
     image: hashicorp/vault:latest
-    userns_mode: host
-    restart: "no"
+    restart: no
     depends_on:
       vault-unsealer:
         condition: service_completed_successfully
@@ -190,14 +165,9 @@ services:
 
   freeipa-sign-csr:
     <<: *vault-runtime
-    extends:
-      file: ../../compose-security-baseline/hardening.yml
-      service: vault
     profiles:
       - setup
-    image: hashicorp/vault:latest
-    userns_mode: host
-    restart: "no"
+    restart: no
     depends_on:
       vault-unsealer:
         condition: service_completed_successfully
@@ -227,6 +197,7 @@ networks:
       driver: default
 
 volumes:
-  vault_data:
-  freeipa_data:
   certificates:
+  freeipa_data:
+  vault_data:
+  vault_logs:
