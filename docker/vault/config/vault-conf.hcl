@@ -12,3 +12,4 @@ listener "tcp" {
   tls_key_file = "/certificates/vault.key"
 }
 
+disable_mlock = true
