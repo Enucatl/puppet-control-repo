@@ -155,22 +155,22 @@ profile::common::posix_acls:
   "/opt/docker/authelia/secrets/authelia_jwt_secret":
     action: set
     permission:
-      - "user:100000:r--"
+      - "user:101000:r--"
       - "mask::r--"
   "/opt/docker/authelia/secrets/ldap_password":
     action: set
     permission:
-      - "user:100000:r--"
+      - "user:101000:r--"
       - "mask::r--"
   "/opt/docker/authelia/secrets/session_secret":
     action: set
     permission:
-      - "user:100000:r--"
+      - "user:101000:r--"
       - "mask::r--"
   "/opt/docker/authelia/secrets/storage_encryption_key":
     action: set
     permission:
-      - "user:100000:r--"
+      - "user:101000:r--"
       - "mask::r--"
 
 puppet_configuration::settings:
