@@ -157,6 +157,11 @@ profile::common::posix_acls:
     permission:
       - "user:101000:r--"
       - "mask::r--"
+  "/opt/docker/authelia/secrets/postgres_password":
+    action: set
+    permission:
+      - "user:100000:r--"
+      - "mask::r--"
   "/opt/docker/authelia/secrets/ldap_password":
     action: set
     permission:
