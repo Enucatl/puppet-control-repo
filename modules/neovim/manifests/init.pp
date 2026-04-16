@@ -9,20 +9,19 @@
 #
 class neovim (
   Optional[String[1]] $version = undef,
-  String            $install_dir = '/usr/local',
+  String             $install_dir = '/usr/local',
 ) {
   # Constants
   $asset_name  = 'nvim-linux-x86_64.tar.gz'
   $marker_file = '/var/lib/neovim/version'
 
-  # Install paths
-  $install_base  = "${install_dir}/nvim"
-  $install_bin   = "${install_dir}/bin/nvim"
+  # Install directories (not file paths)
+  $install_bin   = "${install_dir}/bin"
   $install_lib   = "${install_dir}/lib/nvim"
   $install_share = "${install_dir}/share/nvim"
 
   # Ensure prerequisite directories
-  file { ['/var/lib/neovim', $install_dir]:
+  file { ['/var/lib/neovim', $install_dir, $install_lib, $install_share]:
     ensure => directory,
     owner  => 'root',
     group  => 'root',
@@ -37,7 +36,6 @@ class neovim (
       'asset_name'     => $asset_name,
       'marker_file'    => $marker_file,
       'install_dir'    => $install_dir,
-      'install_base'   => $install_base,
       'install_bin'    => $install_bin,
       'install_lib'    => $install_lib,
       'install_share'  => $install_share,

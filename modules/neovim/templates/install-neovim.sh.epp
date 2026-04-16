@@ -2,7 +2,6 @@
      String $asset_name,
      String $marker_file,
      String $install_dir,
-     String $install_base,
      String $install_bin,
      String $install_lib,
      String $install_share
@@ -61,11 +60,16 @@ fi
 
 # Install
 echo "🔧 Installing to <%= $install_dir %>"
-rm -rf "<%= $install_base %>"
-mkdir -p "$(dirname "<%= $install_bin %>")" "$(dirname "<%= $install_lib %>")" "$(dirname "<%= $install_share %>")"
 
-cp -a /tmp/nvim-linux-x86_64/bin "<%= $install_bin %>" || { echo "❌ Failed to copy bin" >&2; exit 1; }
+# Copy binaries to <%= $install_bin %>
+cp -a /tmp/nvim-linux-x86_64/bin/* "<%= $install_bin %>/." || { echo "❌ Failed to copy bin" >&2; exit 1; }
+
+# Copy lib to <%= $install_lib %>
+rm -rf "<%= $install_lib %>"
 cp -a /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>" || { echo "❌ Failed to copy lib" >&2; exit 1; }
+
+# Copy share to <%= $install_share %>
+rm -rf "<%= $install_share %>"
 cp -a /tmp/nvim-linux-x86_64/share "<%= $install_share %>" || { echo "❌ Failed to copy share" >&2; exit 1; }
 
 echo "${TAG}" > "<%= $marker_file %>"
