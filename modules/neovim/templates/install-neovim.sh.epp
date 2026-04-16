@@ -9,7 +9,7 @@ TAG=""
 URL=""
 
 # Resolve version and download URL
-<% if $version { -%>
+<% if ! $version.nil? { -%>
 # Installing pinned version: <%= $version %>
 TAG="<%= $version %>"
 URL="https://github.com/neovim/neovim/releases/download/${TAG}/<%= $asset_name %>"
