@@ -28,14 +28,11 @@ class neovim (
     mode   => '0755',
   }
 
-  # Pass empty string for undef version so EPP template can handle it
-  $version_str = $version != undef ? $version : ''
-
   # Deploy installation script from EPP template
   file { '/usr/local/bin/install-neovim.sh':
     ensure  => file,
     content => epp('neovim/install-neovim.sh.epp', {
-      'version'        => $version_str,
+      'version'        => $version,
       'asset_name'     => $asset_name,
       'marker_file'    => $marker_file,
       'install_dir'    => $install_dir,

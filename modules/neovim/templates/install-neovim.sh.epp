@@ -1,10 +1,10 @@
-<% | String $version,
-     String $asset_name,
-     String $marker_file,
-     String $install_dir,
-     String $install_bin,
-     String $install_lib,
-     String $install_share
+<% | Optional[String] $version,
+     String          $asset_name,
+     String          $marker_file,
+     String          $install_dir,
+     String          $install_bin,
+     String          $install_lib,
+     String          $install_share
 | -%>#!/bin/bash
 set -euo pipefail
 
@@ -16,7 +16,7 @@ TAG=""
 URL=""
 
 # Resolve version and download URL
-<% if $version != '' { -%>
+<% if $version { -%>
 TAG="<%= $version %>"
 URL="https://github.com/neovim/neovim/releases/download/${TAG}/<%= $asset_name %>"
 <% } else { -%>
