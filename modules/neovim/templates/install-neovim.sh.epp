@@ -1,11 +1,11 @@
-<% | $version,
-     $asset_name,
-     $marker_file,
-     $install_dir,
-     $install_base,
-     $install_bin,
-     $install_lib,
-     $install_share
+<% | String $version,
+     String $asset_name,
+     String $marker_file,
+     String $install_dir,
+     String $install_base,
+     String $install_bin,
+     String $install_lib,
+     String $install_share
 | -%>#!/bin/bash
 set -euo pipefail
 
