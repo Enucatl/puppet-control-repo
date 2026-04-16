@@ -46,13 +46,13 @@ class neovim (
     require => File['/var/lib/neovim'],
   }
 
-  # Execute the installation script
+  # Execute the installation script (only when marker file doesn't exist)
   exec { 'neovim-install':
     command   => '/usr/local/bin/install-neovim.sh',
     path      => ['/usr/bin', '/bin', '/usr/local/bin', '/usr/sbin', '/sbin'],
     user      => 'root',
     cwd       => '/tmp',
-    creates   => "${install_bin}/nvim",
+    creates   => $marker_file,
     logoutput => true,
     require   => File['/usr/local/bin/install-neovim.sh'],
   }
