@@ -66,12 +66,14 @@ cp /tmp/nvim-linux-x86_64/bin/* "<%= $install_bin %>/" || { echo "❌ Failed to 
 
 # Copy lib to <%= $install_lib %>
 rm -rf "<%= $install_lib %>"
-cp -r /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>" || { echo "❌ Failed to copy lib" >&2; exit 1; }
+mkdir -p "<%= $install_lib %>"
+cp -a /tmp/nvim-linux-x86_64/lib/nvim/. "<%= $install_lib %>/" || { echo "❌ Failed to copy lib" >&2; exit 1; }
 chown -R root:root "<%= $install_lib %>"
 
 # Copy share to <%= $install_share %>
 rm -rf "<%= $install_share %>"
-cp -r /tmp/nvim-linux-x86_64/share "<%= $install_share %>" || { echo "❌ Failed to copy share" >&2; exit 1; }
+mkdir -p "<%= $install_share %>"
+cp -a /tmp/nvim-linux-x86_64/share/nvim/. "<%= $install_share %>/" || { echo "❌ Failed to copy share" >&2; exit 1; }
 chown -R root:root "<%= $install_share %>"
 
 echo "${TAG}" > "<%= $marker_file %>"

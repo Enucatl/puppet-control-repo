@@ -5,7 +5,8 @@
 # ## Behavior
 #
 # Downloads the `nvim-linux-x86_64.tar.gz` asset from the latest release, extracts
-# it to `/usr/local/nvim`, and sets up symlinks in `/usr/local/bin`.
+# it to `/usr/local`, and installs runtime data under `/usr/local/lib/nvim`
+# and `/usr/local/share/nvim`.
 #
 # ## Usage
 #
@@ -39,7 +40,7 @@
 #
 # ## Files managed
 #
-# - `/usr/local/nvim/bin/nvim` -> symlink to extracted binary
-# - `/usr/local/nvim/lib/nvim` -> symlink to lib directory
-# - `/usr/local/nvim/share/nvim` -> symlink to share directory
+# - `/usr/local/bin/nvim` -> Neovim binary
+# - `/usr/local/lib/nvim/*` -> runtime libraries and parsers
+# - `/usr/local/share/nvim/*` -> runtime assets and syntax files
 # - `/var/lib/neovim/version` -> version marker file
