@@ -1,37 +1,43 @@
 #!/bin/bash
 set -euo pipefail
 
-# Template Variables (injected by Puppet)
-# <%-
-#   String $version_param        = $version,
-#   String $asset_name           = $asset_name,
-#   String $marker_file          = $marker_file,
-#   String $install_base         = $install_base,
-#   String $install_bin          = $install_bin,
-#   String $install_lib          = $install_lib,
-#   String $install_share        = $install_share,
-# -%>
+# === Neovim Install Script ===
+# Rendered from Puppet EPP template
+# Module: neovim | Class: neovim
 
 TAG=""
 URL=""
 
 # Resolve version and download URL
-if [[ -n "<%= $version_param %>" ]]; then
-  TAG="<%= $version_param %>"
-  URL="https://github.com/neovim/neovim/releases/download/${TAG}/<%= $asset_name %>"
-else
-  echo "🔍 Fetching latest Neovim release..."
-  TAG=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .tag_name)
-  URL=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest \
-        | jq -r -c '.assets[]' \
-        | grep "<%= $asset_name %>" \
-        | head -1 \
-        | jq -r .browser_download_url)
+<% if $version { -%>
+# Installing pinned version: <%= $version %>
+TAG="<%= $version %>"
+URL="https://github.com/neovim/neovim/releases/download/${TAG}/<%= $asset_name %>"
+<% } else { -%>
+echo "🔍 Fetching latest Neovim release..."
+
+# Use jq for all filtering to avoid SIGPIPE from grep|head
+TAG=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest \
+      | jq -r '.tag_name // empty')
+
+URL=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest \
+      | jq -r --arg asset "<%= $asset_name %>" '
+          .assets[] 
+          | select(.name == $asset) 
+          | .browser_download_url 
+          // empty' \
+      | head -n1)
+
+# Validate API response
+if [[ -z "${TAG}" || -z "${URL}" || "${TAG}" == "null" ]]; then
+  echo "❌ Failed to fetch release info from GitHub API" >&2
+  exit 1
 fi
+<% } -%>
 
-echo "📦 Installing Neovim ${TAG}"
+echo "📦 Installing Neovim ${TAG} to <%= $install_dir %>"
 
-# Check if already installed at this version
+# Check if already installed at this version (idempotency)
 if [ -f "<%= $marker_file %>" ] && [ "$(cat "<%= $marker_file %>" 2>/dev/null)" = "${TAG}" ]; then
   echo "✅ Neovim ${TAG} already installed. Skipping."
   exit 0
@@ -40,7 +46,11 @@ fi
 # Download asset
 ASSET_PATH="/tmp/<%= $asset_name %>"
 echo "⬇️  Downloading: ${URL}"
-curl -sL "${URL}" -o "${ASSET_PATH}"
+
+if ! curl -sL --fail --connect-timeout 30 "${URL}" -o "${ASSET_PATH}"; then
+  echo "❌ Download failed: ${URL}" >&2
+  exit 1
+fi
 
 # Validate download
 if [ ! -s "${ASSET_PATH}" ]; then
@@ -50,10 +60,13 @@ fi
 
 # Extract
 echo "📦 Extracting..."
-tar xzf "${ASSET_PATH}" -C /tmp
+if ! tar xzf "${ASSET_PATH}" -C /tmp 2>/dev/null; then
+  echo "❌ Extraction failed" >&2
+  exit 1
+fi
 
 # Prepare install directories
-echo "🔧 Installing to <%= $install_base %>"
+echo "🔧 Installing to <%= $install_dir %>"
 mkdir -p "$(dirname "<%= $install_bin %>")" \
          "$(dirname "<%= $install_lib %>")" \
          "$(dirname "<%= $install_share %>")"
@@ -61,12 +74,21 @@ mkdir -p "$(dirname "<%= $install_bin %>")" \
 # Clean old install
 rm -rf "<%= $install_base %>"
 
-# Copy files
-cp -a /tmp/nvim-linux-x86_64/bin "<%= $install_bin %>"
-cp -a /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>"
-cp -a /tmp/nvim-linux-x86_64/share "<%= $install_share %>"
+# Copy files with error checking
+cp -a /tmp/nvim-linux-x86_64/bin "<%= $install_bin %>" || {
+  echo "❌ Failed to copy bin directory" >&2
+  exit 1
+}
+cp -a /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>" || {
+  echo "❌ Failed to copy lib directory" >&2
+  exit 1
+}
+cp -a /tmp/nvim-linux-x86_64/share "<%= $install_share %>" || {
+  echo "❌ Failed to copy share directory" >&2
+  exit 1
+}
 
-# Write marker
+# Write version marker for idempotency
 mkdir -p "$(dirname "<%= $marker_file %>")"
 echo "${TAG}" > "<%= $marker_file %>"
 
