@@ -29,10 +29,19 @@ class neovim (
     mode   => '0755',
   }
 
-  # Deploy installation script from template
+  # Deploy installation script from EPP template
   file { '/usr/local/bin/install-neovim.sh':
     ensure  => file,
-    content => template('neovim/install-neovim.sh.epp'),
+    content => epp('neovim/install-neovim.sh.epp', {
+      'version'        => $version,
+      'asset_name'     => $asset_name,
+      'marker_file'    => $marker_file,
+      'install_dir'    => $install_dir,
+      'install_base'   => $install_base,
+      'install_bin'    => $install_bin,
+      'install_lib'    => $install_lib,
+      'install_share'  => $install_share,
+    }),
     mode    => '0755',
     owner   => 'root',
     group   => 'root',
