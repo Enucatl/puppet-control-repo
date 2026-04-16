@@ -32,32 +32,29 @@ class neovim (
 
   # Download and install Neovim
   exec { 'neovim-install':
-    command     => "/bin/bash -c '
+    command => "/bin/bash -c '
       if [[ -n \"${version}\" ]]; then
         TAG=\"${version}\";
         URL=\"https://github.com/neovim/neovim/releases/download/${version}/nvim-linux-x86_64.tar.gz\";
       else
-        TAG=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .tag_name);
-        URL=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .assets[] | select(.name | contains(\"nvim-linux-x86_64\")) | .browser_download_url);
+        TAG=\$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .tag_name);
+        URL=\$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .assets[] | select(.name | contains(\"nvim-linux-x86_64\")) | .browser_download_url);
       fi;
-      INSTALL_BASE=\"${install_base}\";
-      MARKER=\"${marker_file}\";
-      ASSET=\"${asset_name}\";
+      INSTALL_BASE=\"\${install_base}\";
+      MARKER=\"\${marker_file}\";
+      ASSET=\"\${asset_name}\";
       if [ ! -f \"/tmp/\${ASSET}\" ] || [ ! -f \"\${MARKER}\" ] || [ \"\$(cat \${MARKER} 2>/dev/null)\" != \"\${TAG}\" ]; then
         curl -sL \"\${URL}\" -o \"/tmp/\${ASSET}\";
         tar xzf \"/tmp/\${ASSET}\" -C /tmp;
-        rm -rf \"${install_dir}/nvim\";
-        cp -a /tmp/nvim-linux-x86_64/bin \"${install_bin}\";
-        cp -a /tmp/nvim-linux-x86_64/lib \"${install_lib}\";
-        cp -a /tmp/nvim-linux-x86_64/share \"${install_share}\";
+        rm -rf \"\${install_dir}/nvim\";
+        cp -a /tmp/nvim-linux-x86_64/bin \"\${install_bin}\";
+        cp -a /tmp/nvim-linux-x86_64/lib \"\${install_lib}\";
+        cp -a /tmp/nvim-linux-x86_64/share \"\${install_share}\";
         echo \"\${TAG}\" > \"\${MARKER}\";
-      fi'
-    ",
-    cwd         => '/tmp',
-    user        => 'root',
-    path        => ['/usr/bin', '/bin', '/usr/local/bin'],
-    creates     => "${install_bin}/nvim",
-    refresh     => true,
-    refreshonly => true,
+      fi'",
+    cwd     => '/tmp',
+    user    => 'root',
+    path    => ['/usr/bin', '/bin', '/usr/local/bin'],
+    creates => "${install_bin}/nvim",
   }
 }
