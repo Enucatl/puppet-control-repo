@@ -5,7 +5,15 @@ set -euo pipefail
 # Rendered from Puppet EPP template
 # Module: neovim | Class: neovim
 
-<% | String $version, String $asset_name, String $marker_file, String $install_dir, String $install_base, String $install_bin, String $install_lib, String $install_share | -%>
+<% | String $version,
+     String $asset_name,
+     String $marker_file,
+     String $install_dir,
+     String $install_base,
+     String $install_bin,
+     String $install_lib,
+     String $install_share
+| -%>
 
 TAG=""
 URL=""
