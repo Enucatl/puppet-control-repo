@@ -9,33 +9,20 @@ TAG=""
 URL=""
 
 # Resolve version and download URL
-<% if ! $version.nil? { -%>
-# Installing pinned version: <%= $version %>
+<% if $version { -%>
 TAG="<%= $version %>"
 URL="https://github.com/neovim/neovim/releases/download/${TAG}/<%= $asset_name %>"
 <% } else { -%>
 echo "🔍 Fetching latest Neovim release..."
-
-# Use jq for all filtering to avoid SIGPIPE from grep|head
-TAG=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest \
-      | jq -r '.tag_name // empty')
-
-URL=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest \
-      | jq -r --arg asset "<%= $asset_name %>" '
-          .assets[] 
-          | select(.name == $asset) 
-          | .browser_download_url 
-          // empty' \
-      | head -n1)
-
-# Validate API response
+TAG=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r '.tag_name // empty')
+URL=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r --arg asset "<%= $asset_name %>" '.assets[] | select(.name == $asset) | .browser_download_url' | head -n1)
 if [[ -z "${TAG}" || -z "${URL}" || "${TAG}" == "null" ]]; then
   echo "❌ Failed to fetch release info from GitHub API" >&2
   exit 1
 fi
 <% } -%>
 
-echo "📦 Installing Neovim ${TAG} to <%= $install_dir %>"
+echo "📦 Installing Neovim ${TAG}"
 
 # Check if already installed at this version (idempotency)
 if [ -f "<%= $marker_file %>" ] && [ "$(cat "<%= $marker_file %>" 2>/dev/null)" = "${TAG}" ]; then
@@ -52,7 +39,6 @@ if ! curl -sL --fail --connect-timeout 30 "${URL}" -o "${ASSET_PATH}"; then
   exit 1
 fi
 
-# Validate download
 if [ ! -s "${ASSET_PATH}" ]; then
   echo "❌ Download failed: ${ASSET_PATH} is empty" >&2
   exit 1
@@ -65,31 +51,15 @@ if ! tar xzf "${ASSET_PATH}" -C /tmp 2>/dev/null; then
   exit 1
 fi
 
-# Prepare install directories
+# Install
 echo "🔧 Installing to <%= $install_dir %>"
-mkdir -p "$(dirname "<%= $install_bin %>")" \
-         "$(dirname "<%= $install_lib %>")" \
-         "$(dirname "<%= $install_share %>")"
-
-# Clean old install
 rm -rf "<%= $install_base %>"
+mkdir -p "$(dirname "<%= $install_bin %>")" "$(dirname "<%= $install_lib %>")" "$(dirname "<%= $install_share %>")"
 
-# Copy files with error checking
-cp -a /tmp/nvim-linux-x86_64/bin "<%= $install_bin %>" || {
-  echo "❌ Failed to copy bin directory" >&2
-  exit 1
-}
-cp -a /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>" || {
-  echo "❌ Failed to copy lib directory" >&2
-  exit 1
-}
-cp -a /tmp/nvim-linux-x86_64/share "<%= $install_share %>" || {
-  echo "❌ Failed to copy share directory" >&2
-  exit 1
-}
+cp -a /tmp/nvim-linux-x86_64/bin "<%= $install_bin %>" || { echo "❌ Failed to copy bin" >&2; exit 1; }
+cp -a /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>" || { echo "❌ Failed to copy lib" >&2; exit 1; }
+cp -a /tmp/nvim-linux-x86_64/share "<%= $install_share %>" || { echo "❌ Failed to copy share" >&2; exit 1; }
 
-# Write version marker for idempotency
-mkdir -p "$(dirname "<%= $marker_file %>")"
 echo "${TAG}" > "<%= $marker_file %>"
 
 echo "✨ Neovim ${TAG} installed successfully!"
