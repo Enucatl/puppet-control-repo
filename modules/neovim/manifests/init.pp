@@ -38,7 +38,7 @@ class neovim (
         URL=\"https://github.com/neovim/neovim/releases/download/${version}/nvim-linux-x86_64.tar.gz\";
       else
         TAG=\$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .tag_name);
-        URL=\$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .assets[] | select(.name | contains(\"nvim-linux-x86_64\")) | .browser_download_url);
+        URL=\$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r -c '.assets[]' | grep \"nvim-linux-x86_64.tar.gz\" | head -1 | jq -r .browser_download_url);
       fi;
       INSTALL_BASE=\"\${install_base}\";
       MARKER=\"\${marker_file}\";
