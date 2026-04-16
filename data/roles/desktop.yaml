@@ -3,6 +3,7 @@ classes:
   - freeipa_firefox
   - nfs_config
   - profile::user_toolchain
+  - neovim
 
 profile::user_toolchain::npm_globals:
   - '@mermaid-js/mermaid-cli'
@@ -31,8 +32,6 @@ packages::list:
   - libssh-dev
   - mktorrent
   - nemo
-  - neovim
-  - neovim-qt
   - nmap
   - nodejs
   - npm
@@ -81,5 +80,4 @@ packages::sources:
       source: 'https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg'
 
 packages::ppas:
-  - 'ppa:neovim-ppa/unstable'
   - 'ppa:ubuntuhandbook1/audacity'

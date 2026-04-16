@@ -13,6 +13,7 @@ packages::list:
   - expect
   - git
   - git-delta
+  - jq
   - kitty-terminfo
   - ncdu
   - python-is-python3
