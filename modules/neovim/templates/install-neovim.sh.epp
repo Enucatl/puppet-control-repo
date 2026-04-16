@@ -1,0 +1,74 @@
+#!/bin/bash
+set -euo pipefail
+
+# Template Variables (injected by Puppet)
+# <%-
+#   String $version_param        = $version,
+#   String $asset_name           = $asset_name,
+#   String $marker_file          = $marker_file,
+#   String $install_base         = $install_base,
+#   String $install_bin          = $install_bin,
+#   String $install_lib          = $install_lib,
+#   String $install_share        = $install_share,
+# -%>
+
+TAG=""
+URL=""
+
+# Resolve version and download URL
+if [[ -n "<%= $version_param %>" ]]; then
+  TAG="<%= $version_param %>"
+  URL="https://github.com/neovim/neovim/releases/download/${TAG}/<%= $asset_name %>"
+else
+  echo "🔍 Fetching latest Neovim release..."
+  TAG=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | jq -r .tag_name)
+  URL=$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest \
+        | jq -r -c '.assets[]' \
+        | grep "<%= $asset_name %>" \
+        | head -1 \
+        | jq -r .browser_download_url)
+fi
+
+echo "📦 Installing Neovim ${TAG}"
+
+# Check if already installed at this version
+if [ -f "<%= $marker_file %>" ] && [ "$(cat "<%= $marker_file %>" 2>/dev/null)" = "${TAG}" ]; then
+  echo "✅ Neovim ${TAG} already installed. Skipping."
+  exit 0
+fi
+
+# Download asset
+ASSET_PATH="/tmp/<%= $asset_name %>"
+echo "⬇️  Downloading: ${URL}"
+curl -sL "${URL}" -o "${ASSET_PATH}"
+
+# Validate download
+if [ ! -s "${ASSET_PATH}" ]; then
+  echo "❌ Download failed: ${ASSET_PATH} is empty" >&2
+  exit 1
+fi
+
+# Extract
+echo "📦 Extracting..."
+tar xzf "${ASSET_PATH}" -C /tmp
+
+# Prepare install directories
+echo "🔧 Installing to <%= $install_base %>"
+mkdir -p "$(dirname "<%= $install_bin %>")" \
+         "$(dirname "<%= $install_lib %>")" \
+         "$(dirname "<%= $install_share %>")"
+
+# Clean old install
+rm -rf "<%= $install_base %>"
+
+# Copy files
+cp -a /tmp/nvim-linux-x86_64/bin "<%= $install_bin %>"
+cp -a /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>"
+cp -a /tmp/nvim-linux-x86_64/share "<%= $install_share %>"
+
+# Write marker
+mkdir -p "$(dirname "<%= $marker_file %>")"
+echo "${TAG}" > "<%= $marker_file %>"
+
+echo "✨ Neovim ${TAG} installed successfully!"
+echo "📍 Binary: <%= $install_bin %>/nvim"
