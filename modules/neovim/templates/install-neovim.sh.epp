@@ -62,21 +62,17 @@ fi
 echo "🔧 Installing to <%= $install_dir %>"
 
 # Copy binaries to <%= $install_bin %>
-cp -a /tmp/nvim-linux-x86_64/bin/* "<%= $install_bin %>/." || { echo "❌ Failed to copy bin" >&2; exit 1; }
-chown -R root:root "<%= $install_bin %>/*" 2>/dev/null || true
+cp /tmp/nvim-linux-x86_64/bin/* "<%= $install_bin %>/" || { echo "❌ Failed to copy bin" >&2; exit 1; }
 
 # Copy lib to <%= $install_lib %>
 rm -rf "<%= $install_lib %>"
-cp -a /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>" || { echo "❌ Failed to copy lib" >&2; exit 1; }
-chown -R root:root "<%= $install_lib %>"
+cp -r /tmp/nvim-linux-x86_64/lib "<%= $install_lib %>" || { echo "❌ Failed to copy lib" >&2; exit 1; }
 
 # Copy share to <%= $install_share %>
 rm -rf "<%= $install_share %>"
-cp -a /tmp/nvim-linux-x86_64/share "<%= $install_share %>" || { echo "❌ Failed to copy share" >&2; exit 1; }
-chown -R root:root "<%= $install_share %>"
+cp -r /tmp/nvim-linux-x86_64/share "<%= $install_share %>" || { echo "❌ Failed to copy share" >&2; exit 1; }
 
 echo "${TAG}" > "<%= $marker_file %>"
-chown root:root "<%= $marker_file %>"
 
 echo "✨ Neovim ${TAG} installed successfully!"
 echo "📍 Binary: <%= $install_bin %>/nvim"
