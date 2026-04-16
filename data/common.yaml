@@ -98,7 +98,7 @@ postfix::configs:
     value: 'regexp:/etc/postfix/sender_canonical'
   recipient_canonical_maps:
     value: 'regexp:/etc/postfix/recipient_canonical'
-postfix::relayhost: '[smtp.google.com]:587'
+postfix::relayhost: '[smtp.gmail.com]:587'
 
 puppet_configuration::settings:
   number_of_facts_soft_limit:
