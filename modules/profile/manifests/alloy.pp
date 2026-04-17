@@ -1,10 +1,10 @@
 class profile::alloy (
-  String           $loki_url            = 'https://loki.docker.home.arpa/loki/api/v1/push',
-  Boolean          $enable_docker       = false,
-  String           $extra_config        = '',
-  Optional[String] $maxmind_account_id  = lookup('profile::docker_host::maxmind_account_id', Optional[String], 'first', undef),
-  Optional[String] $maxmind_license_key = lookup('profile::docker_host::maxmind_license_key', Optional[String], 'first', undef),
-  Optional[String] $local_ipv6_prefix   = lookup('ipv6-prefix', Optional[String], 'first', undef),
+  String            $loki_url            = 'https://loki.docker.home.arpa/loki/api/v1/push',
+  Boolean           $enable_docker       = false,
+  String            $extra_config        = '',
+  Optional[Integer]  $maxmind_account_id  = lookup('profile::docker_host::maxmind_account_id', Optional[Integer], 'first', undef),
+  Optional[String]   $maxmind_license_key = lookup('profile::docker_host::maxmind_license_key', Optional[String], 'first', undef),
+  Optional[String]   $local_ipv6_prefix   = lookup('ipv6-prefix', Optional[String], 'first', undef),
 ) {
 
   $local_ipv6_geoip_skip_prefix = $local_ipv6_prefix ? {
@@ -18,7 +18,12 @@ class profile::alloy (
     'G',
   )
 
-  $effective_extra_config = if !empty($maxmind_account_id) and !empty($maxmind_license_key) {
+  $effective_maxmind_account_id = $maxmind_account_id ? {
+    undef   => undef,
+    default => String($maxmind_account_id),
+  }
+
+  $effective_extra_config = if $effective_maxmind_account_id != undef and $maxmind_license_key != undef {
     $rendered_extra_config
   } else {
     ''

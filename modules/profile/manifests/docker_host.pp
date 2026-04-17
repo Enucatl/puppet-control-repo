@@ -1,7 +1,7 @@
 class profile::docker_host (
-  Hash             $git_deploy_projects = {},
-  Optional[String] $maxmind_account_id  = undef,
-  Optional[String] $maxmind_license_key = undef,
+  Hash                $git_deploy_projects = {},
+  Optional[Integer]   $maxmind_account_id  = undef,
+  Optional[String]    $maxmind_license_key = undef,
 ) {
 
   require profile::common
@@ -19,7 +19,9 @@ class profile::docker_host (
     enable => true,
   }
 
-  if !empty($maxmind_account_id) and !empty($maxmind_license_key) {
+  if $maxmind_account_id != undef and $maxmind_license_key != undef {
+    $rendered_maxmind_account_id = String($maxmind_account_id)
+
     package { 'geoipupdate':
       ensure => installed,
     }
@@ -37,7 +39,7 @@ class profile::docker_host (
       group   => 'root',
       mode    => '0600',
       content => epp('profile/GeoIP.conf.epp', {
-        'account_id'  => $maxmind_account_id,
+        'account_id'  => $rendered_maxmind_account_id,
         'license_key' => $maxmind_license_key,
       }),
       require => Package['geoipupdate'],
