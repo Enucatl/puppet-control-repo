@@ -1,4 +1,4 @@
-<%- | String $loki_url, Boolean $enable_docker | -%>
+<%- | String $loki_url, Boolean $enable_docker, String $extra_config | -%>
 // 1. Output: Remote Loki
 loki.write "remote_loki" {
   endpoint {
@@ -66,6 +66,12 @@ discovery.relabel "docker_relabel" {
     regex = "grafana-loki-loki-1" 
     action = "drop"
   }
+  // GoFlow2 is scraped by a dedicated pipeline so it can get GeoIP enrichment.
+  rule {
+    source_labels = ["container_name"]
+    regex = ".*goflow2.*"
+    action = "drop"
+  }
 }
 
 loki.source.docker "docker_logs" {
@@ -74,4 +80,8 @@ loki.source.docker "docker_logs" {
   host = "unix:///var/run/docker.sock"
   labels = {"app" = "docker"}
 }
+<% } -%>
+
+<% if $extra_config != '' { -%>
+<%= $extra_config %>
 <% } -%>

@@ -16,6 +16,8 @@
     - { src: "AdGuardHome.yaml.j2",        dest: "AdGuardHome.yaml" }
     - { src: "dnsmasq.conf.j2",            dest: "dnsmasq.conf" }
     - { src: "alloy-vyos.alloy.j2",        dest: "config.alloy" }
+    - { src: "vyos-ndp-snapshot.sh.j2",    dest: "vyos-ndp-snapshot.sh" }
+    - { src: "vyos-ndp-logrotate.j2",      dest: "vyos-ndp-logrotate" }
     - { src: "suricata-update.sh.j2",      dest: "suricata-update.sh" }
     - { src: "suricata-disable.conf.j2",   dest: "suricata-disable.conf" }
     - { src: "suricata-logrotate.j2",      dest: "suricata-logrotate" }
@@ -32,6 +34,8 @@
     - AdGuardHome.yaml
     - dnsmasq.conf
     - config.alloy
+    - vyos-ndp-snapshot.sh
+    - vyos-ndp-logrotate
     - suricata-update.sh
     - suricata-disable.conf
     - suricata-logrotate
@@ -60,6 +64,18 @@
       - sudo mv /tmp/config.alloy {{ alloy_data_path }}/conf/config.alloy
       - sudo chown root:vyattacfg {{ alloy_data_path }}/conf/config.alloy
       - sudo chmod 0644 {{ alloy_data_path }}/conf/config.alloy
+
+- name: Install VyOS NDP snapshot script
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/vyos-ndp-snapshot.sh /config/scripts/vyos-ndp-snapshot.sh
+      - sudo chmod 0755 /config/scripts/vyos-ndp-snapshot.sh
+
+- name: Install VyOS NDP logrotate config
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/vyos-ndp-logrotate /config/logrotate.d/vyos-ndp
+      - sudo chmod 0644 /config/logrotate.d/vyos-ndp
 
 - name: Install Suricata update script
   vyos.vyos.vyos_command:
@@ -99,6 +115,8 @@
     - AdGuardHome.yaml
     - dnsmasq.conf
     - config.alloy
+    - vyos-ndp-snapshot.sh
+    - vyos-ndp-logrotate
     - suricata-update.sh
     - suricata-disable.conf
     - suricata-logrotate

@@ -1,0 +1,5 @@
+<%- | String $account_id, String $license_key | -%>
+AccountID <%= $account_id %>
+LicenseKey <%= $license_key %>
+EditionIDs GeoLite2-Country
+DatabaseDirectory /var/lib/geoip

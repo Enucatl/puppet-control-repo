@@ -3,7 +3,7 @@
 //
 // Sources:
 //   - VyOS syslog       → host /var/log              mounted at /var/log/host
-//   - Suricata EVE JSON → host /var/log/suricata/     mounted at /var/log/suricata
+//   - Suricata EVE JSON → central Alloy receiver      via HTTP push
 //   - Suricata stats    → host /var/log/suricata/     mounted at /var/log/suricata
 //   - Suricata updater  → host /config/suricata/      mounted at /var/lib/suricata-config
 //   - AdGuard querylog  → host adguard work dir       mounted at /var/adguard/work
@@ -38,6 +38,23 @@ loki.write "remote_loki" {
   }
 }
 
+loki.write "central_alloy" {
+  endpoint {
+    url = "{{ central_alloy_url }}"
+
+    batch_wait = "1s"
+    batch_size = "512KB"
+
+    min_backoff_period = "30s"
+    max_backoff_period = "5m"
+  }
+
+  wal {
+    enabled         = true
+    max_segment_age = "1h"
+  }
+}
+
 // ============================================================
 // VyOS system logs
 // Host /var/log is mounted read-only at /var/log/host to avoid
@@ -46,6 +63,11 @@ loki.write "remote_loki" {
 
 local.file_match "vyos_syslog" {
   path_targets = [
+    {
+      __path__ = "/var/log/host/vyos-ndp/vyos-ndp.jsonl",
+      job      = "vyos-ndp",
+      host     = "router.{{ dhcp_domain }}",
+    },
     {
       // Main syslog — no .log extension on VyOS/Debian
       __path__ = "/var/log/host/messages",
@@ -80,26 +102,7 @@ local.file_match "suricata_eve" {
 
 loki.source.file "suricata_eve" {
   targets    = local.file_match.suricata_eve.targets
-  forward_to = [loki.process.label_eve.receiver]
-}
-
-// Promote event_type as a label for efficient stream filtering in Grafana.
-// IP addresses, ports, and signatures are intentionally left in the log
-// line body — query them via LogQL's | json parser to avoid high cardinality.
-loki.process "label_eve" {
-  stage.json {
-    expressions = {
-      event_type = "event_type",
-    }
-  }
-
-  stage.labels {
-    values = {
-      event_type = null,
-    }
-  }
-
-  forward_to = [loki.write.remote_loki.receiver]
+  forward_to = [loki.write.central_alloy.receiver]
 }
 
 // ============================================================
@@ -170,7 +173,7 @@ loki.process "label_adguard" {
 
   stage.labels {
     values = {
-      filtered = null,
+      filtered = "filtered",
     }
   }
 

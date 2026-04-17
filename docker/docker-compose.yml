@@ -9,6 +9,24 @@ x-vault-runtime: &vault-runtime
 
 services:
 
+  goflow2:
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: hardened-small
+    image: netsampler/goflow2:latest
+    cpu_shares: 512
+    mem_limit: 1g
+    memswap_limit: 1g
+    ports:
+      - "2055:2055/udp"
+    command:
+      - -listen
+      - netflow://:2055
+    networks:
+      - infra
+    labels:
+      - "checkmk_monitor=true"
+
   vault:
     <<: *vault-runtime
     cpu_shares: 1536
@@ -197,6 +215,7 @@ networks:
       driver: default
 
 volumes:
+  # config/state files are kept in the repo checkout via bind mounts
   certificates:
   freeipa_data:
   vault_data:

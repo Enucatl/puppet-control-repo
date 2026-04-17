@@ -178,6 +178,253 @@ profile::common::posix_acls:
       - "user:101000:r--"
       - "mask::r--"
 
+profile::alloy::extra_config: |
+  // Central log enrichment for router-derived Suricata and flow data.
+
+  loki.source.api "suricata_push" {
+    http {
+      listen_address = "10.0.0.128"
+      listen_port    = 12345
+    }
+
+    forward_to = [loki.process.suricata_src.receiver]
+  }
+
+  loki.process "suricata_src" {
+    stage.json {
+      expressions = {
+        event_type = "event_type",
+        src_ip     = "src_ip",
+        dest_ip    = "dest_ip",
+      }
+    }
+
+    stage.regex {
+      source = "src_ip"
+      expression = "^(?P<src_geoip_skip>(?:10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.|100\\.(?:6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[0-1][0-9]|12[0-7])\\.|22[4-9]\\.|23[0-9]\\.|0\\.0\\.0\\.0$|::1$|fe80:|fc|fd|ff|2001:db8:|__LOCAL_IPV6_PREFIX__:))"
+    }
+
+    stage.template {
+      source = "src_geoip_run"
+      template = "{{ if .src_geoip_skip }}false{{ else }}true{{ end }}"
+    }
+
+    stage.labels {
+      values = {
+        event_type  = "event_type",
+        src_geoip_run = "",
+      }
+    }
+
+    stage.match {
+      selector = "{src_geoip_run=\"true\"}"
+
+      stage.geoip {
+        source  = "src_ip"
+        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
+        db_type = "country"
+      }
+
+      stage.labels {
+        values = {
+          src_country = "geoip_country_code",
+        }
+      }
+    }
+
+    stage.label_drop {
+      values = ["src_geoip_run"]
+    }
+
+    forward_to = [loki.process.suricata_dest.receiver]
+  }
+
+  loki.process "suricata_dest" {
+    stage.json {
+      expressions = {
+        event_type = "event_type",
+        src_ip     = "src_ip",
+        dest_ip    = "dest_ip",
+      }
+    }
+
+    stage.regex {
+      source = "dest_ip"
+      expression = "^(?P<dest_geoip_skip>(?:10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.|100\\.(?:6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[0-1][0-9]|12[0-7])\\.|22[4-9]\\.|23[0-9]\\.|0\\.0\\.0\\.0$|::1$|fe80:|fc|fd|ff|2001:db8:|__LOCAL_IPV6_PREFIX__:))"
+    }
+
+    stage.template {
+      source = "dest_geoip_run"
+      template = "{{ if .dest_geoip_skip }}false{{ else }}true{{ end }}"
+    }
+
+    stage.labels {
+      values = {
+        dest_geoip_run = "",
+      }
+    }
+
+    stage.match {
+      selector = "{dest_geoip_run=\"true\"}"
+
+      stage.geoip {
+        source  = "dest_ip"
+        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
+        db_type = "country"
+      }
+
+      stage.labels {
+        values = {
+          dest_country = "geoip_country_code",
+        }
+      }
+    }
+
+    stage.label_drop {
+      values = ["dest_geoip_run"]
+    }
+
+    forward_to = [loki.write.remote_loki.receiver]
+  }
+
+  discovery.docker "goflow2_containers" {
+    host = "unix:///var/run/docker.sock"
+    refresh_interval = "60s"
+  }
+
+  discovery.relabel "goflow2_relabel" {
+    targets = discovery.docker.goflow2_containers.targets
+
+    rule {
+      source_labels = ["__meta_docker_container_name"]
+      regex = ".*goflow2.*"
+      action = "keep"
+    }
+
+    rule {
+      source_labels = ["__meta_docker_container_name"]
+      regex = "/(.*)"
+      action = "replace"
+      target_label = "container_name"
+    }
+
+    rule {
+      target_label = "job"
+      replacement = "ipfix"
+    }
+  }
+
+  loki.source.docker "goflow2_logs" {
+    targets = discovery.relabel.goflow2_relabel.output
+    host = "unix:///var/run/docker.sock"
+    labels = {
+      app = "goflow2",
+      host = "docker.home.arpa",
+    }
+
+    forward_to = [loki.process.ipfix_src.receiver]
+  }
+
+  loki.process "ipfix_src" {
+    stage.json {
+      expressions = {
+        src_ip  = "src_addr",
+        dest_ip = "dst_addr",
+        proto   = "proto",
+        packets = "packets",
+        bytes   = "bytes",
+      }
+    }
+
+    stage.regex {
+      source = "src_ip"
+      expression = "^(?P<src_geoip_skip>(?:10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.|100\\.(?:6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[0-1][0-9]|12[0-7])\\.|22[4-9]\\.|23[0-9]\\.|0\\.0\\.0\\.0$|::1$|fe80:|fc|fd|ff|2001:db8:|__LOCAL_IPV6_PREFIX__:))"
+    }
+
+    stage.template {
+      source = "src_geoip_run"
+      template = "{{ if .src_geoip_skip }}false{{ else }}true{{ end }}"
+    }
+
+    stage.labels {
+      values = {
+        src_geoip_run = "",
+      }
+    }
+
+    stage.match {
+      selector = "{src_geoip_run=\"true\"}"
+
+      stage.geoip {
+        source  = "src_ip"
+        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
+        db_type = "country"
+      }
+
+      stage.labels {
+        values = {
+          src_country = "geoip_country_code",
+        }
+      }
+    }
+
+    stage.label_drop {
+      values = ["src_geoip_run"]
+    }
+
+    forward_to = [loki.process.ipfix_dest.receiver]
+  }
+
+  loki.process "ipfix_dest" {
+    stage.json {
+      expressions = {
+        src_ip  = "src_addr",
+        dest_ip = "dst_addr",
+        proto   = "proto",
+        packets = "packets",
+        bytes   = "bytes",
+      }
+    }
+
+    stage.regex {
+      source = "dest_ip"
+      expression = "^(?P<dest_geoip_skip>(?:10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.|100\\.(?:6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[0-1][0-9]|12[0-7])\\.|22[4-9]\\.|23[0-9]\\.|0\\.0\\.0\\.0$|::1$|fe80:|fc|fd|ff|2001:db8:|__LOCAL_IPV6_PREFIX__:))"
+    }
+
+    stage.template {
+      source = "dest_geoip_run"
+      template = "{{ if .dest_geoip_skip }}false{{ else }}true{{ end }}"
+    }
+
+    stage.labels {
+      values = {
+        dest_geoip_run = "",
+      }
+    }
+
+    stage.match {
+      selector = "{dest_geoip_run=\"true\"}"
+
+      stage.geoip {
+        source  = "dest_ip"
+        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
+        db_type = "country"
+      }
+
+      stage.labels {
+        values = {
+          dest_country = "geoip_country_code",
+        }
+      }
+    }
+
+    stage.label_drop {
+      values = ["dest_geoip_run"]
+    }
+
+    forward_to = [loki.write.remote_loki.receiver]
+  }
+
 puppet_configuration::settings:
   autosign:
     section: server
