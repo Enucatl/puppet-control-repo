@@ -50,19 +50,38 @@ def wait_for_port(host, port, timeout_secs, sleep_interval=2):
 @click.option(
     "--broadcast", default="10.0.0.255", help="Subnet broadcast address for WoL"
 )
-@click.option("--vm-id", default=None, type=int, help="ID of the Proxmox VM to start (omit to skip)")
-@click.option("--ct-id", default=None, type=int, help="ID of the Proxmox LXC container to start (omit to skip)")
-@click.option("--shutdown-delay", default=0, help="Schedule shutdown N minutes after boot (0 = no shutdown)")
-def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, shutdown_delay):
+@click.option(
+    "--vm-id",
+    default=None,
+    type=int,
+    help="ID of the Proxmox VM to start (omit to skip)",
+)
+@click.option(
+    "--ct-id",
+    default=None,
+    type=int,
+    help="ID of the Proxmox LXC container to start (omit to skip)",
+)
+@click.option(
+    "--shutdown-delay",
+    default=0,
+    help="Schedule shutdown N minutes after boot (0 = no shutdown)",
+)
+def main(
+    mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, shutdown_delay
+):
     """
     Automates waking a Proxmox server, unlocking the ZFS root via Dropbear,
     and optionally starting a VM or LXC container.
     """
 
     # 0. Check if server is already on
-    already_on = subprocess.call(
-        f"nc -z -w 2 {proxmox_host} 22", shell=True, stderr=subprocess.DEVNULL
-    ) == 0
+    already_on = (
+        subprocess.call(
+            f"nc -z -w 2 {proxmox_host} 22", shell=True, stderr=subprocess.DEVNULL
+        )
+        == 0
+    )
     if already_on:
         click.echo("[+] Server is already running. Skipping wake sequence.")
         return
@@ -75,7 +94,9 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, s
     click.echo("[-] Retrieving password from Vault...")
     try:
         server_pass_bytes = subprocess.check_output(
-            "vault kv get -field=proxmox-cortex kv/puppet", shell=True, env=vault_env,
+            "vault kv get -field=proxmox-cortex kv/puppet",
+            shell=True,
+            env=vault_env,
             stderr=subprocess.DEVNULL,
         )
         server_pass = server_pass_bytes.decode("utf-8").strip()
@@ -84,7 +105,10 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, s
         try:
             token_bytes = subprocess.check_output(
                 [
-                    "vault", "login", "-method=cert", "-format=json",
+                    "vault",
+                    "login",
+                    "-method=cert",
+                    "-format=json",
                     "-client-cert=/etc/puppetlabs/puppet/ssl/certs/docker.home.arpa.pem",
                     "-client-key=/etc/puppetlabs/puppet/ssl/private_keys/docker.home.arpa.pem",
                 ],
@@ -97,11 +121,15 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, s
             sys.exit(1)
         try:
             server_pass_bytes = subprocess.check_output(
-                "vault kv get -field=proxmox-cortex kv/puppet", shell=True, env=vault_env,
+                "vault kv get -field=proxmox-cortex kv/puppet",
+                shell=True,
+                env=vault_env,
             )
             server_pass = server_pass_bytes.decode("utf-8").strip()
         except subprocess.CalledProcessError:
-            click.echo("[!] Error: Could not retrieve password from Vault. Exiting.", err=True)
+            click.echo(
+                "[!] Error: Could not retrieve password from Vault. Exiting.", err=True
+            )
             sys.exit(1)
 
     if not server_pass:
@@ -180,7 +208,9 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, s
     if vm_id is not None:
         click.echo(f"[+] Proxmox Host is up. Starting VM {vm_id}...")
         try:
-            subprocess.check_call(f"ssh '{proxmox_host}' 'qm start {vm_id}'", shell=True)
+            subprocess.check_call(
+                f"ssh '{proxmox_host}' 'qm start {vm_id}'", shell=True
+            )
         except subprocess.CalledProcessError:
             click.echo("[!] Failed to start VM.", err=True)
             sys.exit(1)
@@ -188,7 +218,9 @@ def main(mac, dropbear_host, main_host, proxmox_host, broadcast, vm_id, ct_id, s
     if ct_id is not None:
         click.echo(f"[+] Proxmox Host is up. Starting container {ct_id}...")
         try:
-            subprocess.check_call(f"ssh '{proxmox_host}' 'pct start {ct_id}'", shell=True)
+            subprocess.check_call(
+                f"ssh '{proxmox_host}' 'pct start {ct_id}'", shell=True
+            )
         except subprocess.CalledProcessError:
             click.echo("[!] Failed to start container.", err=True)
             sys.exit(1)
