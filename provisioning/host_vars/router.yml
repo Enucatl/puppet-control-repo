@@ -94,6 +94,7 @@ dhcp_domain: "home.arpa"
 alloy_image: "docker.io/grafana/alloy:latest"
 alloy_data_path: "/config/containers/alloy"
 loki_url: "https://loki.docker.home.arpa/loki/api/v1/push"
+central_alloy_url: "http://alloy.docker.home.arpa:12345/loki/api/v1/push"
 
 # DHCP ranges (.100-.200 on each subnet)
 lan_dhcp_start: "10.0.0.100"

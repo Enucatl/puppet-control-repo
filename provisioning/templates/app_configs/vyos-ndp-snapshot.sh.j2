@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+log_dir="/var/log/vyos-ndp"
+log_file="${log_dir}/vyos-ndp.jsonl"
+
+json_escape() {
+    local value="${1:-}"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    printf '%s' "$value"
+}
+
+mkdir -p "$log_dir"
+
+while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+
+    read -r -a fields <<<"$line"
+    ip_addr="${fields[0]}"
+    iface=""
+    lladdr=""
+    state=""
+    router="false"
+
+    idx=1
+    while [[ "${fields[$idx]+set}" == "set" ]]; do
+        token="${fields[$idx]}"
+        case "$token" in
+            dev)
+                ((idx++))
+                iface="${fields[$idx]:-}"
+                ;;
+            lladdr)
+                ((idx++))
+                lladdr="${fields[$idx]:-}"
+                ;;
+            router)
+                router="true"
+                ;;
+            *)
+                state="$token"
+                ;;
+        esac
+        ((idx++))
+    done
+
+    timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    json="$(printf '{"timestamp":"%s","host":"router.{{ dhcp_domain }}","source":"vyos-ndp","interface":"%s","ip":"%s","lladdr":"%s","state":"%s","router":%s}\n' \
+        "$(json_escape "$timestamp")" \
+        "$(json_escape "$iface")" \
+        "$(json_escape "$ip_addr")" \
+        "$(json_escape "$lladdr")" \
+        "$(json_escape "$state")" \
+        "$router")"
+    printf '%s' "$json" >> "$log_file"
+done < <(ip -6 neigh show)

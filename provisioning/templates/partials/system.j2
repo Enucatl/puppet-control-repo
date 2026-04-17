@@ -5,12 +5,29 @@ set system login operator-group default command-policy allow '*'
 set system login user vyos authentication public-keys user@ansible key AAAAC3NzaC1lZDI1NTE5AAAAIEot3u2cV0DaYXoTiFLyCQkEGixSVZhdzddnhbRtaPu/
 set system login user vyos authentication public-keys user@ansible type ssh-ed25519
 set system name-server {{ vyos_lan_ip.split('/')[0] }}
+set system static-host-mapping host-name alloy.docker.home.arpa inet {{ docker_node_ip }}
 set system static-host-mapping host-name loki.docker.home.arpa inet {{ docker_node_ip }}
 set system option reboot-on-upgrade-failure 5
 set system syslog local facility all level info
 set system syslog local facility local7 level debug
+set system flow-accounting interface {{ wan_interface }}
+set system flow-accounting interface {{ lan_interface }}
+set system flow-accounting interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
+set system flow-accounting interface {{ lan_interface }}.{{ iot_vlan }}
+set system flow-accounting interface {{ lan_interface }}.{{ guest_vlan }}
+set system flow-accounting interface {{ wg_interface }}
+set system flow-accounting disable-imt
+set system flow-accounting netflow version 10
+set system flow-accounting netflow server {{ docker_node_ip }} port 2055
+set system flow-accounting netflow source-ip {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+set system flow-accounting netflow timeout expiry-interval 60
 set system task-scheduler task rotate-suricata-logs crontab-spec '0 3 * * *'
 set system task-scheduler task rotate-suricata-logs executable arguments /config/logrotate.d/suricata
 set system task-scheduler task rotate-suricata-logs executable path /usr/sbin/logrotate
+set system task-scheduler task rotate-vyos-ndp-logs crontab-spec '15 3 * * *'
+set system task-scheduler task rotate-vyos-ndp-logs executable arguments /config/logrotate.d/vyos-ndp
+set system task-scheduler task rotate-vyos-ndp-logs executable path /usr/sbin/logrotate
+set system task-scheduler task record-vyos-ndp crontab-spec '*/5 * * * *'
+set system task-scheduler task record-vyos-ndp executable path /config/scripts/vyos-ndp-snapshot.sh
 set system task-scheduler task update-ids-rules crontab-spec '0 2 * * *'
 set system task-scheduler task update-ids-rules executable path /config/scripts/suricata-update.sh
