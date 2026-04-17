@@ -105,6 +105,120 @@ Direct dependencies go in `Puppetfile-without-deps`. To resolve and regenerate t
 generate-puppetfile -p Puppetfile-without-deps
 ```
 
+## Router Observability
+
+Router observability is split between VyOS, the Docker host, and Loki.
+
+- VyOS runs local Alloy as the edge collector.
+- DHCP, DNS, and IPv6 NDP identity streams are shipped directly from VyOS Alloy to Loki.
+- Suricata remains limited to IoT and Guest VLANs.
+- Suricata EVE is tailed by VyOS Alloy, sent to the central Alloy receiver on `docker.home.arpa`, enriched there, and then written once to Loki.
+- VyOS exports unsampled IPFIX to `docker.home.arpa`.
+- GoFlow2 runs from [docker/docker-compose.yml](/opt/docker/puppet-control-repo/docker/docker-compose.yml), receives IPFIX on UDP/2055, and writes decoded flow JSON to stdout. It does not perform GeoIP enrichment.
+- Docker-host Alloy scrapes GoFlow2 container logs, enriches IPFIX records, and writes them to Loki.
+
+Stable Loki jobs:
+
+- `job="dnsmasq"`
+- `job="adguard"`
+- `job="vyos-ndp"`
+- `job="suricata"`
+- `job="ipfix"`
+
+### Identity Logs
+
+`dnsmasq` DHCP logging and AdGuard query logging remain collected on the router and shipped directly to Loki.
+
+IPv6 neighbor discovery is captured by a VyOS task that runs `/config/scripts/vyos-ndp-snapshot.sh`. The script writes newline-delimited JSON to `/var/log/vyos-ndp/vyos-ndp.jsonl`; Alloy tails this as line-oriented input. The NDP log has a persistent logrotate config under `/config/logrotate.d`.
+
+Useful verification:
+
+```bash
+sudo /config/scripts/vyos-ndp-snapshot.sh
+wc -l /var/log/vyos-ndp/vyos-ndp.jsonl
+tail -n 2 /var/log/vyos-ndp/vyos-ndp.jsonl
+```
+
+Then query Loki:
+
+```logql
+{job="vyos-ndp"}
+```
+
+### GeoIP Enrichment
+
+GeoIP enrichment is centralized on `docker.home.arpa`.
+
+- `geoipupdate` is installed on the Docker host, not in a container.
+- MaxMind credentials come from the existing Vault-backed Puppet values:
+  - `profile::docker_host::maxmind_account_id`
+  - `profile::docker_host::maxmind_license_key`
+- If either secret is missing, Puppet suppresses the GeoIP updater and the central Alloy enrichment config.
+- The MaxMind City database is stored under `/var/lib/geoip`.
+- Puppet runs one initial `geoipupdate` before Alloy restarts and keeps the database fresh with a weekly systemd timer.
+
+The enrichment boundary is Alloy, not GoFlow2. Country codes are Loki labels because they are low-cardinality and useful for filtering. City-level fields are Loki structured metadata, not labels and not JSON-body rewrites. That keeps the original Suricata and IPFIX JSON bodies intact while exposing city, continent, latitude, longitude, postal code, timezone, and subdivision fields in Grafana and LogQL result fields.
+
+GeoIP lookup skips private, multicast, loopback, link-local, documentation, ULA, and the locally delegated IPv6 prefix.
+
+Useful query patterns:
+
+```logql
+{job="ipfix", dest_country="NL"} | dest_geoip_city_name="Amersfoort"
+```
+
+```logql
+{job="suricata"} | json | event_type="alert"
+```
+
+Avoid broad metadata filters without an indexed stream selector. Start with labels such as `job`, `host`, `src_country`, or `dest_country`, then filter on structured metadata.
+
+### IPFIX Volume Checks
+
+Unsampled IPFIX is currently enabled so real volume can be measured before introducing sampling.
+
+Measure event rate in Loki:
+
+```logql
+sum(rate({job="ipfix"}[5m]))
+```
+
+Measure daily count:
+
+```logql
+sum(count_over_time({job="ipfix"}[24h]))
+```
+
+Measure Loki disk growth on `docker.home.arpa`:
+
+```bash
+docker volume inspect grafana-loki_loki_data
+sudo du -sh /var/lib/docker/100000.100000/volumes/grafana-loki_loki_data/_data
+```
+
+Check again roughly 24 hours later. That delta is the useful signal for whether unsampled IPFIX is sustainable with current retention.
+
+During larger transfers or speed tests, watch:
+
+- VyOS CPU and interface drops.
+- GoFlow2 CPU and memory.
+- Docker-host Alloy CPU and memory.
+- Loki ingest, disk growth, and query responsiveness.
+
+Introduce IPFIX sampling only if the 24-hour volume, disk growth, query latency, or router/resource metrics justify it.
+
+### Relevant Files
+
+- [data/nodes/docker.yaml](/opt/docker/puppet-control-repo/data/nodes/docker.yaml)
+- [docker/docker-compose.yml](/opt/docker/puppet-control-repo/docker/docker-compose.yml)
+- [modules/profile/manifests/docker_host.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/docker_host.pp)
+- [modules/profile/templates/GeoIP.conf.epp](/opt/docker/puppet-control-repo/modules/profile/templates/GeoIP.conf.epp)
+- [modules/profile/templates/alloy.config.epp](/opt/docker/puppet-control-repo/modules/profile/templates/alloy.config.epp)
+- [provisioning/templates/partials/system.j2](/opt/docker/puppet-control-repo/provisioning/templates/partials/system.j2)
+- [provisioning/templates/app_configs/alloy-vyos.alloy.j2](/opt/docker/puppet-control-repo/provisioning/templates/app_configs/alloy-vyos.alloy.j2)
+- [provisioning/templates/app_configs/vyos-ndp-snapshot.sh.j2](/opt/docker/puppet-control-repo/provisioning/templates/app_configs/vyos-ndp-snapshot.sh.j2)
+- [provisioning/templates/app_configs/vyos-ndp-logrotate.j2](/opt/docker/puppet-control-repo/provisioning/templates/app_configs/vyos-ndp-logrotate.j2)
+
 ## Key Vault Bootstrap Scripts (`docker/vault/scripts/`)
 
 Numbered scripts run once to set up Vault and surrounding infrastructure:
