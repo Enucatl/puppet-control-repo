@@ -49,7 +49,7 @@ The router observability pipeline is partially implemented and wired into the re
 - The central enrichment config is also suppressed if either MaxMind secret is missing, keeping Alloy from starting with a missing GeoIP database dependency.
 - The database is stored at `/var/lib/geoip`.
 - Puppet runs one initial `geoipupdate` before Alloy is restarted, then keeps the database fresh with a weekly timer.
-- The pipeline only labels country results. City and ASN are intentionally out of scope for now.
+- The pipeline keeps country codes as labels for low-cardinality filtering and packs city-level GeoIP fields into the stored log line.
 - Private, multicast, loopback, link-local, documentation, ULA, and the locally delegated IPv6 prefix are skipped before GeoIP lookup.
 
 ## Important Files
@@ -71,4 +71,4 @@ The router observability pipeline is partially implemented and wired into the re
 - Apply the changes on the actual VyOS and Docker host.
 - Verify the Loki queries against live data.
 - Run the unsampled IPFIX benchmark under real traffic.
-- Decide later whether any additional GeoIP fields are worth adding.
+- Decide later whether ASN should also be added to the stored record.
