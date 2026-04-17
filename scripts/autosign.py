@@ -55,7 +55,7 @@ def main(certname, input_file, vault_addr, policy, verify, domain):
     """
 
     domain_pattern = re.compile(
-        rf'^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.(dev\.)?{re.escape(domain)}$'
+        rf"^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.(dev\.)?{re.escape(domain)}$"
     )
     if not domain_pattern.match(certname):
         raise ValueError(
