@@ -49,7 +49,7 @@ The router observability pipeline is partially implemented and wired into the re
 - The central enrichment config is also suppressed if either MaxMind secret is missing, keeping Alloy from starting with a missing GeoIP database dependency.
 - The database is stored at `/var/lib/geoip`.
 - Puppet runs one initial `geoipupdate` before Alloy is restarted, then keeps the database fresh with a weekly timer.
-- The pipeline keeps country codes as labels for low-cardinality filtering and appends prefixed city-level GeoIP fields to the stored JSON log line.
+- The pipeline keeps country codes as labels for low-cardinality filtering and attaches prefixed city-level GeoIP fields as Loki structured metadata.
 - Private, multicast, loopback, link-local, documentation, ULA, and the locally delegated IPv6 prefix are skipped before GeoIP lookup.
 
 ## Important Files

@@ -231,59 +231,20 @@ profile::alloy::extra_config: |
         }
       }
 
-      stage.template {
-        source   = "src_geoip_city_name"
-        template = "{{ .geoip_city_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_country_name"
-        template = "{{ .geoip_country_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_country_code"
-        template = "{{ .geoip_country_code }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_continent_name"
-        template = "{{ .geoip_continent_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_continent_code"
-        template = "{{ .geoip_continent_code }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_location_latitude"
-        template = "{{ .geoip_location_latitude }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_location_longitude"
-        template = "{{ .geoip_location_longitude }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_postal_code"
-        template = "{{ .geoip_postal_code }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_timezone"
-        template = "{{ .geoip_timezone }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_subdivision_name"
-        template = "{{ .geoip_subdivision_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_subdivision_code"
-        template = "{{ .geoip_subdivision_code }}"
+      stage.structured_metadata {
+        values = {
+          src_geoip_city_name          = "geoip_city_name",
+          src_geoip_country_name       = "geoip_country_name",
+          src_geoip_country_code       = "geoip_country_code",
+          src_geoip_continent_name     = "geoip_continent_name",
+          src_geoip_continent_code     = "geoip_continent_code",
+          src_geoip_location_latitude  = "geoip_location_latitude",
+          src_geoip_location_longitude = "geoip_location_longitude",
+          src_geoip_postal_code        = "geoip_postal_code",
+          src_geoip_timezone           = "geoip_timezone",
+          src_geoip_subdivision_name   = "geoip_subdivision_name",
+          src_geoip_subdivision_code   = "geoip_subdivision_code",
+        }
       }
     }
 
@@ -322,73 +283,25 @@ profile::alloy::extra_config: |
         }
       }
 
-      stage.template {
-        source   = "dest_geoip_city_name"
-        template = "{{ .geoip_city_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_country_name"
-        template = "{{ .geoip_country_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_country_code"
-        template = "{{ .geoip_country_code }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_continent_name"
-        template = "{{ .geoip_continent_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_continent_code"
-        template = "{{ .geoip_continent_code }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_location_latitude"
-        template = "{{ .geoip_location_latitude }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_location_longitude"
-        template = "{{ .geoip_location_longitude }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_postal_code"
-        template = "{{ .geoip_postal_code }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_timezone"
-        template = "{{ .geoip_timezone }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_subdivision_name"
-        template = "{{ .geoip_subdivision_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_subdivision_code"
-        template = "{{ .geoip_subdivision_code }}"
+      stage.structured_metadata {
+        values = {
+          dest_geoip_city_name          = "geoip_city_name",
+          dest_geoip_country_name       = "geoip_country_name",
+          dest_geoip_country_code       = "geoip_country_code",
+          dest_geoip_continent_name     = "geoip_continent_name",
+          dest_geoip_continent_code     = "geoip_continent_code",
+          dest_geoip_location_latitude  = "geoip_location_latitude",
+          dest_geoip_location_longitude = "geoip_location_longitude",
+          dest_geoip_postal_code        = "geoip_postal_code",
+          dest_geoip_timezone           = "geoip_timezone",
+          dest_geoip_subdivision_name   = "geoip_subdivision_name",
+          dest_geoip_subdivision_code   = "geoip_subdivision_code",
+        }
       }
     }
 
     stage.label_drop {
       values = ["dest_geoip_run"]
-    }
-
-    stage.template {
-      source = "enriched_line"
-      template = `{{ TrimSuffix (TrimSpace .Entry) "}" }}{{ if .src_geoip_city_name }},"src_geoip_city_name":{{ printf "%q" .src_geoip_city_name }}{{ end }}{{ if .src_geoip_country_name }},"src_geoip_country_name":{{ printf "%q" .src_geoip_country_name }}{{ end }}{{ if .src_geoip_country_code }},"src_geoip_country_code":{{ printf "%q" .src_geoip_country_code }}{{ end }}{{ if .src_geoip_continent_name }},"src_geoip_continent_name":{{ printf "%q" .src_geoip_continent_name }}{{ end }}{{ if .src_geoip_continent_code }},"src_geoip_continent_code":{{ printf "%q" .src_geoip_continent_code }}{{ end }}{{ if .src_geoip_location_latitude }},"src_geoip_location_latitude":{{ printf "%q" .src_geoip_location_latitude }}{{ end }}{{ if .src_geoip_location_longitude }},"src_geoip_location_longitude":{{ printf "%q" .src_geoip_location_longitude }}{{ end }}{{ if .src_geoip_postal_code }},"src_geoip_postal_code":{{ printf "%q" .src_geoip_postal_code }}{{ end }}{{ if .src_geoip_timezone }},"src_geoip_timezone":{{ printf "%q" .src_geoip_timezone }}{{ end }}{{ if .src_geoip_subdivision_name }},"src_geoip_subdivision_name":{{ printf "%q" .src_geoip_subdivision_name }}{{ end }}{{ if .src_geoip_subdivision_code }},"src_geoip_subdivision_code":{{ printf "%q" .src_geoip_subdivision_code }}{{ end }}{{ if .dest_geoip_city_name }},"dest_geoip_city_name":{{ printf "%q" .dest_geoip_city_name }}{{ end }}{{ if .dest_geoip_country_name }},"dest_geoip_country_name":{{ printf "%q" .dest_geoip_country_name }}{{ end }}{{ if .dest_geoip_country_code }},"dest_geoip_country_code":{{ printf "%q" .dest_geoip_country_code }}{{ end }}{{ if .dest_geoip_continent_name }},"dest_geoip_continent_name":{{ printf "%q" .dest_geoip_continent_name }}{{ end }}{{ if .dest_geoip_continent_code }},"dest_geoip_continent_code":{{ printf "%q" .dest_geoip_continent_code }}{{ end }}{{ if .dest_geoip_location_latitude }},"dest_geoip_location_latitude":{{ printf "%q" .dest_geoip_location_latitude }}{{ end }}{{ if .dest_geoip_location_longitude }},"dest_geoip_location_longitude":{{ printf "%q" .dest_geoip_location_longitude }}{{ end }}{{ if .dest_geoip_postal_code }},"dest_geoip_postal_code":{{ printf "%q" .dest_geoip_postal_code }}{{ end }}{{ if .dest_geoip_timezone }},"dest_geoip_timezone":{{ printf "%q" .dest_geoip_timezone }}{{ end }}{{ if .dest_geoip_subdivision_name }},"dest_geoip_subdivision_name":{{ printf "%q" .dest_geoip_subdivision_name }}{{ end }}{{ if .dest_geoip_subdivision_code }},"dest_geoip_subdivision_code":{{ printf "%q" .dest_geoip_subdivision_code }}{{ end }}}`
-    }
-
-    stage.output {
-      source = "enriched_line"
     }
 
     forward_to = [loki.write.remote_loki.receiver]
@@ -474,59 +387,20 @@ profile::alloy::extra_config: |
         }
       }
 
-      stage.template {
-        source   = "src_geoip_city_name"
-        template = "{{ .geoip_city_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_country_name"
-        template = "{{ .geoip_country_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_country_code"
-        template = "{{ .geoip_country_code }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_continent_name"
-        template = "{{ .geoip_continent_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_continent_code"
-        template = "{{ .geoip_continent_code }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_location_latitude"
-        template = "{{ .geoip_location_latitude }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_location_longitude"
-        template = "{{ .geoip_location_longitude }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_postal_code"
-        template = "{{ .geoip_postal_code }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_timezone"
-        template = "{{ .geoip_timezone }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_subdivision_name"
-        template = "{{ .geoip_subdivision_name }}"
-      }
-
-      stage.template {
-        source   = "src_geoip_subdivision_code"
-        template = "{{ .geoip_subdivision_code }}"
+      stage.structured_metadata {
+        values = {
+          src_geoip_city_name          = "geoip_city_name",
+          src_geoip_country_name       = "geoip_country_name",
+          src_geoip_country_code       = "geoip_country_code",
+          src_geoip_continent_name     = "geoip_continent_name",
+          src_geoip_continent_code     = "geoip_continent_code",
+          src_geoip_location_latitude  = "geoip_location_latitude",
+          src_geoip_location_longitude = "geoip_location_longitude",
+          src_geoip_postal_code        = "geoip_postal_code",
+          src_geoip_timezone           = "geoip_timezone",
+          src_geoip_subdivision_name   = "geoip_subdivision_name",
+          src_geoip_subdivision_code   = "geoip_subdivision_code",
+        }
       }
     }
 
@@ -565,73 +439,25 @@ profile::alloy::extra_config: |
         }
       }
 
-      stage.template {
-        source   = "dest_geoip_city_name"
-        template = "{{ .geoip_city_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_country_name"
-        template = "{{ .geoip_country_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_country_code"
-        template = "{{ .geoip_country_code }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_continent_name"
-        template = "{{ .geoip_continent_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_continent_code"
-        template = "{{ .geoip_continent_code }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_location_latitude"
-        template = "{{ .geoip_location_latitude }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_location_longitude"
-        template = "{{ .geoip_location_longitude }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_postal_code"
-        template = "{{ .geoip_postal_code }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_timezone"
-        template = "{{ .geoip_timezone }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_subdivision_name"
-        template = "{{ .geoip_subdivision_name }}"
-      }
-
-      stage.template {
-        source   = "dest_geoip_subdivision_code"
-        template = "{{ .geoip_subdivision_code }}"
+      stage.structured_metadata {
+        values = {
+          dest_geoip_city_name          = "geoip_city_name",
+          dest_geoip_country_name       = "geoip_country_name",
+          dest_geoip_country_code       = "geoip_country_code",
+          dest_geoip_continent_name     = "geoip_continent_name",
+          dest_geoip_continent_code     = "geoip_continent_code",
+          dest_geoip_location_latitude  = "geoip_location_latitude",
+          dest_geoip_location_longitude = "geoip_location_longitude",
+          dest_geoip_postal_code        = "geoip_postal_code",
+          dest_geoip_timezone           = "geoip_timezone",
+          dest_geoip_subdivision_name   = "geoip_subdivision_name",
+          dest_geoip_subdivision_code   = "geoip_subdivision_code",
+        }
       }
     }
 
     stage.label_drop {
       values = ["dest_geoip_run"]
-    }
-
-    stage.template {
-      source = "enriched_line"
-      template = `{{ TrimSuffix (TrimSpace .Entry) "}" }}{{ if .src_geoip_city_name }},"src_geoip_city_name":{{ printf "%q" .src_geoip_city_name }}{{ end }}{{ if .src_geoip_country_name }},"src_geoip_country_name":{{ printf "%q" .src_geoip_country_name }}{{ end }}{{ if .src_geoip_country_code }},"src_geoip_country_code":{{ printf "%q" .src_geoip_country_code }}{{ end }}{{ if .src_geoip_continent_name }},"src_geoip_continent_name":{{ printf "%q" .src_geoip_continent_name }}{{ end }}{{ if .src_geoip_continent_code }},"src_geoip_continent_code":{{ printf "%q" .src_geoip_continent_code }}{{ end }}{{ if .src_geoip_location_latitude }},"src_geoip_location_latitude":{{ printf "%q" .src_geoip_location_latitude }}{{ end }}{{ if .src_geoip_location_longitude }},"src_geoip_location_longitude":{{ printf "%q" .src_geoip_location_longitude }}{{ end }}{{ if .src_geoip_postal_code }},"src_geoip_postal_code":{{ printf "%q" .src_geoip_postal_code }}{{ end }}{{ if .src_geoip_timezone }},"src_geoip_timezone":{{ printf "%q" .src_geoip_timezone }}{{ end }}{{ if .src_geoip_subdivision_name }},"src_geoip_subdivision_name":{{ printf "%q" .src_geoip_subdivision_name }}{{ end }}{{ if .src_geoip_subdivision_code }},"src_geoip_subdivision_code":{{ printf "%q" .src_geoip_subdivision_code }}{{ end }}{{ if .dest_geoip_city_name }},"dest_geoip_city_name":{{ printf "%q" .dest_geoip_city_name }}{{ end }}{{ if .dest_geoip_country_name }},"dest_geoip_country_name":{{ printf "%q" .dest_geoip_country_name }}{{ end }}{{ if .dest_geoip_country_code }},"dest_geoip_country_code":{{ printf "%q" .dest_geoip_country_code }}{{ end }}{{ if .dest_geoip_continent_name }},"dest_geoip_continent_name":{{ printf "%q" .dest_geoip_continent_name }}{{ end }}{{ if .dest_geoip_continent_code }},"dest_geoip_continent_code":{{ printf "%q" .dest_geoip_continent_code }}{{ end }}{{ if .dest_geoip_location_latitude }},"dest_geoip_location_latitude":{{ printf "%q" .dest_geoip_location_latitude }}{{ end }}{{ if .dest_geoip_location_longitude }},"dest_geoip_location_longitude":{{ printf "%q" .dest_geoip_location_longitude }}{{ end }}{{ if .dest_geoip_postal_code }},"dest_geoip_postal_code":{{ printf "%q" .dest_geoip_postal_code }}{{ end }}{{ if .dest_geoip_timezone }},"dest_geoip_timezone":{{ printf "%q" .dest_geoip_timezone }}{{ end }}{{ if .dest_geoip_subdivision_name }},"dest_geoip_subdivision_name":{{ printf "%q" .dest_geoip_subdivision_name }}{{ end }}{{ if .dest_geoip_subdivision_code }},"dest_geoip_subdivision_code":{{ printf "%q" .dest_geoip_subdivision_code }}{{ end }}}`
-    }
-
-    stage.output {
-      source = "enriched_line"
     }
 
     forward_to = [loki.write.remote_loki.receiver]
