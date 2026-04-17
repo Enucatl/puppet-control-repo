@@ -47,7 +47,7 @@ class profile::docker_host (
 
     exec { 'geoipupdate-initial':
       command => '/usr/bin/geoipupdate',
-      creates => '/var/lib/geoip/GeoLite2-Country.mmdb',
+      creates => '/var/lib/geoip/GeoLite2-City.mmdb',
       require => [
         File['/etc/GeoIP.conf'],
         File['/var/lib/geoip'],

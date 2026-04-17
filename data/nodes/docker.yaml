@@ -221,14 +221,30 @@ profile::alloy::extra_config: |
 
       stage.geoip {
         source  = "src_ip"
-        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
-        db_type = "country"
+        db      = "/var/lib/geoip/GeoLite2-City.mmdb"
+        db_type = "city"
       }
 
       stage.labels {
         values = {
           src_country = "geoip_country_code",
         }
+      }
+
+      stage.pack {
+        labels = [
+          "geoip_city_name",
+          "geoip_country_name",
+          "geoip_country_code",
+          "geoip_continent_name",
+          "geoip_continent_code",
+          "geoip_location_latitude",
+          "geoip_location_longitude",
+          "geoip_postal_code",
+          "geoip_timezone",
+          "geoip_subdivision_name",
+          "geoip_subdivision_code",
+        ]
       }
     }
 
@@ -269,14 +285,30 @@ profile::alloy::extra_config: |
 
       stage.geoip {
         source  = "dest_ip"
-        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
-        db_type = "country"
+        db      = "/var/lib/geoip/GeoLite2-City.mmdb"
+        db_type = "city"
       }
 
       stage.labels {
         values = {
           dest_country = "geoip_country_code",
         }
+      }
+
+      stage.pack {
+        labels = [
+          "geoip_city_name",
+          "geoip_country_name",
+          "geoip_country_code",
+          "geoip_continent_name",
+          "geoip_continent_code",
+          "geoip_location_latitude",
+          "geoip_location_longitude",
+          "geoip_postal_code",
+          "geoip_timezone",
+          "geoip_subdivision_name",
+          "geoip_subdivision_code",
+        ]
       }
     }
 
@@ -357,14 +389,30 @@ profile::alloy::extra_config: |
 
       stage.geoip {
         source  = "src_ip"
-        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
-        db_type = "country"
+        db      = "/var/lib/geoip/GeoLite2-City.mmdb"
+        db_type = "city"
       }
 
       stage.labels {
         values = {
           src_country = "geoip_country_code",
         }
+      }
+
+      stage.pack {
+        labels = [
+          "geoip_city_name",
+          "geoip_country_name",
+          "geoip_country_code",
+          "geoip_continent_name",
+          "geoip_continent_code",
+          "geoip_location_latitude",
+          "geoip_location_longitude",
+          "geoip_postal_code",
+          "geoip_timezone",
+          "geoip_subdivision_name",
+          "geoip_subdivision_code",
+        ]
       }
     }
 
@@ -407,14 +455,30 @@ profile::alloy::extra_config: |
 
       stage.geoip {
         source  = "dest_ip"
-        db      = "/var/lib/geoip/GeoLite2-Country.mmdb"
-        db_type = "country"
+        db      = "/var/lib/geoip/GeoLite2-City.mmdb"
+        db_type = "city"
       }
 
       stage.labels {
         values = {
           dest_country = "geoip_country_code",
         }
+      }
+
+      stage.pack {
+        labels = [
+          "geoip_city_name",
+          "geoip_country_name",
+          "geoip_country_code",
+          "geoip_continent_name",
+          "geoip_continent_code",
+          "geoip_location_latitude",
+          "geoip_location_longitude",
+          "geoip_postal_code",
+          "geoip_timezone",
+          "geoip_subdivision_name",
+          "geoip_subdivision_code",
+        ]
       }
     }
 

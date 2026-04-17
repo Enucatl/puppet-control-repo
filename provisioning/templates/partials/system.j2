@@ -10,17 +10,16 @@ set system static-host-mapping host-name loki.docker.home.arpa inet {{ docker_no
 set system option reboot-on-upgrade-failure 5
 set system syslog local facility all level info
 set system syslog local facility local7 level debug
-set system flow-accounting interface {{ wan_interface }}
-set system flow-accounting interface {{ lan_interface }}
-set system flow-accounting interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
-set system flow-accounting interface {{ lan_interface }}.{{ iot_vlan }}
-set system flow-accounting interface {{ lan_interface }}.{{ guest_vlan }}
-set system flow-accounting interface {{ wg_interface }}
-set system flow-accounting disable-imt
+set system flow-accounting netflow interface {{ wan_interface }}
+set system flow-accounting netflow interface {{ lan_interface }}
+set system flow-accounting netflow interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
+set system flow-accounting netflow interface {{ lan_interface }}.{{ iot_vlan }}
+set system flow-accounting netflow interface {{ lan_interface }}.{{ guest_vlan }}
+set system flow-accounting netflow interface {{ wg_interface }}
 set system flow-accounting netflow version 10
 set system flow-accounting netflow server {{ docker_node_ip }} port 2055
-set system flow-accounting netflow source-ip {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
-set system flow-accounting netflow timeout expiry-interval 60
+set system flow-accounting netflow server {{ docker_node_ip }} source-address {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+set system flow-accounting netflow inactive-timeout 60
 set system task-scheduler task rotate-suricata-logs crontab-spec '0 3 * * *'
 set system task-scheduler task rotate-suricata-logs executable arguments /config/logrotate.d/suricata
 set system task-scheduler task rotate-suricata-logs executable path /usr/sbin/logrotate

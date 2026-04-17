@@ -32,8 +32,8 @@ Build a Loki-based evidence trail for router identity, DNS, IDS, and flow activi
   - Central Alloy receives via `loki.source.api`, parses EVE JSON, enriches public `src_ip` and `dest_ip` with GeoIP, then writes once to Loki.
   - Bind the central receiver to the Docker node LAN address rather than all interfaces.
   - Keep an edge WAL on the VyOS-to-central writer so central collector outages do not immediately discard Suricata EVE.
-  - Use low-cardinality labels only: `job`, `host`, `event_type`, and country codes. Keep IPs, ports, signatures, hostnames, ASN, and city out of labels.
-  - The GeoIP database is refreshed on `docker.home.arpa` by host-managed `geoipupdate` on a weekly timer, writing to `/var/lib/geoip/GeoLite2-Country.mmdb`.
+  - Use low-cardinality labels only: `job`, `host`, `event_type`, and country codes. Keep IPs, ports, signatures, hostnames, ASN, and city out of labels, but pack city-level GeoIP details into the stored log line.
+  - The GeoIP database is refreshed on `docker.home.arpa` by host-managed `geoipupdate` on a weekly timer, writing to `/var/lib/geoip/GeoLite2-City.mmdb`.
   - Suppress GeoIP enrichment config until MaxMind credentials are present and run one initial update before restarting Alloy.
 
 - **IPFIX flows**

@@ -47,12 +47,12 @@ while IFS= read -r line; do
     done
 
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    json="$(printf '{"timestamp":"%s","host":"router.{{ dhcp_domain }}","source":"vyos-ndp","interface":"%s","ip":"%s","lladdr":"%s","state":"%s","router":%s}\n' \
+    json="$(printf '{"timestamp":"%s","host":"router.{{ dhcp_domain }}","source":"vyos-ndp","interface":"%s","ip":"%s","lladdr":"%s","state":"%s","router":%s}' \
         "$(json_escape "$timestamp")" \
         "$(json_escape "$iface")" \
         "$(json_escape "$ip_addr")" \
         "$(json_escape "$lladdr")" \
         "$(json_escape "$state")" \
         "$router")"
-    printf '%s' "$json" >> "$log_file"
+    printf '%s\n' "$json" >> "$log_file"
 done < <(ip -6 neigh show)
