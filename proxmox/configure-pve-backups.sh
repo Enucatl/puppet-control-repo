@@ -1,5 +1,5 @@
 #!/bin/bash
-# Add Proxmox Backup Server storage and configure a daily backup job on a PVE cluster.
+# Add Proxmox Backup Server storage and configure a weekly backup job on a PVE cluster.
 # Run on any node in the target PVE cluster.
 #
 # Reads PBS connection details from .env (PBS_SERVER, PBS_DATASTORE, PBS_USER,
@@ -27,7 +27,7 @@ usage() {
     echo "  -n  PBS namespace to store this cluster's backups in (e.g. chronicle, proxmox-cortex)"
     echo "  -S  Storage ID to register in PVE (default: pbs-<namespace>)"
     echo "  -j  Backup job ID (default: pbs-<namespace>-weekly)"
-    echo "  -s  Backup schedule in systemd timer format (default: mon 01:00)"
+    echo "  -s  Backup schedule in PVE format, using the server timezone (default: mon 01:00)"
     echo "  -r  Retention policy (default: keep-monthly=6)"
     echo ""
     echo "Required .env vars: PBS_SERVER, PBS_DATASTORE, PBS_USER, PBS_TOKEN_NAME,"
