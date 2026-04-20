@@ -177,6 +177,11 @@ profile::common::posix_acls:
     permission:
       - "user:101000:r--"
       - "mask::r--"
+  "/var/lib/docker/100000.100000/volumes/airflow_airflow-venv-volume/_data":
+    action: set
+    permission:
+      - "user:150000:rwx"
+      - "mask::rwx"
 
 profile::alloy::extra_config: |
   // Central log enrichment for router-derived Suricata and flow data.
