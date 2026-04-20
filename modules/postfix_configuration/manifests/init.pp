@@ -9,14 +9,16 @@
 # of transforming or normalizing email addresses to a consistent format.
 #
 # recipient: send all emails to a fixed address, specified in hiera
-# sender: user a fake username built from the SMTP username + hostname, using
-# the gmail + phantom address capability
+# sender: build a fake Gmail phantom address from the SMTP username local part
+# plus the sender hostname, so auth and aliasing can use different shapes
 #
 # Parameters: None
 #
 # Example Usage: class { 'postfix_configuration': }
 #
 class postfix_configuration {
+  $smtp_sasl_username       = lookup('smtp_sasl_username')
+  $smtp_sasl_username_local = split($smtp_sasl_username, '@')[0]
 
   # include - Include the postfix class to ensure Postfix is installed and configured.
   #
@@ -33,7 +35,7 @@ class postfix_configuration {
   #   - require: Specifies dependencies that must be met before applying the hash file.
   #
   postfix::hash { '/etc/postfix/sasl_passwd':
-    content => "${lookup('postfix::relayhost')} ${lookup('smtp_sasl_username')}:${lookup('smtp_sasl_password')}",
+    content => "${lookup('postfix::relayhost')} ${smtp_sasl_username}:${lookup('smtp_sasl_password')}",
     require => Class['postfix'],
   }
 
@@ -54,6 +56,6 @@ class postfix_configuration {
   #   - content: The content of the conffile specifying sender canonicalization rules.
   #
   postfix::conffile { 'sender_canonical':
-    content => "/^(.*)@(.*).(home.arpa)/    ${lookup('smtp_sasl_username')}+\${1}.\${2}.\${3}@gmail.com",
+    content => "/^(.*)@(.+\\.home\\.arpa)$/    ${smtp_sasl_username_local}+\${1}.\${2}@gmail.com",
   }
 }

@@ -23,10 +23,9 @@ for incoming emails. Canonicalization, in this context, refers to the process
 of transforming or normalizing email addresses to a consistent format.
 
 recipient: send all emails to a fixed address, specified in hiera
-sender: user a fake username built from the SMTP username + hostname, using
-the gmail + phantom address capability
+sender: build a fake Gmail phantom address from the SMTP username local part
+plus the sender hostname, so auth and aliasing can use different shapes
 
 Parameters: None
 
 Example Usage: class { 'postfix_configuration': }
-
