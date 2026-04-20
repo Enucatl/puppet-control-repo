@@ -72,7 +72,7 @@ profile::common::cronjobs:
     hour: 1
     weekday: 'Monday'
     user: root
-    command: '/opt/docker/paperless-ngx/scripts/backup.sh 2>&1'
+    command: '/opt/docker/paperless-ai/backup.sh 2>&1'
 
 profile::common::vault_certs_default_location: /opt/docker/traefik/data/certs
 profile::common::vault_certs_defaults:
