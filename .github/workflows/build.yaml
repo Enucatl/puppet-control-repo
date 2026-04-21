@@ -1,0 +1,29 @@
+name: Build and Push Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build.yaml
+      - docker/apt-cacher-ng/**
+  pull_request:
+    paths:
+      - .github/workflows/build.yaml
+      - docker/apt-cacher-ng/**
+
+jobs:
+  docker:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      security-events: write
+    uses: Enucatl/docker-compose-security-baseline/.github/workflows/docker-ci.yml@main
+    with:
+      image_name: ghcr.io/enucatl/apt-cacher-ng
+      context: docker/apt-cacher-ng
+      dockerfile: Dockerfile
+      platforms: linux/amd64
+      push: ${{ github.event_name != 'pull_request' }}
+    secrets: inherit
