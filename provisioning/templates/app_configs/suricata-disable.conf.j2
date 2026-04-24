@@ -15,9 +15,9 @@
 2210029  # SURICATA STREAM ESTABLISHED RST out of window
 2210008  # SURICATA STREAM 3way handshake wrong seq wrong ack (Mobile devices roaming)
 2210010  # SURICATA STREAM 3way handshake SYNACK with wrong ack
-2210030  # SURICATA STREAM FIN invalid ack (TCP offloading / asymmetric routing)
-2210038  # SURICATA STREAM FIN out of window (TCP offloading / asymmetric routing)
-2210046  # SURICATA STREAM SHUTDOWN RST invalid ack (TCP offloading / long-lived conns)
+2210030  # SURICATA STREAM FIN invalid ack: common in noisy network environments; typically a transient state mismatch rather than malicious activity
+2210038  # SURICATA STREAM FIN out of window: common in high-traffic environments and does not represent a security threat
+2210046  # SURICATA STREAM SHUTDOWN RST invalid ack: common TCP stream engine alert in noisy network environments
 
 # --- 2. Smart Home / IoT Broadcast Chatter ---
 # Smart TVs, printers, and media players constantly yell their presence
@@ -34,10 +34,22 @@
 # generating 60+ alerts per failed P2P candidate before the client falls back to relay.
 2011507  # ET INFO Session Traversal Utilities for NAT (STUN Binding Request)
 2016149  # ET INFO Session Traversal Utilities for NAT (STUN Binding Response)
-2033078  # ET INFO STUN Binding Request On Non-Standard High Port (WebRTC ICE candidates)
-2036220  # ET INFO Android Device Connectivity Check (normal captive-portal probe)
+2033078  # ET INFO STUN Binding Request On Non-Standard High Port: routine STUN traffic commonly associated with WebRTC and VoIP applications; expected behavior in modern network environments and does not indicate a security threat
+2036220  # ET INFO Android Device Connectivity Check: standard Android connectivity checks are routine background traffic and do not indicate malicious activity or security incidents
 
-# --- 4. Harmless TLS / Crypto Warnings ---
+# --- 4. Cloud / Protocol Diagnostic Noise ---
+# Report: Monthly Suricata AI Triage (2026-03-03 through 2026-03-31, end exclusive), run_id=manual__2026-04-23T14:25:42.202385+00:00
+2050736  # ET INFO Tencent Cloud Storage Domain in DNS Lookup: routine DNS lookups for Tencent Cloud storage domains are common infrastructure traffic and do not indicate malicious activity in this context
+2052580  # ET INFO DNS Query to Alibaba Cloud CDN Domain: routine DNS queries to Alibaba Cloud CDN are common infrastructure traffic and do not indicate malicious activity in this context
+2052581  # ET INFO Observed Alibaba Cloud CDN Domain in TLS SNI: routine traffic to Alibaba Cloud CDN is common infrastructure and does not indicate malicious activity in this context
+2260002  # SURICATA Applayer Detect protocol only one direction: parser only observed traffic in one direction, which is common in incomplete sessions or specific protocol handshakes and does not represent a security threat
+2260003  # SURICATA Applayer Protocol detection skipped: application layer protocol detection was skipped, which is a common informational message in Suricata when traffic does not match known protocol patterns or is malformed
+
+# --- 5. TCP Session Noise from Broken Links / Lossy Paths ---
+# These stream-engine alerts are common on asymmetric, lossy, or heavily NATed paths.
+2210054  # SURICATA STREAM excessive retransmissions: network congestion or packet loss is common in standard network operations and does not represent a specific security threat requiring individual investigation
+
+# --- 6. Harmless TLS / Crypto Warnings ---
 # Modern browsers and apps frequently negotiate TLS closures abruptly, or use
 # newer QUIC protocols that Suricata sometimes misclassifies.
 2221010  # SURICATA TLS error message warning
