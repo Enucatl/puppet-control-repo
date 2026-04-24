@@ -2,8 +2,6 @@
 
 Common operations performed in this repo with Claude Code.
 
----
-
 ## Add a WireGuard peer and generate their client config
 
 1. Add the peer to `provisioning/host_vars/router.yml` under `wg_peers`:
