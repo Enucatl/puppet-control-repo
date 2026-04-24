@@ -11,9 +11,9 @@ class profile::chronicle_backup (
     source => 'puppet:///modules/profile/chronicle_backup_orchestrator.py',
   }
 
-  exec { "remove ${backup_job_id} schedule":
-    command => "/usr/bin/pvesh set /cluster/backup/${backup_job_id} --delete schedule",
-    onlyif  => "/usr/bin/pvesh get /cluster/backup/${backup_job_id} --output-format json | /bin/grep -q '\"schedule\"'",
+  exec { "disable ${backup_job_id} scheduler":
+    command => "/usr/bin/pvesh set /cluster/backup/${backup_job_id} --enabled 0",
+    onlyif  => "/usr/bin/pvesh get /cluster/backup/${backup_job_id} --output-format json | /usr/bin/jq -e '.enabled != 0'",
     path    => ['/usr/bin', '/bin'],
     before  => Systemd::Unit_file['chronicle-backup.timer'],
   }
