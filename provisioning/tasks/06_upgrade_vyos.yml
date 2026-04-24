@@ -1,0 +1,220 @@
+---
+# Upgrade the router to the latest signed VyOS rolling release.
+# If a new image is installed, reboot first and then run the full deployment
+# sequence again so config, containers, and smoke checks are refreshed.
+
+- name: Define VyOS rolling upgrade constants
+  ansible.builtin.set_fact:
+    vyos_rolling_version_url: "https://raw.githubusercontent.com/vyos/vyos-nightly-build/refs/heads/current/version.json"
+    vyos_minisign_public_key: "RWSIhkR/dkM2DSaBRniv/bbbAf8hmDqdbOEmgXkf1RxRoxzodgKcDyGq"
+  changed_when: false
+
+- name: Discover the latest VyOS rolling build metadata
+  delegate_to: localhost
+  ansible.builtin.uri:
+    url: "{{ vyos_rolling_version_url }}"
+    return_content: true
+  register: vyos_nightly_builds_page
+  changed_when: false
+
+- name: Extract the latest rolling release metadata
+  ansible.builtin.set_fact:
+    vyos_latest_release_tag: "{{ (vyos_nightly_builds_page.content | from_json)[0].version }}"
+    vyos_latest_release_iso_url: "{{ (vyos_nightly_builds_page.content | from_json)[0].url }}"
+  changed_when: false
+
+- name: Derive the latest rolling release filenames
+  ansible.builtin.set_fact:
+    vyos_latest_release_iso: "{{ vyos_latest_release_iso_url | basename }}"
+    vyos_latest_release_sig: "{{ (vyos_latest_release_iso_url | basename) ~ '.minisig' }}"
+    vyos_latest_release_sig_url: "{{ vyos_latest_release_iso_url ~ '.minisig' }}"
+  changed_when: false
+
+- name: Read the running VyOS version
+  vyos.vyos.vyos_command:
+    commands:
+      - show version
+  register: vyos_running_version
+  changed_when: false
+
+- name: Extract the running VyOS version string
+  ansible.builtin.set_fact:
+    vyos_running_release_tag: >-
+      {{ vyos_running_version.stdout[0]
+          | regex_search('Version:\\s+VyOS\\s+.+$')
+          | regex_replace('^Version:\\s+VyOS\\s+', '') }}
+  changed_when: false
+
+- name: Verify the release tags were parsed
+  ansible.builtin.assert:
+    that:
+      - vyos_latest_release_tag | length > 0
+      - vyos_latest_release_iso_url | length > 0
+      - vyos_running_release_tag | length > 0
+    fail_msg: "Failed to parse either the latest rolling release tag or the running VyOS version"
+
+- name: Flag whether the router needs an image upgrade
+  ansible.builtin.set_fact:
+    vyos_upgrade_needed: "{{ vyos_running_release_tag != vyos_latest_release_tag }}"
+  changed_when: false
+
+- name: Upgrade the VyOS image when a newer signed build exists
+  when:
+    - vyos_upgrade_needed
+    - not ansible_check_mode
+  block:
+    - name: Create a local staging directory for the VyOS image
+      delegate_to: localhost
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: vyos-upgrade-
+      register: vyos_upgrade_stage
+
+    - name: Download the signed VyOS ISO
+      delegate_to: localhost
+      ansible.builtin.get_url:
+        url: "{{ vyos_latest_release_iso_url }}"
+        dest: "{{ vyos_upgrade_stage.path }}/{{ vyos_latest_release_iso }}"
+        mode: "0600"
+
+    - name: Download the VyOS ISO signature
+      delegate_to: localhost
+      ansible.builtin.get_url:
+        url: "{{ vyos_latest_release_sig_url }}"
+        dest: "{{ vyos_upgrade_stage.path }}/{{ vyos_latest_release_sig }}"
+        mode: "0600"
+
+    - name: Upload the image payload to the router
+      ansible.netcommon.net_put:
+        src: "{{ vyos_upgrade_stage.path }}/{{ item }}"
+        dest: "/tmp/{{ item }}"
+      loop:
+        - "{{ vyos_latest_release_iso }}"
+        - "{{ vyos_latest_release_sig }}"
+
+    - name: Verify the ISO signature on the router
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo minisign -Vm /tmp/{{ vyos_latest_release_iso }} -P {{ vyos_minisign_public_key }}"
+      vars:
+        ansible_command_timeout: 300
+
+    - name: Remove stale VyOS installer mount directory
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo sh -c 'mountpoint -q /mnt/installation/iso_src && umount /mnt/installation/iso_src || true'"
+          - "sudo rm -rf /mnt/installation/iso_src"
+      changed_when: false
+
+    - name: Install the verified VyOS image
+      vyos.vyos.vyos_command:
+        commands:
+          - command: "add system image /tmp/{{ vyos_latest_release_iso }}"
+            prompt:
+              - "What would you like to name this image\\?"
+              - "Would you like to set the new image as the default one for boot\\?"
+              - "Would you like to copy it to the new image\\?"
+              - "Would you like to copy SSH host keys\\?"
+            answer:
+              - "\r"
+              - "\r"
+              - "\r"
+              - "\r"
+      register: vyos_image_install
+      failed_when: >-
+        vyos_image_install.stdout[0] is search('(?im)^Error:')
+        or vyos_image_install.stdout[0] is not search(vyos_latest_release_tag)
+      vars:
+        ansible_command_timeout: 1800
+
+    - name: Reboot into the upgraded VyOS image
+      vyos.vyos.vyos_command:
+        commands:
+          - command: reboot now
+            sendonly: true
+
+    - name: Wait for the router to start rebooting
+      delegate_to: localhost
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        state: stopped
+        delay: 5
+        timeout: 300
+
+    - name: Wait for the router to return after reboot
+      delegate_to: localhost
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        state: started
+        delay: 15
+        timeout: 1800
+
+    - name: Reset the network_cli connection after reboot
+      ansible.builtin.meta: reset_connection
+
+    - name: Confirm the upgraded image is running
+      vyos.vyos.vyos_command:
+        commands:
+          - show version
+      register: vyos_post_upgrade_version
+      changed_when: false
+
+    - name: Verify the upgraded image matches the latest release tag
+      ansible.builtin.assert:
+        that:
+          - vyos_post_upgrade_version.stdout[0] is search(vyos_latest_release_tag)
+        fail_msg: "The router did not boot the expected VyOS rolling release"
+
+  always:
+    - name: Remove the local VyOS staging directory
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ vyos_upgrade_stage.path | default('') }}"
+        state: absent
+      when: vyos_upgrade_stage is defined
+
+    - name: Remove staged image files from the router
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo rm -f /tmp/{{ vyos_latest_release_iso }} /tmp/{{ vyos_latest_release_sig }}"
+      changed_when: false
+      when: vyos_upgrade_needed
+
+- name: Run the full deployment after an upgrade check
+  ansible.builtin.import_tasks: tasks/01_setup_dirs.yml
+
+- name: Run the full deployment after an upgrade check
+  ansible.builtin.import_tasks: tasks/02_push_files.yml
+
+- name: Run the full deployment after an upgrade check
+  ansible.builtin.import_tasks: tasks/03_pull_images.yml
+
+- name: Run the full deployment after an upgrade check
+  ansible.builtin.import_tasks: tasks/04_apply_vyos.yml
+
+- name: Run the full deployment after an upgrade check
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo /config/scripts/suricata-update.sh
+  vars:
+    ansible_command_timeout: 300
+
+- name: Run the full deployment after an upgrade check
+  vyos.vyos.vyos_command:
+    commands:
+      - restart container adguard
+
+- name: Run the full deployment after an upgrade check
+  vyos.vyos.vyos_command:
+    commands:
+      - restart container dnsmasq
+
+- name: Run the full deployment after an upgrade check
+  vyos.vyos.vyos_command:
+    commands:
+      - restart container alloy
+
+- name: Run the full deployment after an upgrade check
+  ansible.builtin.import_tasks: tasks/05_healthcheck.yml

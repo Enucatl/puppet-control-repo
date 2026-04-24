@@ -7,6 +7,7 @@
     ansible_command_timeout: 600
   register: router_smoke_check
   changed_when: false
+  failed_when: router_smoke_check.stdout[0] is search('(?m)^.* FAIL ')
 
 - name: Show router smoke check output
   ansible.builtin.debug:

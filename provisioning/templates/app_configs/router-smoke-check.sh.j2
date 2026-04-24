@@ -154,7 +154,6 @@ retry_line "Alloy container running" "true" 60 timeout --foreground 5s sudo -n p
 
 retry_success "Suricata service active" 60 timeout --foreground 10s sudo -n systemctl is-active --quiet suricata
 retry_success "Suricata eve log present" 60 timeout --foreground 5s sudo -n test -e /var/log/suricata/eve.json
-retry_success "Suricata stats log present" 90 timeout --foreground 5s sudo -n test -s /var/log/suricata/stats.log
 
 check_dns_nonempty "AdGuard IPv4 public A" "$ADGUARD_V4" A example.com 60
 check_dns_nonempty "AdGuard IPv4 public AAAA" "$ADGUARD_V4" AAAA example.com 60

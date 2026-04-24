@@ -24,14 +24,21 @@
         fail_msg: "Failed to retrieve secrets from HashiCorp Vault (kv/puppet)"
 
   tasks:
+    - name: Upgrade VyOS to the latest signed rolling image
+      ansible.builtin.import_tasks: tasks/06_upgrade_vyos.yml
+      tags: [upgrade, never]
+
     - name: Prepare file system and persistent directories
       ansible.builtin.import_tasks: tasks/01_setup_dirs.yml
+      tags: [apply]
 
     - name: Template and upload application configs and scripts
       ansible.builtin.import_tasks: tasks/02_push_files.yml
+      tags: [apply]
 
     - name: Pre-pull container images
       ansible.builtin.import_tasks: tasks/03_pull_images.yml
+      tags: [apply]
 
     - name: Diff config against running (load + compare, no commit)
       ansible.builtin.import_tasks: tasks/diff_vyos.yml

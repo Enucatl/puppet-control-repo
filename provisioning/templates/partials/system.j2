@@ -5,6 +5,7 @@ set system login operator-group default command-policy allow '*'
 set system login user vyos authentication public-keys user@ansible key AAAAC3NzaC1lZDI1NTE5AAAAIEot3u2cV0DaYXoTiFLyCQkEGixSVZhdzddnhbRtaPu/
 set system login user vyos authentication public-keys user@ansible type ssh-ed25519
 set system name-server {{ vyos_lan_ip.split('/')[0] }}
+set system update-check url https://raw.githubusercontent.com/vyos/vyos-nightly-build/refs/heads/current/version.json
 set system static-host-mapping host-name alloy.docker.home.arpa inet {{ docker_node_ip }}
 set system static-host-mapping host-name loki.docker.home.arpa inet {{ docker_node_ip }}
 set system option reboot-on-upgrade-failure 5
