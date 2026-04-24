@@ -12,18 +12,13 @@ class profile::dropbear_initramfs (
     notify  => Exec['update-initramfs'],
   }
 
-  if $network_device != undef {
-    augeas { 'initramfs_network_device':
-      context => '/files/etc/initramfs-tools/initramfs.conf',
-      changes => "set DEVICE '${network_device}'",
-      notify  => Exec['update-initramfs'],
-    }
-  }
-
-  if $network_ip != undef {
-    augeas { 'initramfs_network_ip':
-      context => '/files/etc/initramfs-tools/initramfs.conf',
-      changes => "set IP '${network_ip}'",
+  if $network_device != undef and $network_ip != undef {
+    file { '/etc/initramfs-tools/conf.d/dropbear-network.conf':
+      ensure  => file,
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+      content => "DEVICE=${network_device}\nIP=${network_ip}\n",
       notify  => Exec['update-initramfs'],
     }
   }
