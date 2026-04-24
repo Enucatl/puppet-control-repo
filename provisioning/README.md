@@ -30,12 +30,19 @@ uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file
 uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags apply
 ```
 
+### 5 — smoke checks
+Runs automatically at the end of `--tags apply` and can also be executed on its own.
+```bash
+uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags healthcheck
+```
+
 ## Workflow for any change
 
 1. Edit a partial under `templates/partials/`
 2. `--tags diff` to review the delta
 3. `--tags apply` to push it
 4. `--tags diff` again to confirm clean
+5. `--tags healthcheck` if you want to re-run router smoke checks on demand
 
 ## Secrets (vars/secrets.yml)
 

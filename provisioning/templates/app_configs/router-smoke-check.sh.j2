@@ -1,0 +1,167 @@
+#!/bin/sh
+# Router smoke checks for post-apply validation.
+# Managed by Ansible - do not edit manually.
+
+set -eu
+
+WAN_IFACE="{{ wan_interface }}"
+LAN_IFACE="{{ lan_interface }}"
+TRUSTED_WIFI_IFACE="{{ trusted_wifi_interface }}"
+IOT_IFACE="{{ iot_interface }}"
+GUEST_IFACE="{{ guest_interface }}"
+WG_IFACE="{{ wg_interface }}"
+WG_V6_ADDR="{{ ipv6_prefix }}:c8::1/64"
+ADGUARD_V4="{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+ADGUARD_V6="{{ ipv6_prefix }}::1"
+DNSMASQ_PORT="{{ dnsmasq_dns_port }}"
+DHCP_DOMAIN="{{ dhcp_domain }}"
+
+log() {
+    printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
+}
+
+fail() {
+    log "FAIL $*"
+    exit 1
+}
+
+require_bin() {
+    command -v "$1" >/dev/null 2>&1 || fail "missing required binary: $1"
+}
+
+retry_match() {
+    desc="$1"
+    needle="$2"
+    timeout_secs="$3"
+    shift 3
+
+    end_ts=$(( $(date +%s) + timeout_secs ))
+    while :; do
+        output=""
+        if output="$("$@" 2>&1)"; then
+            if printf '%s\n' "$output" | grep -Fq "$needle"; then
+                log "PASS $desc"
+                return 0
+            fi
+        fi
+        if [ "$(date +%s)" -ge "$end_ts" ]; then
+            fail "$desc"
+        fi
+        sleep 2
+    done
+}
+
+retry_line() {
+    desc="$1"
+    expected="$2"
+    timeout_secs="$3"
+    shift 3
+
+    end_ts=$(( $(date +%s) + timeout_secs ))
+    while :; do
+        output=""
+        if output="$("$@" 2>&1)"; then
+            if printf '%s\n' "$output" | grep -Fxq "$expected"; then
+                log "PASS $desc"
+                return 0
+            fi
+        fi
+        if [ "$(date +%s)" -ge "$end_ts" ]; then
+            fail "$desc"
+        fi
+        sleep 2
+    done
+}
+
+retry_success() {
+    desc="$1"
+    timeout_secs="$2"
+    shift 2
+
+    end_ts=$(( $(date +%s) + timeout_secs ))
+    while :; do
+        if "$@"; then
+            log "PASS $desc"
+            return 0
+        fi
+        if [ "$(date +%s)" -ge "$end_ts" ]; then
+            fail "$desc"
+        fi
+        sleep 2
+    done
+}
+
+check_dns_nonempty() {
+    desc="$1"
+    server="$2"
+    qtype="$3"
+    name="$4"
+    timeout_secs="$5"
+
+    end_ts=$(( $(date +%s) + timeout_secs ))
+    while :; do
+        output=""
+        if output="$(timeout --foreground 5s sudo -n dig +time=2 +tries=1 "@$server" "$name" "$qtype" +short 2>&1)"; then
+            if [ -n "$output" ]; then
+                log "PASS $desc"
+                return 0
+            fi
+        fi
+        if [ "$(date +%s)" -ge "$end_ts" ]; then
+            fail "$desc"
+        fi
+        sleep 2
+    done
+}
+
+check_dns_exact() {
+    desc="$1"
+    server="$2"
+    qtype="$3"
+    name="$4"
+    expected="$5"
+    timeout_secs="$6"
+
+    retry_line "$desc" "$expected" "$timeout_secs" timeout --foreground 5s sudo -n dig +time=2 +tries=1 "@$server" "$name" "$qtype" +short
+}
+
+log "START router smoke checks"
+
+for bin in timeout dig grep ip ping podman sudo systemctl; do
+    require_bin "$bin"
+done
+
+retry_match "LAN IPv4 address" "inet {{ vyos_lan_ip }}" 30 sudo -n ip -4 addr show dev "$LAN_IFACE"
+retry_match "Trusted WiFi IPv4 address" "inet {{ trusted_wifi_ip }}" 30 sudo -n ip -4 addr show dev "$TRUSTED_WIFI_IFACE"
+retry_match "IoT IPv4 address" "inet {{ iot_ip }}" 30 sudo -n ip -4 addr show dev "$IOT_IFACE"
+retry_match "Guest IPv4 address" "inet {{ guest_ip }}" 30 sudo -n ip -4 addr show dev "$GUEST_IFACE"
+retry_match "WireGuard IPv4 address" "inet {{ wg_subnet }}" 30 sudo -n ip -4 addr show dev "$WG_IFACE"
+retry_match "LAN IPv6 global address" "scope global" 90 sudo -n ip -6 addr show dev "$LAN_IFACE"
+retry_match "Trusted WiFi IPv6 global address" "scope global" 90 sudo -n ip -6 addr show dev "$TRUSTED_WIFI_IFACE"
+retry_match "IoT IPv6 global address" "scope global" 90 sudo -n ip -6 addr show dev "$IOT_IFACE"
+retry_match "Guest IPv6 global address" "scope global" 90 sudo -n ip -6 addr show dev "$GUEST_IFACE"
+retry_match "WAN IPv4 address" "inet " 90 sudo -n ip -4 addr show dev "$WAN_IFACE" scope global
+retry_match "WAN IPv6 global address" "inet6 " 90 sudo -n ip -6 addr show dev "$WAN_IFACE" scope global
+retry_match "WireGuard IPv6 address" "$WG_V6_ADDR" 30 sudo -n ip -6 addr show dev "$WG_IFACE"
+retry_match "WAN IPv4 route" "dev $WAN_IFACE" 60 sudo -n ip route get 1.1.1.1
+retry_match "WAN IPv6 route" "dev $WAN_IFACE" 60 sudo -n ip -6 route get 2606:4700:4700::1111
+retry_success "IPv4 ping to WAN" 60 timeout --foreground 5s sudo -n ping -4 -c 1 -W 2 1.1.1.1
+retry_success "IPv6 ping to WAN" 90 timeout --foreground 5s sudo -n ping -6 -c 1 -W 2 2606:4700:4700::1111
+
+retry_line "AdGuard container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' adguard
+retry_line "dnsmasq container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' dnsmasq
+retry_line "Alloy container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' alloy
+
+retry_success "Suricata service active" 60 timeout --foreground 10s sudo -n systemctl is-active --quiet suricata
+retry_success "Suricata eve log present" 60 timeout --foreground 5s sudo -n test -e /var/log/suricata/eve.json
+retry_success "Suricata stats log present" 90 timeout --foreground 5s sudo -n test -s /var/log/suricata/stats.log
+
+check_dns_nonempty "AdGuard IPv4 public A" "$ADGUARD_V4" A example.com 60
+check_dns_nonempty "AdGuard IPv4 public AAAA" "$ADGUARD_V4" AAAA example.com 60
+check_dns_nonempty "AdGuard IPv6 public A" "$ADGUARD_V6" A example.com 90
+check_dns_nonempty "AdGuard IPv6 public AAAA" "$ADGUARD_V6" AAAA example.com 90
+check_dns_exact "AdGuard IPv4 router A" "$ADGUARD_V4" A router."$DHCP_DOMAIN" "10.0.0.1" 60
+check_dns_exact "AdGuard IPv6 router A" "$ADGUARD_V6" A router."$DHCP_DOMAIN" "10.0.0.1" 90
+retry_line "dnsmasq router A" "10.0.0.1" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" router."$DHCP_DOMAIN" A +short
+
+log "DONE router smoke checks"
