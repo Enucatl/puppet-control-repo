@@ -1,5 +1,6 @@
-delete interfaces ethernet eth3
-delete firewall flowtable FASTPATH interface eth3
-delete firewall group interface-group WAN interface eth3
-delete service dns dynamic name cloudflare address interface eth3
-delete system flow-accounting netflow interface eth3
+{#
+  Manual targeted deletes for stale config nodes.
+
+  Add a `delete ...` line here whenever a node needs to be removed from the
+  router that the set-command partials won't naturally overwrite.
+#}
