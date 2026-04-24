@@ -85,8 +85,8 @@ dhcp_domain: "home.arpa"
 # AF_PACKET taps at __netif_receive_skb_core, before the nftables flowtable
 # hook, so software-offloaded established flows are still visible to Suricata.
 # NOTE: if FASTPATH is ever switched to hardware offload the NIC itself handles
-# established flows and AF_PACKET will only see the TCP handshake — Suricata
-# would miss payload inspection. Verify with a large transfer + stats.log check
+# established flows and AF_PACKET will only see the TCP handshake - Suricata
+# would miss payload inspection. Verify with a large transfer and EVE events
 # before enabling hardware offload.
 
 # --- ALLOY (log shipping to Loki) ---

@@ -4,7 +4,6 @@
 // Sources:
 //   - VyOS syslog       → host /var/log              mounted at /var/log/host
 //   - Suricata EVE JSON → central Alloy receiver      via HTTP push
-//   - Suricata stats    → host /var/log/suricata/     mounted at /var/log/suricata
 //   - Suricata updater  → host /config/suricata/      mounted at /var/lib/suricata-config
 //   - AdGuard querylog  → host adguard work dir       mounted at /var/adguard/work
 //   - dnsmasq DHCP log  → host dnsmasq log dir        mounted at /var/dnsmasq/log
@@ -103,25 +102,6 @@ local.file_match "suricata_eve" {
 loki.source.file "suricata_eve" {
   targets    = local.file_match.suricata_eve.targets
   forward_to = [loki.write.central_alloy.receiver]
-}
-
-// ============================================================
-// Suricata performance stats
-// Plain text; one stats block per interval. Useful for catching
-// ring buffer drops (capture.kernel_drops counter).
-// ============================================================
-
-local.file_match "suricata_stats" {
-  path_targets = [{
-    __path__ = "/var/log/suricata/stats.log",
-    job      = "suricata-stats",
-    host     = "router.{{ dhcp_domain }}",
-  }]
-}
-
-loki.source.file "suricata_stats" {
-  targets    = local.file_match.suricata_stats.targets
-  forward_to = [loki.write.remote_loki.receiver]
 }
 
 // ============================================================
