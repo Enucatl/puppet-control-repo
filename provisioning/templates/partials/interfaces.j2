@@ -34,7 +34,7 @@ set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ guest_vlan }} address 1
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ guest_vlan }} sla-id {{ guest_vlan }}
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ cortex_interface }} address 1
-set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ cortex_interface }} sla-id {{ cortex_ipv6_sla_id }}
+set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ cortex_interface }} sla-id {{ cortex_vlan }}
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 length 48
 set interfaces ethernet {{ wan_interface }} ipv6 address autoconf
 set interfaces ethernet {{ wan_interface }} offload gro

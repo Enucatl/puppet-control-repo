@@ -48,7 +48,7 @@ cache-size=1000
 local=/{{ dhcp_domain }}/
 # Authoritative for reverse zones covering all four subnets
 local=/0.0.10.in-addr.arpa/
-local=/10.0.10.in-addr.arpa/
+local=/10.0.{{ trusted_wifi_vlan }}.in-addr.arpa/
 local=/20.0.10.in-addr.arpa/
 local=/30.0.10.in-addr.arpa/
 local=/40.0.10.in-addr.arpa/
