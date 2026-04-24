@@ -27,6 +27,7 @@ class Config:
     vault_field: str = "proxmox-cortex"
     vault_addr: str = "https://hcv.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
+    vault_cert_role: str = "proxmox-puppet"
     certname: str = "proxmox.home.arpa"
     lock_file: str = "/run/chronicle-backup.lock"
     command_timeout: int = 60
@@ -163,6 +164,7 @@ class Orchestrator:
                     "login",
                     "-method=cert",
                     "-format=json",
+                    f"name={self.config.vault_cert_role}",
                     f"-client-cert={self.config.puppet_cert}",
                     f"-client-key={self.config.puppet_key}",
                 ],
@@ -377,6 +379,7 @@ def parse_args(argv: Sequence[str]) -> Config:
     parser.add_argument("--backup-job-id", default=Config.backup_job_id)
     parser.add_argument("--vault-path", default=Config.vault_path)
     parser.add_argument("--vault-field", default=Config.vault_field)
+    parser.add_argument("--vault-cert-role", default=Config.vault_cert_role)
     parser.add_argument("--certname", default=Config.certname)
     parser.add_argument("--lock-file", default=Config.lock_file)
     parser.add_argument("--dry-run", action="store_true")
