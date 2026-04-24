@@ -46,7 +46,7 @@
 
     - name: Apply declarative VyOS configuration
       ansible.builtin.import_tasks: tasks/04_apply_vyos.yml
-      tags: [apply]
+      tags: [apply, vyos_config]
 
     - name: Update Suricata signatures and restart to apply new ruleset
       vyos.vyos.vyos_command:
