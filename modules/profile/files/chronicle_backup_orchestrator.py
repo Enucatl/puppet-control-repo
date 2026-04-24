@@ -18,6 +18,7 @@ class Config:
     pbs_host: str = "chronicle.home.arpa"
     dropbear_host: str = "dropbear.proxmox-cortex.home.arpa"
     proxmox_host: str = "proxmox-cortex.home.arpa"
+    pve_node: str = "proxmox"
     mac: str = "30:56:0f:5e:a9:de"
     broadcast: str = "10.0.0.255"
     ct_id: int = 110
@@ -101,6 +102,17 @@ class Runner:
                 command,
                 0,
                 '"UPID:proxmox:dry:run:task:vzdump::root@pam:"\n',
+                "",
+            )
+        if command[:3] == [
+            "pvesh",
+            "get",
+            f"/cluster/backup/{self.config.backup_job_id}",
+        ]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                '{"all":1,"mode":"snapshot","storage":"chronicle"}\n',
                 "",
             )
         if command[:2] == ["pvesh", "get"]:
@@ -251,17 +263,54 @@ class Orchestrator:
         self.runner.run(["pvesm", "set", self.config.storage_id, "--disable", "0"])
 
     def run_backup_job(self) -> str:
+        job = self.read_backup_job()
+        command = [
+            "pvesh",
+            "create",
+            f"/nodes/{self.config.pve_node}/vzdump",
+            "--job-id",
+            self.config.backup_job_id,
+            "--output-format",
+            "json",
+        ]
+        for key in (
+            "all",
+            "compress",
+            "mode",
+            "notes-template",
+            "notification-mode",
+            "storage",
+            "prune-backups",
+            "vmid",
+            "exclude",
+            "pool",
+        ):
+            if key in job:
+                command.extend([f"--{key}", format_pvesh_value(job[key])])
+
+        result = self.runner.run(
+            command,
+            timeout=120,
+        )
+        return parse_upid(result.stdout)
+
+    def read_backup_job(self) -> dict[str, object]:
         result = self.runner.run(
             [
                 "pvesh",
-                "create",
-                f"/cluster/backup/{self.config.backup_job_id}/run",
+                "get",
+                f"/cluster/backup/{self.config.backup_job_id}",
                 "--output-format",
                 "json",
             ],
             timeout=120,
         )
-        return parse_upid(result.stdout)
+        parsed = json.loads(result.stdout)
+        if not isinstance(parsed, dict):
+            raise RuntimeError(
+                f"backup job {self.config.backup_job_id} is not an object"
+            )
+        return parsed
 
     def wait_for_task(self, upid: str) -> None:
         node = upid.split(":", 2)[1]
@@ -358,6 +407,21 @@ def parse_upid(output: str) -> str:
     raise RuntimeError(f"could not parse UPID from pvesh output: {stripped}")
 
 
+def format_pvesh_value(value: object) -> str:
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        parts = []
+        for key, item in value.items():
+            parts.append(f"{key}={format_pvesh_value(item)}")
+        return ",".join(parts)
+    raise RuntimeError(f"unsupported pvesh value: {value!r}")
+
+
 def acquire_lock(path: str) -> object:
     lock = open(path, "w", encoding="utf-8")
     try:
@@ -372,6 +436,7 @@ def parse_args(argv: Sequence[str]) -> Config:
     parser.add_argument("--pbs-host", default=Config.pbs_host)
     parser.add_argument("--dropbear-host", default=Config.dropbear_host)
     parser.add_argument("--proxmox-host", default=Config.proxmox_host)
+    parser.add_argument("--pve-node", default=Config.pve_node)
     parser.add_argument("--mac", default=Config.mac)
     parser.add_argument("--broadcast", default=Config.broadcast)
     parser.add_argument("--ct-id", type=int, default=Config.ct_id)

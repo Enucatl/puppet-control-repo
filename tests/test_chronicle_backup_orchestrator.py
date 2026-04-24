@@ -95,7 +95,12 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ),
                 ("pvesm set chronicle --disable 0", 0, ""),
                 (
-                    "pvesh create /cluster/backup/pbs-chronicle-weekly/run",
+                    "pvesh get /cluster/backup/pbs-chronicle-weekly",
+                    0,
+                    '{"all":1,"compress":"zstd","mode":"snapshot","notes-template":"{{guestname}}","notification-mode":"notification-system","storage":"chronicle"}',
+                ),
+                (
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly",
                     0,
                     '"UPID:proxmox:1:2:3:vzdump::root@pam:"',
                 ),
@@ -135,7 +140,12 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ),
                 ("pvesm set chronicle --disable 0", 0, ""),
                 (
-                    "pvesh create /cluster/backup/pbs-chronicle-weekly/run",
+                    "pvesh get /cluster/backup/pbs-chronicle-weekly",
+                    0,
+                    '{"all":1,"mode":"snapshot","storage":"chronicle"}',
+                ),
+                (
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly",
                     0,
                     '{"upid":"UPID:proxmox:1:2:3:vzdump::root@pam:"}',
                 ),
@@ -171,7 +181,12 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ),
                 ("pvesm set chronicle --disable 0", 0, ""),
                 (
-                    "pvesh create /cluster/backup/pbs-chronicle-weekly/run",
+                    "pvesh get /cluster/backup/pbs-chronicle-weekly",
+                    0,
+                    '{"all":1,"mode":"snapshot","storage":"chronicle"}',
+                ),
+                (
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly",
                     0,
                     "UPID:proxmox:1:2:3:vzdump::root@pam:",
                 ),
@@ -206,7 +221,12 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ),
                 ("pvesm set chronicle --disable 0", 0, ""),
                 (
-                    "pvesh create /cluster/backup/pbs-chronicle-weekly/run",
+                    "pvesh get /cluster/backup/pbs-chronicle-weekly",
+                    0,
+                    '{"all":1,"mode":"snapshot","storage":"chronicle"}',
+                ),
+                (
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly",
                     0,
                     "UPID:proxmox:1:2:3:vzdump::root@pam:",
                 ),
@@ -337,6 +357,7 @@ class FakeCommandIntegrationTest(unittest.TestCase):
                 temp_path / "pvesh",
                 """
                 case "$*" in
+                  "get /cluster/backup/pbs-chronicle-weekly --output-format json") echo '{"all":1,"mode":"snapshot","storage":"chronicle"}'; exit 0 ;;
                   create*) echo '"UPID:proxmox:1:2:3:vzdump::root@pam:"'; exit 0 ;;
                   get*) echo '{"status":"stopped","exitstatus":"OK"}'; exit 0 ;;
                 esac
@@ -376,7 +397,8 @@ class FakeCommandIntegrationTest(unittest.TestCase):
                     "nc -z -w 1 chronicle.home.arpa 8007",
                     "curl --fail --silent --show-error --insecure https://chronicle.home.arpa:8007/api2/json/version",
                     "pvesm set chronicle --disable 0",
-                    "pvesh create /cluster/backup/pbs-chronicle-weekly/run --output-format json",
+                    "pvesh get /cluster/backup/pbs-chronicle-weekly --output-format json",
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly --output-format json --all 1 --mode snapshot --storage chronicle",
                     "pvesh get /nodes/proxmox/tasks/UPID:proxmox:1:2:3:vzdump::root@pam:/status --output-format json",
                     "pvesm set chronicle --disable 1",
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa shutdown -h now 'Chronicle backup complete'",
