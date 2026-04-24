@@ -24,6 +24,8 @@ set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} name-serv
 set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} prefix ::/64 valid-lifetime 172800
 set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server {{ vyos_ipv6 }}
 set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} prefix ::/64 valid-lifetime 172800
+set service router-advert interface {{ cortex_interface }} name-server {{ ipv6_prefix }}::1
+set service router-advert interface {{ cortex_interface }} prefix ::/64 valid-lifetime 172800
 set service snmp listen-address {{ snmp_listen_address }}
 set service snmp location '{{ snmp_location }}'
 set service snmp v3 engineid {{ snmp_engineid }}

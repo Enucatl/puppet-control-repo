@@ -33,6 +33,9 @@ set nat source rule 130 translation address masquerade
 set nat source rule 140 outbound-interface name {{ wan_interface }}
 set nat source rule 140 source address {{ guest_subnet }}
 set nat source rule 140 translation address masquerade
+set nat source rule 150 outbound-interface name {{ wan_interface }}
+set nat source rule 150 source address {{ cortex_subnet }}
+set nat source rule 150 translation address masquerade
 set protocols static route6 {{ ipv6_prefix }}:a000::/56 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:a100::/64 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:a200::/56 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}

@@ -12,6 +12,13 @@ set interfaces ethernet {{ lan_interface }} vif {{ iot_vlan }} address {{ iot_ip
 set interfaces ethernet {{ lan_interface }} vif {{ iot_vlan }} description IoT
 set interfaces ethernet {{ lan_interface }} vif {{ guest_vlan }} address {{ guest_ip }}
 set interfaces ethernet {{ lan_interface }} vif {{ guest_vlan }} description Guest
+set interfaces ethernet {{ cortex_interface }} address {{ cortex_ip }}
+set interfaces ethernet {{ cortex_interface }} description 'Trusted LAN - proxmox-cortex DAC'
+set interfaces ethernet {{ cortex_interface }} hw-id '{{ cortex_mac }}'
+set interfaces ethernet {{ cortex_interface }} offload gro
+set interfaces ethernet {{ cortex_interface }} offload gso
+set interfaces ethernet {{ cortex_interface }} offload sg
+set interfaces ethernet {{ cortex_interface }} offload tso
 set interfaces ethernet eth2 hw-id '{{ eth2_mac }}'
 set interfaces ethernet {{ wan_interface }} address dhcp
 set interfaces ethernet {{ wan_interface }} address dhcpv6
@@ -26,6 +33,8 @@ set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ iot_vlan }} sla-id {{ iot_vlan }}
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ guest_vlan }} address 1
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ lan_interface }}.{{ guest_vlan }} sla-id {{ guest_vlan }}
+set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ cortex_interface }} address 1
+set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 interface {{ cortex_interface }} sla-id {{ cortex_ipv6_sla_id }}
 set interfaces ethernet {{ wan_interface }} dhcpv6-options pd 0 length 48
 set interfaces ethernet {{ wan_interface }} ipv6 address autoconf
 set interfaces ethernet {{ wan_interface }} offload gro

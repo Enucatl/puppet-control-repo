@@ -3,8 +3,10 @@ set firewall flowtable FASTPATH interface {{ lan_interface }}
 set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
 set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ iot_vlan }}
 set firewall flowtable FASTPATH interface {{ lan_interface }}.{{ guest_vlan }}
+set firewall flowtable FASTPATH interface {{ cortex_interface }}
 set firewall flowtable FASTPATH interface {{ wg_interface }}
 set firewall flowtable FASTPATH offload software
+set firewall group interface-group CORTEX interface {{ cortex_interface }}
 set firewall group interface-group GUEST interface {{ guest_interface }}
 set firewall group interface-group IOT interface {{ iot_interface }}
 set firewall group interface-group LAN interface {{ lan_interface }}
@@ -36,6 +38,22 @@ set firewall ipv4 forward filter rule 50 jump-target IOT-FORWARD
 set firewall ipv4 forward filter rule 60 action jump
 set firewall ipv4 forward filter rule 60 inbound-interface group GUEST
 set firewall ipv4 forward filter rule 60 jump-target GUEST-FORWARD
+set firewall ipv4 forward filter rule 70 action jump
+set firewall ipv4 forward filter rule 70 inbound-interface group CORTEX
+set firewall ipv4 forward filter rule 70 jump-target CORTEX-FORWARD
+set firewall ipv4 name CORTEX-FORWARD default-action drop
+set firewall ipv4 name CORTEX-FORWARD rule 10 action accept
+set firewall ipv4 name CORTEX-FORWARD rule 10 state established
+set firewall ipv4 name CORTEX-FORWARD rule 10 state related
+set firewall ipv4 name CORTEX-FORWARD rule 20 action accept
+set firewall ipv4 name CORTEX-FORWARD rule 20 description 'Cortex to WAN'
+set firewall ipv4 name CORTEX-FORWARD rule 20 outbound-interface group WAN
+set firewall ipv4 name CORTEX-FORWARD rule 30 action accept
+set firewall ipv4 name CORTEX-FORWARD rule 30 description 'Cortex to LAN'
+set firewall ipv4 name CORTEX-FORWARD rule 30 outbound-interface group LAN
+set firewall ipv4 name CORTEX-FORWARD rule 40 action accept
+set firewall ipv4 name CORTEX-FORWARD rule 40 description 'Cortex to Trusted WiFi'
+set firewall ipv4 name CORTEX-FORWARD rule 40 outbound-interface group TRUSTED-WIFI
 set firewall ipv4 input filter rule 10 action jump
 set firewall ipv4 input filter rule 10 inbound-interface group WAN
 set firewall ipv4 input filter rule 10 jump-target WAN-LOCAL
@@ -112,6 +130,9 @@ set firewall ipv4 name LAN-FORWARD rule 40 description 'LAN to IoT devices (prin
 set firewall ipv4 name LAN-FORWARD rule 40 destination port 80,443,631,9100
 set firewall ipv4 name LAN-FORWARD rule 40 outbound-interface group IOT
 set firewall ipv4 name LAN-FORWARD rule 40 protocol tcp
+set firewall ipv4 name LAN-FORWARD rule 50 action accept
+set firewall ipv4 name LAN-FORWARD rule 50 description 'LAN to Cortex'
+set firewall ipv4 name LAN-FORWARD rule 50 outbound-interface group CORTEX
 set firewall ipv4 name TRUSTED-WIFI-FORWARD default-action drop
 set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 action accept
 set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 10 state established
@@ -122,6 +143,9 @@ set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 20 outbound-interface group WAN
 set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 action accept
 set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 description 'Trusted WiFi to LAN'
 set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 30 outbound-interface group LAN
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 40 action accept
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 40 description 'Trusted WiFi to Cortex'
+set firewall ipv4 name TRUSTED-WIFI-FORWARD rule 40 outbound-interface group CORTEX
 set firewall ipv4 name VPN-FORWARD default-action drop
 set firewall ipv4 name VPN-FORWARD rule 10 action accept
 set firewall ipv4 name VPN-FORWARD rule 10 state established
@@ -135,6 +159,9 @@ set firewall ipv4 name VPN-FORWARD rule 30 outbound-interface group LAN
 set firewall ipv4 name VPN-FORWARD rule 40 action accept
 set firewall ipv4 name VPN-FORWARD rule 40 description 'VPN to Trusted WiFi'
 set firewall ipv4 name VPN-FORWARD rule 40 outbound-interface group TRUSTED-WIFI
+set firewall ipv4 name VPN-FORWARD rule 50 action accept
+set firewall ipv4 name VPN-FORWARD rule 50 description 'VPN to Cortex'
+set firewall ipv4 name VPN-FORWARD rule 50 outbound-interface group CORTEX
 set firewall ipv4 name WAN-FORWARD default-action drop
 set firewall ipv4 name WAN-FORWARD rule 10 action accept
 set firewall ipv4 name WAN-FORWARD rule 10 description 'Allow established/related from WAN'
@@ -223,6 +250,9 @@ set firewall ipv6 forward filter rule 50 jump-target IOT-FORWARD6
 set firewall ipv6 forward filter rule 60 action jump
 set firewall ipv6 forward filter rule 60 inbound-interface group GUEST
 set firewall ipv6 forward filter rule 60 jump-target GUEST-FORWARD6
+set firewall ipv6 forward filter rule 70 action jump
+set firewall ipv6 forward filter rule 70 inbound-interface group CORTEX
+set firewall ipv6 forward filter rule 70 jump-target CORTEX-FORWARD6
 set firewall ipv6 input filter rule 10 action jump
 set firewall ipv6 input filter rule 10 inbound-interface group WAN
 set firewall ipv6 input filter rule 10 jump-target WAN-LOCAL6
@@ -232,6 +262,19 @@ set firewall ipv6 input filter rule 20 jump-target IOT-LOCAL6
 set firewall ipv6 input filter rule 30 action jump
 set firewall ipv6 input filter rule 30 inbound-interface group GUEST
 set firewall ipv6 input filter rule 30 jump-target GUEST-LOCAL6
+set firewall ipv6 name CORTEX-FORWARD6 default-action drop
+set firewall ipv6 name CORTEX-FORWARD6 rule 10 action accept
+set firewall ipv6 name CORTEX-FORWARD6 rule 10 state established
+set firewall ipv6 name CORTEX-FORWARD6 rule 10 state related
+set firewall ipv6 name CORTEX-FORWARD6 rule 20 action accept
+set firewall ipv6 name CORTEX-FORWARD6 rule 20 description 'Cortex to WAN'
+set firewall ipv6 name CORTEX-FORWARD6 rule 20 outbound-interface group WAN
+set firewall ipv6 name CORTEX-FORWARD6 rule 30 action accept
+set firewall ipv6 name CORTEX-FORWARD6 rule 30 description 'Cortex to LAN'
+set firewall ipv6 name CORTEX-FORWARD6 rule 30 outbound-interface group LAN
+set firewall ipv6 name CORTEX-FORWARD6 rule 40 action accept
+set firewall ipv6 name CORTEX-FORWARD6 rule 40 description 'Cortex to Trusted WiFi'
+set firewall ipv6 name CORTEX-FORWARD6 rule 40 outbound-interface group TRUSTED-WIFI
 set firewall ipv6 name GUEST-FORWARD6 default-action drop
 set firewall ipv6 name GUEST-FORWARD6 rule 10 action accept
 set firewall ipv6 name GUEST-FORWARD6 rule 10 state established
@@ -296,6 +339,9 @@ set firewall ipv6 name LAN-FORWARD6 rule 40 description 'LAN to IoT devices (pri
 set firewall ipv6 name LAN-FORWARD6 rule 40 destination port 80,443,631,9100
 set firewall ipv6 name LAN-FORWARD6 rule 40 outbound-interface group IOT
 set firewall ipv6 name LAN-FORWARD6 rule 40 protocol tcp
+set firewall ipv6 name LAN-FORWARD6 rule 50 action accept
+set firewall ipv6 name LAN-FORWARD6 rule 50 description 'LAN to Cortex'
+set firewall ipv6 name LAN-FORWARD6 rule 50 outbound-interface group CORTEX
 set firewall ipv6 name TRUSTED-WIFI-FORWARD6 default-action drop
 set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 action accept
 set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 10 state established
@@ -306,6 +352,9 @@ set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 20 outbound-interface group WA
 set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 action accept
 set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 description 'Trusted WiFi to LAN'
 set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 30 outbound-interface group LAN
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 40 action accept
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 40 description 'Trusted WiFi to Cortex'
+set firewall ipv6 name TRUSTED-WIFI-FORWARD6 rule 40 outbound-interface group CORTEX
 set firewall ipv6 name VPN-FORWARD6 default-action drop
 set firewall ipv6 name VPN-FORWARD6 rule 10 action accept
 set firewall ipv6 name VPN-FORWARD6 rule 10 state established
@@ -319,6 +368,9 @@ set firewall ipv6 name VPN-FORWARD6 rule 30 outbound-interface group LAN
 set firewall ipv6 name VPN-FORWARD6 rule 40 action accept
 set firewall ipv6 name VPN-FORWARD6 rule 40 description 'VPN to Trusted WiFi'
 set firewall ipv6 name VPN-FORWARD6 rule 40 outbound-interface group TRUSTED-WIFI
+set firewall ipv6 name VPN-FORWARD6 rule 50 action accept
+set firewall ipv6 name VPN-FORWARD6 rule 50 description 'VPN to Cortex'
+set firewall ipv6 name VPN-FORWARD6 rule 50 outbound-interface group CORTEX
 set firewall ipv6 name WAN-FORWARD6 default-action drop
 set firewall ipv6 name WAN-FORWARD6 rule 10 action accept
 set firewall ipv6 name WAN-FORWARD6 rule 10 description 'Allow established/related from WAN'
