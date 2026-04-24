@@ -1,22 +1,13 @@
 ---
+classes:
+  - profile::chronicle_backup
+
 profile::common::cronjobs:
   uv-cache-prune:
     ensure: absent
   wake-proxmox-cortex:
-    minute: 53
-    hour: 0
-    weekday: Monday
-    user: root
-    command: "{ /usr/sbin/qm guest exec 200 --timeout 0 -- bash -lc \"cd /opt/docker/puppet-control-repo/docker && HOME=/home/user /home/user/.local/bin/uv run python vault/scripts/wake_on_lan.py --ct-id 110 --shutdown-delay 120\" && ssh proxmox-cortex.home.arpa \"qm status 200 | grep -q running || qm start 200\"; } > /var/log/wake-proxmox-cortex.log 2>&1"
+    ensure: absent
   chronicle-enable:
-    minute: 58
-    hour: 0
-    weekday: Monday
-    user: root
-    command: '/usr/sbin/pvesm set chronicle --disable 0 > /var/log/pvesm-chronicle-enable.log 2>&1'
+    ensure: absent
   chronicle-disable:
-    minute: 0
-    hour: 3
-    weekday: Monday
-    user: root
-    command: '/usr/sbin/pvesm set chronicle --disable 1 > /var/log/pvesm-chronicle-disable.log 2>&1'
+    ensure: absent
