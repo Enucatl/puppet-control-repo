@@ -1,12 +1,1 @@
-{#
-  Manual targeted deletes for stale config nodes.
-
-  Add a `delete ...` line here whenever a node needs to be removed from the
-  router that the set-command partials won't naturally overwrite.
-
-  Important:
-  This file is loaded through `vyos_config` as raw commands. The first
-  non-empty line must be a `delete ...` command. Do not put comments or blank
-  lines before the first delete, or the parser will misread the file and fail
-  with a `set delete ...` error.
-#}
+delete interfaces ethernet {{ cortex_interface }}

@@ -16,6 +16,7 @@ interface={{ lan_interface }}
 interface={{ trusted_wifi_interface }}
 interface={{ iot_interface }}
 interface={{ guest_interface }}
+interface={{ cortex_interface }}
 
 # bind-dynamic binds to listed interfaces as they come up and ignores
 # unlisted ones; superior to bind-interfaces for host-networking containers
@@ -50,6 +51,7 @@ local=/0.0.10.in-addr.arpa/
 local=/10.0.10.in-addr.arpa/
 local=/20.0.10.in-addr.arpa/
 local=/30.0.10.in-addr.arpa/
+local=/40.0.10.in-addr.arpa/
 domain={{ dhcp_domain }}
 
 # Append domain to short hostnames in DHCP registrations
@@ -97,6 +99,12 @@ dhcp-range=set:guest,{{ guest_dhcp_start }},{{ guest_dhcp_end }},255.255.255.0,3
 dhcp-option=tag:guest,option:router,{{ guest_ip | ansible.utils.ipaddr('address') }}
 dhcp-option=tag:guest,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 
+# ---- Cortex DAC ({{ cortex_interface }}) ----
+dhcp-range=set:cortex,{{ cortex_dhcp_start }},{{ cortex_dhcp_end }},255.255.255.0,86400s
+dhcp-option=tag:cortex,option:router,{{ cortex_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:cortex,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+dhcp-option=tag:cortex,option:domain-name,{{ dhcp_domain }}
+
 # ============================================================
 # STATIC DNS RECORDS (hosts with static IP config, no DHCP)
 # ============================================================
@@ -104,8 +112,10 @@ dhcp-option=tag:guest,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('a
 address=/router.{{ dhcp_domain }}/{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 address=/proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
 address=/proxmox-cortex.{{ dhcp_domain }}/{{ proxmox_cortex_ip }}
+address=/proxmox-cortex.{{ dhcp_domain }}/{{ proxmox_cortex_ipv6 }}
 address=/chronicle.{{ dhcp_domain }}/{{ chronicle_ip }}
 address=/dropbear.proxmox-cortex.{{ dhcp_domain }}/{{ proxmox_cortex_ip }}
+address=/dropbear.proxmox-cortex.{{ dhcp_domain }}/{{ proxmox_cortex_ipv6 }}
 address=/dropbear.proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
 address=/pve-desktop.{{ dhcp_domain }}/{{ pve_desktop_ip }}
 address=/docker.{{ dhcp_domain }}/{{ docker_node_ip }}

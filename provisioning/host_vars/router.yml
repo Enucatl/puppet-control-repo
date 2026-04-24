@@ -7,6 +7,8 @@ wan_interface: "eth2"       # Mellanox ConnectX-6 Dx port 2 (WAN, hostpci1 / 01:
 wan_mac: "{{ eth2_mac }}"
 lan_interface: "eth1"       # virtio NIC via vmbr0 (LAN)
 lan_mac: "bc:24:11:1c:ec:b6"
+cortex_interface: "eth3"    # Mellanox ConnectX-6 Dx port 1 (DAC to proxmox-cortex)
+cortex_mac: "e8:eb:d3:08:d3:79"
 eth0_mac: "9c:6b:00:c3:7a:d4"  # unused NIC
 eth2_mac: "e8:eb:d3:08:d3:78"  # WAN NIC after moving the transceiver
 
@@ -14,6 +16,11 @@ eth2_mac: "e8:eb:d3:08:d3:78"  # WAN NIC after moving the transceiver
 vyos_lan_ip: "10.0.0.1/24"
 lan_subnet: "10.0.0.0/24"
 vyos_ipv6: "fe80::be24:11ff:fe1c:ecb6"
+cortex_ip: "10.0.40.1/24"
+cortex_subnet: "10.0.40.0/24"
+cortex_ipv6_sla_id: "40"
+cortex_ipv6_subnet_hex: "28"
+cortex_dns_ipv6: "{{ ipv6_prefix }}:{{ cortex_ipv6_subnet_hex }}::2"
 
 # --- VLAN SEGMENTS ---
 # VLAN ID = third octet of subnet for easy log correlation
@@ -105,6 +112,8 @@ iot_dhcp_start: "10.0.20.100"
 iot_dhcp_end: "10.0.20.200"
 guest_dhcp_start: "10.0.30.100"
 guest_dhcp_end: "10.0.30.200"
+cortex_dhcp_start: "10.0.40.100"
+cortex_dhcp_end: "10.0.40.200"
 
 docker_node_ip: "10.0.0.128"
 docker_node_mac: "bc:24:11:4a:bf:ed"
@@ -116,7 +125,8 @@ desktop_node_ipv6_suffix: "::be24:11ff:fef7:659b"
 
 proxmox_ip: "10.0.0.10"
 proxmox_mac: "9c:6b:00:c3:76:1d"
-proxmox_cortex_ip: "10.0.0.12"
+proxmox_cortex_ip: "10.0.40.2"
+proxmox_cortex_ipv6: "{{ cortex_dns_ipv6 }}"
 proxmox_cortex_mac: "30:56:0f:5e:a9:de"
 chronicle_ip: "10.0.0.155"
 chronicle_mac: "bc:24:11:9f:7b:29"

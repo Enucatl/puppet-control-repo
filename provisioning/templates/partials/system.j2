@@ -16,6 +16,7 @@ set system flow-accounting netflow interface {{ lan_interface }}
 set system flow-accounting netflow interface {{ lan_interface }}.{{ trusted_wifi_vlan }}
 set system flow-accounting netflow interface {{ lan_interface }}.{{ iot_vlan }}
 set system flow-accounting netflow interface {{ lan_interface }}.{{ guest_vlan }}
+set system flow-accounting netflow interface {{ cortex_interface }}
 set system flow-accounting netflow interface {{ wg_interface }}
 set system flow-accounting netflow version 10
 set system flow-accounting netflow server {{ docker_node_ip }} port 2055
