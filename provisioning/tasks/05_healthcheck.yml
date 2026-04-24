@@ -1,0 +1,14 @@
+---
+- name: Run router smoke checks
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo -n /config/scripts/router-smoke-check.sh
+  vars:
+    ansible_command_timeout: 600
+  register: router_smoke_check
+  changed_when: false
+
+- name: Show router smoke check output
+  ansible.builtin.debug:
+    msg: "{{ router_smoke_check.stdout }}"
+  changed_when: false

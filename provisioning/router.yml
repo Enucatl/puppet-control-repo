@@ -47,18 +47,26 @@
           - sudo /config/scripts/suricata-update.sh
       vars:
         ansible_command_timeout: 300
+      tags: [apply]
 
     - name: Restart AdGuard container
       vyos.vyos.vyos_command:
         commands:
           - restart container adguard
+      tags: [apply]
 
     - name: Restart dnsmasq container
       vyos.vyos.vyos_command:
         commands:
           - restart container dnsmasq
+      tags: [apply]
 
     - name: Restart Alloy container
       vyos.vyos.vyos_command:
         commands:
           - restart container alloy
+      tags: [apply]
+
+    - name: Run router smoke checks
+      ansible.builtin.import_tasks: tasks/05_healthcheck.yml
+      tags: [apply, healthcheck]

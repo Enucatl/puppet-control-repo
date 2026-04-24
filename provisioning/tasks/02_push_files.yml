@@ -22,6 +22,7 @@
     - { src: "suricata-disable.conf.j2",   dest: "suricata-disable.conf" }
     - { src: "suricata-logrotate.j2",      dest: "suricata-logrotate" }
     - { src: "suricata-systemd-override.conf.j2", dest: "suricata-systemd-override.conf" }
+    - { src: "router-smoke-check.sh.j2",    dest: "router-smoke-check.sh" }
 
 # ============================================================
 # STEP 2: Upload all files to /tmp/ on VyOS
@@ -40,6 +41,7 @@
     - suricata-disable.conf
     - suricata-logrotate
     - suricata-systemd-override.conf
+    - router-smoke-check.sh
 
 # ============================================================
 # STEP 3: Install each file to its persistent destination
@@ -103,6 +105,12 @@
       - sudo chmod 0644 /etc/systemd/system/suricata.service.d/20-memorymax.conf
       - sudo systemctl daemon-reload
 
+- name: Install router smoke check script
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo mv /tmp/router-smoke-check.sh /config/scripts/router-smoke-check.sh
+      - sudo chmod 0755 /config/scripts/router-smoke-check.sh
+
 # ============================================================
 # STEP 4: Clean up local temporary files
 # ============================================================
@@ -121,3 +129,4 @@
     - suricata-disable.conf
     - suricata-logrotate
     - suricata-systemd-override.conf
+    - router-smoke-check.sh
