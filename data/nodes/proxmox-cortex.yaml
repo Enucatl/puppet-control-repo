@@ -22,7 +22,7 @@ profile::common::ssh_authorized_keys:
   root-proxmox:
     user: root
     type: ssh-ed25519
-    key: 'AAAAC3NzaC1lZDI1NTE5A AAAAII/1iigMJVpqpCWTnq/30yf+iK3mD1waMO/UI+0IUHzh'
+    key: 'AAAAC3NzaC1lZDI1NTE5AAAAII/1iigMJVpqpCWTnq/30yf+iK3mD1waMO/UI+0IUHzh'
     name: 'root@proxmox'
 
 profile::common::sysctl_settings:
