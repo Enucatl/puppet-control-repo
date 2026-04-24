@@ -30,6 +30,12 @@ uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file
 uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags apply
 ```
 
+For changes that only touch the declarative VyOS config, skip app files,
+container image pulls, restarts, and smoke checks:
+```bash
+uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags vyos_config
+```
+
 ### 5 — smoke checks
 Runs automatically at the end of `--tags apply` and can also be executed on its own.
 ```bash
@@ -46,7 +52,7 @@ uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file
 
 1. Edit a partial under `templates/partials/`
 2. `--tags diff` to review the delta
-3. `--tags apply` to push it
+3. `--tags vyos_config` to push router config only, or `--tags apply` for the full workflow
 4. `--tags diff` again to confirm clean
 5. `--tags healthcheck` if you want to re-run router smoke checks on demand
 6. `--tags upgrade` when you need to move the router to the latest signed rolling release
@@ -59,6 +65,10 @@ uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file
 rm vars/secrets.yml
 uv run ansible-vault create vars/secrets.yml --vault-password-file vars/password
 ```
+
+## Manual deletes
+
+Add `delete ...` lines to `templates/partials/deletes.j2` for stale nodes that the set-command partials won't naturally overwrite. Remove the line once confirmed absent on the router.
 
 ### Required secrets
 
@@ -79,7 +89,3 @@ adguard_users:
   - name: admin
     password: "$2y$..."
 ```
-
-## Manual deletes
-
-Add `delete ...` lines to `templates/partials/deletes.j2` for stale nodes that the set-command partials won't naturally overwrite (renamed peers, retired rules, removed features). Remove the line once confirmed absent on the router.
