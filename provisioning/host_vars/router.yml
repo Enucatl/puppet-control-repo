@@ -3,12 +3,12 @@
 ansible_command_timeout: 120
 
 # --- INTERFACES ---
-wan_interface: "eth3"       # Mellanox ConnectX-6 Dx port 1 (WAN, hostpci1 / 01:00.1)
-wan_mac: "e8:eb:d3:08:d3:79"
+wan_interface: "eth2"       # Mellanox ConnectX-6 Dx port 2 (WAN, hostpci1 / 01:00.1)
+wan_mac: "{{ eth2_mac }}"
 lan_interface: "eth1"       # virtio NIC via vmbr0 (LAN)
 lan_mac: "bc:24:11:1c:ec:b6"
 eth0_mac: "9c:6b:00:c3:7a:d4"  # unused NIC
-eth2_mac: "e8:eb:d3:08:d3:78"  # unused NIC
+eth2_mac: "e8:eb:d3:08:d3:78"  # WAN NIC after moving the transceiver
 
 # --- IP CONFIGURATION ---
 vyos_lan_ip: "10.0.0.1/24"

@@ -1,19 +1,5 @@
-{#
-  Manual targeted deletes for stale config nodes.
-
-  Add a `delete ...` line here whenever a node needs to be removed from the
-  router that the set-command partials won't naturally overwrite (e.g. renamed
-  keys, removed features, old peer names, retired rules).
-
-  Lines are sent in configure mode before any `set` commands, so the router
-  arrives at a clean state before the desired config is applied.
-
-  When a delete is no longer needed (confirmed absent on the router), remove
-  the line so this file stays tidy.
-
-  Examples:
-    delete interfaces wireguard wg0 peer <old-pubkey>
-    delete service snmp v3 user olduser
-    delete firewall ipv4 name RETIRED-CHAIN
-    delete nat destination rule 99
-#}
+delete interfaces ethernet eth3
+delete firewall flowtable FASTPATH interface eth3
+delete firewall group interface-group WAN interface eth3
+delete service dns dynamic name cloudflare address interface eth3
+delete system flow-accounting netflow interface eth3
