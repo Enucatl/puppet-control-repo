@@ -332,6 +332,8 @@ class Orchestrator:
         return parsed
 
     def wait_for_task(self, upid: str) -> None:
+        if not upid:
+            return
         node = upid.split(":", 2)[1]
         while True:
             result = self.runner.run(
@@ -416,6 +418,8 @@ class Orchestrator:
 
 def parse_upid(output: str) -> str:
     stripped = output.strip()
+    if not stripped:
+        return ""
     for line in stripped.splitlines():
         if line.startswith("UPID:"):
             return line
