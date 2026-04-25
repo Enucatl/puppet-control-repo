@@ -209,7 +209,11 @@ class Orchestrator:
                     send "$env(SERVER_PASS)\\r"
                     exp_continue
                 }}
-                -re "Enter the password.*exit\\\\.|Encrypted ZFS password for rpool/ROOT:" {{
+                -re "Enter the password.*exit\\\\." {{
+                    send "$env(SERVER_PASS)\\r"
+                    exp_continue
+                }}
+                -re "Encrypted ZFS password for rpool/ROOT:" {{
                     send "\\t$env(SERVER_PASS)\\r"
                     exp_continue
                 }}
