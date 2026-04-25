@@ -201,23 +201,19 @@ class Orchestrator:
     def unlock_zfs(self, password: str) -> None:
         expect_script = textwrap.dedent(
             f"""
-            log_user 1
+            log_user 0
             set timeout 20
             spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
             expect {{
-                "password for rpool/ROOT" {{
+                -re "password for rpool/ROOT|Enter the password.*exit\\\\." {{
                     send "$env(SERVER_PASS)\\r"
                     exp_continue
                 }}
-                "Enter the password or press Ctrl-C to exit." {{
-                    send "$env(SERVER_PASS)\\r"
-                    exp_continue
-                }}
-                "Unlocking complete" {{
+                -re "Unlocking complete|Password for .* accepted" {{
                     puts "\\nUnlock detected."
                     exp_continue
                 }}
-                "Wrong password" {{
+                -re "Wrong password|Key load error|encryption failure" {{
                     puts "\\nUnlock password was rejected."
                     exit 1
                 }}
