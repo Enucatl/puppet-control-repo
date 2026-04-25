@@ -203,6 +203,7 @@ class Orchestrator:
             f"""
             log_user 0
             set timeout 20
+            set unlocked 0
             spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
             expect {{
                 -re "password for rpool/ROOT:" {{
@@ -218,6 +219,7 @@ class Orchestrator:
                     exp_continue
                 }}
                 -re "Unlocking complete|Password for .* accepted" {{
+                    set unlocked 1
                     puts "\\nUnlock detected."
                     exp_continue
                 }}
@@ -230,6 +232,10 @@ class Orchestrator:
                     exit 1
                 }}
                 eof {{
+                    if {{$unlocked == 0}} {{
+                        puts "\\nUnlock connection closed before success."
+                        exit 1
+                    }}
                     exit 0
                 }}
             }}
