@@ -205,7 +205,7 @@ class Orchestrator:
             f"""
             log_user 1
             set timeout 20
-            spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
+            spawn ssh -i /root/.ssh/id_ed25519 -o IdentitiesOnly=yes -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
             expect {{
                 -re "password for rpool/ROOT|Enter the password.*exit\\\\." {{
                     send "$env(SERVER_PASS)\\r"
