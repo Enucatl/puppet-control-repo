@@ -209,9 +209,17 @@ class Orchestrator:
                     send "$env(SERVER_PASS)\\r"
                     exp_continue
                 }}
+                "Enter the password or press Ctrl-C to exit." {{
+                    send "$env(SERVER_PASS)\\r"
+                    exp_continue
+                }}
                 "Unlocking complete" {{
                     puts "\\nUnlock detected."
                     exp_continue
+                }}
+                "Wrong password" {{
+                    puts "\\nUnlock password was rejected."
+                    exit 1
                 }}
                 timeout {{
                     puts "\\nUnlock timed out."
