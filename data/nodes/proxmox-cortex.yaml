@@ -19,6 +19,13 @@ profile::common::ssh_authorized_keys:
     key: 'AAAAC3NzaC1lZDI1NTE5AAAAIO1zLY2stYvi4mF5lUjvvskARuI86SusWqaWyO2F3ioQ'
     name: 'root@docker'
 
+  root-proxmox:
+    ensure: absent
+    user: root
+    type: ssh-ed25519
+    key: 'AAAAC3NzaC1lZDI1NTE5AAAAII/1iigMJVpqpCWTnq/30yf+iK3mD1waMO/UI+0IUHzh'
+    name: 'root@proxmox'
+
   root-proxmox-rsa:
     user: root
     type: ssh-rsa
