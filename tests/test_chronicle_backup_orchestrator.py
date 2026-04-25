@@ -88,8 +88,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ("ssh -o BatchMode=yes proxmox-cortex.home.arpa pct start 110", 0, ""),
                 ("nc -z -w 1 chronicle.home.arpa 8007", 0, ""),
                 (
-                    "curl --fail --silent --show-error --insecure "
-                    "https://chronicle.home.arpa:8007/api2/json/version",
+                    "curl --silent --show-error --output /dev/null --insecure "
+                    "https://chronicle.home.arpa:8007/",
                     0,
                     "{}",
                 ),
@@ -133,8 +133,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ("ssh -o BatchMode=yes proxmox-cortex.home.arpa pct start 110", 0, ""),
                 ("nc -z -w 1 chronicle.home.arpa 8007", 0, ""),
                 (
-                    "curl --fail --silent --show-error --insecure "
-                    "https://chronicle.home.arpa:8007/api2/json/version",
+                    "curl --silent --show-error --output /dev/null --insecure "
+                    "https://chronicle.home.arpa:8007/",
                     0,
                     "{}",
                 ),
@@ -174,8 +174,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ),
                 ("nc -z -w 1 chronicle.home.arpa 8007", 0, ""),
                 (
-                    "curl --fail --silent --show-error --insecure "
-                    "https://chronicle.home.arpa:8007/api2/json/version",
+                    "curl --silent --show-error --output /dev/null --insecure "
+                    "https://chronicle.home.arpa:8007/",
                     0,
                     "{}",
                 ),
@@ -214,8 +214,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ),
                 ("nc -z -w 1 chronicle.home.arpa 8007", 0, ""),
                 (
-                    "curl --fail --silent --show-error --insecure "
-                    "https://chronicle.home.arpa:8007/api2/json/version",
+                    "curl --silent --show-error --output /dev/null --insecure "
+                    "https://chronicle.home.arpa:8007/",
                     0,
                     "{}",
                 ),
@@ -254,8 +254,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
                 ),
                 ("nc -z -w 1 chronicle.home.arpa 8007", 0, ""),
                 (
-                    "curl --fail --silent --show-error --insecure "
-                    "https://chronicle.home.arpa:8007/api2/json/version",
+                    "curl --silent --show-error --output /dev/null --insecure "
+                    "https://chronicle.home.arpa:8007/",
                     0,
                     "{}",
                 ),
@@ -395,7 +395,7 @@ class FakeCommandIntegrationTest(unittest.TestCase):
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct start 110",
                     "nc -z -w 1 chronicle.home.arpa 8007",
-                    "curl --fail --silent --show-error --insecure https://chronicle.home.arpa:8007/api2/json/version",
+                    "curl --silent --show-error --output /dev/null --insecure https://chronicle.home.arpa:8007/",
                     "pvesm set chronicle --disable 0",
                     "pvesh get /cluster/backup/pbs-chronicle-weekly --output-format json",
                     "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly --output-format json --all 1 --mode snapshot --storage chronicle",
