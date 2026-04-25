@@ -28,7 +28,7 @@ class profile::chronicle_backup (
       [Service]
       Type=oneshot
       ExecStart=${script_path} --backup-job-id ${backup_job_id}
-      TimeoutStartSec=6h
+      TimeoutStartSec=infinity
       | UNIT
     require => File[$script_path],
   }

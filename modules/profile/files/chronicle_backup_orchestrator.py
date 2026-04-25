@@ -77,7 +77,13 @@ class Runner:
             "input": input_text,
             "text": True,
             "env": env,
-            "timeout": timeout or self.config.command_timeout,
+            "timeout": (
+                self.config.command_timeout
+                if timeout is None
+                else None
+                if timeout == 0
+                else timeout
+            ),
             "check": False,
         }
         if capture_output:
@@ -303,7 +309,7 @@ class Orchestrator:
 
         result = self.runner.run(
             command,
-            timeout=120,
+            timeout=0,
         )
         return parse_upid(result.stdout)
 
@@ -410,8 +416,9 @@ class Orchestrator:
 
 def parse_upid(output: str) -> str:
     stripped = output.strip()
-    if stripped.startswith("UPID:"):
-        return stripped
+    for line in stripped.splitlines():
+        if line.startswith("UPID:"):
+            return line
     parsed = json.loads(stripped)
     if isinstance(parsed, str):
         return parsed
