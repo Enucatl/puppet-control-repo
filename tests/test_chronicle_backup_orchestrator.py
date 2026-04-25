@@ -263,6 +263,23 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
         self.assertEqual(upid, "UPID:proxmox:1:2:3:vzdump::root@pam:")
         self.assertEqual(runner.timeouts[-1], 0)
 
+    def test_empty_backup_create_output_is_treated_as_success(self) -> None:
+        runner = FakeRunner(
+            [
+                ("pvesh get /cluster/backup/pbs-chronicle-weekly", 0, '{"all":1}'),
+                (
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly",
+                    0,
+                    "",
+                ),
+            ]
+        )
+        backup = orchestrator.Orchestrator(orchestrator.Config(), runner)
+
+        upid = backup.run_backup_job()
+
+        self.assertEqual(upid, "")
+
     def test_storage_enable_failure_attempts_cleanup(self) -> None:
         result, commands = run_case(
             [
