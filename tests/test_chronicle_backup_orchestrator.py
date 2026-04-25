@@ -40,8 +40,9 @@ class FakeRunner:
         env: dict[str, str] | None = None,
         timeout: int | None = None,
         check: bool = True,
+        capture_output: bool = True,
     ) -> subprocess.CompletedProcess[str]:
-        del input_text, env, timeout
+        del input_text, env, timeout, capture_output
         command_text = " ".join(command)
         self.commands.append(command_text)
         if not self.responses:

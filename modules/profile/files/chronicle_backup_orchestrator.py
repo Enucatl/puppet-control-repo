@@ -68,19 +68,21 @@ class Runner:
         env: dict[str, str] | None = None,
         timeout: int | None = None,
         check: bool = True,
+        capture_output: bool = True,
     ) -> subprocess.CompletedProcess[str]:
         print(f"+ {' '.join(command)}", flush=True)
         if self.config.dry_run:
             return self.dry_run_result(command)
-        result = subprocess.run(
-            list(command),
-            input=input_text,
-            text=True,
-            capture_output=True,
-            env=env,
-            timeout=timeout or self.config.command_timeout,
-            check=False,
-        )
+        run_kwargs: dict[str, object] = {
+            "input": input_text,
+            "text": True,
+            "env": env,
+            "timeout": timeout or self.config.command_timeout,
+            "check": False,
+        }
+        if capture_output:
+            run_kwargs["capture_output"] = True
+        result = subprocess.run(list(command), **run_kwargs)
         if check and result.returncode != 0:
             raise CommandError(command, result)
         return result
@@ -229,7 +231,13 @@ class Orchestrator:
         )
         env = os.environ.copy()
         env["SERVER_PASS"] = password
-        self.runner.run(["expect", "-"], input_text=expect_script, env=env, timeout=60)
+        self.runner.run(
+            ["expect", "-"],
+            input_text=expect_script,
+            env=env,
+            timeout=60,
+            capture_output=False,
+        )
 
     def ensure_container_running(self) -> None:
         status = self.ssh(
