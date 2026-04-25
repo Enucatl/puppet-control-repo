@@ -29,7 +29,7 @@ profile::common::ssh_authorized_keys:
     user: root
     type: ssh-rsa
     key: 'AAAAB3NzaC1yc2EAAAADAQABAAACAQCUenUKfbxEv2gStM37wLqyE7LohnrkJtx79Cm6IZ5DFfy4XZUcwIRRdFbXPGOxUX0L9evVmqSn/8iHNCoFBEJ1R17Y14nPpve1ba8D4d6VqTxdZj08WIYCb2j20riJPYqn/M9P/zVTL0wSYS4nRV4xx4TYKhbGQvcFls1fZtKMmSAl8FCr07U4XMzAdtfrIRXUqGQoo9zrTAMebepUqjwxsxFPlC3OZvZbg03HC88Av/6uybPIIy6+QjeQTh5Cf1vODJOCPim05CUqUqtSeeeTHk59ui1wruasxjUdYiDKB3w1/XmfcIYRB6YRmNQsZk8uSt//BGIujCiNHC17Ek3NLniQkVzlllgNZ1qr4vE0PLw53n8/KTqz6pmsBDzqNesHG98SfG9fm9vMvsRcHZm2AQuKlf7CkJWnoYuh4i8mFTazKWgN+vnBVqsMk1Uoha640a6HNVHQawvb6zZmeCnXJxzUt/Zv4VP0dbpd9Q/X8AKHTxSBOjO36Fb1NXuhTHm+56SY1KWfpOPt6yml1ytfG4LXGyFLJYZY72bjbM30VwKMQbpuUbbc8ooYN33QkDEfcgJv9xpZggvWTpsQNDnsPQvqvrPAqZaTYTZOK9p38vgpsti7dm9NJ8uR9D5HLxt5kltSroM5TOegUf5kQLu1QxfJy6TMVOYaTZTBtCTCSQ=='
-    name: 'root@proxmox'
+    name: 'root@proxmox-rsa'
 
 profile::common::sysctl_settings:
   net.ipv6.conf.enp7s0.accept_ra:
