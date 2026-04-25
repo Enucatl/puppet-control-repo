@@ -59,7 +59,7 @@ profile::common::cronjobs:
     minute: 0
     hour: 3
     user: root
-    command: '/usr/bin/docker system prune --all --force --filter until=24h 2>&1'
+    command: '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
 
 profile::common::sysctl_settings:
   net.ipv6.conf.all.accept_redirects:

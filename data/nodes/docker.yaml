@@ -66,13 +66,13 @@ profile::common::cronjobs:
     hour: 1
     weekday: 'Monday'
     user: root
-    command: '/opt/docker/puppet-control-repo/docker/vault/scripts/backup.sh 2>&1'
+    command: '/opt/docker/puppet-control-repo/docker/vault/scripts/backup.sh 2>&1 | /usr/bin/logger -t vault-snapshot -p user.info'
   paperless-snapshot:
     minute: 0
     hour: 1
     weekday: 'Monday'
     user: root
-    command: '/opt/docker/paperless-ai/backup.sh 2>&1'
+    command: '/opt/docker/paperless-ai/backup.sh 2>&1 | /usr/bin/logger -t paperless-snapshot -p user.info'
 
 profile::common::vault_certs_default_location: /opt/docker/traefik/data/certs
 profile::common::vault_certs_defaults:

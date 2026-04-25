@@ -56,7 +56,7 @@ profile::common::cronjobs:
     minute: 30
     hour: 4
     user: user
-    command: 'HOME=/home/user /home/user/.local/bin/uv cache prune 2>&1'
+    command: 'HOME=/home/user /home/user/.local/bin/uv cache prune 2>&1 | /usr/bin/logger -t uv-cache-prune -p user.info'
 
 tidy::files:
   downloads:
