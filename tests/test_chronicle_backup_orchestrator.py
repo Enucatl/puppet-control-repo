@@ -31,6 +31,7 @@ class FakeRunner:
     def __init__(self, responses: list[tuple[str, int, str]]) -> None:
         self.responses = responses
         self.commands: list[str] = []
+        self.timeouts: list[int | None] = []
 
     def run(
         self,
@@ -42,9 +43,10 @@ class FakeRunner:
         check: bool = True,
         capture_output: bool = True,
     ) -> subprocess.CompletedProcess[str]:
-        del input_text, env, timeout, capture_output
+        del input_text, env, capture_output
         command_text = " ".join(command)
         self.commands.append(command_text)
+        self.timeouts.append(timeout)
         if not self.responses:
             raise AssertionError(f"unexpected command: {command_text}")
         expected, returncode, stdout = self.responses.pop(0)
@@ -242,6 +244,24 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
 
         self.assertEqual(result, 1)
         self.assertTrue(commands[-1].startswith("pvesm set chronicle --disable 1"))
+
+    def test_backup_create_has_no_python_timeout(self) -> None:
+        runner = FakeRunner(
+            [
+                ("pvesh get /cluster/backup/pbs-chronicle-weekly", 0, '{"all":1}'),
+                (
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly",
+                    0,
+                    "INFO: running backup\nUPID:proxmox:1:2:3:vzdump::root@pam:\n",
+                ),
+            ]
+        )
+        backup = orchestrator.Orchestrator(orchestrator.Config(), runner)
+
+        upid = backup.run_backup_job()
+
+        self.assertEqual(upid, "UPID:proxmox:1:2:3:vzdump::root@pam:")
+        self.assertEqual(runner.timeouts[-1], 0)
 
     def test_storage_enable_failure_attempts_cleanup(self) -> None:
         result, commands = run_case(
