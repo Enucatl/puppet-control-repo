@@ -54,58 +54,10 @@ kmod::list_of_loads:
 
 profile::common::systemd_units:
   vllm-weekly-up.service:
-    content: |
-      [Unit]
-      Description=Start the weekly vLLM document processing window
-      Requires=docker.service
-      After=docker.service
-      After=network-online.target
-
-      [Service]
-      Type=oneshot
-      User=user
-      WorkingDirectory=/opt/docker/vllm
-      Environment=COMPOSE_ENV_FILES=../.env,./.env
-      ExecStart=/usr/bin/docker compose --profile extraction up -d
-
+    ensure: absent
   vllm-weekly-up.timer:
-    content: |
-      [Unit]
-      Description=Start vLLM weekly at 01:05 UTC on Monday
-
-      [Timer]
-      OnCalendar=Mon *-*-* 01:05:00 UTC
-      Unit=vllm-weekly-up.service
-
-      [Install]
-      WantedBy=timers.target
-    enable: true
-    active: true
-
+    ensure: absent
   vllm-weekly-down.service:
-    content: |
-      [Unit]
-      Description=Stop the weekly vLLM document processing window
-      Requires=docker.service
-      After=docker.service
-
-      [Service]
-      Type=oneshot
-      User=user
-      WorkingDirectory=/opt/docker/vllm
-      Environment=COMPOSE_ENV_FILES=../.env,./.env
-      ExecStart=/usr/bin/docker compose --profile extraction down
-
+    ensure: absent
   vllm-weekly-down.timer:
-    content: |
-      [Unit]
-      Description=Stop vLLM weekly at 02:05 UTC on Monday
-
-      [Timer]
-      OnCalendar=Mon *-*-* 02:05:00 UTC
-      Unit=vllm-weekly-down.service
-
-      [Install]
-      WantedBy=timers.target
-    enable: true
-    active: true
+    ensure: absent

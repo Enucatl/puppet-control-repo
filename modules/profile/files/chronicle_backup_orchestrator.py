@@ -3,14 +3,19 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import fcntl
 import json
-import os
 import subprocess
 import sys
-import textwrap
 import time
 from collections.abc import Sequence
+from pathlib import Path
+
+sys.path.insert(0, "/usr/local/lib")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import proxmox_orchestration
+
+CommandError = proxmox_orchestration.CommandError
+Runner = proxmox_orchestration.Runner
 
 
 @dataclasses.dataclass(frozen=True)
@@ -43,96 +48,6 @@ class Config:
         return f"/etc/puppetlabs/puppet/ssl/private_keys/{self.certname}.pem"
 
 
-class CommandError(RuntimeError):
-    def __init__(
-        self, command: Sequence[str], result: subprocess.CompletedProcess[str]
-    ):
-        self.command = command
-        self.result = result
-        super().__init__(
-            f"{' '.join(command)} failed with exit {result.returncode}: "
-            f"{result.stderr.strip() or result.stdout.strip()}"
-        )
-
-
-class Runner:
-    def __init__(self, config: Config) -> None:
-        self.config = config
-        self.dry_run_nc_checks = 0
-
-    def run(
-        self,
-        command: Sequence[str],
-        *,
-        input_text: str | None = None,
-        env: dict[str, str] | None = None,
-        timeout: int | None = None,
-        check: bool = True,
-        capture_output: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        print(f"+ {' '.join(command)}", flush=True)
-        if self.config.dry_run:
-            return self.dry_run_result(command)
-        run_kwargs: dict[str, object] = {
-            "input": input_text,
-            "text": True,
-            "env": env,
-            "timeout": (
-                self.config.command_timeout
-                if timeout is None
-                else None
-                if timeout == 0
-                else timeout
-            ),
-            "check": False,
-        }
-        if capture_output:
-            run_kwargs["capture_output"] = True
-        result = subprocess.run(list(command), **run_kwargs)
-        if check and result.returncode != 0:
-            raise CommandError(command, result)
-        return result
-
-    def dry_run_result(
-        self, command: Sequence[str]
-    ) -> subprocess.CompletedProcess[str]:
-        command_text = " ".join(command)
-        if command[:3] == ["vault", "kv", "get"]:
-            return subprocess.CompletedProcess(command, 0, "dry-run-secret\n", "")
-        if command[:1] == ["nc"]:
-            self.dry_run_nc_checks += 1
-            returncode = 1 if self.dry_run_nc_checks == 1 else 0
-            return subprocess.CompletedProcess(command, returncode, "", "")
-        if "pct status" in command_text:
-            return subprocess.CompletedProcess(command, 0, "status: stopped\n", "")
-        if command[:2] == ["pvesh", "create"]:
-            return subprocess.CompletedProcess(
-                command,
-                0,
-                '"UPID:proxmox:dry:run:task:vzdump::root@pam:"\n',
-                "",
-            )
-        if command[:3] == [
-            "pvesh",
-            "get",
-            f"/cluster/backup/{self.config.backup_job_id}",
-        ]:
-            return subprocess.CompletedProcess(
-                command,
-                0,
-                '{"all":1,"mode":"snapshot","storage":"chronicle"}\n',
-                "",
-            )
-        if command[:2] == ["pvesh", "get"]:
-            return subprocess.CompletedProcess(
-                command,
-                0,
-                '{"status":"stopped","exitstatus":"OK"}\n',
-                "",
-            )
-        return subprocess.CompletedProcess(command, 0, "", "")
-
-
 class Orchestrator:
     def __init__(self, config: Config, runner: Runner) -> None:
         self.config = config
@@ -144,11 +59,17 @@ class Orchestrator:
 
     def run(self) -> int:
         try:
-            password = self.read_vault_secret()
-            self.initially_on = self.port_open(self.config.proxmox_host, 22, timeout=2)
+            password = proxmox_orchestration.read_vault_secret(self.config, self.runner)
+            self.initially_on = proxmox_orchestration.port_open(
+                self.runner, self.config.proxmox_host, 22, timeout=2
+            )
 
             if not self.initially_on:
-                self.wake_and_unlock(password)
+                proxmox_orchestration.wake_and_unlock(
+                    self.config, self.runner, password
+                )
+                self.woke_host = True
+                self.reliable_ssh = True
             else:
                 print("proxmox-cortex SSH is already reachable; skipping wake/unlock")
                 self.reliable_ssh = True
@@ -165,86 +86,6 @@ class Orchestrator:
         finally:
             self.cleanup()
 
-    def read_vault_secret(self) -> str:
-        env = os.environ.copy()
-        env.setdefault("VAULT_ADDR", self.config.vault_addr)
-        env.setdefault("VAULT_CACERT", self.config.vault_cacert)
-        command = [
-            "vault",
-            "kv",
-            "get",
-            f"-field={self.config.vault_field}",
-            self.config.vault_path,
-        ]
-        result = self.runner.run(command, env=env, check=False)
-        if result.returncode != 0:
-            login = self.runner.run(
-                [
-                    "vault",
-                    "login",
-                    f"-client-cert={self.config.puppet_cert}",
-                    f"-client-key={self.config.puppet_key}",
-                    "-method=cert",
-                    "-format=json",
-                    f"name={self.config.vault_cert_role}",
-                ],
-                env=env,
-            )
-            env["VAULT_TOKEN"] = json.loads(login.stdout)["auth"]["client_token"]
-            result = self.runner.run(command, env=env)
-
-        secret = result.stdout.strip()
-        if not secret:
-            raise RuntimeError("Vault secret is empty")
-        return secret
-
-    def wake_and_unlock(self, password: str) -> None:
-        self.runner.run(["wakeonlan", "-i", self.config.broadcast, self.config.mac])
-        self.woke_host = True
-        self.wait_for_port(self.config.dropbear_host, 2222, "Dropbear SSH", 120, 2)
-        self.unlock_zfs(password)
-        self.wait_for_port(self.config.proxmox_host, 22, "Proxmox SSH", 300, 5)
-        self.reliable_ssh = True
-
-    def unlock_zfs(self, password: str) -> None:
-        expect_script = textwrap.dedent(
-            f"""
-            log_user 1
-            set timeout 20
-            spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
-            expect {{
-                -re "password for rpool/ROOT|Enter the password.*exit\\\\." {{
-                    send "$env(SERVER_PASS)\\r"
-                    exp_continue
-                }}
-                -re "Unlocking complete|Password for .* accepted" {{
-                    puts "\\nUnlock detected."
-                    exp_continue
-                }}
-                -re "Wrong password|Key load error|encryption failure" {{
-                    puts "\\nUnlock password was rejected."
-                    exit 1
-                }}
-                timeout {{
-                    puts "\\nUnlock timed out."
-                    exit 1
-                }}
-                eof {{
-                    exit 0
-                }}
-            }}
-            """
-        )
-        env = os.environ.copy()
-        env["SERVER_PASS"] = password
-        self.runner.run(
-            ["expect", "-"],
-            input_text=expect_script,
-            env=env,
-            timeout=60,
-            capture_output=False,
-        )
-
     def ensure_container_running(self) -> None:
         status = self.ssh(
             [f"pct status {self.config.ct_id}"],
@@ -256,7 +97,9 @@ class Orchestrator:
         self.ssh([f"pct start {self.config.ct_id}"], timeout=120)
 
     def wait_for_pbs(self) -> None:
-        self.wait_for_port(self.config.pbs_host, 8007, "PBS API", 300, 5)
+        proxmox_orchestration.wait_for_port(
+            self.runner, self.config.pbs_host, 8007, "PBS API", 300, 5
+        )
         deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
             result = self.runner.run(
@@ -379,41 +222,13 @@ class Orchestrator:
         timeout: int | None = None,
         check: bool = True,
     ) -> subprocess.CompletedProcess[str]:
-        return self.runner.run(
-            [
-                "ssh",
-                "-o",
-                "BatchMode=yes",
-                self.config.proxmox_host,
-                " && ".join(remote_commands),
-            ],
+        return proxmox_orchestration.proxmox_ssh(
+            self.config,
+            self.runner,
+            remote_commands,
             timeout=timeout,
             check=check,
         )
-
-    def port_open(self, host: str, port: int, *, timeout: int = 1) -> bool:
-        result = self.runner.run(
-            ["nc", "-z", "-w", str(timeout), host, str(port)],
-            timeout=timeout + 1,
-            check=False,
-        )
-        return result.returncode == 0
-
-    def wait_for_port(
-        self,
-        host: str,
-        port: int,
-        label: str,
-        timeout: int,
-        sleep_interval: int,
-    ) -> None:
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            if self.port_open(host, port):
-                print(f"{label} is reachable on {host}:{port}")
-                return
-            time.sleep(sleep_interval)
-        raise RuntimeError(f"timed out waiting for {label} on {host}:{port}")
 
 
 def parse_upid(output: str) -> str:
@@ -446,15 +261,6 @@ def format_pvesh_value(value: object) -> str:
     raise RuntimeError(f"unsupported pvesh value: {value!r}")
 
 
-def acquire_lock(path: str) -> object:
-    lock = open(path, "w", encoding="utf-8")
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError as error:
-        raise RuntimeError("another chronicle backup run is already active") from error
-    return lock
-
-
 def parse_args(argv: Sequence[str]) -> Config:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pbs-host", default=Config.pbs_host)
@@ -479,7 +285,9 @@ def parse_args(argv: Sequence[str]) -> Config:
 def main(argv: Sequence[str] | None = None) -> int:
     config = parse_args(argv or sys.argv[1:])
     try:
-        lock = acquire_lock(config.lock_file)
+        lock = proxmox_orchestration.acquire_lock(
+            config.lock_file, "another chronicle backup run is already active"
+        )
     except RuntimeError as error:
         print(error, file=sys.stderr)
         return 75

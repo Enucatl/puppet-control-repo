@@ -63,7 +63,7 @@ class NoSleepOrchestrator(orchestrator.Orchestrator):
         self, host: str, port: int, label: str, timeout: int, sleep_interval: int
     ) -> None:
         del label, timeout, sleep_interval
-        if not self.port_open(host, port):
+        if not orchestrator.proxmox_orchestration.port_open(self.runner, host, port):
             raise RuntimeError(f"{host}:{port} unavailable")
 
 

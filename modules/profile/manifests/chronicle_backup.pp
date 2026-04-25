@@ -3,12 +3,15 @@ class profile::chronicle_backup (
   String  $backup_job_id = 'pbs-chronicle-weekly',
   String  $timer_calendar = 'Mon *-*-* 01:00:00',
 ) {
+  include profile::proxmox_orchestration
+
   file { $script_path:
     ensure => file,
     owner  => 'root',
     group  => 'root',
     mode   => '0755',
     source => 'puppet:///modules/profile/chronicle_backup_orchestrator.py',
+    require => Class['profile::proxmox_orchestration'],
   }
 
   exec { "disable ${backup_job_id} scheduler":
@@ -30,7 +33,7 @@ class profile::chronicle_backup (
       ExecStart=${script_path} --backup-job-id ${backup_job_id}
       TimeoutStartSec=infinity
       | UNIT
-    require => File[$script_path],
+    require => [Class['profile::proxmox_orchestration'], File[$script_path]],
   }
 
   systemd::unit_file { 'chronicle-backup.timer':
