@@ -271,7 +271,7 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
         result, commands = run_case(
             [
                 ("vault kv get", 1, ""),
-                ("vault login -method=cert -format=json name=proxmox-puppet", 1, ""),
+                ("vault login -client-cert=", 1, ""),
             ]
         )
 

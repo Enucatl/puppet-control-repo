@@ -174,11 +174,11 @@ class Orchestrator:
                 [
                     "vault",
                     "login",
+                    f"-client-cert={self.config.puppet_cert}",
+                    f"-client-key={self.config.puppet_key}",
                     "-method=cert",
                     "-format=json",
                     f"name={self.config.vault_cert_role}",
-                    f"-client-cert={self.config.puppet_cert}",
-                    f"-client-key={self.config.puppet_key}",
                 ],
                 env=env,
             )
