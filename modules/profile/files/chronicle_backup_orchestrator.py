@@ -205,7 +205,7 @@ class Orchestrator:
             f"""
             log_user 1
             set timeout 20
-            spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new -o PreferredAuthentications=password -o PubkeyAuthentication=no -o IdentitiesOnly=yes {self.config.dropbear_host}
+            spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
             expect {{
                 -re "password for rpool/ROOT|Enter the password.*exit\\\\." {{
                     send "$env(SERVER_PASS)\\r"
@@ -217,10 +217,6 @@ class Orchestrator:
                 }}
                 -re "Wrong password|Key load error|encryption failure" {{
                     puts "\\nUnlock password was rejected."
-                    exit 1
-                }}
-                -re "Permission denied|No more authentication methods" {{
-                    puts "\\nUnlock authentication failed."
                     exit 1
                 }}
                 timeout {{

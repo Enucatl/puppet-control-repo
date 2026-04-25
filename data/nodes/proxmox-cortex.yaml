@@ -4,6 +4,7 @@ classes:
 
 profile::dropbear_initramfs::authorized_keys:
   - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO1zLY2stYvi4mF5lUjvvskARuI86SusWqaWyO2F3ioQ root@docker'
+  - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII/1iigMJVpqpCWTnq/30yf+iK3mD1waMO/UI+0IUHzh root@proxmox'
   - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEot3u2cV0DaYXoTiFLyCQkEGixSVZhdzddnhbRtaPu/ 1423701+Enucatl@users.noreply.github.com'
 profile::dropbear_initramfs::network_device: enp5s0f0np0
 profile::dropbear_initramfs::network_ip: '10.0.40.2::10.0.40.1:255.255.255.0:proxmox-cortex:enp5s0f0np0:off'
