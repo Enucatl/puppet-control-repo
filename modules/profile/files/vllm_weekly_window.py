@@ -35,7 +35,7 @@ class Config:
     vault_field: str = "proxmox-cortex"
     vault_addr: str = "https://hcv.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
-    vault_cert_role: str = "proxmox-puppet"
+    vault_cert_role: str = "puppet"
     certname: str = "proxmox.home.arpa"
     lock_file: str = "/run/vllm-weekly-window.lock"
     command_timeout: int = 60
