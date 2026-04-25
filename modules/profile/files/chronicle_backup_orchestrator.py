@@ -205,8 +205,12 @@ class Orchestrator:
             set timeout 20
             spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
             expect {{
-                -re "password for rpool/ROOT|Enter the password.*exit\\\\." {{
+                -re "password for rpool/ROOT:" {{
                     send "$env(SERVER_PASS)\\r"
+                    exp_continue
+                }}
+                -re "Enter the password.*exit\\\\.|Encrypted ZFS password for rpool/ROOT:" {{
+                    send "\\t$env(SERVER_PASS)\\r"
                     exp_continue
                 }}
                 -re "Unlocking complete|Password for .* accepted" {{
@@ -248,11 +252,12 @@ class Orchestrator:
             result = self.runner.run(
                 [
                     "curl",
-                    "--fail",
                     "--silent",
                     "--show-error",
+                    "--output",
+                    "/dev/null",
                     "--insecure",
-                    f"https://{self.config.pbs_host}:8007/api2/json/version",
+                    f"https://{self.config.pbs_host}:8007/",
                 ],
                 timeout=10,
                 check=False,
