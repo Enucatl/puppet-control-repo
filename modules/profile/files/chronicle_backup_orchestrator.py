@@ -201,7 +201,7 @@ class Orchestrator:
     def unlock_zfs(self, password: str) -> None:
         expect_script = textwrap.dedent(
             f"""
-            log_user 0
+            log_user 1
             set timeout 20
             spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {self.config.dropbear_host}
             expect {{
