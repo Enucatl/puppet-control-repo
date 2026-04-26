@@ -181,6 +181,7 @@ profile::common::posix_acls:
     action: set
     permission:
       - "user:100999:--x" # remap base 100000 + app uid 999
+      - "user:100000:--x" # remap base 100000 + container root
       - "mask::--x"
   "/opt/docker/send-bills/secrets/django_secret_key":
     action: set
@@ -196,6 +197,7 @@ profile::common::posix_acls:
     action: set
     permission:
       - "user:100999:r--" # remap base 100000 + app uid 999
+      - "user:100000:r--" # remap base 100000 + container root
       - "mask::r--"
   "/var/lib/docker/100000.100000/volumes/airflow_airflow-venv-volume/_data":
     action: set
