@@ -43,7 +43,8 @@ profile::docker_host::git_deploy_projects:
   qbittorrent: {}
   rclone: {}
   rss-to-telegram-bot: {}
-  send-bills: {}
+  send-bills:
+    build_command: 'VERSION=$(uv run setuptools-git-versioning); docker compose build --build-arg VERSION="$VERSION"'
   teamspeak: {}
   tor-i2pd: {}
   traefik: {}
