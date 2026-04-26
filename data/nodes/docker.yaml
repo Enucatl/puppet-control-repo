@@ -43,8 +43,7 @@ profile::docker_host::git_deploy_projects:
   qbittorrent: {}
   rclone: {}
   rss-to-telegram-bot: {}
-  send-bills:
-    compose_file: docker-compose.yml
+  send-bills: {}
   teamspeak: {}
   tor-i2pd: {}
   traefik: {}
@@ -176,6 +175,26 @@ profile::common::posix_acls:
     action: set
     permission:
       - "user:101000:r--"
+      - "mask::r--"
+  "/opt/docker/send-bills/secrets":
+    action: set
+    permission:
+      - "user:100999:--x" # remap base 100000 + app uid 999
+      - "mask::--x"
+  "/opt/docker/send-bills/secrets/django_secret_key":
+    action: set
+    permission:
+      - "user:100999:r--" # remap base 100000 + app uid 999
+      - "mask::r--"
+  "/opt/docker/send-bills/secrets/django_email_host_password":
+    action: set
+    permission:
+      - "user:100999:r--" # remap base 100000 + app uid 999
+      - "mask::r--"
+  "/opt/docker/send-bills/secrets/postgres_password":
+    action: set
+    permission:
+      - "user:100999:r--" # remap base 100000 + app uid 999
       - "mask::r--"
   "/var/lib/docker/100000.100000/volumes/airflow_airflow-venv-volume/_data":
     action: set
