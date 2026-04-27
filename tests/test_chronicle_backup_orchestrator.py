@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import os
 import subprocess
 import sys
@@ -8,6 +9,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from contextlib import redirect_stderr
 
 
 MODULE_PATH = (
@@ -244,6 +246,29 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
 
         self.assertEqual(result, 1)
         self.assertTrue(commands[-1].startswith("pvesm set chronicle --disable 1"))
+
+    def test_backup_task_status_retry_logs_raw_output(self) -> None:
+        runner = FakeRunner(
+            [
+                (
+                    "pvesh get /nodes/proxmox/tasks/UPID:proxmox:1:2:3:vzdump::root@pam:/status",
+                    0,
+                    "",
+                ),
+                (
+                    "pvesh get /nodes/proxmox/tasks/UPID:proxmox:1:2:3:vzdump::root@pam:/status",
+                    0,
+                    '{"status":"stopped","exitstatus":"OK"}',
+                ),
+            ]
+        )
+        backup = orchestrator.Orchestrator(orchestrator.Config(), runner)
+
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            backup.wait_for_task("UPID:proxmox:1:2:3:vzdump::root@pam:")
+
+        self.assertIn("returned non-JSON status", stderr.getvalue())
 
     def test_backup_create_has_no_python_timeout(self) -> None:
         runner = FakeRunner(
