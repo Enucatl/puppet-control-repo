@@ -7,7 +7,7 @@
 #   ensure        - 'present' or 'absent' (default: 'present')
 #   branch        - Git branch to watch (default: 'main')
 #   run_as        - User that runs docker compose (default: 'user')
-#   pull          - Pull updated images before starting (default: false)
+#   pull          - Pull updated images before starting (default: true)
 #   build_command - Custom build command run after pull and before deploy
 #                   (wrapped in bash -c '...'); omit for image-only projects
 #   deploy_command - Custom deploy command run after pull/build
@@ -20,6 +20,9 @@
 #   watch_dir     - Only redeploy if the last push touched files under this
 #                   subdirectory (relative to the repo root); omit to redeploy
 #                   on any push
+#   scheduled_refresh - Create a periodic refresh timer that starts the deploy
+#                       service
+#   refresh_calendar  - systemd OnCalendar value for scheduled_refresh
 #
 # Example (Hiera, via profile::docker_host::git_deploy_projects):
 #
@@ -45,6 +48,8 @@ define profile::docker_deploy (
   Optional[String]         $compose_file  = undef,
   Optional[String]         $env_file      = undef,
   Optional[String]         $watch_dir     = undef,
+  Boolean                  $scheduled_refresh = false,
+  String                   $refresh_calendar  = 'Sun *-*-01..07 04:00:00',
 ) {
   $base_dir = "/opt/docker/${name}"
 
@@ -64,6 +69,11 @@ define profile::docker_deploy (
   $watch_dir_str   = $watch_dir ? {
     undef   => '',
     default => "ExecCondition=/bin/bash -c 'git diff --name-only HEAD@{1} HEAD -- ${watch_dir} | grep -q .'\n",
+  }
+  $refresh_health_filter = 'flatten | all(.[]; ((.State == "running") and ((.Health // "") != "unhealthy")) or ((.State == "exited") and ((.ExitCode // 0 | tonumber) == 0)))'
+  $refresh_health_check_str = $scheduled_refresh ? {
+    true    => "ExecStartPost=/bin/bash -ceu '${compose_cmd} ps --all --format json | /usr/bin/jq -s -e \"${refresh_health_filter}\" >/dev/null'\n",
+    default => '',
   }
 
   systemd::unit_file { "${name}-deploy.path":
@@ -99,11 +109,59 @@ define profile::docker_deploy (
       ${watch_dir_str}ExecStartPre=/bin/sleep 5
       ${exec_start_str}
       ExecStartPost=${compose_cmd} ps
+      ${refresh_health_check_str}
       StandardOutput=journal
       StandardError=journal
       SyslogIdentifier=${name}-deploy
       | UNIT
     enable  => false,
     active  => false,
+  }
+
+  if $scheduled_refresh {
+    systemd::unit_file { "${name}-refresh.service":
+      ensure  => $ensure,
+      content => @("UNIT"),
+        [Unit]
+        Description=Refresh and restart ${name}
+        Requires=docker.service
+        After=docker.service
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        User=${run_as}
+        WorkingDirectory=${base_dir}
+        Environment=COMPOSE_ENV_FILES=../.env,./.env
+        ExecStartPre=/bin/sleep 5
+        ${exec_start_str}
+        ExecStartPost=${compose_cmd} ps
+        ${refresh_health_check_str}
+        StandardOutput=journal
+        StandardError=journal
+        SyslogIdentifier=${name}-refresh
+        | UNIT
+      enable  => false,
+      active  => false,
+    }
+
+    systemd::unit_file { "${name}-refresh.timer":
+      ensure  => $ensure,
+      content => @("UNIT"),
+        [Unit]
+        Description=Refresh ${name} on a monthly schedule
+
+        [Timer]
+        OnCalendar=${refresh_calendar}
+        Persistent=true
+        Unit=${name}-refresh.service
+
+        [Install]
+        WantedBy=timers.target
+        | UNIT
+      enable  => $ensure == 'present',
+      active  => $ensure == 'present',
+      require => Systemd::Unit_file["${name}-refresh.service"],
+    }
   }
 }
