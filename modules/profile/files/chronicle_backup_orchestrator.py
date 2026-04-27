@@ -189,7 +189,19 @@ class Orchestrator:
                 ],
                 timeout=120,
             )
-            status = json.loads(result.stdout)
+            try:
+                status = json.loads(result.stdout)
+            except json.JSONDecodeError:
+                print(
+                    f"backup task {upid} returned non-JSON status: {result.stdout!r}",
+                    file=sys.stderr,
+                )
+                time.sleep(5)
+                continue
+            if not isinstance(status, dict):
+                raise RuntimeError(
+                    f"backup task {upid} status is not an object: {result.stdout.strip()}"
+                )
             if status.get("status") != "stopped":
                 time.sleep(15)
                 continue
