@@ -21,7 +21,6 @@ profile::docker_host::git_deploy_projects:
   authelia: {}
   checkmk: {}
   crabberbot:
-    pull: false
     build_command: 'YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
   duplicati: {}
   echo-server: {}
@@ -34,10 +33,8 @@ profile::docker_host::git_deploy_projects:
     ensure: absent
   kms: {}
   monerod:
-    pull: false
     build_command: "docker compose build"
   paperless-ai:
-    pull: false
     build_command: "docker compose build"
   protonmail-bridge: {}
   qbittorrent: {}
@@ -50,6 +47,8 @@ profile::docker_host::git_deploy_projects:
   traefik: {}
   unifi-network-application:
     ensure: absent
+
+profile::docker_host::scheduled_refresh: true
 
 packages::list:
   - qemu-guest-agent
