@@ -250,12 +250,25 @@ def parse_upid(output: str) -> str:
     for line in stripped.splitlines():
         if line.startswith("UPID:"):
             return line
-    parsed = json.loads(stripped)
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        print(
+            "pvesh create completed without a parseable UPID; "
+            f"skipping task status polling: {stripped}",
+            file=sys.stderr,
+        )
+        return ""
     if isinstance(parsed, str):
         return parsed
     if isinstance(parsed, dict) and isinstance(parsed.get("upid"), str):
         return parsed["upid"]
-    raise RuntimeError(f"could not parse UPID from pvesh output: {stripped}")
+    print(
+        "pvesh create completed without a UPID in its JSON response; "
+        f"skipping task status polling: {stripped}",
+        file=sys.stderr,
+    )
+    return ""
 
 
 def format_pvesh_value(value: object) -> str:

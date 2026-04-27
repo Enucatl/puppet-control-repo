@@ -305,6 +305,42 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
 
         self.assertEqual(upid, "")
 
+    def test_unparseable_backup_create_output_skips_task_polling(self) -> None:
+        result, commands = run_case(
+            [
+                ("vault kv get", 0, "secret\n"),
+                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
+                (
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
+                    0,
+                    "status: running\n",
+                ),
+                ("nc -z -w 1 chronicle.home.arpa 8007", 0, ""),
+                (
+                    "curl --silent --show-error --output /dev/null --insecure "
+                    "https://chronicle.home.arpa:8007/",
+                    0,
+                    "{}",
+                ),
+                ("pvesm set chronicle --disable 0", 0, ""),
+                (
+                    "pvesh get /cluster/backup/pbs-chronicle-weekly",
+                    0,
+                    '{"all":1,"mode":"snapshot","storage":"chronicle"}',
+                ),
+                (
+                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly",
+                    0,
+                    "INFO: Backup job finished successfully\n",
+                ),
+                ("pvesm set chronicle --disable 1", 0, ""),
+            ]
+        )
+
+        self.assertEqual(result, 0)
+        self.assertFalse(any("/tasks/" in command for command in commands))
+        self.assertTrue(commands[-1].startswith("pvesm set chronicle --disable 1"))
+
     def test_storage_enable_failure_attempts_cleanup(self) -> None:
         result, commands = run_case(
             [
