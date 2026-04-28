@@ -1,0 +1,7 @@
+<%- | Array[String[1]] $pci_ids, Boolean $blacklist_nouveau | -%>
+options vfio-pci ids=<%= join($pci_ids, ',') %> disable_vga=1
+softdep nouveau pre: vfio-pci
+softdep snd_hda_intel pre: vfio-pci
+<%- if $blacklist_nouveau { -%>
+blacklist nouveau
+<%- } -%>
