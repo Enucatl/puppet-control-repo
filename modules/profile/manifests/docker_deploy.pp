@@ -70,7 +70,7 @@ define profile::docker_deploy (
     undef   => '',
     default => "ExecCondition=/bin/bash -c 'git diff --name-only HEAD@{1} HEAD -- ${watch_dir} | grep -q .'\n",
   }
-  $refresh_health_filter = 'flatten | all(.[]; ((.State == "running") and ((.Health // "") != "unhealthy")) or ((.State == "exited") and ((.ExitCode // 0 | tonumber) == 0)))'
+  $refresh_health_filter = 'flatten | all(.[]; ((.State == \"running\") and ((.Health // \"\") != \"unhealthy\")) or ((.State == \"exited\") and ((.ExitCode // 0 | tonumber) == 0)))'
   $refresh_health_check_str = $scheduled_refresh ? {
     true    => "ExecStartPost=/bin/bash -ceu '${compose_cmd} ps --all --format json | /usr/bin/jq -s -e \"${refresh_health_filter}\" >/dev/null'\n",
     default => '',
