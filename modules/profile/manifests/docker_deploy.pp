@@ -51,6 +51,8 @@ define profile::docker_deploy (
   Boolean                  $scheduled_refresh = false,
   String                   $refresh_calendar  = 'Sun *-*-01..07 04:00:00',
 ) {
+  include profile::docker_deploy::health_check
+
   $base_dir = "/opt/docker/${name}"
 
   # Build the global docker compose flags (--env-file and -f apply to all subcommands)
@@ -70,9 +72,8 @@ define profile::docker_deploy (
     undef   => '',
     default => "ExecCondition=/bin/bash -c 'git diff --name-only HEAD@{1} HEAD -- ${watch_dir} | grep -q .'\n",
   }
-  $refresh_health_filter = 'flatten | all(.[]; ((.State == \"running\") and ((.Health // \"\") != \"unhealthy\")) or ((.State == \"exited\") and ((.ExitCode // 0 | tonumber) == 0)))'
   $refresh_health_check_str = $scheduled_refresh ? {
-    true    => "ExecStartPost=/bin/bash -ceu '${compose_cmd} ps --all --format json | /usr/bin/jq -s -e \"${refresh_health_filter}\" >/dev/null'\n",
+    true    => "ExecStartPost=/usr/local/sbin/docker-compose-health-check ${compose_cmd}\n",
     default => '',
   }
 
@@ -116,6 +117,7 @@ define profile::docker_deploy (
       | UNIT
     enable  => false,
     active  => false,
+    require => Class['profile::docker_deploy::health_check'],
   }
 
   if $scheduled_refresh {
@@ -143,6 +145,7 @@ define profile::docker_deploy (
         | UNIT
       enable  => false,
       active  => false,
+      require => Class['profile::docker_deploy::health_check'],
     }
 
     systemd::unit_file { "${name}-refresh.timer":
