@@ -18,6 +18,7 @@ profile::docker_host::git_deploy_projects:
   airflow:
     pull: true
     build_command: 'AIRFLOW_VERSION="$(python3 scripts/airflow-version)" docker compose build'
+    deploy_command: 'AIRFLOW_VERSION="$(python3 scripts/airflow-version)" docker compose up -d --force-recreate'
   authelia: {}
   checkmk: {}
   crabberbot:
