@@ -17,7 +17,7 @@ nfs_config::client_mounts:
 profile::docker_host::git_deploy_projects:
   airflow:
     pull: true
-    build_command: "docker compose build --build-arg AIRFLOW_VERSION=$(cat build/VERSION)"
+    build_command: 'AIRFLOW_VERSION="$(python3 scripts/airflow-version)" docker compose build'
   authelia: {}
   checkmk: {}
   crabberbot:
