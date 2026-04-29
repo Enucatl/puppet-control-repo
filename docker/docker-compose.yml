@@ -138,6 +138,8 @@ services:
     volumes:
       - /scratch/apt-cacher-ng:/var/cache/apt-cacher-ng
       - ./vault/scripts/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
+    networks:
+      - apt_cache
 
   # TEMPORARY CONTAINERS
   # only to document one-off setup
@@ -202,6 +204,8 @@ services:
       - infra
 
 networks:
+  apt_cache:
+    enable_ipv6: true
   infra:
     name: infra
     enable_ipv6: true
