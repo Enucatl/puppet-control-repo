@@ -4,8 +4,6 @@ import dataclasses
 import importlib.util
 import subprocess
 import sys
-import tempfile
-import unittest
 from pathlib import Path
 
 
@@ -69,12 +67,12 @@ def run_case(responses: list[tuple[str, int, str]]) -> tuple[int, list[str]]:
     return result, runner.commands
 
 
-class VllmWeeklyWindowTest(unittest.TestCase):
+class TestVllmWeeklyWindow:
     def test_already_on_is_noop(self) -> None:
         result, commands = run_case([("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, "")])
 
-        self.assertEqual(result, 0)
-        self.assertEqual(commands, ["nc -z -w 2 proxmox-cortex.home.arpa 22"])
+        assert result == 0
+        assert commands == ["nc -z -w 2 proxmox-cortex.home.arpa 22"]
 
     def test_full_sequence_cleans_up_started_layers(self) -> None:
         result, commands = run_case(
@@ -115,14 +113,12 @@ class VllmWeeklyWindowTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 0)
-        self.assertIn("qm start 200", " ".join(commands))
-        self.assertIn("docker compose --profile extraction up -d", commands[9])
-        self.assertIn("docker compose --profile extraction down", commands[10])
-        self.assertTrue(commands[-2].endswith("qm shutdown 200"))
-        self.assertTrue(
-            commands[-1].endswith("shutdown -h now 'vLLM weekly window complete'")
-        )
+        assert result == 0
+        assert "qm start 200" in " ".join(commands)
+        assert "docker compose --profile extraction up -d" in commands[9]
+        assert "docker compose --profile extraction down" in commands[10]
+        assert commands[-2].endswith("qm shutdown 200")
+        assert commands[-1].endswith("shutdown -h now 'vLLM weekly window complete'")
 
     def test_compose_start_failure_still_cleans_up(self) -> None:
         result, commands = run_case(
@@ -163,20 +159,15 @@ class VllmWeeklyWindowTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 1)
-        self.assertIn("docker compose --profile extraction down", commands[10])
-        self.assertTrue(commands[-2].endswith("qm shutdown 200"))
-        self.assertTrue(commands[-1].endswith("'vLLM weekly window complete'"))
+        assert result == 1
+        assert "docker compose --profile extraction down" in commands[10]
+        assert commands[-2].endswith("qm shutdown 200")
+        assert commands[-1].endswith("'vLLM weekly window complete'")
 
-    def test_lock_contention_exits_75(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            lock_path = str(Path(temp_dir) / "lock")
-            lock = shared.acquire_lock(lock_path, "busy")
-            with lock:
-                result = vllm.main(["--lock-file", lock_path, "--dry-run"])
+    def test_lock_contention_exits_75(self, tmp_path: Path) -> None:
+        lock_path = str(tmp_path / "lock")
+        lock = shared.acquire_lock(lock_path, "busy")
+        with lock:
+            result = vllm.main(["--lock-file", lock_path, "--dry-run"])
 
-        self.assertEqual(result, 75)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert result == 75

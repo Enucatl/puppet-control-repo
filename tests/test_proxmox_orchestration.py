@@ -4,9 +4,9 @@ import dataclasses
 import importlib.util
 import subprocess
 import sys
-import tempfile
-import unittest
 from pathlib import Path
+
+import pytest
 
 
 MODULE_PATH = (
@@ -73,7 +73,7 @@ class FakeRunner:
         return result
 
 
-class ProxmoxOrchestrationTest(unittest.TestCase):
+class TestProxmoxOrchestration:
     def test_vault_secret_uses_cert_login_fallback(self) -> None:
         runner = FakeRunner(
             [
@@ -89,16 +89,14 @@ class ProxmoxOrchestrationTest(unittest.TestCase):
 
         secret = shared.read_vault_secret(Config(), runner)
 
-        self.assertEqual(secret, "secret")
-        self.assertEqual(runner.envs[-1]["VAULT_TOKEN"], "token")
+        assert secret == "secret"
+        assert runner.envs[-1]["VAULT_TOKEN"] == "token"
 
-    def test_lock_contention_raises_runtime_error(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            lock_path = str(Path(temp_dir) / "lock")
-            lock = shared.acquire_lock(lock_path, "busy")
-            with lock:
-                with self.assertRaisesRegex(RuntimeError, "busy"):
-                    shared.acquire_lock(lock_path, "busy")
+    def test_lock_contention_raises_runtime_error(self, tmp_path: Path) -> None:
+        lock_path = str(tmp_path / "lock")
+        lock = shared.acquire_lock(lock_path, "busy")
+        with lock, pytest.raises(RuntimeError, match="busy"):
+            shared.acquire_lock(lock_path, "busy")
 
     def test_wait_for_port_polls_until_open(self) -> None:
         runner = FakeRunner(
@@ -110,7 +108,7 @@ class ProxmoxOrchestrationTest(unittest.TestCase):
 
         shared.wait_for_port(runner, "host", 22, "SSH", 5, 0)
 
-        self.assertEqual(len(runner.commands), 2)
+        assert len(runner.commands) == 2
 
     def test_wake_and_unlock_command_order(self) -> None:
         runner = FakeRunner(
@@ -124,23 +122,15 @@ class ProxmoxOrchestrationTest(unittest.TestCase):
 
         shared.wake_and_unlock(Config(), runner, "secret")
 
-        self.assertEqual(
-            runner.commands,
-            [
-                "wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de",
-                "nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222",
-                "expect -",
-                "nc -z -w 1 proxmox-cortex.home.arpa 22",
-            ],
-        )
+        assert runner.commands == [
+            "wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de",
+            "nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222",
+            "expect -",
+            "nc -z -w 1 proxmox-cortex.home.arpa 22",
+        ]
 
         expect_input = runner.inputs[2]
-        self.assertIsNotNone(expect_input)
         assert expect_input is not None
-        self.assertIn("log_user 0", expect_input)
-        self.assertIn('send "$env(SERVER_PASS)\\r"', expect_input)
-        self.assertNotIn("log_user 1", expect_input)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert "log_user 0" in expect_input
+        assert 'send "$env(SERVER_PASS)\\r"' in expect_input
+        assert "log_user 1" not in expect_input
