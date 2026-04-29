@@ -16,13 +16,13 @@ set service ntp allow-client address fc00::/7
 set service ntp server time1.vyos.net
 set service ntp server time2.vyos.net
 set service ntp server time3.vyos.net
-set service router-advert interface {{ lan_interface }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }} name-server {{ ipv6_prefix }}::1
 set service router-advert interface {{ lan_interface }} prefix ::/64 valid-lifetime 172800
-set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} name-server {{ ipv6_prefix }}::1
 set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} prefix ::/64 valid-lifetime 172800
-set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} name-server {{ ipv6_prefix }}::1
 set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} prefix ::/64 valid-lifetime 172800
-set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server {{ vyos_ipv6 }}
+set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server {{ ipv6_prefix }}::1
 set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} prefix ::/64 valid-lifetime 172800
 set service router-advert interface {{ cortex_interface }} name-server {{ ipv6_prefix }}::1
 set service router-advert interface {{ cortex_interface }} prefix ::/64 valid-lifetime 172800
