@@ -71,26 +71,21 @@ discovery.relabel "docker_relabel" {
     source_labels = ["__meta_docker_container_name"]
     regex = "/(.*)"
     action = "replace"
-    target_label = "container_name"
-  }
-  rule {
-    source_labels = ["container_name"]
-    regex = "(.+)"
     target_label = "service_name"
   }
   rule {
     target_label = "job"
     replacement = "docker"
   }
-  // DROP Loki logs to prevent feedback loops
+  // Drop Loki logs here to avoid re-ingesting the Loki container through this Docker scrape path and creating a loop.
   rule {
-    source_labels = ["container_name"]
+    source_labels = ["service_name"]
     regex = "grafana-loki-loki-1" 
     action = "drop"
   }
-  // GoFlow2 is scraped by a dedicated pipeline so it can get GeoIP enrichment.
+  // GoFlow2 is scraped by a dedicated pipeline for GeoIP enrichment, so exclude it here to avoid duplicate ingestion and feedback loops.
   rule {
-    source_labels = ["container_name"]
+    source_labels = ["service_name"]
     regex = ".*goflow2.*"
     action = "drop"
   }
