@@ -139,7 +139,7 @@ class ProxmoxOrchestrationTest(unittest.TestCase):
         assert expect_input is not None
         self.assertIn("log_user 0", expect_input)
         self.assertIn('send "$env(SERVER_PASS)\\r"', expect_input)
-        self.assertIn("log_user 1", expect_input)
+        self.assertNotIn("log_user 1", expect_input)
 
 
 if __name__ == "__main__":
