@@ -77,6 +77,22 @@ class profile::common (
     notify  => Service['sssd'],
   }
 
+  # Debian enables SSSD responder sockets by preset, but ipa-client-install
+  # configures the responders in sssd.conf's services line. Keep one activation
+  # model to avoid sssd_check_socket_activated_responders warnings at boot.
+  service { [
+      'sssd-autofs.socket',
+      'sssd-nss.socket',
+      'sssd-pac.socket',
+      'sssd-pam.socket',
+      'sssd-ssh.socket',
+      'sssd-sudo.socket',
+    ]:
+    ensure  => stopped,
+    enable  => false,
+    require => Class['freeipa::install::client'],
+  }
+
   # Create POSIX ACLs from hash
   require posix_acl::requirements
   $posix_acls.each |String $path, Hash $config| {
