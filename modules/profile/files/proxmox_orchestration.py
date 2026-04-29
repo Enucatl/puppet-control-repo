@@ -168,14 +168,12 @@ def wake_and_unlock(config: ProxmoxConfig, runner: Runner, password: str) -> Non
 def unlock_zfs(config: ProxmoxConfig, runner: Runner, password: str) -> None:
     expect_script = textwrap.dedent(
         f"""
-        log_user 1
+        log_user 0
         set timeout 20
         spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {config.dropbear_host}
         expect {{
             -re "password for rpool/ROOT|Enter the password.*exit\\\\." {{
-                log_user 0
                 send "$env(SERVER_PASS)\\r"
-                log_user 1
                 exp_continue
             }}
             -re "Unlocking complete|Password for .* accepted" {{
