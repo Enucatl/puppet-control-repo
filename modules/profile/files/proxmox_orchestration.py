@@ -173,7 +173,9 @@ def unlock_zfs(config: ProxmoxConfig, runner: Runner, password: str) -> None:
         spawn ssh -p 2222 -o StrictHostKeyChecking=accept-new {config.dropbear_host}
         expect {{
             -re "password for rpool/ROOT|Enter the password.*exit\\\\." {{
+                log_user 0
                 send "$env(SERVER_PASS)\\r"
+                log_user 1
                 exp_continue
             }}
             -re "Unlocking complete|Password for .* accepted" {{
