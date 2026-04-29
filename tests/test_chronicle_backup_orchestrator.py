@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
-import io
 import os
 import subprocess
 import sys
-import tempfile
 import textwrap
-import unittest
 from pathlib import Path
-from contextlib import redirect_stderr
+
+import pytest
 
 
 MODULE_PATH = (
@@ -75,7 +73,7 @@ def run_case(responses: list[tuple[str, int, str]]) -> tuple[int, list[str]]:
     return result, runner.commands
 
 
-class ChronicleBackupOrchestratorTest(unittest.TestCase):
+class TestChronicleBackupOrchestrator:
     def test_initially_off_runs_full_sequence_and_shutdown(self) -> None:
         result, commands = run_case(
             [
@@ -119,11 +117,9 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 0)
-        self.assertIn("wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de", commands)
-        self.assertTrue(
-            commands[-1].endswith("shutdown -h now 'Chronicle backup complete'")
-        )
+        assert result == 0
+        assert "wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de" in commands
+        assert commands[-1].endswith("shutdown -h now 'Chronicle backup complete'")
 
     def test_initially_on_skips_wake_unlock_and_shutdown(self) -> None:
         result, commands = run_case(
@@ -163,9 +159,9 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 0)
-        self.assertFalse(any("wakeonlan" in command for command in commands))
-        self.assertFalse(any("shutdown -h now" in command for command in commands))
+        assert result == 0
+        assert not any("wakeonlan" in command for command in commands)
+        assert not any("shutdown -h now" in command for command in commands)
 
     def test_ct_already_running_does_not_start_it(self) -> None:
         result, commands = run_case(
@@ -204,8 +200,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 0)
-        self.assertFalse(any("pct start 110" in command for command in commands))
+        assert result == 0
+        assert not any("pct start 110" in command for command in commands)
 
     def test_backup_task_failure_cleans_up_and_exits_nonzero(self) -> None:
         result, commands = run_case(
@@ -244,10 +240,12 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 1)
-        self.assertTrue(commands[-1].startswith("pvesm set chronicle --disable 1"))
+        assert result == 1
+        assert commands[-1].startswith("pvesm set chronicle --disable 1")
 
-    def test_backup_task_status_retry_logs_raw_output(self) -> None:
+    def test_backup_task_status_retry_logs_raw_output(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         runner = FakeRunner(
             [
                 (
@@ -264,11 +262,9 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
         )
         backup = orchestrator.Orchestrator(orchestrator.Config(), runner)
 
-        stderr = io.StringIO()
-        with redirect_stderr(stderr):
-            backup.wait_for_task("UPID:proxmox:1:2:3:vzdump::root@pam:")
+        backup.wait_for_task("UPID:proxmox:1:2:3:vzdump::root@pam:")
 
-        self.assertIn("returned non-JSON status", stderr.getvalue())
+        assert "returned non-JSON status" in capsys.readouterr().err
 
     def test_backup_create_has_no_python_timeout(self) -> None:
         runner = FakeRunner(
@@ -285,8 +281,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
 
         upid = backup.run_backup_job()
 
-        self.assertEqual(upid, "UPID:proxmox:1:2:3:vzdump::root@pam:")
-        self.assertEqual(runner.timeouts[-1], 0)
+        assert upid == "UPID:proxmox:1:2:3:vzdump::root@pam:"
+        assert runner.timeouts[-1] == 0
 
     def test_empty_backup_create_output_is_treated_as_success(self) -> None:
         runner = FakeRunner(
@@ -303,7 +299,7 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
 
         upid = backup.run_backup_job()
 
-        self.assertEqual(upid, "")
+        assert upid == ""
 
     def test_unparseable_backup_create_output_skips_task_polling(self) -> None:
         result, commands = run_case(
@@ -337,9 +333,9 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 0)
-        self.assertFalse(any("/tasks/" in command for command in commands))
-        self.assertTrue(commands[-1].startswith("pvesm set chronicle --disable 1"))
+        assert result == 0
+        assert not any("/tasks/" in command for command in commands)
+        assert commands[-1].startswith("pvesm set chronicle --disable 1")
 
     def test_storage_enable_failure_attempts_cleanup(self) -> None:
         result, commands = run_case(
@@ -363,8 +359,8 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 1)
-        self.assertTrue(commands[-1].startswith("pvesm set chronicle --disable 1"))
+        assert result == 1
+        assert commands[-1].startswith("pvesm set chronicle --disable 1")
 
     def test_vault_failure_exits_before_wake(self) -> None:
         result, commands = run_case(
@@ -374,135 +370,133 @@ class ChronicleBackupOrchestratorTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(result, 1)
-        self.assertFalse(any("wakeonlan" in command for command in commands))
+        assert result == 1
+        assert not any("wakeonlan" in command for command in commands)
 
 
-class FakeCommandIntegrationTest(unittest.TestCase):
-    def test_dry_run_exercises_sequence_without_real_commands(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(MODULE_PATH),
-                    "--lock-file",
-                    str(Path(temp_dir) / "lock"),
-                    "--dry-run",
-                ],
-                text=True,
-                capture_output=True,
-                check=False,
-            )
+class TestFakeCommandIntegration:
+    def test_dry_run_exercises_sequence_without_real_commands(
+        self, tmp_path: Path
+    ) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(MODULE_PATH),
+                "--lock-file",
+                str(tmp_path / "lock"),
+                "--dry-run",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de", result.stdout)
-        self.assertIn("pvesm set chronicle --disable 1", result.stdout)
+        assert result.returncode == 0, result.stderr
+        assert "wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de" in result.stdout
+        assert "pvesm set chronicle --disable 1" in result.stdout
 
-    def test_command_order_through_temporary_path_wrappers(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            log_file = temp_path / "commands.log"
-            state_file = temp_path / "nc-state"
-            state_file.write_text("0", encoding="utf-8")
+    def test_command_order_through_temporary_path_wrappers(
+        self, tmp_path: Path
+    ) -> None:
+        log_file = tmp_path / "commands.log"
+        state_file = tmp_path / "nc-state"
+        state_file.write_text("0", encoding="utf-8")
 
-            self.write_wrapper(
-                temp_path / "vault",
-                """
-                if [ "$1 $2 $3" = "kv get -field=proxmox-cortex" ]; then
-                  echo secret
-                  exit 0
-                fi
-                exit 1
-                """,
-                log_file,
-            )
-            self.write_wrapper(temp_path / "wakeonlan", "exit 0", log_file)
-            self.write_wrapper(temp_path / "expect", "cat >/dev/null\nexit 0", log_file)
-            self.write_wrapper(temp_path / "curl", "exit 0", log_file)
-            self.write_wrapper(
-                temp_path / "nc",
-                f"""
-                count="$(cat {state_file})"
-                echo $((count + 1)) > {state_file}
-                if [ "$5" = "22" ] && [ "$count" = "0" ]; then
-                  exit 1
-                fi
-                exit 0
-                """,
-                log_file,
-            )
-            self.write_wrapper(
-                temp_path / "ssh",
-                """
-                case "$*" in
-                  *"pct status 110"*) echo "status: stopped"; exit 0 ;;
-                  *"pct start 110"*) exit 0 ;;
-                  *"shutdown -h now"*) exit 0 ;;
-                esac
-                exit 1
-                """,
-                log_file,
-            )
-            self.write_wrapper(
-                temp_path / "pvesm",
-                """
-                [ "$*" = "set chronicle --disable 0" ] && exit 0
-                [ "$*" = "set chronicle --disable 1" ] && exit 0
-                exit 1
-                """,
-                log_file,
-            )
-            self.write_wrapper(
-                temp_path / "pvesh",
-                """
-                case "$*" in
-                  "get /cluster/backup/pbs-chronicle-weekly --output-format json") echo '{"all":1,"mode":"snapshot","storage":"chronicle"}'; exit 0 ;;
-                  create*) echo '"UPID:proxmox:1:2:3:vzdump::root@pam:"'; exit 0 ;;
-                  get*) echo '{"status":"stopped","exitstatus":"OK"}'; exit 0 ;;
-                esac
-                exit 1
-                """,
-                log_file,
-            )
+        self.write_wrapper(
+            tmp_path / "vault",
+            """
+            if [ "$1 $2 $3" = "kv get -field=proxmox-cortex" ]; then
+              echo secret
+              exit 0
+            fi
+            exit 1
+            """,
+            log_file,
+        )
+        self.write_wrapper(tmp_path / "wakeonlan", "exit 0", log_file)
+        self.write_wrapper(tmp_path / "expect", "cat >/dev/null\nexit 0", log_file)
+        self.write_wrapper(tmp_path / "curl", "exit 0", log_file)
+        self.write_wrapper(
+            tmp_path / "nc",
+            f"""
+            count="$(cat {state_file})"
+            echo $((count + 1)) > {state_file}
+            if [ "$5" = "22" ] && [ "$count" = "0" ]; then
+              exit 1
+            fi
+            exit 0
+            """,
+            log_file,
+        )
+        self.write_wrapper(
+            tmp_path / "ssh",
+            """
+            case "$*" in
+              *"pct status 110"*) echo "status: stopped"; exit 0 ;;
+              *"pct start 110"*) exit 0 ;;
+              *"shutdown -h now"*) exit 0 ;;
+            esac
+            exit 1
+            """,
+            log_file,
+        )
+        self.write_wrapper(
+            tmp_path / "pvesm",
+            """
+            [ "$*" = "set chronicle --disable 0" ] && exit 0
+            [ "$*" = "set chronicle --disable 1" ] && exit 0
+            exit 1
+            """,
+            log_file,
+        )
+        self.write_wrapper(
+            tmp_path / "pvesh",
+            """
+            case "$*" in
+              "get /cluster/backup/pbs-chronicle-weekly --output-format json") echo '{"all":1,"mode":"snapshot","storage":"chronicle"}'; exit 0 ;;
+              create*) echo '"UPID:proxmox:1:2:3:vzdump::root@pam:"'; exit 0 ;;
+              get*) echo '{"status":"stopped","exitstatus":"OK"}'; exit 0 ;;
+            esac
+            exit 1
+            """,
+            log_file,
+        )
 
-            env = os.environ.copy()
-            env["PATH"] = f"{temp_path}:{env['PATH']}"
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(MODULE_PATH),
-                    "--lock-file",
-                    str(temp_path / "lock"),
-                ],
-                text=True,
-                capture_output=True,
-                env=env,
-                check=False,
-            )
+        env = os.environ.copy()
+        env["PATH"] = f"{tmp_path}:{env['PATH']}"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(MODULE_PATH),
+                "--lock-file",
+                str(tmp_path / "lock"),
+            ],
+            text=True,
+            capture_output=True,
+            env=env,
+            check=False,
+        )
 
-            self.assertEqual(result.returncode, 0, result.stderr)
-            commands = log_file.read_text(encoding="utf-8").splitlines()
-            self.assertEqual(
-                commands,
-                [
-                    "vault kv get -field=proxmox-cortex kv/puppet",
-                    "nc -z -w 2 proxmox-cortex.home.arpa 22",
-                    "wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de",
-                    "nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222",
-                    "expect -",
-                    "nc -z -w 1 proxmox-cortex.home.arpa 22",
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct start 110",
-                    "nc -z -w 1 chronicle.home.arpa 8007",
-                    "curl --silent --show-error --output /dev/null --insecure https://chronicle.home.arpa:8007/",
-                    "pvesm set chronicle --disable 0",
-                    "pvesh get /cluster/backup/pbs-chronicle-weekly --output-format json",
-                    "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly --output-format json --all 1 --mode snapshot --storage chronicle",
-                    "pvesh get /nodes/proxmox/tasks/UPID:proxmox:1:2:3:vzdump::root@pam:/status --output-format json",
-                    "pvesm set chronicle --disable 1",
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa shutdown -h now 'Chronicle backup complete'",
-                ],
-            )
+        assert result.returncode == 0, result.stderr
+        commands = log_file.read_text(encoding="utf-8").splitlines()
+        assert commands == [
+            "vault kv get -field=proxmox-cortex kv/puppet",
+            "nc -z -w 2 proxmox-cortex.home.arpa 22",
+            "wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de",
+            "nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222",
+            "expect -",
+            "nc -z -w 1 proxmox-cortex.home.arpa 22",
+            "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
+            "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct start 110",
+            "nc -z -w 1 chronicle.home.arpa 8007",
+            "curl --silent --show-error --output /dev/null --insecure https://chronicle.home.arpa:8007/",
+            "pvesm set chronicle --disable 0",
+            "pvesh get /cluster/backup/pbs-chronicle-weekly --output-format json",
+            "pvesh create /nodes/proxmox/vzdump --job-id pbs-chronicle-weekly --output-format json --all 1 --mode snapshot --storage chronicle",
+            "pvesh get /nodes/proxmox/tasks/UPID:proxmox:1:2:3:vzdump::root@pam:/status --output-format json",
+            "pvesm set chronicle --disable 1",
+            "ssh -o BatchMode=yes proxmox-cortex.home.arpa shutdown -h now 'Chronicle backup complete'",
+        ]
 
     def write_wrapper(self, path: Path, body: str, log_file: Path) -> None:
         path.write_text(
@@ -513,7 +507,3 @@ class FakeCommandIntegrationTest(unittest.TestCase):
             encoding="utf-8",
         )
         path.chmod(0o755)
-
-
-if __name__ == "__main__":
-    unittest.main()
