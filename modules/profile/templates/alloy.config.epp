@@ -16,13 +16,30 @@ loki.write "remote_loki" {
 }
 
 // 2. Input: Systemd Journal
+loki.relabel "journal" {
+  forward_to = [loki.write.remote_loki.receiver]
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    regex = "(.+)"
+    target_label = "service_name"
+  }
+
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    regex = "(.+)"
+    target_label = "journal_priority"
+  }
+}
+
 loki.source.journal "read_journal" {
   max_age = "1h" 
   labels  = {
     job  = "systemd-journal",
     host = "<%= $trusted['certname'] %>",
   }
-  forward_to = [loki.write.remote_loki.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  forward_to    = [loki.relabel.journal.receiver]
 }
 
 // 3. Input: /var/log Files
@@ -55,6 +72,11 @@ discovery.relabel "docker_relabel" {
     regex = "/(.*)"
     action = "replace"
     target_label = "container_name"
+  }
+  rule {
+    source_labels = ["container_name"]
+    regex = "(.+)"
+    target_label = "service_name"
   }
   rule {
     target_label = "job"
