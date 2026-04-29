@@ -45,6 +45,7 @@ class FakeRunner:
         self.responses = responses
         self.commands: list[str] = []
         self.envs: list[dict[str, str] | None] = []
+        self.inputs: list[str | None] = []
 
     def run(
         self,
@@ -56,10 +57,11 @@ class FakeRunner:
         check: bool = True,
         capture_output: bool = True,
     ) -> subprocess.CompletedProcess[str]:
-        del input_text, timeout, capture_output
+        del timeout, capture_output
         command_text = " ".join(command)
         self.commands.append(command_text)
         self.envs.append(env)
+        self.inputs.append(input_text)
         if not self.responses:
             raise AssertionError(f"unexpected command: {command_text}")
         expected, returncode, stdout = self.responses.pop(0)
@@ -131,6 +133,13 @@ class ProxmoxOrchestrationTest(unittest.TestCase):
                 "nc -z -w 1 proxmox-cortex.home.arpa 22",
             ],
         )
+
+        expect_input = runner.inputs[2]
+        self.assertIsNotNone(expect_input)
+        assert expect_input is not None
+        self.assertIn("log_user 0", expect_input)
+        self.assertIn('send "$env(SERVER_PASS)\\r"', expect_input)
+        self.assertIn("log_user 1", expect_input)
 
 
 if __name__ == "__main__":
