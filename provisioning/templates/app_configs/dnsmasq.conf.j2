@@ -123,10 +123,9 @@ address=/complex.{{ dhcp_domain }}/{{ complex_node_ip }}
 address=/freeipa.{{ dhcp_domain }}/{{ docker_node_ip }}
 address=/hcv.{{ dhcp_domain }}/{{ docker_node_ip }}
 
-# The Docker node IP is shared by multiple services. Keep its PTR on FreeIPA so
-# GSSAPI LDAP binds canonicalize to ldap/freeipa.{{ dhcp_domain }} instead of a
-# non-IPA service alias such as alloy.docker.{{ dhcp_domain }}.
-ptr-record={{ docker_node_ip.split('.')[3] }}.{{ docker_node_ip.split('.')[2] }}.{{ docker_node_ip.split('.')[1] }}.{{ docker_node_ip.split('.')[0] }}.in-addr.arpa,freeipa.{{ dhcp_domain }}
+# The Docker node IP is shared by multiple services. Keep its reverse DNS
+# canonical identity on the host while clients pin FreeIPA lookups explicitly.
+ptr-record={{ docker_node_ip.split('.')[3] }}.{{ docker_node_ip.split('.')[2] }}.{{ docker_node_ip.split('.')[1] }}.{{ docker_node_ip.split('.')[0] }}.in-addr.arpa,docker.{{ dhcp_domain }}
 
 # ============================================================
 # STATIC DHCP RESERVATIONS
