@@ -50,7 +50,7 @@ packages::sources:
       name: "hashicorp-archive-keyring.asc"
       source: "https://apt.releases.hashicorp.com/gpg"
 
-profile::common::cronjobs:
+profile::common::cron::jobs:
   # Prune stale uv cache entries for the primary interactive user.
   uv-cache-prune:
     minute: 30

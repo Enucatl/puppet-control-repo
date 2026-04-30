@@ -52,7 +52,7 @@ profile::docker_host::git_deploy_projects:
 kmod::list_of_loads:
   'uinput': {}
 
-profile::common::systemd_units:
+profile::common::systemd::units:
   vllm-weekly-up.service:
     ensure: absent
   vllm-weekly-up.timer:
