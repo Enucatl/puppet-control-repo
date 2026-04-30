@@ -81,6 +81,20 @@ class profile::common (
     notify  => Service['sssd'],
   }
 
+  # Some FreeIPA maintenance paths, including certmonger helpers and ipa CLI
+  # calls, use Kerberos/OpenLDAP directly instead of going through SSSD. Keep
+  # those callers from reverse-canonicalizing ldap/freeipa.home.arpa to the
+  # Docker host PTR.
+  augeas { 'krb5_disable_dns_canonicalization':
+    context => '/files/etc/krb5.conf',
+    changes => [
+      'set libdefaults/dns_canonicalize_hostname false',
+      'set libdefaults/rdns false',
+    ],
+    require => Class['freeipa::install::client'],
+    notify  => Service['sssd'],
+  }
+
   # Debian enables SSSD responder sockets by preset, but ipa-client-install
   # configures the responders in sssd.conf's services line. Keep one activation
   # model to avoid sssd_check_socket_activated_responders warnings at boot.
