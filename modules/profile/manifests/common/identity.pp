@@ -21,8 +21,12 @@ class profile::common::identity {
 
   # Some FreeIPA maintenance paths, including certmonger helpers and ipa CLI
   # calls, use Kerberos/OpenLDAP directly instead of going through SSSD. Keep
-  # those callers from reverse-canonicalizing ldap/freeipa.home.arpa to the
-  # Docker host PTR.
+  # those callers from reverse-canonicalizing ldap://freeipa.home.arpa to the
+  # Docker host PTR. Disable DNS canonization here because FreeIPA, Docker,
+  # and other services share one IP via containers, and we were seeing errors
+  # like "Error binding to ""ldap://freeipa.home.arpa/"": Local error." Kerberos
+  # still checks the service principal, so this is a reasonable tradeoff in a
+  # controlled internal network.
   augeas { 'krb5_disable_dns_canonicalization':
     context => '/files/etc/krb5.conf',
     changes => [
