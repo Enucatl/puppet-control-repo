@@ -45,9 +45,10 @@ loki.source.journal "read_journal" {
 // 3. Input: /var/log Files
 local.file_match "varlogs_files" {
   path_targets = [{
-    __path__ = "/var/log/*.log",
-    job      = "varlogs",
-    host     = "<%= $trusted['certname'] %>",
+    __path__         = "/var/log/*.log",
+    __path_exclude__ = "/var/log/ipaclient-install.log",
+    job              = "varlogs",
+    host             = "<%= $trusted['certname'] %>",
   }]
 }
 
