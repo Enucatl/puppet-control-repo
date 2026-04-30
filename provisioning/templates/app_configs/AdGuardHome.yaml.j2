@@ -25,6 +25,12 @@ dns:
     - https://dns10.quad9.net/dns-query
     # Forward home.arpa to dnsmasq, which auto-registers DHCPv4 leases as hostnames
     - "[/{{ dhcp_domain }}/]127.0.0.1:{{ dnsmasq_dns_port }}"
+    # Forward local reverse zones to dnsmasq so PTR answers match DHCP/static DNS
+    - "[/0.0.10.in-addr.arpa/]127.0.0.1:{{ dnsmasq_dns_port }}"
+    - "[/{{ trusted_wifi_vlan }}.0.10.in-addr.arpa/]127.0.0.1:{{ dnsmasq_dns_port }}"
+    - "[/{{ iot_vlan }}.0.10.in-addr.arpa/]127.0.0.1:{{ dnsmasq_dns_port }}"
+    - "[/{{ guest_vlan }}.0.10.in-addr.arpa/]127.0.0.1:{{ dnsmasq_dns_port }}"
+    - "[/{{ cortex_vlan }}.0.10.in-addr.arpa/]127.0.0.1:{{ dnsmasq_dns_port }}"
   upstream_dns_file: ""
   bootstrap_dns:
     - 9.9.9.10
