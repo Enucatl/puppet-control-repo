@@ -53,12 +53,12 @@ profile::docker_host::scheduled_refresh: true
 packages::list:
   - qemu-guest-agent
 
-profile::common::services:
+profile::common::services::resources:
   qemu-guest-agent:
     ensure: running
     enable: true
 
-profile::common::cronjobs:
+profile::common::cron::jobs:
   # backup the hashicorp vault to a location that is picked up by duplicati
   vault-snapshot:
     minute: 0
@@ -73,8 +73,8 @@ profile::common::cronjobs:
     user: root
     command: '/opt/docker/paperless-ai/backup.sh 2>&1 | /usr/bin/logger -t paperless-snapshot -p user.info'
 
-profile::common::vault_certs_default_location: /opt/docker/traefik/data/certs
-profile::common::vault_certs_defaults:
+profile::common::certs::vault_certs_default_location: /opt/docker/traefik/data/certs
+profile::common::certs::vault_certs_defaults:
   ensure: 'present'
   vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/general'
   auth_path: 'cert'
@@ -87,13 +87,13 @@ profile::common::vault_certs_defaults:
   key_group: 'user'
   key_mode: '0640'
 
-profile::common::vault_certs:
+profile::common::certs::vault_certs:
   docker:
     cert_data:
       common_name: '*.docker.home.arpa'
       alt_names: '*.docker.home.arpa,docker.home.arpa'
 
-profile::common::posix_acls:
+profile::common::acls::posix_acls:
   "/opt/docker/traefik/data/certs/docker_key.pem":
     action: set
     permission:

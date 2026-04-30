@@ -1,5 +1,5 @@
-profile::common::vault_certs_default_location: /opt/certs
-profile::common::vault_certs_defaults:
+profile::common::certs::vault_certs_default_location: /opt/certs
+profile::common::certs::vault_certs_defaults:
   ensure: 'present'
   vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/general'
   auth_path: 'cert'
@@ -12,7 +12,7 @@ profile::common::vault_certs_defaults:
   key_group: 'user'
   key_mode: '0640'
 
-profile::common::vault_certs:
+profile::common::certs::vault_certs:
   docker:
     cert_data:
       common_name: 'puritan.home.arpa'

@@ -3,7 +3,7 @@ packages::list:
 
 profile::dotfiles::username: root
 
-profile::common::services:
+profile::common::services::resources:
   rpc-svcgssd:
     ensure: stopped
     enable: mask

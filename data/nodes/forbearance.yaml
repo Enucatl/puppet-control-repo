@@ -1,7 +1,7 @@
 classes:
   - profile::vault_login
 
-profile::common::cronjobs:
+profile::common::cron::jobs:
   # Remove unused Docker images, containers, networks, and build cache.
   # Volumes are intentionally excluded (no --volumes flag) to avoid data loss.
   docker-prune:
@@ -26,7 +26,7 @@ nfs_config::client_mounts:
     atboot: false
     options_nfs: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s'
 
-profile::common::sysctl_settings:
+profile::common::sysctl::settings:
   net.ipv6.conf.all.accept_redirects:
     value: 0
   net.ipv6.conf.default.accept_redirects:
