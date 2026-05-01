@@ -81,6 +81,7 @@ services:
     mem_limit: 2g
     memswap_limit: 2g
     pids_limit: 512
+    restart: unless-stopped
     image: freeipa/freeipa-server:almalinux-10
     container_name: freeipa
     hostname: freeipa.home.arpa
