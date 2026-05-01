@@ -21,6 +21,11 @@ RUN mkdir -p /var/cache/apt-cacher-ng /var/log/apt-cacher-ng /run/apt-cacher-ng 
 # Prevents package-generated defaults from overriding your hardened configuration
 RUN rm -f /etc/apt-cacher-ng/acng.conf /etc/apt-cacher-ng/zz_debconf.conf
 
+# Install the entrypoint wrapper that keeps the daemon running and triggers
+# periodic cache maintenance inside the container.
+COPY entrypoint.sh /usr/local/bin/apt-cacher-ng-entrypoint.sh
+RUN chmod 0755 /usr/local/bin/apt-cacher-ng-entrypoint.sh
+
 # Expose the default apt-cacher-ng proxy port
 EXPOSE 3142
 
@@ -49,7 +54,7 @@ VOLUME ["/var/cache/apt-cacher-ng"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -q --spider http://localhost:3142/acng-report.html || exit 1
 
-# Use tini as PID 1 for proper signal forwarding + zombie reaping
-# Then run apt-cacher-ng directly in foreground mode
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/sbin/apt-cacher-ng"]
-CMD ["-c", "/etc/apt-cacher-ng", "ForeGround=1", "UnbufferLogs=1"]
+# Use tini as PID 1 for proper signal forwarding + zombie reaping.
+# The wrapper starts apt-cacher-ng and runs maintenance on a timer.
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/apt-cacher-ng-entrypoint.sh"]
+CMD ["/usr/sbin/apt-cacher-ng", "-c", "/etc/apt-cacher-ng", "ForeGround=1", "UnbufferLogs=1"]
