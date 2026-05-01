@@ -198,6 +198,35 @@ profile::common::acls::posix_acls:
       - "user:100999:r--" # remap base 100000 + app uid 999
       - "user:100000:r--" # remap base 100000 + container root
       - "mask::r--"
+  "/opt/docker/checkmk/config/checkmk-site/etc/check_mk/conf.d/wato":
+    action: set
+    permission:
+      - "user:101000:rwx" # remap base 100000 + checkmk site uid 1000
+      - "default:user:101000:rwx"
+      - "mask::rwx"
+      - "default:mask::rwx"
+  "/opt/docker/checkmk/config/checkmk-site/etc/check_mk/conf.d/wato/rules.mk":
+    action: set
+    permission:
+      - "user:101000:rw-" # remap base 100000 + checkmk site uid 1000
+      - "mask::rw-"
+  "/opt/docker/checkmk/config/checkmk-site/etc/check_mk/conf.d/wato/global.mk":
+    action: set
+    permission:
+      - "user:101000:rw-" # remap base 100000 + checkmk site uid 1000
+      - "mask::rw-"
+  "/opt/docker/checkmk/config/checkmk-site/etc/check_mk/conf.d/wato/docker_home_arpa_containers":
+    action: set
+    permission:
+      - "user:101000:rwx" # remap base 100000 + checkmk site uid 1000
+      - "default:user:101000:rwx"
+      - "mask::rwx"
+      - "default:mask::rwx"
+  "/opt/docker/checkmk/config/checkmk-site/etc/check_mk/conf.d/wato/docker_home_arpa_containers/rules.mk":
+    action: set
+    permission:
+      - "user:101000:rw-" # remap base 100000 + checkmk site uid 1000
+      - "mask::rw-"
   "/var/lib/docker/100000.100000/volumes/airflow_airflow-venv-volume/_data":
     action: set
     permission:
