@@ -38,6 +38,7 @@ cleanup() {
 trap cleanup INT TERM
 
 log "[apt-cacher-ng] wrapper: starting daemon and maintenance loop"
+log "[apt-cacher-ng] wrapper: this container does not run cron, so maintenance runs in-process to expire stale cache state"
 
 maint_loop &
 maint_pid=$!
