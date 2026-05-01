@@ -54,3 +54,14 @@
 # newer QUIC protocols that Suricata sometimes misclassifies.
 2221010  # SURICATA TLS error message warning
 2221029  # SURICATA TLS invalid record type
+
+# --- 7. Legacy Auth / Stream Diagnostic Noise ---
+2067086  # ET INFO NTLMv1 Session Setup Response - Challenge: NTLMv1 is an outdated authentication protocol often flagged in enterprise environments due to legacy compatibility requirements. A single occurrence without further context is typical background noise.
+# run_id=scheduled__2026-05-01T03:00:00+00:00 | Signature ET INFO NTLMv1 Session Setup Response - Challenge was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2067086
+2260003  # SURICATA Applayer Protocol detection skipped: This alert indicates that the protocol detection engine skipped analysis for a specific flow, which is a common diagnostic message in Suricata and does not represent a security threat or actionable event.
+# run_id=scheduled__2026-05-01T03:00:00+00:00 | Signature SURICATA Applayer Protocol detection skipped was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2260003
+2210016  # SURICATA STREAM CLOSEWAIT FIN out of window: This alert indicates a TCP stream state mismatch, which is common in network environments with asymmetric routing or packet loss and does not represent a security threat.
+# run_id=scheduled__2026-05-01T03:00:00+00:00 | Signature SURICATA STREAM CLOSEWAIT FIN out of window was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2210016
