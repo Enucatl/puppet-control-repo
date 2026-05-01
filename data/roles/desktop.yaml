@@ -29,6 +29,8 @@ packages::list:
   - gimp
   - kdeconnect
   - kdenlive
+  - libldap2-dev 
+  - libsasl2-dev 
   - libssh-dev
   - mktorrent
   - nemo
