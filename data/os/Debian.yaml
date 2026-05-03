@@ -31,9 +31,11 @@ packages::list:
 fail2ban::config_file_template: "fail2ban_configuration/jail.conf.epp"
 
 nfs::nfs_v4: true
+nfs::nfs_v4_client: true
 nfs::nfs_v4_idmap_domain: 'home.arpa'
 nfs::nfs_v4_mount_root: '/export'
 nfs::nfs_v4_idmap_conf: true
+nfs::client_nfsv4_options: 'tcp,nolock,rsize=32768,wsize=32768,intr,noatime,actimeo=3,sec=krb5p'
 nfs::server_enabled: true
 nfs::client_enabled: true
 nfs::nfs_v4_client_services_enable: true
