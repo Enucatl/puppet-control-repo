@@ -13,6 +13,7 @@ nfs_config::server_exports:
 nfs_config::client_mounts:
   '/export/Documents':
     server: 'forbearance.home.arpa'
+    options_nfs: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,vers=4.2,sec=krb5p'
 
 profile::docker_host::git_deploy_projects:
   airflow:
