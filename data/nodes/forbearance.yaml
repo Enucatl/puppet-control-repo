@@ -22,9 +22,9 @@ nfs_config::client_mounts:
     server: 'docker.home.arpa'
   '/export/complex':
     server: 'complex.home.arpa'
-    share: '/export/docker'
+    share: 'docker'
     atboot: false
-    options_nfs: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s'
+    options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p'
 
 profile::common::sysctl::settings:
   net.ipv6.conf.all.accept_redirects:
