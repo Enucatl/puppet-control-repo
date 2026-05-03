@@ -36,8 +36,6 @@ nfs::nfs_v4_idmap_domain: 'home.arpa'
 nfs::nfs_v4_mount_root: '/export'
 nfs::nfs_v4_idmap_conf: true
 nfs::client_nfsv4_options: 'tcp,nolock,rsize=32768,wsize=32768,intr,noatime,actimeo=3,sec=krb5p'
-nfs::client_need_gssd: true
-nfs::client_gssd_service: true
 nfs::server_enabled: true
 nfs::client_enabled: true
 nfs::nfs_v4_client_services_enable: true
