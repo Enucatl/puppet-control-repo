@@ -10,6 +10,7 @@ if [ -f .env ]; then
   set +o allexport
 fi
 export VAULT_CACERT=/usr/local/share/ca-certificates/home-arpa/vault_root.crt
+PUPPET_ALLOWED_DNS_SANS="$(puppet_allowed_dns_sans_csv)"
 
 PUPPET_CA_COMMON_NAME="${PUPPET_CA_COMMON_NAME:-Puppet_CA}"
 PUPPET_ENCODING_TEST_CERTNAME="${PUPPET_ENCODING_TEST_CERTNAME:-puppet-ca-encoding-test.${DOMAIN}}"
@@ -109,7 +110,7 @@ update_vault_puppet_cert_auth() {
   vault write "auth/cert/certs/${PUPPET_CERT_AUTH_ROLE}" \
     certificate=@"$ca_cert" \
     token_policies="puppet" \
-    allowed_dns_sans="*.${DOMAIN}" \
+    allowed_dns_sans="$PUPPET_ALLOWED_DNS_SANS" \
     token_ttl=15m
 }
 

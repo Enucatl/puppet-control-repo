@@ -14,9 +14,9 @@ vault login -method=cert name=puppet
 The same host previously authenticated through a temporary dedicated
 leaf-certificate role.
 
-The Vault policy is not the problem. The `allowed_dns_sans="*.home.arpa"`
-constraint is also not the problem. The proxmox certificate's SAN matches that
-pattern.
+The Vault policy is not the problem. The `allowed_dns_sans` constraint is also
+not the problem. The proxmox certificate's SAN matches the explicit host allow
+list derived from `data/nodes/*.yaml`.
 
 The failure happens earlier: Vault uses Go `crypto/x509` to build a certificate
 chain for CA-backed cert auth roles. Go cannot build a chain from the proxmox
@@ -31,7 +31,7 @@ The intended generic role is:
 ```text
 auth/cert/certs/puppet
 certificate: Puppet CA chain
-allowed_dns_sans: ["*.home.arpa"]
+allowed_dns_sans: [<explicit hostnames from data/nodes/*.yaml>]
 token_policies: ["puppet"]
 token_ttl: 900
 ```
