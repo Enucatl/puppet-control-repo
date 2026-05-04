@@ -52,7 +52,7 @@ install_uv() {
     return
   fi
 
-  log 'updating uv'
+  log "updating uv based on check output: ${uv_update_check}"
   "$HOME/.local/bin/uv" self update
   log 'updated uv'
 }
@@ -77,7 +77,7 @@ install_rustup() {
   fi
 
   if [ "$rustup_check_status" -eq 100 ]; then
-    log 'updating rustup and rust toolchain'
+    log "updating rustup and rust toolchain: check reported available updates for <%= $rust_toolchain %>"
     "$HOME/.cargo/bin/rustup" self update
     "$HOME/.cargo/bin/rustup" update '<%= $rust_toolchain %>'
     "$HOME/.cargo/bin/rustup" default '<%= $rust_toolchain %>'
@@ -85,7 +85,7 @@ install_rustup() {
     return
   fi
 
-  log 'rustup check failed; running full update path'
+  log "rustup check failed with exit status ${rustup_check_status}; running full update path"
   "$HOME/.cargo/bin/rustup" self update
   "$HOME/.cargo/bin/rustup" update '<%= $rust_toolchain %>'
   "$HOME/.cargo/bin/rustup" default '<%= $rust_toolchain %>'
@@ -110,7 +110,7 @@ install_nvm() {
     git -C "$NVM_DIR" checkout --force --quiet "$latest_tag"
     log 'updated nvm'
   else
-    log 'nvm is already up to date'
+    log "nvm is already up to date at ${current_tag:-unknown}"
   fi
 
   # shellcheck disable=SC1091
@@ -125,11 +125,11 @@ NVM_DEFAULT_PACKAGES
   installed_node_version="$(nvm version '<%= $node_version %>')"
   remote_node_version="$(nvm version-remote '<%= $node_version %>')"
   if [ "$installed_node_version" != "$remote_node_version" ]; then
-    log "updating node from ${installed_node_version:-unknown} to ${remote_node_version:-unknown}"
+    log "updating node: installed=${installed_node_version:-unknown} published=${remote_node_version:-unknown}"
     nvm install '<%= $node_version %>'
     log 'updated node'
   else
-    log "node is already current at ${installed_node_version:-unknown}"
+    log "node is already current: installed=${installed_node_version:-unknown} published=${remote_node_version:-unknown}"
   fi
 
   nvm alias default '<%= $node_version %>'
@@ -138,24 +138,24 @@ NVM_DEFAULT_PACKAGES
   installed_npm_version="$(npm --version)"
   remote_npm_version="$(npm_remote_version npm)"
   if [ -z "$remote_npm_version" ] || [ "$installed_npm_version" != "$remote_npm_version" ]; then
-    log "updating npm from ${installed_npm_version:-unknown} to ${remote_npm_version:-unknown}"
+    log "updating npm: installed=${installed_npm_version:-unknown} published=${remote_npm_version:-unknown}"
     if ! nvm install-latest-npm; then
       echo 'warning: npm@latest could not be installed for the active Node version' >&2
     fi
     log 'updated npm'
   else
-    log "npm is already current at ${installed_npm_version:-unknown}"
+    log "npm is already current: installed=${installed_npm_version:-unknown} published=${remote_npm_version:-unknown}"
   fi
 
 <%- $npm_globals.each |$package| { -%>
   installed_package_version="$(npm_installed_version '<%= $package %>')"
   remote_package_version="$(npm_remote_version '<%= $package %>')"
   if [ -z "$installed_package_version" ] || [ -z "$remote_package_version" ] || [ "$installed_package_version" != "$remote_package_version" ]; then
-    log "updating npm package <%= $package %> from ${installed_package_version:-unknown} to ${remote_package_version:-unknown}"
+    log "updating npm package <%= $package %>: installed=${installed_package_version:-unknown} published=${remote_package_version:-unknown}"
     npm install -g '<%= $package %>@latest'
     log "updated npm package <%= $package %>"
   else
-    log "npm package <%= $package %> is already current at ${installed_package_version:-unknown}"
+    log "npm package <%= $package %> is already current: installed=${installed_package_version:-unknown} published=${remote_package_version:-unknown}"
   fi
 <%- } -%>
 }
