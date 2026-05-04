@@ -18,7 +18,7 @@ log() {
 }
 
 latest_nvm_tag() {
-  git ls-remote --tags --refs origin 'v*' \
+  git ls-remote --tags --refs https://github.com/nvm-sh/nvm.git 'v*' \
     | awk '{print $2}' \
     | sed 's#refs/tags/##' \
     | sort -V \
@@ -106,7 +106,7 @@ install_nvm() {
   latest_tag="$(latest_nvm_tag)"
   if [ -n "$latest_tag" ] && [ "$latest_tag" != "$current_tag" ]; then
     log "updating nvm from ${current_tag:-unknown} to ${latest_tag}"
-    git -C "$NVM_DIR" fetch --tags --prune origin
+    git -C "$NVM_DIR" fetch --tags --prune https://github.com/nvm-sh/nvm.git
     git -C "$NVM_DIR" checkout --force --quiet "$latest_tag"
     log 'updated nvm'
   else
