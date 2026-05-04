@@ -13,37 +13,105 @@ lock_file="$HOME/.cache/puppet/user-toolchain.lock"
 exec 9>"$lock_file"
 flock 9
 
+log() {
+  printf '%s user-toolchain: %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$*"
+}
+
+latest_nvm_tag() {
+  git ls-remote --tags --refs origin 'v*' \
+    | awk '{print $2}' \
+    | sed 's#refs/tags/##' \
+    | sort -V \
+    | tail -n 1
+}
+
+npm_installed_version() {
+  local package_name="$1"
+
+  npm list -g --depth=0 --json "$package_name" 2>/dev/null \
+    | node -e 'const fs = require("fs"); const pkg = process.argv[1]; const data = JSON.parse(fs.readFileSync(0, "utf8")); const dep = data.dependencies && data.dependencies[pkg]; process.stdout.write((dep && dep.version) || "");' "$package_name"
+}
+
+npm_remote_version() {
+  npm view "$1" version --json 2>/dev/null | tr -d '"'
+}
+
 install_uv() {
-  if [ -x "$HOME/.local/bin/uv" ] && "$HOME/.local/bin/uv" self update; then
+  log 'checking uv'
+  if [ ! -x "$HOME/.local/bin/uv" ]; then
+    log 'installing uv'
+    curl -LsSf https://astral.sh/uv/install.sh \
+      | env UV_INSTALL_DIR="$HOME/.local/bin" UV_NO_MODIFY_PATH=1 sh
+    log 'installed uv'
     return
   fi
 
-  curl -LsSf https://astral.sh/uv/install.sh \
-    | env UV_INSTALL_DIR="$HOME/.local/bin" UV_NO_MODIFY_PATH=1 sh
+  uv_update_check="$("$HOME/.local/bin/uv" self update --dry-run 2>&1 || true)"
+  if printf '%s\n' "$uv_update_check" | grep -Eq 'already on version|latest version'; then
+    log 'uv is already up to date'
+    return
+  fi
+
+  log 'updating uv'
+  "$HOME/.local/bin/uv" self update
+  log 'updated uv'
 }
 
 install_rustup() {
+  log 'checking rustup'
   if [ ! -x "$HOME/.cargo/bin/rustup" ]; then
+    log 'installing rustup'
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
       | sh -s -- -y --no-modify-path --default-toolchain '<%= $rust_toolchain %>'
+    log 'installed rustup'
+    return
   fi
 
+  rustup_check_status=0
+  "$HOME/.cargo/bin/rustup" check --no-self-update >/dev/null 2>&1 || rustup_check_status=$?
+
+  if [ "$rustup_check_status" -eq 0 ]; then
+    log 'rustup toolchains are already up to date'
+    "$HOME/.cargo/bin/rustup" default '<%= $rust_toolchain %>'
+    return
+  fi
+
+  if [ "$rustup_check_status" -eq 100 ]; then
+    log 'updating rustup and rust toolchain'
+    "$HOME/.cargo/bin/rustup" self update
+    "$HOME/.cargo/bin/rustup" update '<%= $rust_toolchain %>'
+    "$HOME/.cargo/bin/rustup" default '<%= $rust_toolchain %>'
+    log 'updated rustup and rust toolchain'
+    return
+  fi
+
+  log 'rustup check failed; running full update path'
   "$HOME/.cargo/bin/rustup" self update
   "$HOME/.cargo/bin/rustup" update '<%= $rust_toolchain %>'
   "$HOME/.cargo/bin/rustup" default '<%= $rust_toolchain %>'
 }
 
 install_nvm() {
+  log 'checking nvm'
   export NVM_DIR="$HOME/.nvm"
 
   if [ ! -d "$NVM_DIR/.git" ]; then
+    log 'installing nvm'
     rm -rf "$NVM_DIR"
     git clone https://github.com/nvm-sh/nvm.git "$NVM_DIR"
+    log 'installed nvm'
   fi
 
-  git -C "$NVM_DIR" fetch --tags --prune origin
-  latest_tag="$(git -C "$NVM_DIR" tag -l 'v*' --sort=-v:refname | head -n 1)"
-  git -C "$NVM_DIR" checkout --force --quiet "$latest_tag"
+  current_tag="$(git -C "$NVM_DIR" tag -l 'v*' --sort=-v:refname | head -n 1)"
+  latest_tag="$(latest_nvm_tag)"
+  if [ -n "$latest_tag" ] && [ "$latest_tag" != "$current_tag" ]; then
+    log "updating nvm from ${current_tag:-unknown} to ${latest_tag}"
+    git -C "$NVM_DIR" fetch --tags --prune origin
+    git -C "$NVM_DIR" checkout --force --quiet "$latest_tag"
+    log 'updated nvm'
+  else
+    log 'nvm is already up to date'
+  fi
 
   # shellcheck disable=SC1091
   . "$NVM_DIR/nvm.sh"
@@ -54,16 +122,41 @@ install_nvm() {
 <%- } -%>
 NVM_DEFAULT_PACKAGES
 
-  nvm install '<%= $node_version %>'
+  installed_node_version="$(nvm version '<%= $node_version %>')"
+  remote_node_version="$(nvm version-remote '<%= $node_version %>')"
+  if [ "$installed_node_version" != "$remote_node_version" ]; then
+    log "updating node from ${installed_node_version:-unknown} to ${remote_node_version:-unknown}"
+    nvm install '<%= $node_version %>'
+    log 'updated node'
+  else
+    log "node is already current at ${installed_node_version:-unknown}"
+  fi
+
   nvm alias default '<%= $node_version %>'
   nvm use default
 
-  if ! nvm install-latest-npm; then
-    echo 'warning: npm@latest could not be installed for the active Node version' >&2
+  installed_npm_version="$(npm --version)"
+  remote_npm_version="$(npm_remote_version npm)"
+  if [ -z "$remote_npm_version" ] || [ "$installed_npm_version" != "$remote_npm_version" ]; then
+    log "updating npm from ${installed_npm_version:-unknown} to ${remote_npm_version:-unknown}"
+    if ! nvm install-latest-npm; then
+      echo 'warning: npm@latest could not be installed for the active Node version' >&2
+    fi
+    log 'updated npm'
+  else
+    log "npm is already current at ${installed_npm_version:-unknown}"
   fi
 
 <%- $npm_globals.each |$package| { -%>
-  npm install -g '<%= $package %>@latest'
+  installed_package_version="$(npm_installed_version '<%= $package %>')"
+  remote_package_version="$(npm_remote_version '<%= $package %>')"
+  if [ -z "$installed_package_version" ] || [ -z "$remote_package_version" ] || [ "$installed_package_version" != "$remote_package_version" ]; then
+    log "updating npm package <%= $package %> from ${installed_package_version:-unknown} to ${remote_package_version:-unknown}"
+    npm install -g '<%= $package %>@latest'
+    log "updated npm package <%= $package %>"
+  else
+    log "npm package <%= $package %> is already current at ${installed_package_version:-unknown}"
+  fi
 <%- } -%>
 }
 
@@ -76,3 +169,5 @@ install_rustup
 <% if $manage_nvm { -%>
 install_nvm
 <% } -%>
+
+log 'user toolchain sync complete'
