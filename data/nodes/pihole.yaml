@@ -1,2 +1,0 @@
-systemd::journald_settings:
-  SystemMaxUse: 100M
