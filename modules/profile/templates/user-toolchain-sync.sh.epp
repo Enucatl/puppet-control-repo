@@ -18,11 +18,8 @@ log() {
 }
 
 latest_nvm_tag() {
-  git ls-remote --tags --refs https://github.com/nvm-sh/nvm.git 'v*' \
-    | awk '{print $2}' \
-    | sed 's#refs/tags/##' \
-    | sort -V \
-    | tail -n 1
+  curl -sL https://api.github.com/repos/nvm-sh/nvm/releases/latest \
+    | jq -r '.tag_name // empty'
 }
 
 npm_installed_version() {
