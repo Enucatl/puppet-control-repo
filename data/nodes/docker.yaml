@@ -114,6 +114,12 @@ profile::common::certs::vault_certs:
     key_mode: '0600'
 
 profile::common::acls::posix_acls:
+  "/opt/docker/camillo/secrets/postgres_password":
+    action: set
+    permission:
+      - "user:100999:r--"
+      - "user:110000:r--"
+      - "mask::r--"
   "/opt/docker/traefik/data/certs/docker_key.pem":
     action: set
     permission:
