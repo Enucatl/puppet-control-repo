@@ -93,6 +93,9 @@ profile::common::certs::vault_certs:
     cert_data:
       common_name: '*.docker.home.arpa'
       alt_names: '*.docker.home.arpa,docker.home.arpa'
+  airflow-worker:
+    cert_chain_file: /opt/docker/airflow/secrets/airflow-worker_fullchain.pem
+    key_file: /opt/docker/airflow/secrets/airflow-worker_key.pem
 
 profile::common::acls::posix_acls:
   "/opt/docker/traefik/data/certs/docker_key.pem":
@@ -102,6 +105,18 @@ profile::common::acls::posix_acls:
       - "user:101000:r--"
       - "mask::r--"
     subscribe: "Vault_cert[docker]"
+  "/opt/docker/airflow/secrets/airflow-worker_fullchain.pem":
+    action: set
+    permission:
+      - "user:150000:r--" # remap base 100000 + airflow uid 50000
+      - "mask::r--"
+    subscribe: "Vault_cert[airflow-worker]"
+  "/opt/docker/airflow/secrets/airflow-worker_key.pem":
+    action: set
+    permission:
+      - "user:150000:r--" # remap base 100000 + airflow uid 50000
+      - "mask::r--"
+    subscribe: "Vault_cert[airflow-worker]"
   "/opt/docker/paperless-ai/secrets/paperless_token.txt":
     action: set
     permission:
