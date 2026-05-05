@@ -109,17 +109,7 @@
     - name: Install the verified VyOS image
       vyos.vyos.vyos_command:
         commands:
-          - command: "add system image /tmp/{{ vyos_latest_release_iso }}"
-            prompt:
-              - "What would you like to name this image\\?"
-              - "Would you like to set the new image as the default one for boot\\?"
-              - "Would you like to copy it to the new image\\?"
-              - "Would you like to copy SSH host keys\\?"
-            answer:
-              - "\r"
-              - "\r"
-              - "\r"
-              - "\r"
+          - "sudo /usr/libexec/vyos/op_mode/image_installer.py --action add --image-path /tmp/{{ vyos_latest_release_iso }} --no-prompt"
       register: vyos_image_install
       failed_when: >-
         vyos_image_install.stdout[0] is search('(?im)^Error:')
@@ -166,6 +156,25 @@
         that:
           - vyos_post_upgrade_version.stdout[0] is search(vyos_latest_release_tag)
         fail_msg: "The router did not boot the expected VyOS rolling release"
+
+    - name: List installed VyOS images after upgrade
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo /usr/libexec/vyos/op_mode/image_manager.py --action list --no-prompt"
+      register: vyos_installed_images
+      changed_when: false
+      vars:
+        ansible_command_timeout: 300
+
+    - name: Remove images older than the previous release
+      when: vyos_installed_images.stdout[0].splitlines() | length > 2
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo /usr/libexec/vyos/op_mode/image_manager.py --action delete --image-name {{ item }} --no-prompt"
+      loop: "{{ vyos_installed_images.stdout[0].splitlines()[2:] }}"
+      changed_when: true
+      vars:
+        ansible_command_timeout: 300
 
   always:
     - name: Remove the local VyOS staging directory
