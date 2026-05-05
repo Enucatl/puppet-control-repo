@@ -58,6 +58,20 @@ nisdomainname::domain: home.arpa
 
 nfs::nfs_v4_export_root_clients: '*.home.arpa(ro,fsid=root,no_subtree_check,async,root_squash,sec=krb5p)'
 
+profile::common::certs::vault_certs_defaults:
+  ensure: 'present'
+  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/general'
+  auth_path: 'cert'
+  cert_data:
+    ttl: '2160h'  # 90 days
+    exclude_cn_from_sans: true
+  renewal_threshold: 5
+  cert_chain_owner: 'user'
+  cert_chain_group: 'user'
+  key_owner: 'user'
+  key_group: 'user'
+  key_mode: '0600'
+
 freeipa::install::client::options:
   mkhomedir:
   domain: home.arpa
