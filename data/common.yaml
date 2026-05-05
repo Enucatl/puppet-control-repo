@@ -18,6 +18,8 @@ lookup_options:
     merge: deep
   profile::common::certs::vault_certs:
     merge: deep
+  profile::common::certs::vault_certs_defaults:
+    merge: deep
   profile::common::cron::jobs:
     merge: deep
   profile::common::services::resources:
@@ -68,6 +70,7 @@ profile::common::certs::vault_certs_defaults:
   renewal_threshold: 5
   cert_chain_owner: 'user'
   cert_chain_group: 'user'
+  cert_chain_mode: '0644'
   key_owner: 'user'
   key_group: 'user'
   key_mode: '0600'
