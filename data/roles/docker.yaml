@@ -3,10 +3,20 @@ classes:
   - profile::docker_host
   - nfs_config
   - profile::user_toolchain
+  - profile::codex_mtls
 
 profile::user_toolchain::npm_globals:
   - '@mermaid-js/mermaid-cli'
   - '@openai/codex'
+
+profile::common::certs::vault_certs:
+  codex:
+    cert_chain_file: /home/user/.config/home-arpa/mtls/codex.crt
+    cert_chain_mode: '0644'
+    key_file: /home/user/.config/home-arpa/mtls/codex.key
+    cert_data:
+      common_name: "codex.%{facts.networking.fqdn}"
+      alt_names: "codex.%{facts.networking.fqdn}"
 
 freeipa_users::user_groups:
   user:
