@@ -101,6 +101,14 @@ profile::common::certs::vault_certs:
     key_group: 110000
     key_mode: '0600'
 
+systemd::dropin_files:
+  networkd-dispatcher-ignore-veth.conf:
+    unit: "networkd-dispatcher.service"
+    content: |
+      [Service]
+      Environment="NETWORKD_DISPATCHER_ARGS=--ignore-interface-regex=^veth.*"
+    notify: "Service[networkd-dispatcher]"
+
 profile::common::acls::posix_acls:
   "/opt/docker/camillo/secrets/postgres_password":
     action: set
