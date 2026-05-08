@@ -15,3 +15,7 @@ profile::common::cron::jobs:
     ensure: absent
   chronicle-disable:
     ensure: absent
+
+profile::common::sysctl::settings:
+  net.ipv6.conf.all.accept_ra:
+    value: 0
