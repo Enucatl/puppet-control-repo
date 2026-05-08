@@ -126,6 +126,8 @@ puppet_configuration::settings:
     section: agent
     setting: number_of_facts_soft_limit
     value: 10000
+puppet_configuration::facter_blocklist:
+  - dhcp_servers
 
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
