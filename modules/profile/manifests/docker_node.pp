@@ -6,6 +6,16 @@ class profile::docker_node (
   require profile::common
   require ::samba
 
+  file { '/etc/systemd/system/networkd-dispatcher.service.d/networkd-dispatcher-ignore-veth.conf':
+    ensure => absent,
+    notify => Exec['systemctl-daemon-reload-networkd-dispatcher-cleanup'],
+  }
+
+  exec { 'systemctl-daemon-reload-networkd-dispatcher-cleanup':
+    command     => '/usr/bin/systemctl daemon-reload',
+    refreshonly => true,
+  }
+
   # Trigger Traefik reload when certs change
   exec { 'trigger_traefik_reload':
     command     => '/usr/bin/touch /opt/docker/traefik/data/config.yml',
