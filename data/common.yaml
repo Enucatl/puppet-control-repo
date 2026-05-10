@@ -130,8 +130,6 @@ puppet_configuration::settings:
     value: 10000
 puppet_configuration::facter_blocklist:
   - dhcp_servers
-puppet_configuration::facter_ttls:
-  networking: 7 days
 
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true
@@ -181,6 +179,11 @@ systemd::dropin_files:
       ExecStart=
       ExecStart=/usr/bin/alloy run --disable-reporting --storage.path=/var/lib/alloy/data $CONFIG_FILE
     notify: "Service[alloy]"
+  puppet-facter-dhcpcd-path.conf:
+    unit: "puppet.service"
+    content: |
+      [Service]
+      Environment="PATH=/usr/local/lib/facter-no-dhcpcd:/opt/puppetlabs/bin:/opt/puppetlabs/puppet/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 grafana_alloy::manage_package_repo: false
 
