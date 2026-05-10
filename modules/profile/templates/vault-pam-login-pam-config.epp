@@ -1,6 +1,6 @@
 Name: Vault LDAP auto-login
 Default: yes
 Priority: 900
-Session-Type: Additional
-Session:
+Auth-Type: Additional
+Auth-Final:
 	optional pam_exec.so seteuid expose_authtok /usr/local/bin/vault-pam-login.sh

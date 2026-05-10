@@ -1,12 +1,16 @@
 #!/bin/bash
 # Vault auto-login via PAM — obtains a Vault token using LDAP auth
-# Called by pam_exec during session setup; password comes via stdin
+# Called by pam_exec during authentication; password comes via stdin
 
 export VAULT_ADDR="https://hcv.home.arpa:8200"
 export VAULT_CACERT="/etc/ssl/certs/ca-certificates.crt"
 
-# Only run for interactive logins (not cron, sudo, etc.)
-[ "$PAM_TYPE" = "open_session" ] || exit 0
+# Only run for interactive login services (not cron, sudo, etc.)
+[ "$PAM_TYPE" = "auth" ] || exit 0
+case "$PAM_SERVICE" in
+  sshd|login|gdm-password|lightdm|sddm) ;;
+  *) exit 0 ;;
+esac
 
 # Skip if user already has a valid token
 if HOME="$(eval echo ~"$PAM_USER")" VAULT_TOKEN="$(cat "$(eval echo ~"$PAM_USER")/.vault-token" 2>/dev/null)" \
