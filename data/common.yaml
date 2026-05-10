@@ -38,6 +38,8 @@ lookup_options:
     merge: deep
   systemd::journald_settings:
     merge: deep
+  systemd::dropin_files:
+    merge: deep
   tidy::files:
     merge: deep
 
@@ -128,6 +130,8 @@ puppet_configuration::settings:
     value: 10000
 puppet_configuration::facter_blocklist:
   - dhcp_servers
+puppet_configuration::facter_ttls:
+  networking: 7 days
 
 ssh::storeconfigs_enabled: true
 ssh::validate_sshd_file: true

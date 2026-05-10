@@ -60,8 +60,8 @@ profile::common::services::resources:
     ensure: running
     enable: true
   networkd-dispatcher:
-    ensure: running
-    enable: true
+    ensure: stopped
+    enable: false
 
 profile::common::cron::jobs:
   # backup the hashicorp vault to a location that is picked up by duplicati
@@ -103,14 +103,6 @@ profile::common::certs::vault_certs:
     key_owner: 110000
     key_group: 110000
     key_mode: '0600'
-
-systemd::dropin_files:
-  networkd-dispatcher-ignore-veth.conf:
-    unit: "networkd-dispatcher.service"
-    content: |
-      [Service]
-      Environment="NETWORKD_DISPATCHER_ARGS=--ignore-interface-regex=^veth.*"
-    notify: "Service[networkd-dispatcher]"
 
 profile::common::acls::posix_acls:
   "/opt/docker/camillo/secrets/postgres_password":
