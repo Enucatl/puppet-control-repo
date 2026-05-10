@@ -203,3 +203,4 @@ tidy::defaults:
   age: 1w
   recurse: true
   rmdirs: true
+  type: mtime
