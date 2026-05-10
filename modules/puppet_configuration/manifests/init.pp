@@ -6,7 +6,6 @@
 # Parameters:
 #   - $settings: A hash containing Puppet configuration settings.
 #   - $facter_blocklist: A list of Facter facts to block.
-#   - $facter_ttls: A hash of Facter fact groups and cache TTLs.
 #
 # Example Usage:
 # puppet_configuration::settings:
@@ -26,7 +25,6 @@
 class puppet_configuration (
   Hash $settings,
   Array[String] $facter_blocklist = [],
-  Hash[String, String] $facter_ttls = {},
 ) {
   # Determine the configuration directory based on the operating system family.
   $conf_dir = $facts['os']['family'] ? {
@@ -65,15 +63,24 @@ class puppet_configuration (
   # Create resources using the ini_setting type to manage puppet.conf settings.
   create_resources(ini_setting, $settings, $defaults)
 
-  if !empty($facter_blocklist) or !empty($facter_ttls) {
+  file { '/usr/local/lib/facter-no-dhcpcd':
+    ensure => directory,
+    owner  => 'root',
+    group  => 'root',
+    mode   => '0755',
+  }
+
+  file { '/usr/local/lib/facter-no-dhcpcd/dhcpcd':
+    ensure  => file,
+    source  => 'puppet:///modules/puppet_configuration/facter-dhcpcd-shim',
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    require => File['/usr/local/lib/facter-no-dhcpcd'],
+  }
+
+  if !empty($facter_blocklist) {
     $quoted_facter_blocklist = $facter_blocklist.map |String $fact| { "\"${fact}\"" }
-    $quoted_facter_ttls = $facter_ttls.map |String $fact, String $ttl| { "{ \"${fact}\" : \"${ttl}\" }" }
-    $facter_conf_lines = [
-      'facts : {',
-      "  blocklist : [ ${quoted_facter_blocklist.join(', ')} ]",
-      "  ttls : [ ${quoted_facter_ttls.join(', ')} ]",
-      '}',
-    ]
 
     file { $facter_conf_dir:
       ensure => directory,
@@ -82,7 +89,7 @@ class puppet_configuration (
 
     file { "${facter_conf_dir}/facter.conf":
       ensure  => file,
-      content => "${facter_conf_lines.join("\n")}\n",
+      content => "facts : {\n  blocklist : [ ${quoted_facter_blocklist.join(', ')} ]\n}\n",
       require => File[$facter_conf_dir],
       *       => $facter_conf_file_attributes,
     }
