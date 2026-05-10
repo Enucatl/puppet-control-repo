@@ -86,6 +86,7 @@ profile::common::certs::vault_certs:
     cert_data:
       common_name: '*.docker.home.arpa'
       alt_names: '*.docker.home.arpa,docker.home.arpa'
+    key_mode: '0640'
   airflow:
     cert_chain_file: /opt/docker/airflow/secrets/fullchain.pem
     cert_chain_owner: 150000
