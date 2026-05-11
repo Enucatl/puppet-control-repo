@@ -25,6 +25,10 @@ vault policy write puppet - <<EOF
 path "kv/data/puppet" {
     capabilities = ["read"]
 }
+
+path "kv/data/wolf" {
+    capabilities = ["read"]
+}
 EOF
 
 vault secrets list 2>/dev/null | grep -q '^kv/' || vault secrets enable -version=2 kv

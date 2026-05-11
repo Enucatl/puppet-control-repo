@@ -29,7 +29,7 @@ class Config:
     ct_id: int = 110
     storage_id: str = "chronicle"
     backup_job_id: str = "pbs-chronicle-weekly"
-    vault_path: str = "kv/puppet"
+    vault_path: str = "kv/wolf"
     vault_field: str = "proxmox-cortex"
     vault_addr: str = "https://hcv.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"

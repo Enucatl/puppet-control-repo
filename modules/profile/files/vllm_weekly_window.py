@@ -31,7 +31,7 @@ class Config:
     compose_env_files: str = "../.env,./.env"
     compose_profile: str = "extraction"
     window_seconds: int = 3600
-    vault_path: str = "kv/puppet"
+    vault_path: str = "kv/wolf"
     vault_field: str = "proxmox-cortex"
     vault_addr: str = "https://hcv.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"

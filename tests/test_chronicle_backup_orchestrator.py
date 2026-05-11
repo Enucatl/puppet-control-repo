@@ -77,7 +77,7 @@ class TestChronicleBackupOrchestrator:
     def test_initially_off_runs_full_sequence_and_shutdown(self) -> None:
         result, commands = run_case(
             [
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 1, ""),
                 ("wakeonlan", 0, ""),
                 ("nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222", 0, ""),
@@ -124,7 +124,7 @@ class TestChronicleBackupOrchestrator:
     def test_initially_on_skips_wake_unlock_and_shutdown(self) -> None:
         result, commands = run_case(
             [
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
@@ -166,7 +166,7 @@ class TestChronicleBackupOrchestrator:
     def test_ct_already_running_does_not_start_it(self) -> None:
         result, commands = run_case(
             [
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
@@ -206,7 +206,7 @@ class TestChronicleBackupOrchestrator:
     def test_backup_task_failure_cleans_up_and_exits_nonzero(self) -> None:
         result, commands = run_case(
             [
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
@@ -304,7 +304,7 @@ class TestChronicleBackupOrchestrator:
     def test_unparseable_backup_create_output_skips_task_polling(self) -> None:
         result, commands = run_case(
             [
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
@@ -340,7 +340,7 @@ class TestChronicleBackupOrchestrator:
     def test_storage_enable_failure_attempts_cleanup(self) -> None:
         result, commands = run_case(
             [
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa pct status 110",
@@ -365,7 +365,7 @@ class TestChronicleBackupOrchestrator:
     def test_vault_failure_exits_before_wake(self) -> None:
         result, commands = run_case(
             [
-                ("vault kv get", 1, ""),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 1, ""),
                 ("vault login -client-cert=", 1, ""),
             ]
         )
@@ -480,7 +480,7 @@ class TestFakeCommandIntegration:
         assert result.returncode == 0, result.stderr
         commands = log_file.read_text(encoding="utf-8").splitlines()
         assert commands == [
-            "vault kv get -field=proxmox-cortex kv/puppet",
+            "vault kv get -field=proxmox-cortex kv/wolf",
             "nc -z -w 2 proxmox-cortex.home.arpa 22",
             "wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de",
             "nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222",
