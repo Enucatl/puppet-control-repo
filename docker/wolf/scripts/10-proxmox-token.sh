@@ -14,37 +14,16 @@ if ! command -v pveum >/dev/null 2>&1; then
   exit 127
 fi
 
-if ! pveum user list | awk -v user="$PVE_USER" '
-  $1 == user || $2 == user {
-    found = 1
-  }
-  END {
-    exit(found ? 0 : 1)
-  }
-'; then
+if ! pveum user show "$PVE_USER" >/dev/null 2>&1; then
   pveum user add "$PVE_USER" --comment="Wolf power control service" >/dev/null
 fi
 
-if ! pveum role list | awk -v role="$PVE_VM_ROLE_NAME" '
-  $1 == role {
-    found = 1
-  }
-  END {
-    exit(found ? 0 : 1)
-  }
-'; then
+if ! pveum role show "$PVE_VM_ROLE_NAME" >/dev/null 2>&1; then
   pveum role add "$PVE_VM_ROLE_NAME" \
     --privs="VM.PowerMgmt VM.Console VM.Audit" >/dev/null
 fi
 
-if ! pveum role list | awk -v role="$PVE_NODE_ROLE_NAME" '
-  $1 == role {
-    found = 1
-  }
-  END {
-    exit(found ? 0 : 1)
-  }
-'; then
+if ! pveum role show "$PVE_NODE_ROLE_NAME" >/dev/null 2>&1; then
   pveum role add "$PVE_NODE_ROLE_NAME" \
     --privs="Sys.PowerMgmt Sys.Audit" >/dev/null
 fi
