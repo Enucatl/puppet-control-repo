@@ -66,7 +66,17 @@ def ensure_token() -> tuple[bool, str]:
         return False, ""
 
     print("Create or copy the token secret now:")
-    result = run_pveum("user", "token", "add", PVE_USER, PVE_TOKEN_ID, "-privsep", "1")
+    result = run_pveum(
+        "user",
+        "token",
+        "add",
+        PVE_USER,
+        PVE_TOKEN_ID,
+        "-privsep",
+        "1",
+        "--output-format",
+        "json",
+    )
     payload = json.loads(result.stdout)
     if not isinstance(payload, dict):
         raise RuntimeError("unexpected token payload from pveum")
