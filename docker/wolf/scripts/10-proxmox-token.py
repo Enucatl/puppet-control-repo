@@ -48,6 +48,12 @@ def entry_exists(entries: list[dict[str, object]], key: str, needle: str) -> boo
     return any(entry.get(key) == needle for entry in entries)
 
 
+def split_privs(privs: object) -> set[str]:
+    if not isinstance(privs, str):
+        return set()
+    return {priv for priv in privs.replace(",", " ").split() if priv}
+
+
 def ensure_user() -> None:
     if entry_exists(load_entries("user", "list"), "userid", PVE_USER):
         return
@@ -55,9 +61,14 @@ def ensure_user() -> None:
 
 
 def ensure_role(role_name: str, privs: str) -> None:
-    if entry_exists(load_entries("role", "list"), "roleid", role_name):
+    existing = [
+        role for role in load_entries("role", "list") if role.get("roleid") == role_name
+    ]
+    if not existing:
+        run_pveum("role", "add", role_name, "--privs", privs)
         return
-    run_pveum("role", "add", role_name, "--privs", privs)
+    if split_privs(existing[0].get("privs")) != split_privs(privs):
+        run_pveum("role", "modify", role_name, "--privs", privs)
 
 
 def ensure_token() -> tuple[bool, str]:
@@ -91,10 +102,28 @@ def apply_acls() -> None:
         "acl",
         "modify",
         f"/vms/{PVE_VM_ID}",
+        "-user",
+        PVE_USER,
+        "-role",
+        PVE_VM_ROLE_NAME,
+    )
+    run_pveum(
+        "acl",
+        "modify",
+        f"/vms/{PVE_VM_ID}",
         "-token",
         f"{PVE_USER}!{PVE_TOKEN_ID}",
         "-role",
         PVE_VM_ROLE_NAME,
+    )
+    run_pveum(
+        "acl",
+        "modify",
+        f"/nodes/{PVE_NODE}",
+        "-user",
+        PVE_USER,
+        "-role",
+        PVE_NODE_ROLE_NAME,
     )
     run_pveum(
         "acl",
@@ -113,7 +142,10 @@ def main() -> int:
         return 127
 
     ensure_user()
-    ensure_role(PVE_VM_ROLE_NAME, "VM.PowerMgmt VM.Console VM.Audit")
+    ensure_role(
+        PVE_VM_ROLE_NAME,
+        "VM.PowerMgmt VM.Console VM.Audit VM.GuestAgent.Unrestricted",
+    )
     ensure_role(PVE_NODE_ROLE_NAME, "Sys.PowerMgmt Sys.Audit")
     created, token_secret = ensure_token()
     apply_acls()

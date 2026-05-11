@@ -49,12 +49,16 @@ ipa user-show "$WOLF_OPERATOR_USERNAME" >/dev/null 2>&1 \
   || ipa user-add "$WOLF_OPERATOR_USERNAME" \
     --first="$WOLF_OPERATOR_FIRST_NAME" \
     --last="$WOLF_OPERATOR_LAST_NAME" \
-    --shell=/usr/sbin/nologin >/dev/null
+    --shell=/usr/sbin/nologin \
+    --password-expiration=now >/dev/null
 
 printf '%s\n%s\n' \
   "$WOLF_OPERATOR_TEMP_PASSWORD" \
   "$WOLF_OPERATOR_TEMP_PASSWORD" \
   | ipa passwd "$WOLF_OPERATOR_USERNAME" >/dev/null
+
+ipa user-mod "$WOLF_OPERATOR_USERNAME" \
+  --password-expiration=now >/dev/null
 
 ipa group-add-member "$WOLF_OPERATOR_GROUP" \
   --users="$WOLF_OPERATOR_USERNAME" >/dev/null 2>&1 || true
@@ -65,7 +69,7 @@ Wolf operator created or updated.
 Username: $USERNAME
 Temporary password: $TEMP_PASSWORD
 
-The user is a member of $GROUP_NAME only. Verify Authelia login with this
-temporary password and confirm FreeIPA forces a password change before normal
-Wolf access.
+The user is a member of $GROUP_NAME only. The password is set to expire
+immediately, so the next FreeIPA/Authelia login should require a password
+change before normal Wolf access.
 EOF

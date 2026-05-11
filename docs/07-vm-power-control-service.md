@@ -24,6 +24,8 @@ observed reality before deciding what to do.
 
 - The service name is `wolf`, not `wolf-power-control`.
 - Proxmox control uses the HTTPS API with a token read from Vault.
+- The Proxmox API certificate is verified against the PVE cluster CA mounted
+  as `wolf_proxmox_api_ca`.
 - No Proxmox SSH identity is used.
 - SSH remains only for the Dropbear initramfs unlock path.
 - The unlock secret comes from `kv/wolf`, field `proxmox-cortex`.
@@ -50,8 +52,8 @@ observed reality before deciding what to do.
 2. User authentication
    - Friend login is a normal FreeIPA user.
    - Access is limited to the `wolf-operators` group.
-   - The FreeIPA account is created with a temporary password and `nologin`
-     shell.
+   - The FreeIPA account is created with a temporary password, `nologin`
+     shell, and an immediate password expiration.
 
 3. Service credentials
    - Vault cert auth is used only to read `kv/wolf`.
@@ -128,7 +130,7 @@ It:
 
 - creates `wolf-operators` if needed
 - creates or updates the user with `/usr/sbin/nologin`
-- assigns a temporary password
+- assigns a temporary password and expires it immediately
 - adds the user to `wolf-operators`
 - prints the temporary password once
 
@@ -157,6 +159,7 @@ These are the only manual secrets and credentials this service needs.
 | Vault | `kv/wolf:proxmox-cortex` | `docker/wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
 | Vault | `kv/wolf:proxmox-cortex-api-token` | `docker/wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
 | Proxmox | `wolf@pve` API user and token | `docker/wolf/scripts/10-proxmox-token.py` |
+| Proxmox CA | `docker/wolf/proxmox-cortex-pve-root-ca.pem` | `ssh proxmox-cortex.home.arpa 'cat /etc/pve/pve-root-ca.pem' > docker/wolf/proxmox-cortex-pve-root-ca.pem` |
 | Dropbear | `docker/wolf/secrets/dropbear_key` | `ssh-keygen -t ed25519 -f docker/wolf/secrets/dropbear_key -N '' -C wolf-dropbear` |
 | Dropbear | `docker/wolf/secrets/dropbear_known_hosts` | `ssh-keyscan -p 2222 dropbear.proxmox-cortex.home.arpa > docker/wolf/secrets/dropbear_known_hosts` |
 | FreeIPA | `wolf` operator account | `docker/wolf/scripts/30-create-wolf-operator.sh` |
@@ -200,11 +203,17 @@ The Proxmox bootstrap uses two custom roles instead of one combined role:
 
 - `WolfVmControl` on `/vms/200`
   - `VM.PowerMgmt`: start and shutdown VM `200`
-  - `VM.Console`: guest-agent command execution path
+  - `VM.Console`: console access expected by related VM control paths
+  - `VM.GuestAgent.Unrestricted`: guest-agent command execution path
   - `VM.Audit`: read VM status/config
 - `WolfNodePower` on `/nodes/proxmox-cortex`
   - `Sys.PowerMgmt`: shut down `proxmox-cortex`
   - `Sys.Audit`: read node status
+
+The ACLs are assigned to both the `wolf@pve` user and the separated
+`wolf@pve!wolf` token. With Proxmox token privilege separation enabled, the
+token's effective privileges are constrained by the parent user, so token-only
+ACLs are not sufficient.
 
 The split keeps VM privileges scoped only to VM `200`, and node privileges
 scoped only to `proxmox-cortex`. A single combined role would likely work

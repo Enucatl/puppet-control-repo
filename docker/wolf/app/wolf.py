@@ -33,6 +33,7 @@ class Config:
     dropbear_host: str = "dropbear.proxmox-cortex.home.arpa"
     proxmox_host: str = "proxmox-cortex.home.arpa"
     proxmox_api_base_url: str = "https://proxmox-cortex.home.arpa:8006/api2/json"
+    proxmox_api_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
     proxmox_api_node: str = "proxmox-cortex"
     guest_host: str = "complex.home.arpa"
     guest_user: str = "user"
@@ -265,6 +266,17 @@ class WolfController:
             if already_active:
                 return self.status()
             if observation.wolf == "running":
+                deadline = time.time() + self.config.max_session_seconds
+                with self.state_lock:
+                    self.state.phase = "running"
+                    self.state.started_by = user
+                    self.state.started_at = time.time()
+                    self.state.deadline = deadline
+                    self.state.last_action = "start"
+                    self.state.last_result = "ok"
+                    self.state.last_stop_reason = None
+                    self.save_state_locked()
+                self.schedule_timeout(self.config.max_session_seconds)
                 return self.status()
 
             with self.state_lock:
@@ -348,7 +360,8 @@ class WolfController:
                     (
                         "host shutdown",
                         lambda: self.proxmox_api_post(
-                            f"/nodes/{self.config.proxmox_api_node}/status/shutdown",
+                            f"/nodes/{self.config.proxmox_api_node}/status",
+                            data=[("command", "shutdown")],
                             check=False,
                             timeout=300,
                         ),
@@ -356,7 +369,11 @@ class WolfController:
                 ]
                 for label, callback in actions:
                     try:
-                        callback()
+                        result = callback()
+                        if isinstance(result, subprocess.CompletedProcess):
+                            error = result.stderr.strip() or result.stdout.strip()
+                            if result.returncode != 0:
+                                errors.append(f"{label}: {error}")
                     except Exception as error:
                         errors.append(f"{label}: {error}")
             elif was_active:
@@ -461,7 +478,8 @@ class WolfController:
         if started_host:
             try:
                 self.proxmox_api_post(
-                    f"/nodes/{self.config.proxmox_api_node}/status/shutdown",
+                    f"/nodes/{self.config.proxmox_api_node}/status",
+                    data=[("command", "shutdown")],
                     check=False,
                     timeout=300,
                 )
@@ -523,6 +541,7 @@ class WolfController:
                 [
                     "vault",
                     "login",
+                    "-no-store",
                     f"-client-cert={self.config.vault_client_cert}",
                     f"-client-key={self.config.vault_client_key}",
                     "-method=cert",
@@ -604,7 +623,7 @@ class WolfController:
     def guest_exec(
         self, command: str, *, timeout: int | None = None, check: bool = True
     ) -> subprocess.CompletedProcess[str]:
-        return self.proxmox_api_post(
+        result = self.proxmox_api_post(
             f"/nodes/{self.config.proxmox_api_node}/qemu/{self.config.vm_id}/agent/exec",
             data=[
                 ("command", part)
@@ -615,13 +634,47 @@ class WolfController:
                     "-c",
                     command,
                 ]
-            ]
-            + [
-                ("timeout", str(timeout if timeout is not None else 30)),
             ],
             timeout=timeout,
             check=check,
         )
+        payload = proxmox_api_data(result.stdout)
+        pid = payload.get("pid")
+        if not isinstance(pid, int):
+            return result
+
+        deadline = time.monotonic() + (timeout if timeout is not None else 30)
+        while True:
+            status = self.proxmox_api_get(
+                f"/nodes/{self.config.proxmox_api_node}/qemu/{self.config.vm_id}/agent/exec-status?pid={pid}",
+                timeout=timeout,
+                check=check,
+            )
+            status_payload = proxmox_api_data(status.stdout)
+            if status_payload.get("exited"):
+                exitcode = status_payload.get("exitcode", 1)
+                if not isinstance(exitcode, int):
+                    exitcode = 1
+                completed = subprocess.CompletedProcess(
+                    ["guest-exec", command],
+                    exitcode,
+                    status.stdout,
+                    status_payload.get("err-data", ""),
+                )
+                if check and exitcode != 0:
+                    raise CommandError(["guest-exec", command], completed)
+                return completed
+            if time.monotonic() >= deadline:
+                timed_out = subprocess.CompletedProcess(
+                    ["guest-exec", command],
+                    1,
+                    status.stdout,
+                    f"guest command timed out after {timeout or 30} seconds",
+                )
+                if check:
+                    raise CommandError(["guest-exec", command], timed_out)
+                return timed_out
+            time.sleep(1)
 
     def proxmox_api_get(
         self, path: str, *, timeout: int | None = None, check: bool = True
@@ -657,7 +710,7 @@ class WolfController:
                 headers={"Authorization": f"PVEAPIToken={token}"},
                 data=data,
                 timeout=timeout,
-                verify=self.config.vault_cacert,
+                verify=self.config.proxmox_api_cacert,
             )
         except Exception as error:
             result = subprocess.CompletedProcess([method, path], 1, "", str(error))
@@ -673,11 +726,14 @@ class WolfController:
         return self._proxmox_api_token
 
     def port_open(self, host: str, port: int, *, timeout: int = 1) -> bool:
-        result = self.runner.run(
-            ["nc", "-z", "-w", str(timeout), host, str(port)],
-            timeout=timeout + 1,
-            check=False,
-        )
+        try:
+            result = self.runner.run(
+                ["nc", "-z", "-w", str(timeout), host, str(port)],
+                timeout=timeout + 1,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return False
         return result.returncode == 0
 
     def wait_for_port(
@@ -760,6 +816,9 @@ def load_config() -> Config:
         proxmox_host=os.getenv("WOLF_PROXMOX_HOST", Config.proxmox_host),
         proxmox_api_base_url=os.getenv(
             "WOLF_PROXMOX_API_BASE_URL", Config.proxmox_api_base_url
+        ),
+        proxmox_api_cacert=os.getenv(
+            "WOLF_PROXMOX_API_CACERT", Config.proxmox_api_cacert
         ),
         proxmox_api_node=os.getenv("WOLF_PROXMOX_API_NODE", Config.proxmox_api_node),
         guest_host=os.getenv("WOLF_GUEST_HOST", Config.guest_host),
