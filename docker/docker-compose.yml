@@ -149,7 +149,6 @@ services:
     build:
       context: ./wolf
       dockerfile: Dockerfile
-    user: 1000:1000
     cpu_shares: 512
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=32m
@@ -159,7 +158,7 @@ services:
       - VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
       - WOLF_ALLOWED_GROUP=wolf-operators
       - WOLF_MAX_SESSION_SECONDS=14400
-      - WOLF_DROPBEAR_KEY=/run/wolf/dropbear_key
+      - WOLF_DROPBEAR_KEY=/run/secrets/wolf_dropbear_key
       - WOLF_DROPBEAR_KNOWN_HOSTS=/run/secrets/wolf_dropbear_known_hosts
       - WOLF_STATE_FILE=/state/session.json
       - WOLF_TRUSTED_PROXY_HOSTS=traefik

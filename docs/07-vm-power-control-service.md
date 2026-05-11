@@ -228,9 +228,9 @@ Then ensure the public key is present in
 `proxmox-cortex` so the initramfs key is rebuilt.
 
 At container startup, the private key is copied from the Docker secret mount
-to `/run/wolf/dropbear_key` with mode `0600`. The unlock SSH command uses that
-private tmpfs copy because OpenSSH rejects overly permissive Docker secret
-mounts as identity files.
+straight from `/run/secrets/wolf_dropbear_key`. The key file must be readable
+by the remapped `wolf` uid on the Docker host, and OpenSSH will reject it if
+the host-side ACLs are too loose.
 
 Capture the Dropbear host key while the initramfs SSH endpoint is up:
 

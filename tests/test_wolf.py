@@ -153,7 +153,7 @@ def test_start_runs_fixed_wolf_sequence(tmp_path: Path) -> None:
     assert runner.inputs[5] is not None
     assert "log_user 0" in runner.inputs[5]
     assert (
-        "ssh -i /run/wolf/dropbear_key -p 2222 -o UserKnownHostsFile=/run/secrets/wolf_dropbear_known_hosts -o StrictHostKeyChecking=yes root@dropbear.proxmox-cortex.home.arpa"
+        "ssh -i /run/secrets/wolf_dropbear_key -p 2222 -o UserKnownHostsFile=/run/secrets/wolf_dropbear_known_hosts -o StrictHostKeyChecking=yes root@dropbear.proxmox-cortex.home.arpa"
         in runner.inputs[5]
     )
 
@@ -339,8 +339,8 @@ def test_authorization_requires_remote_user_and_group() -> None:
     assert handler is not None
 
 
-def test_dropbear_key_uses_private_runtime_copy() -> None:
-    assert wolf.Config().dropbear_key == "/run/wolf/dropbear_key"
+def test_dropbear_key_uses_secret_mount() -> None:
+    assert wolf.Config().dropbear_key == "/run/secrets/wolf_dropbear_key"
 
 
 def test_running_state_is_loaded_from_state_file(tmp_path: Path) -> None:
