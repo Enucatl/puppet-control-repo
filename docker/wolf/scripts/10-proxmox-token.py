@@ -81,10 +81,9 @@ def ensure_token() -> tuple[bool, str]:
     if not isinstance(payload, dict):
         raise RuntimeError("unexpected token payload from pveum")
     token_secret = payload.get("value")
-    full_tokenid = payload.get("full-tokenid")
-    if not isinstance(token_secret, str) or not isinstance(full_tokenid, str):
-        raise RuntimeError("token payload missing value or full-tokenid")
-    return True, f"{full_tokenid}={token_secret}"
+    if not isinstance(token_secret, str):
+        raise RuntimeError("token payload missing value")
+    return True, token_secret
 
 
 def apply_acls() -> None:

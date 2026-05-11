@@ -40,7 +40,7 @@ class Config:
     mac: str = "30:56:0f:5e:a9:de"
     broadcast: str = "10.0.0.255"
     compose_dir: str = "/opt/docker/wolf"
-    dropbear_key: str = "/run/wolf/dropbear_key"
+    dropbear_key: str = "/run/secrets/wolf_dropbear_key"
     dropbear_known_hosts: str = "/run/secrets/wolf_dropbear_known_hosts"
     vault_path: str = "kv/wolf"
     vault_field: str = "proxmox-cortex"

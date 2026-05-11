@@ -132,6 +132,11 @@ profile::common::acls::posix_acls:
       - "user:101000:r--"
       - "mask::r--"
     subscribe: "Vault_cert[docker]"
+  "/opt/docker/puppet-control-repo/docker/wolf/secrets/dropbear_key":
+    action: set
+    permission:
+      - "user:101000:r--"
+      - "mask::r--"
   "/opt/docker/paperless-ai/secrets/paperless_token.txt":
     action: set
     permission:
