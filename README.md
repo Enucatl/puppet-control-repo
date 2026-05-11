@@ -239,10 +239,10 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 
 Wolf-specific bootstrap scripts:
 
-- [wolf/scripts/README.md](/opt/docker/puppet-control-repo/wolf/scripts/README.md)
-- [wolf/scripts/10-proxmox-token.sh](/opt/docker/puppet-control-repo/wolf/scripts/10-proxmox-token.sh)
-- [wolf/scripts/20-vault-wolf.sh](/opt/docker/puppet-control-repo/wolf/scripts/20-vault-wolf.sh)
-- [wolf/scripts/30-create-wolf-operator.sh](/opt/docker/puppet-control-repo/wolf/scripts/30-create-wolf-operator.sh)
+- [docker/wolf/scripts/README.md](/opt/docker/puppet-control-repo/docker/wolf/scripts/README.md)
+- [docker/wolf/scripts/10-proxmox-token.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/10-proxmox-token.sh)
+- [docker/wolf/scripts/20-vault-wolf.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/20-vault-wolf.sh)
+- [docker/wolf/scripts/30-create-wolf-operator.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/30-create-wolf-operator.sh)
 
 `wake_on_lan.py` automates waking `proxmox-cortex`: sends a WoL packet, unlocks ZFS via Dropbear SSH, then optionally starts a VM (`--vm-id`) or LXC container (`--ct-id`). The `wolf` compose service uses the same Dropbear unlock boundary, but its Proxmox lifecycle control now goes through the Proxmox API token stored in Vault.
 
