@@ -240,7 +240,7 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 Wolf-specific bootstrap scripts:
 
 - [docker/wolf/scripts/README.md](/opt/docker/puppet-control-repo/docker/wolf/scripts/README.md)
-- [docker/wolf/scripts/10-proxmox-token.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/10-proxmox-token.sh)
+- [docker/wolf/scripts/10-proxmox-token.py](/opt/docker/puppet-control-repo/docker/wolf/scripts/10-proxmox-token.py)
 - [docker/wolf/scripts/20-vault-wolf.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/20-vault-wolf.sh)
 - [docker/wolf/scripts/30-create-wolf-operator.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/30-create-wolf-operator.sh)
 

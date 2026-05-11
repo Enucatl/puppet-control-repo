@@ -156,7 +156,7 @@ These are the only manual secrets and credentials this service needs.
 |--------|------|-------------|
 | Vault | `kv/wolf:proxmox-cortex` | `docker/wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
 | Vault | `kv/wolf:proxmox-cortex-api-token` | `docker/wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
-| Proxmox | `wolf@pve` API user and token | `docker/wolf/scripts/10-proxmox-token.sh` |
+| Proxmox | `wolf@pve` API user and token | `docker/wolf/scripts/10-proxmox-token.py` |
 | Dropbear | `docker/wolf/secrets/dropbear_key` | `ssh-keygen -t ed25519 -f docker/wolf/secrets/dropbear_key -N '' -C wolf-dropbear` |
 | Dropbear | `docker/wolf/secrets/dropbear_known_hosts` | `ssh-keyscan -p 2222 dropbear.proxmox-cortex.home.arpa > docker/wolf/secrets/dropbear_known_hosts` |
 | FreeIPA | `wolf` operator account | `docker/wolf/scripts/30-create-wolf-operator.sh` |
@@ -186,7 +186,7 @@ vault kv put kv/wolf \
 Run this on the Proxmox host as root:
 
 ```bash
-docker/wolf/scripts/10-proxmox-token.sh
+python3 docker/wolf/scripts/10-proxmox-token.py
 ```
 
 Store the full `wolf@pve!wolf=<token-secret>` value printed by the script in
