@@ -30,7 +30,7 @@ profile::docker_host::git_deploy_projects:
   grafana-loki: {}
   puppet-control-repo:
     branch: production
-    build_command: "docker compose build"
+    build_command: "docker compose -f docker/docker-compose.yml build"
     compose_file: docker/docker-compose.yml
     watch_dir: docker
   iventoy:
