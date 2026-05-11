@@ -189,7 +189,7 @@ def test_stop_uses_fixed_shutdown_path(tmp_path: Path) -> None:
                 '{"data": {}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/status/shutdown",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/status [('command', 'shutdown')]",
                 0,
                 '{"data": {}}',
             ),
@@ -208,6 +208,57 @@ def test_stop_uses_fixed_shutdown_path(tmp_path: Path) -> None:
     assert status["active"] is False
     assert status["phase"] == "idle"
     assert status["last_stop_reason"] == "manual"
+
+
+def test_stop_reports_host_shutdown_api_failure(tmp_path: Path) -> None:
+    runner = FakeRunner(
+        [
+            ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
+            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+        ]
+    )
+    http = FakeHttp(
+        [
+            (
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                0,
+                '{"data": {"status": "running"}}',
+            ),
+            (
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                0,
+                '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
+            ),
+            (
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                0,
+                '{"data": {"exitcode": 0, "out-data": ""}}',
+            ),
+            (
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/shutdown",
+                0,
+                '{"data": {}}',
+            ),
+            (
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/status [('command', 'shutdown')]",
+                1,
+                '{"message": "failure"}',
+            ),
+        ]
+    )
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, runner, http)
+    controller._proxmox_api_token = API_TOKEN
+    controller.state.phase = "running"
+    controller.state.started_at = 1
+
+    with pytest.raises(RuntimeError, match="host shutdown"):
+        controller.stop_session("manual")
+
+    assert controller.state.phase == "failed"
+    assert controller.state.last_result == "failed"
 
 
 def test_failed_start_transitions_to_failed(
@@ -293,6 +344,59 @@ def test_status_reports_external_wolf_without_claiming_ownership(
     assert status["observed"]["wolf"] == "running"
 
 
+def test_start_claims_already_running_external_wolf(tmp_path: Path) -> None:
+    runner = FakeRunner(
+        [
+            ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
+            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
+            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+        ]
+    )
+    http = FakeHttp(
+        [
+            (
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                0,
+                '{"data": {"status": "running"}}',
+            ),
+            (
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                0,
+                '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
+            ),
+            (
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                0,
+                '{"data": {"status": "running"}}',
+            ),
+            (
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                0,
+                '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
+            ),
+        ]
+    )
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, runner, http)
+    controller._proxmox_api_token = API_TOKEN
+    controller.state.phase = "failed"
+    controller.state.last_action = "start"
+    controller.state.last_result = "failed"
+
+    status = controller.start_session("friend")
+
+    assert status["active"] is True
+    assert status["phase"] == "running"
+    assert status["ownership"] == "app"
+    assert status["started_by"] == "friend"
+    assert status["timeout_remaining_seconds"] > 0
+    assert controller.timeout_timer is not None
+    controller.cancel_timeout()
+
+
 def test_status_reconciles_lost_app_session(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
@@ -341,6 +445,52 @@ def test_authorization_requires_remote_user_and_group() -> None:
 
 def test_dropbear_key_uses_secret_mount() -> None:
     assert wolf.Config().dropbear_key == "/run/secrets/wolf_dropbear_key"
+
+
+def test_port_open_returns_false_on_timeout(tmp_path: Path) -> None:
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, wolf.Runner(config))
+
+    def timeout_run(*args: object, **kwargs: object) -> None:
+        raise subprocess.TimeoutExpired(["nc"], 2)
+
+    controller.runner.run = timeout_run  # type: ignore[method-assign]
+
+    assert controller.port_open("complex.home.arpa", 22) is False
+
+
+def test_guest_exec_polls_proxmox_agent_status(tmp_path: Path) -> None:
+    runner = FakeRunner([])
+    http = FakeHttp(
+        [
+            (
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                0,
+                '{"data": {"pid": 123}}',
+            ),
+            (
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec-status?pid=123",
+                0,
+                '{"data": {"exited": 1, "exitcode": 0, "out-data": "ok\\n"}}',
+            ),
+        ]
+    )
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, runner, http)
+    controller._proxmox_api_token = API_TOKEN
+
+    result = controller.guest_exec("printf ok", timeout=300)
+
+    assert result.returncode == 0
+    assert wolf.guest_command_output(result.stdout) == "ok\n"
+    exec_data = http.requests[0][2]
+    assert exec_data is not None
+    assert ("timeout", "300") not in exec_data
+    assert http.requests[1][0] == "GET"
 
 
 def test_running_state_is_loaded_from_state_file(tmp_path: Path) -> None:

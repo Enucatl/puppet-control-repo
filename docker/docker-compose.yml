@@ -160,6 +160,7 @@ services:
       - WOLF_MAX_SESSION_SECONDS=14400
       - WOLF_DROPBEAR_KEY=/run/secrets/wolf_dropbear_key
       - WOLF_DROPBEAR_KNOWN_HOSTS=/run/secrets/wolf_dropbear_known_hosts
+      - WOLF_PROXMOX_API_CACERT=/run/secrets/wolf_proxmox_api_ca
       - WOLF_STATE_FILE=/state/session.json
       - WOLF_TRUSTED_PROXY_HOSTS=traefik
       - WOLF_VAULT_API_TOKEN_FIELD=proxmox-cortex-api-token
@@ -174,6 +175,7 @@ services:
     secrets:
       - wolf_dropbear_key
       - wolf_dropbear_known_hosts
+      - wolf_proxmox_api_ca
       - wolf_cert
       - wolf_key
     networks:
@@ -283,3 +285,5 @@ secrets:
     file: ./wolf/secrets/dropbear_key
   wolf_dropbear_known_hosts:
     file: ./wolf/secrets/dropbear_known_hosts
+  wolf_proxmox_api_ca:
+    file: ./wolf/proxmox-cortex-pve-root-ca.pem
