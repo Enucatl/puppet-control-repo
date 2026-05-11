@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 . "$REPO_ROOT/docker/vault/scripts/config.sh"
 
 usage() {
