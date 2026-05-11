@@ -26,6 +26,6 @@ COPY app/wolf.py /app/wolf.py
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod 0755 /entrypoint.sh /app/wolf.py
 
-USER 1000:1000
+USER wolf
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "/app/wolf.py"]

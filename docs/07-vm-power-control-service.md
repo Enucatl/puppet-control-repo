@@ -122,7 +122,7 @@ without observing reality again.
 
 The operator bootstrap script is:
 
-- [wolf/scripts/30-create-wolf-operator.sh](/opt/docker/puppet-control-repo/wolf/scripts/30-create-wolf-operator.sh)
+- [docker/wolf/scripts/30-create-wolf-operator.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/30-create-wolf-operator.sh)
 
 It:
 
@@ -139,7 +139,7 @@ membership.
 
 The Wolf Vault setup script is:
 
-- [wolf/scripts/20-vault-wolf.sh](/opt/docker/puppet-control-repo/wolf/scripts/20-vault-wolf.sh)
+- [docker/wolf/scripts/20-vault-wolf.sh](/opt/docker/puppet-control-repo/docker/wolf/scripts/20-vault-wolf.sh)
 
 It creates a narrow Vault policy for:
 
@@ -154,12 +154,12 @@ These are the only manual secrets and credentials this service needs.
 
 | System | Item | Create With |
 |--------|------|-------------|
-| Vault | `kv/wolf:proxmox-cortex` | `wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
-| Vault | `kv/wolf:proxmox-cortex-api-token` | `wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
-| Proxmox | `wolf@pve` API user and token | `wolf/scripts/10-proxmox-token.sh` |
+| Vault | `kv/wolf:proxmox-cortex` | `docker/wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
+| Vault | `kv/wolf:proxmox-cortex-api-token` | `docker/wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
+| Proxmox | `wolf@pve` API user and token | `docker/wolf/scripts/10-proxmox-token.sh` |
 | Dropbear | `docker/wolf/secrets/dropbear_key` | `ssh-keygen -t ed25519 -f docker/wolf/secrets/dropbear_key -N '' -C wolf-dropbear` |
 | Dropbear | `docker/wolf/secrets/dropbear_known_hosts` | `ssh-keyscan -p 2222 dropbear.proxmox-cortex.home.arpa > docker/wolf/secrets/dropbear_known_hosts` |
-| FreeIPA | `wolf` operator account | `wolf/scripts/30-create-wolf-operator.sh` |
+| FreeIPA | `wolf` operator account | `docker/wolf/scripts/30-create-wolf-operator.sh` |
 
 ### Vault Secret Values
 
@@ -169,7 +169,7 @@ The `kv/wolf` fields are:
 - `proxmox-cortex-api-token`: the full Proxmox API token string returned by
   `pveum user token add`
 
-`wolf/scripts/20-vault-wolf.sh` creates or updates `kv/wolf` and migrates
+`docker/wolf/scripts/20-vault-wolf.sh` creates or updates `kv/wolf` and migrates
 these fields from `kv/puppet` if they already exist there. The Wolf Vault
 policy can only read `kv/wolf`.
 
@@ -186,7 +186,7 @@ vault kv put kv/wolf \
 Run this on the Proxmox host as root:
 
 ```bash
-wolf/scripts/10-proxmox-token.sh
+docker/wolf/scripts/10-proxmox-token.sh
 ```
 
 Store the full `wolf@pve!wolf=<token-secret>` value printed by the script in

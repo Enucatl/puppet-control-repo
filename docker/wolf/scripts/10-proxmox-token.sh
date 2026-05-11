@@ -28,19 +28,28 @@ if ! pveum role list | grep -q "^${PVE_NODE_ROLE_NAME}[[:space:]]"; then
     --privs="Sys.PowerMgmt Sys.Audit" >/dev/null
 fi
 
+if pveum user token list "$PVE_USER" 2>/dev/null \
+  | grep -Eq "(^|[[:space:]│])${PVE_TOKEN_ID}([[:space:]│]|$)"; then
+  TOKEN_OUTPUT=""
+else
+  echo "Create or copy the token secret now:"
+  TOKEN_OUTPUT="$(pveum user token add "$PVE_USER" "$PVE_TOKEN_ID" -privsep 1)"
+  printf '%s\n' "$TOKEN_OUTPUT"
+  echo
+fi
+
 pveum acl modify "/vms/${PVE_VM_ID}" -token "${PVE_USER}!${PVE_TOKEN_ID}" \
   -role "$PVE_VM_ROLE_NAME" >/dev/null
 pveum acl modify "/nodes/${PVE_NODE}" -token "${PVE_USER}!${PVE_TOKEN_ID}" \
   -role "$PVE_NODE_ROLE_NAME" >/dev/null
 
-echo "Create or copy the token secret now:"
-TOKEN_OUTPUT="$(pveum user token add "$PVE_USER" "$PVE_TOKEN_ID" -privsep 1)"
-printf '%s\n' "$TOKEN_OUTPUT"
-echo
 TOKEN_SECRET="$(printf '%s\n' "$TOKEN_OUTPUT" | awk -F'│' '/ value / { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3 }')"
 if [ -n "$TOKEN_SECRET" ]; then
   echo "Store this full value in Vault at kv/wolf field proxmox-cortex-api-token:"
   echo "${PVE_USER}!${PVE_TOKEN_ID}=${TOKEN_SECRET}"
-else
+elif [ -n "$TOKEN_OUTPUT" ]; then
   echo "Store the full value ${PVE_USER}!${PVE_TOKEN_ID}=<token-secret> in Vault at kv/wolf field proxmox-cortex-api-token."
+else
+  echo "Token ${PVE_USER}!${PVE_TOKEN_ID} already exists; Proxmox will not show its secret again."
+  echo "If the secret is not already in Vault, remove and recreate the token or create a new token id."
 fi
