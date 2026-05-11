@@ -389,6 +389,29 @@ def test_origin_and_csrf_checks(tmp_path: Path) -> None:
     assert handler.origin_allowed() is False
 
 
+def test_healthz_is_public(tmp_path: Path) -> None:
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, FakeRunner([]), FakeHttp([]))
+    handler_class = wolf.make_handler(controller, config)
+    handler = object.__new__(handler_class)
+    captured: dict[str, object] = {}
+
+    def respond(status: object, body: bytes, content_type: str) -> None:
+        captured["status"] = status
+        captured["body"] = body
+        captured["content_type"] = content_type
+
+    handler.respond = respond  # type: ignore[method-assign]
+
+    handler.handle_healthz()
+
+    assert captured["status"] == wolf.HTTPStatus.OK
+    assert captured["body"] == b"ok\n"
+    assert captured["content_type"] == "text/plain; charset=utf-8"
+
+
 @pytest.mark.parametrize(
     ("headers", "expected"),
     [

@@ -27,5 +27,7 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod 0755 /entrypoint.sh /app/wolf.py
 
 USER wolf
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/healthz >/dev/null || exit 1
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "/app/wolf.py"]

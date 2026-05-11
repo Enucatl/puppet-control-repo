@@ -803,6 +803,8 @@ def make_handler(
         def do_GET(self) -> None:
             if self.path == "/":
                 self.handle_ui()
+            elif self.path == "/healthz":
+                self.handle_healthz()
             elif self.path == "/v1/session/status":
                 self.handle_status()
             else:
@@ -857,8 +859,11 @@ def make_handler(
   </main>
 </body>
 </html>
-"""
+            """
             self.respond(HTTPStatus.OK, body.encode(), "text/html; charset=utf-8")
+
+        def handle_healthz(self) -> None:
+            self.respond(HTTPStatus.OK, b"ok\n", "text/plain; charset=utf-8")
 
         def handle_status(self) -> None:
             auth = self.authorize()
