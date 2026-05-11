@@ -14,22 +14,52 @@ if ! command -v pveum >/dev/null 2>&1; then
   exit 127
 fi
 
-if ! pveum user show "$PVE_USER" >/dev/null 2>&1; then
+entry_exists() {
+  local output="$1"
+  local needle="$2"
+
+  printf '%s' "$output" | python3 -c '
+import json
+import sys
+
+needle = sys.argv[1]
+try:
+    payload = json.load(sys.stdin)
+except json.JSONDecodeError:
+    raise SystemExit(1)
+
+if isinstance(payload, dict) and isinstance(payload.get("data"), list):
+    items = payload["data"]
+elif isinstance(payload, list):
+    items = payload
+else:
+    items = []
+
+for item in items:
+    if not isinstance(item, dict):
+        continue
+    if needle in item.values():
+        raise SystemExit(0)
+
+raise SystemExit(1)
+' "$needle"
+}
+
+if ! entry_exists "$(pveum user list --output-format json)" "$PVE_USER"; then
   pveum user add "$PVE_USER" --comment="Wolf power control service" >/dev/null
 fi
 
-if ! pveum role show "$PVE_VM_ROLE_NAME" >/dev/null 2>&1; then
+if ! entry_exists "$(pveum role list --output-format json)" "$PVE_VM_ROLE_NAME"; then
   pveum role add "$PVE_VM_ROLE_NAME" \
     --privs="VM.PowerMgmt VM.Console VM.Audit" >/dev/null
 fi
 
-if ! pveum role show "$PVE_NODE_ROLE_NAME" >/dev/null 2>&1; then
+if ! entry_exists "$(pveum role list --output-format json)" "$PVE_NODE_ROLE_NAME"; then
   pveum role add "$PVE_NODE_ROLE_NAME" \
     --privs="Sys.PowerMgmt Sys.Audit" >/dev/null
 fi
 
-if pveum user token list "$PVE_USER" 2>/dev/null \
-  | grep -Eq "(^|[[:space:]│])${PVE_TOKEN_ID}([[:space:]│]|$)"; then
+if entry_exists "$(pveum user token list "$PVE_USER" --output-format json)" "$PVE_TOKEN_ID"; then
   TOKEN_OUTPUT=""
 else
   echo "Create or copy the token secret now:"
