@@ -15,6 +15,10 @@ path "kv/data/puppet" {
     capabilities = ["read"]
 }
 
+path "kv/data/wolf" {
+    capabilities = ["read"]
+}
+
 # Allow issuing certificates
 path "pki_int/issue/general" {
     capabilities = ["create", "update"]

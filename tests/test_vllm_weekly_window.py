@@ -78,7 +78,7 @@ class TestVllmWeeklyWindow:
         result, commands = run_case(
             [
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 1, ""),
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("wakeonlan", 0, ""),
                 ("nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222", 0, ""),
                 ("expect -", 0, ""),
@@ -124,7 +124,7 @@ class TestVllmWeeklyWindow:
         result, commands = run_case(
             [
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 1, ""),
-                ("vault kv get", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
                 ("wakeonlan", 0, ""),
                 ("nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222", 0, ""),
                 ("expect -", 0, ""),

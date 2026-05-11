@@ -94,7 +94,7 @@ def main(
     click.echo("[-] Retrieving password from Vault...")
     try:
         server_pass_bytes = subprocess.check_output(
-            "vault kv get -field=proxmox-cortex kv/puppet",
+            "vault kv get -field=proxmox-cortex kv/wolf",
             shell=True,
             env=vault_env,
             stderr=subprocess.DEVNULL,
@@ -121,7 +121,7 @@ def main(
             sys.exit(1)
         try:
             server_pass_bytes = subprocess.check_output(
-                "vault kv get -field=proxmox-cortex kv/puppet",
+                "vault kv get -field=proxmox-cortex kv/wolf",
                 shell=True,
                 env=vault_env,
             )

@@ -30,7 +30,7 @@ class Config:
     proxmox_host: str = "proxmox-cortex.home.arpa"
     mac: str = "30:56:0f:5e:a9:de"
     broadcast: str = "10.0.0.255"
-    vault_path: str = "kv/puppet"
+    vault_path: str = "kv/wolf"
     vault_field: str = "proxmox-cortex"
     vault_addr: str = "https://hcv.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
@@ -77,13 +77,13 @@ class TestProxmoxOrchestration:
     def test_vault_secret_uses_cert_login_fallback(self) -> None:
         runner = FakeRunner(
             [
-                ("vault kv get -field=proxmox-cortex kv/puppet", 1, ""),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 1, ""),
                 (
                     "vault login -client-cert=/etc/puppetlabs/puppet/ssl/certs/proxmox.home.arpa.pem",
                     0,
                     '{"auth":{"client_token":"token"}}',
                 ),
-                ("vault kv get -field=proxmox-cortex kv/puppet", 0, "secret\n"),
+                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
             ]
         )
 
