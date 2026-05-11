@@ -29,8 +29,9 @@ profile::docker_host::git_deploy_projects:
   echo-server: {}
   grafana-loki: {}
   puppet-control-repo:
-    compose_file: docker/docker-compose.yml
     branch: production
+    build_command: "docker compose build"
+    compose_file: docker/docker-compose.yml
     watch_dir: docker
   iventoy:
     ensure: absent
