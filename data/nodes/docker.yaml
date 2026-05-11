@@ -105,6 +105,18 @@ profile::common::certs::vault_certs:
     key_owner: 110000
     key_group: 110000
     key_mode: '0600'
+  wolf:
+    cert_chain_file: /opt/docker/puppet-control-repo/docker/wolf/secrets/fullchain.pem
+    cert_chain_owner: 101000
+    cert_chain_group: 100000
+    cert_chain_mode: '0640'
+    key_file: /opt/docker/puppet-control-repo/docker/wolf/secrets/key.pem
+    key_owner: 101000
+    key_group: 100000
+    key_mode: '0600'
+    cert_data:
+      common_name: wolf.docker.home.arpa
+      alt_names: wolf.docker.home.arpa
 
 profile::common::acls::posix_acls:
   "/opt/docker/camillo/secrets/postgres_password":

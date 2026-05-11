@@ -1,117 +1,254 @@
-# Secure VM Power Control Service
+# Wolf Power Control Service
 
-Date: 2026-05-10
+Date: 2026-05-11
 
 ## Summary
 
-Expose a small REST service for starting and stopping Proxmox VM `200`, but
-keep the service inside the VPN and behind per-user authentication. The
-service should not expose Vault access, should not accept arbitrary targets,
-and should treat every request as an auditable action from an identified user.
+`wolf` is a small authenticated control service for a fixed Wolf session.
+It lives in the `infra` compose project, is published only through Traefik,
+and is gated by Authelia plus a dedicated FreeIPA group.
 
-The current `docker/vault/scripts/wake_on_lan.py` script is useful as the
-internal execution path, but it is not safe to publish directly as a network
-service because it shells out with interpolated values and reads a powerful
-secret path from Vault.
+The service does not accept arbitrary targets or shell commands. It controls
+one fixed session:
 
-## Recommended Design
+- Proxmox host: `proxmox-cortex.home.arpa`
+- VM: `200`
+- guest: `complex.home.arpa`
+- Wolf compose stack: `/opt/docker/wolf`
 
-Use three boundaries:
+The implementation uses an explicit state machine for controller lifecycle
+(`idle`, `starting`, `running`, `stopping`, `failed`) and separately probes
+observed reality before deciding what to do.
 
-1. Network admission
-   - Keep the service reachable only from WireGuard/LAN/trusted WiFi.
-   - Publish it through Traefik, not with a direct container port.
-   - Keep the existing IP allowlist behavior as a coarse first filter.
+## What Changed From the Draft
+
+- The service name is `wolf`, not `wolf-power-control`.
+- Proxmox control uses the HTTPS API with a token read from Vault.
+- No Proxmox SSH identity is used.
+- SSH remains only for the Dropbear initramfs unlock path.
+- The unlock secret comes from `kv/wolf`, field `proxmox-cortex`.
+- The Proxmox API token is stored in the same `kv/wolf` secret, field
+  `proxmox-cortex-api-token`.
+- The user-facing endpoint set is:
+  - `GET /v1/session/status`
+  - `POST /v1/session/start`
+  - `POST /v1/session/stop`
+- A minimal HTML UI is exposed at `/` with Start, Stop, status, authenticated
+  user, and timeout remaining.
+- The controller logs authenticated user, source IP, request ID, action,
+  result, and stop reason.
+
+## Runtime Boundaries
+
+1. Network access
+   - Exposed only through Traefik on `wolf.${DOCKER_DOMAIN}`.
+   - Protected by `authelia@docker` and the shared Traefik allowlist.
+   - The container is attached only to `traefik_proxy`.
+   - The app rejects requests unless the peer IP matches a DNS-resolved
+     trusted proxy hostname from `WOLF_TRUSTED_PROXY_HOSTS`.
 
 2. User authentication
-   - Require Authelia for every mutating request.
-   - Bind the request to an authenticated LDAP user or group.
-   - Prefer a dedicated `power-operators` group instead of reusing broad admin
-     access.
+   - Friend login is a normal FreeIPA user.
+   - Access is limited to the `wolf-operators` group.
+   - The FreeIPA account is created with a temporary password and `nologin`
+     shell.
 
-3. Application authorization
-   - Hardcode or allowlist the only managed target: VM `200`.
-   - Do not expose host shutdown, arbitrary VM IDs, or container IDs in the
-     first version.
-   - Keep `start`, `stop`, and `status` as the only public operations.
+3. Service credentials
+   - Vault cert auth is used only to read `kv/wolf`.
+   - Proxmox API access uses a token from the same Vault path.
+   - Dropbear SSH uses a dedicated unlock keypair.
+   - Dropbear host identity is pinned with a Docker secret known_hosts file.
 
-## Service Shape
+## Session Behavior
 
-Expose a small REST API:
+### Start
 
-- `GET /v1/status`
-- `POST /v1/vm/200/start`
-- `POST /v1/vm/200/stop`
+`POST /v1/session/start` runs the fixed sequence:
 
-The service should return only operational status. It should not leak Vault
-errors, internal command output, or secret material.
+1. Reconcile observed state.
+2. Check whether the Proxmox API is already reachable.
+3. If not reachable, read the unlock password from Vault.
+4. Send Wake-on-LAN to `proxmox-cortex`.
+5. Unlock the host through Dropbear SSH using the dedicated key.
+6. Wait for the Proxmox API to return.
+7. Query VM `200` state through the Proxmox API.
+8. Start VM `200` if needed.
+9. Wait for guest SSH readiness on `complex.home.arpa`.
+10. Run `cd /opt/docker/wolf && docker compose up -d` inside the guest
+    through the Proxmox guest agent.
+11. Start the 4-hour session timer.
 
-For humans, a minimal web UI could be added later, but the first version should
-stay API-only to keep the attack surface small.
+### Stop
 
-## Execution Flow
+`POST /v1/session/stop` runs:
 
-`start` should:
+1. `cd /opt/docker/wolf && docker compose down`
+2. Graceful VM `200` shutdown through the Proxmox API
+3. Host shutdown through the Proxmox API
 
-1. Acquire a single-flight lock so concurrent requests cannot race.
-2. Check whether the Proxmox host is already up.
-3. If the host is down, send Wake-on-LAN.
-4. Retrieve the unlock password from a dedicated Vault path using a service
-   identity, not a user token.
-5. Unlock the host through the existing Dropbear path.
-6. Wait for Proxmox SSH to come back.
-7. Start VM `200`.
+If the timeout fires, the same stop path is used and the log entry carries
+`reason=timeout`.
 
-`stop` should:
+## Reconciliation
 
-1. Shut down VM `200` gracefully.
-2. Return the result of that action.
-3. Avoid host shutdown in v1.
+The controller keeps two views of the world:
 
-`status` should:
+- controller phase: what this app believes it is doing
+- observed state: what Proxmox, the guest, and Wolf are actually doing
 
-1. Report whether Proxmox SSH is reachable.
-2. Report whether VM `200` is running.
-3. Never include sensitive internal details.
+Observed probes currently cover:
 
-## Vault and Credentials
+- Proxmox API reachability
+- VM `200` status
+- guest SSH reachability
+- Wolf compose state through the guest agent
 
-Move the unlock password out of the broad `kv/puppet` path into a dedicated
-secret such as `kv/power-control/proxmox-cortex`.
+If observed state shows that the session disappeared externally, the
+controller marks the session as lost rather than pretending its cached state
+is still true.
 
-Use a narrow Vault policy that can only read that path. Do not grant list,
-write, or admin capabilities to the controller service.
+## Persistent Session State
 
-Prefer a service credential with a short-lived Vault token, such as cert auth
-or AppRole, rather than reusing a human user session.
+The controller persists its session state in `/state/session.json`, backed by
+the `wolf_state` Docker volume. This preserves the app-owned session deadline
+across container restarts. If the container restarts while a session is
+running, it reloads the deadline and reschedules the timeout.
 
-## Security Notes
+Transient `starting` or `stopping` phases are marked as `failed` after a
+restart, because the process can no longer know which step was interrupted
+without observing reality again.
 
-- Replace shell-interpolated subprocess calls with argument-list invocation.
-- Treat Traefik and Authelia as a gate, not as the only trust boundary.
-- Log the authenticated user, source IP, request ID, action, and result for
-  every mutating request.
-- Add rate limiting for mutating endpoints.
-- Keep direct access to the container port closed.
+## FreeIPA User Script
 
-## Validation
+The operator bootstrap script is:
 
-Test the service against these cases:
+- [wolf/scripts/30-create-wolf-operator.sh](/opt/docker/puppet-control-repo/wolf/scripts/30-create-wolf-operator.sh)
 
-- authenticated VPN user can start VM `200`
-- authenticated VPN user can stop VM `200`
-- unauthenticated request is rejected
-- request from outside the VPN is rejected
-- request for any target other than VM `200` is rejected
-- Vault failure returns a clean error without leaking secrets
-- Dropbear timeout and Proxmox timeout are handled cleanly
-- concurrent start requests do not race
+It:
 
-## Assumptions
+- creates `wolf-operators` if needed
+- creates or updates the user with `/usr/sbin/nologin`
+- assigns a temporary password
+- adds the user to `wolf-operators`
+- prints the temporary password once
 
-- `start` and `stop` are the only exposed power actions.
-- VM `200` is the only allowed target.
-- “Turn off” means graceful shutdown of the VM, not host power-off.
-- Every request must be tied to an authenticated user.
-- VPN access alone is not sufficient without per-user authentication.
+It does not add SSH keys, sudo rules, Docker group membership, or admin
+membership.
 
+## Vault Bootstrap
+
+The Wolf Vault setup script is:
+
+- [wolf/scripts/20-vault-wolf.sh](/opt/docker/puppet-control-repo/wolf/scripts/20-vault-wolf.sh)
+
+It creates a narrow Vault policy for:
+
+- `kv/data/wolf`
+- `auth/token/lookup-self`
+
+and binds cert auth for the `wolf` Vault login role.
+
+## Bootstrap Checklist
+
+These are the only manual secrets and credentials this service needs.
+
+| System | Item | Create With |
+|--------|------|-------------|
+| Vault | `kv/wolf:proxmox-cortex` | `wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
+| Vault | `kv/wolf:proxmox-cortex-api-token` | `wolf/scripts/20-vault-wolf.sh` or `vault kv put kv/wolf proxmox-cortex='…' proxmox-cortex-api-token='…'` |
+| Proxmox | `wolf@pve` API user and token | `wolf/scripts/10-proxmox-token.sh` |
+| Dropbear | `docker/wolf/secrets/dropbear_key` | `ssh-keygen -t ed25519 -f docker/wolf/secrets/dropbear_key -N '' -C wolf-dropbear` |
+| Dropbear | `docker/wolf/secrets/dropbear_known_hosts` | `ssh-keyscan -p 2222 dropbear.proxmox-cortex.home.arpa > docker/wolf/secrets/dropbear_known_hosts` |
+| FreeIPA | `wolf` operator account | `wolf/scripts/30-create-wolf-operator.sh` |
+
+### Vault Secret Values
+
+The `kv/wolf` fields are:
+
+- `proxmox-cortex`: the ZFS unlock password used by Dropbear initramfs
+- `proxmox-cortex-api-token`: the full Proxmox API token string returned by
+  `pveum user token add`
+
+`wolf/scripts/20-vault-wolf.sh` creates or updates `kv/wolf` and migrates
+these fields from `kv/puppet` if they already exist there. The Wolf Vault
+policy can only read `kv/wolf`.
+
+Example:
+
+```bash
+vault kv put kv/wolf \
+  proxmox-cortex='your-dropbear-unlock-password' \
+  proxmox-cortex-api-token='wolf@pve!wolf=your-token-secret'
+```
+
+### Proxmox Token
+
+Run this on the Proxmox host as root:
+
+```bash
+wolf/scripts/10-proxmox-token.sh
+```
+
+Store the full `wolf@pve!wolf=<token-secret>` value printed by the script in
+Vault under `kv/wolf:proxmox-cortex-api-token`.
+
+The token is enough for VM lifecycle control and guest-agent execution. If
+you later need to tighten it further, keep the token scoped to `/vms/200` and
+`/nodes/proxmox-cortex` rather than broadening it to a cluster-wide role.
+
+The Proxmox bootstrap uses two custom roles instead of one combined role:
+
+- `WolfVmControl` on `/vms/200`
+  - `VM.PowerMgmt`: start and shutdown VM `200`
+  - `VM.Console`: guest-agent command execution path
+  - `VM.Audit`: read VM status/config
+- `WolfNodePower` on `/nodes/proxmox-cortex`
+  - `Sys.PowerMgmt`: shut down `proxmox-cortex`
+  - `Sys.Audit`: read node status
+
+The split keeps VM privileges scoped only to VM `200`, and node privileges
+scoped only to `proxmox-cortex`. A single combined role would likely work
+today, but assigning that combined role at both paths is less clear and more
+fragile if Proxmox privilege semantics change later.
+
+`VM.Monitor` is intentionally not granted. It is broader than this service
+needs and is being phased out in newer Proxmox releases.
+
+### Dropbear Keypair
+
+Generate the initramfs unlock keypair locally:
+
+```bash
+ssh-keygen -t ed25519 -f docker/wolf/secrets/dropbear_key -N '' -C wolf-dropbear
+```
+
+Then ensure the public key is present in
+`data/nodes/proxmox-cortex.yaml` under
+`profile::dropbear_initramfs::authorized_keys`, and apply Puppet on
+`proxmox-cortex` so the initramfs key is rebuilt.
+
+At container startup, the private key is copied from the Docker secret mount
+to `/run/wolf/dropbear_key` with mode `0600`. The unlock SSH command uses that
+private tmpfs copy because OpenSSH rejects overly permissive Docker secret
+mounts as identity files.
+
+Capture the Dropbear host key while the initramfs SSH endpoint is up:
+
+```bash
+ssh-keyscan -p 2222 dropbear.proxmox-cortex.home.arpa > docker/wolf/secrets/dropbear_known_hosts
+```
+
+The unlock SSH command uses this pinned host key file with
+`StrictHostKeyChecking=yes`.
+
+## Validation Notes
+
+Relevant checks for this service:
+
+- authenticated `wolf-operators` user can start and stop a session
+- non-member FreeIPA user is denied
+- unauthenticated requests are denied
+- temporary-password flow works with Authelia and FreeIPA
+- concurrent start/stop requests are serialized
+- timeout triggers the same stop path
+- startup failure cleans up any layers it started

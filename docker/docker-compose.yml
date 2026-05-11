@@ -142,6 +142,54 @@ services:
     networks:
       - apt_cache
 
+  wolf:
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: hardened-small
+    build:
+      context: ./wolf
+      dockerfile: Dockerfile
+    user: 1000:1000
+    cpu_shares: 512
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /run:rw,noexec,nosuid,size=16m,uid=1000,gid=1000
+    environment:
+      - VAULT_ADDR=https://hcv.home.arpa:8200
+      - VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
+      - WOLF_ALLOWED_GROUP=wolf-operators
+      - WOLF_MAX_SESSION_SECONDS=14400
+      - WOLF_DROPBEAR_KEY=/run/wolf/dropbear_key
+      - WOLF_DROPBEAR_KNOWN_HOSTS=/run/secrets/wolf_dropbear_known_hosts
+      - WOLF_STATE_FILE=/state/session.json
+      - WOLF_TRUSTED_PROXY_HOSTS=traefik
+      - WOLF_VAULT_API_TOKEN_FIELD=proxmox-cortex-api-token
+      - WOLF_VAULT_CERT_ROLE=wolf
+      - WOLF_VAULT_CLIENT_CERT=/run/secrets/wolf_cert
+      - WOLF_VAULT_CLIENT_KEY=/run/secrets/wolf_key
+      - WOLF_VAULT_FIELD=proxmox-cortex
+      - WOLF_VAULT_PATH=kv/wolf
+    volumes:
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      - wolf_state:/state
+    secrets:
+      - wolf_dropbear_key
+      - wolf_dropbear_known_hosts
+      - wolf_cert
+      - wolf_key
+    networks:
+      - traefik_proxy
+    labels:
+      - "checkmk_monitor=true"
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.http.routers.wolf.rule=Host(`wolf.${DOCKER_DOMAIN}`)"
+      - "traefik.http.routers.wolf.entrypoints=https"
+      - "traefik.http.routers.wolf.tls=true"
+      - "traefik.http.routers.wolf.middlewares=authelia@docker,secured@file"
+      - "traefik.http.routers.wolf.service=wolf"
+      - "traefik.http.services.wolf.loadbalancer.server.port=8000"
+
   # TEMPORARY CONTAINERS
   # only to document one-off setup
 
@@ -225,3 +273,14 @@ volumes:
   freeipa_data:
   vault_data:
   vault_logs:
+  wolf_state:
+
+secrets:
+  wolf_cert:
+    file: ./wolf/secrets/fullchain.pem
+  wolf_key:
+    file: ./wolf/secrets/key.pem
+  wolf_dropbear_key:
+    file: ./wolf/secrets/dropbear_key
+  wolf_dropbear_known_hosts:
+    file: ./wolf/secrets/dropbear_known_hosts
