@@ -5,7 +5,7 @@ place.
 
 Run them in this order:
 
-1. `10-proxmox-token.sh` on the Proxmox host as root
+1. `10-proxmox-token.py` on the Proxmox host as root
 2. `20-vault-wolf.sh` anywhere with Vault CLI access
 3. `30-create-wolf-operator.sh` anywhere with access to the FreeIPA container
 
