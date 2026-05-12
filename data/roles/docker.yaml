@@ -89,6 +89,12 @@ profile::common::sysctl::settings:
     value: 1
   net.ipv6.conf.default.proxy_ndp:
     value: 1
+  net.ipv4.conf.all.bc_forwarding:
+    value: 1
+  net.ipv4.conf.default.bc_forwarding:
+    value: 1
+  net.ipv4.conf.eth0.bc_forwarding:
+    value: 1
 
 promtail::scrape_configs_hash:
   scrape_configs:

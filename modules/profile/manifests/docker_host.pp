@@ -8,6 +8,9 @@ class profile::docker_host (
 
   require profile::common
 
+  $wolf_wol_magic_hex = 'ffffffffffff30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de30560f5ea9de'
+  $wolf_wol_rule = "-o eth0 -d 10.0.0.255/32 -p udp --dport 9 -m length --length 130 -m string --algo bm --hex-string '|${wolf_wol_magic_hex}|' -j ACCEPT"
+
   $git_deploy_projects.each |String $project, Hash $params| {
     $project_defaults = {
       'scheduled_refresh' => $scheduled_refresh,
@@ -24,6 +27,13 @@ class profile::docker_host (
   service { 'docker':
     ensure => running,
     enable => true,
+  }
+
+  exec { 'allow-wolf-wol-directed-broadcast':
+    command => "/usr/sbin/iptables -I DOCKER-USER 1 ${wolf_wol_rule}",
+    unless  => "/usr/sbin/iptables -C DOCKER-USER ${wolf_wol_rule}",
+    path    => ['/usr/sbin', '/usr/bin', '/sbin', '/bin'],
+    require => Service['docker'],
   }
 
   if $maxmind_account_id != undef and $maxmind_license_key != undef {
