@@ -85,7 +85,9 @@ class FakeHttp:
         return subprocess.CompletedProcess([method, url], returncode, stdout, "")
 
 
-def test_start_runs_fixed_wolf_sequence(tmp_path: Path) -> None:
+def test_start_runs_fixed_wolf_sequence(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 1, ""),
@@ -137,7 +139,9 @@ def test_start_runs_fixed_wolf_sequence(tmp_path: Path) -> None:
     controller = wolf.WolfController(config, runner, http)
     controller._proxmox_api_token = API_TOKEN
 
-    status = controller.start_session("friend")
+    audit = wolf.AuditContext("friend", "10.0.0.136", "req-1", "start")
+
+    status = controller.start_session("friend", audit)
 
     assert status["active"] is True
     assert status["phase"] == "running"
@@ -156,6 +160,18 @@ def test_start_runs_fixed_wolf_sequence(tmp_path: Path) -> None:
         "ssh -i /run/secrets/wolf_dropbear_key -p 2222 -o UserKnownHostsFile=/run/secrets/wolf_dropbear_known_hosts -o StrictHostKeyChecking=yes root@dropbear.proxmox-cortex.home.arpa"
         in runner.inputs[5]
     )
+    events = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    steps = [event["step"] for event in events if event.get("event") == "step"]
+    assert "send-wake-on-lan" in steps
+    assert "wait-dropbear-ssh" in steps
+    assert "start-vm" in steps
+    assert "compose-up" in steps
+    assert all(event["request_id"] == "req-1" for event in events)
+    assert '"secret"' not in json.dumps(events)
 
 
 def test_stop_uses_fixed_shutdown_path(tmp_path: Path) -> None:
@@ -560,6 +576,115 @@ def test_healthz_is_public(tmp_path: Path) -> None:
     assert captured["status"] == wolf.HTTPStatus.OK
     assert captured["body"] == b"ok\n"
     assert captured["content_type"] == "text/plain; charset=utf-8"
+
+
+def test_ui_renders_full_status_json(tmp_path: Path) -> None:
+    runner = FakeRunner(
+        [
+            ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 1, ""),
+        ]
+    )
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, runner, FakeHttp([]))
+    handler_class = wolf.make_handler(controller, config)
+    handler = object.__new__(handler_class)
+    headers = Message()
+    headers["Remote-User"] = "friend"
+    headers["Remote-Groups"] = "wolf-operators"
+    handler.headers = headers
+    handler.path = "/"
+    captured: dict[str, object] = {}
+
+    handler.trusted_proxy = lambda: True  # type: ignore[method-assign]
+
+    def respond(status: object, body: bytes, content_type: str) -> None:
+        captured["status"] = status
+        captured["body"] = body
+        captured["content_type"] = content_type
+
+    handler.respond = respond  # type: ignore[method-assign]
+
+    handler.handle_ui()
+
+    assert captured["status"] == wolf.HTTPStatus.OK
+    body = captured["body"]
+    assert isinstance(body, bytes)
+    assert b"&quot;observed&quot;" in body
+    assert b"&quot;host&quot;: &quot;stopped&quot;" in body
+    assert b"&quot;ownership&quot;: &quot;unknown&quot;" in body
+    assert captured["content_type"] == "text/html; charset=utf-8"
+
+
+def test_action_redirects_browser_posts(tmp_path: Path) -> None:
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, FakeRunner([]), FakeHttp([]))
+    handler_class = wolf.make_handler(controller, config)
+    handler = object.__new__(handler_class)
+    headers = Message()
+    headers["Accept"] = "text/html"
+    headers["Remote-User"] = "friend"
+    headers["Remote-Groups"] = "wolf-operators"
+    handler.headers = headers
+    handler.client_address = ("172.16.32.5", 12345)
+    responses: list[tuple[str, object]] = []
+
+    handler.trusted_proxy = lambda: True  # type: ignore[method-assign]
+    handler.post_fields = lambda: {"csrf_token": controller.csrf_token}  # type: ignore[method-assign]
+    handler.origin_allowed = lambda: True  # type: ignore[method-assign]
+    controller.start_session = lambda user, audit=None: {  # type: ignore[method-assign]
+        "last_stop_reason": None
+    }
+    handler.send_response = lambda status: responses.append(("status", status))  # type: ignore[method-assign]
+    handler.send_header = lambda name, value: responses.append((name, value))  # type: ignore[method-assign]
+    handler.end_headers = lambda: responses.append(("end", ""))  # type: ignore[method-assign]
+
+    handler.handle_action("start")
+
+    assert ("status", wolf.HTTPStatus.SEE_OTHER) in responses
+    assert ("Location", "/?result=start-ok") in responses
+
+
+def test_action_returns_json_when_requested(tmp_path: Path) -> None:
+    config = wolf.Config(
+        lock_file=str(tmp_path / "lock"), state_file=str(tmp_path / "state.json")
+    )
+    controller = wolf.WolfController(config, FakeRunner([]), FakeHttp([]))
+    handler_class = wolf.make_handler(controller, config)
+    handler = object.__new__(handler_class)
+    headers = Message()
+    headers["Accept"] = "application/json"
+    headers["Remote-User"] = "friend"
+    headers["Remote-Groups"] = "wolf-operators"
+    handler.headers = headers
+    handler.client_address = ("172.16.32.5", 12345)
+    captured: dict[str, object] = {}
+
+    handler.trusted_proxy = lambda: True  # type: ignore[method-assign]
+    handler.post_fields = lambda: {"csrf_token": controller.csrf_token}  # type: ignore[method-assign]
+    handler.origin_allowed = lambda: True  # type: ignore[method-assign]
+    controller.start_session = lambda user, audit=None: {  # type: ignore[method-assign]
+        "last_stop_reason": None,
+        "phase": "running",
+    }
+
+    def respond_json(status: object, body: dict[str, object]) -> None:
+        captured["status"] = status
+        captured["body"] = body
+
+    handler.respond_json = respond_json  # type: ignore[method-assign]
+
+    handler.handle_action("start")
+
+    assert captured["status"] == wolf.HTTPStatus.OK
+    assert captured["body"] == {
+        "user": "friend",
+        "last_stop_reason": None,
+        "phase": "running",
+    }
 
 
 @pytest.mark.parametrize(

@@ -13,7 +13,7 @@ import sys
 import threading
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -79,6 +79,14 @@ class Observation:
 
     def as_dict(self) -> dict[str, str | float]:
         return dataclasses.asdict(self)
+
+
+@dataclasses.dataclass(frozen=True)
+class AuditContext:
+    user: str
+    source_ip: str
+    request_id: str
+    action: str
 
 
 class CommandError(RuntimeError):
@@ -254,9 +262,11 @@ class WolfController:
                 "last_stop_reason": self.state.last_stop_reason,
             }
 
-    def start_session(self, user: str) -> dict[str, Any]:
+    def start_session(
+        self, user: str, audit: AuditContext | None = None
+    ) -> dict[str, Any]:
         with acquire_lock(self.config.lock_file):
-            observation = self.observe()
+            observation = self.observe_step(audit)
             with self.state_lock:
                 self.reconcile_locked(observation)
                 if self.state.phase in {"starting", "running", "stopping"}:
@@ -264,8 +274,21 @@ class WolfController:
                 else:
                     already_active = False
             if already_active:
+                self.log_step(
+                    audit,
+                    "start-decision",
+                    "skipped",
+                    reason="already-active",
+                    phase=self.state.phase,
+                )
                 return self.status()
             if observation.wolf == "running":
+                self.log_step(
+                    audit,
+                    "start-decision",
+                    "adopted",
+                    reason="wolf-already-running",
+                )
                 deadline = time.time() + self.config.max_session_seconds
                 with self.state_lock:
                     self.state.phase = "running"
@@ -279,6 +302,7 @@ class WolfController:
                 self.schedule_timeout(self.config.max_session_seconds)
                 return self.status()
 
+            self.log_step(audit, "state-transition", "starting", phase="starting")
             with self.state_lock:
                 self.state.begin_start()
                 self.state.last_action = "start"
@@ -289,26 +313,89 @@ class WolfController:
             started_vm = False
             compose_attempted = False
             try:
-                if not self.port_open(self.config.proxmox_host, 8006, timeout=2):
-                    password = self.read_vault_secret()
-                    self.wake_and_unlock(password)
+                host_reachable = self.run_step(
+                    audit,
+                    "check-proxmox-api",
+                    lambda: self.port_open(self.config.proxmox_host, 8006, timeout=2),
+                    host=self.config.proxmox_host,
+                    port=8006,
+                )
+                if not host_reachable:
+                    self.log_step(
+                        audit,
+                        "check-proxmox-api",
+                        "stopped",
+                        host=self.config.proxmox_host,
+                        port=8006,
+                    )
+                    password = self.run_step(
+                        audit,
+                        "read-vault-unlock-secret",
+                        self.read_vault_secret,
+                        vault_path=self.config.vault_path,
+                        vault_field=self.config.vault_field,
+                    )
+                    self.wake_and_unlock(password, audit)
                     started_host = True
+                else:
+                    self.log_step(
+                        audit,
+                        "wake-and-unlock",
+                        "skipped",
+                        reason="proxmox-api-reachable",
+                    )
 
-                if not self.vm_running():
-                    self.proxmox_api_post(
-                        f"/nodes/{self.config.proxmox_api_node}/qemu/{self.config.vm_id}/status/start",
-                        timeout=120,
+                vm_running = self.run_step(
+                    audit,
+                    "check-vm",
+                    self.vm_running,
+                    vm_id=self.config.vm_id,
+                )
+                if not vm_running:
+                    self.run_step(
+                        audit,
+                        "start-vm",
+                        lambda: self.proxmox_api_post(
+                            f"/nodes/{self.config.proxmox_api_node}/qemu/{self.config.vm_id}/status/start",
+                            timeout=120,
+                        ),
+                        vm_id=self.config.vm_id,
                     )
                     started_vm = True
+                else:
+                    self.log_step(
+                        audit,
+                        "start-vm",
+                        "skipped",
+                        reason="vm-already-running",
+                        vm_id=self.config.vm_id,
+                    )
 
-                self.wait_for_port(self.config.guest_host, 22, "Wolf guest SSH", 300, 5)
+                self.run_step(
+                    audit,
+                    "wait-guest-ssh",
+                    lambda: self.wait_for_port(
+                        self.config.guest_host, 22, "Wolf guest SSH", 300, 5
+                    ),
+                    host=self.config.guest_host,
+                    port=22,
+                    timeout_seconds=300,
+                )
                 compose_attempted = True
-                self.guest_exec(
-                    f"cd {shlex.quote(self.config.compose_dir)} && docker compose up -d",
-                    timeout=300,
+                self.run_step(
+                    audit,
+                    "compose-up",
+                    lambda: self.guest_exec(
+                        f"cd {shlex.quote(self.config.compose_dir)} && docker compose up -d",
+                        timeout=300,
+                    ),
+                    compose_dir=self.config.compose_dir,
                 )
             except Exception:
-                self.cleanup_failed_start(started_host, started_vm, compose_attempted)
+                self.log_step(audit, "start-session", "failed")
+                self.cleanup_failed_start(
+                    started_host, started_vm, compose_attempted, audit
+                )
                 with self.state_lock:
                     self.state.fail()
                     self.state.last_result = "failed"
@@ -316,6 +403,7 @@ class WolfController:
                 raise
 
             deadline = time.time() + self.config.max_session_seconds
+            self.log_step(audit, "state-transition", "running", phase="running")
             with self.state_lock:
                 self.state.finish_start()
                 self.state.started_by = user
@@ -327,14 +415,24 @@ class WolfController:
             self.schedule_timeout(self.config.max_session_seconds)
             return self.status()
 
-    def stop_session(self, reason: str) -> dict[str, Any]:
+    def stop_session(
+        self, reason: str, audit: AuditContext | None = None
+    ) -> dict[str, Any]:
         with acquire_lock(self.config.lock_file):
             self.cancel_timeout()
-            observation = self.observe()
+            observation = self.observe_step(audit)
             with self.state_lock:
                 self.reconcile_locked(observation)
             if self.state.phase in {"starting", "stopping"}:
+                self.log_step(
+                    audit,
+                    "stop-decision",
+                    "skipped",
+                    reason="operation-in-progress",
+                    phase=self.state.phase,
+                )
                 return self.status()
+            self.log_step(audit, "state-transition", "stopping", phase="stopping")
             with self.state_lock:
                 self.state.begin_stop()
                 self.state.last_action = "stop"
@@ -347,10 +445,12 @@ class WolfController:
                 actions = [
                     (
                         "compose down",
+                        "compose-down",
                         lambda: self.guest_exec(self.compose_down(), timeout=300),
                     ),
                     (
                         "VM shutdown",
+                        "shutdown-vm",
                         lambda: self.proxmox_api_post(
                             f"/nodes/{self.config.proxmox_api_node}/qemu/{self.config.vm_id}/status/shutdown",
                             check=False,
@@ -359,6 +459,7 @@ class WolfController:
                     ),
                     (
                         "host shutdown",
+                        "shutdown-host",
                         lambda: self.proxmox_api_post(
                             f"/nodes/{self.config.proxmox_api_node}/status",
                             data=[("command", "shutdown")],
@@ -367,9 +468,9 @@ class WolfController:
                         ),
                     ),
                 ]
-                for label, callback in actions:
+                for label, step, callback in actions:
                     try:
-                        result = callback()
+                        result = self.run_step(audit, step, callback)
                         if isinstance(result, subprocess.CompletedProcess):
                             error = result.stderr.strip() or result.stdout.strip()
                             if result.returncode != 0:
@@ -377,6 +478,12 @@ class WolfController:
                     except Exception as error:
                         errors.append(f"{label}: {error}")
             elif was_active:
+                self.log_step(
+                    audit,
+                    "stop-decision",
+                    "failed",
+                    reason="proxmox-api-unreachable",
+                )
                 errors.append("Proxmox API is not reachable")
 
             with self.state_lock:
@@ -391,7 +498,9 @@ class WolfController:
                     self.state.started_at = None
                 self.save_state_locked()
             if errors:
+                self.log_step(audit, "stop-session", "failed")
                 raise RuntimeError("; ".join(errors))
+            self.log_step(audit, "state-transition", "idle", phase="idle")
             return self.status()
 
     def observe(self) -> Observation:
@@ -459,31 +568,67 @@ class WolfController:
         return "none"
 
     def cleanup_failed_start(
-        self, started_host: bool, started_vm: bool, compose_attempted: bool
+        self,
+        started_host: bool,
+        started_vm: bool,
+        compose_attempted: bool,
+        audit: AuditContext | None = None,
     ) -> None:
         if compose_attempted:
             try:
-                self.guest_exec(self.compose_down(), timeout=300, check=False)
+                self.run_step(
+                    audit,
+                    "cleanup-compose-down",
+                    lambda: self.guest_exec(
+                        self.compose_down(), timeout=300, check=False
+                    ),
+                )
             except Exception as error:
+                self.log_step(
+                    audit,
+                    "cleanup-compose-down",
+                    "failed",
+                    error=str(error),
+                )
                 print(f"startup cleanup compose down failed: {error}", file=sys.stderr)
         if started_vm:
             try:
-                self.proxmox_api_post(
-                    f"/nodes/{self.config.proxmox_api_node}/qemu/{self.config.vm_id}/status/shutdown",
-                    check=False,
-                    timeout=300,
+                self.run_step(
+                    audit,
+                    "cleanup-vm-shutdown",
+                    lambda: self.proxmox_api_post(
+                        f"/nodes/{self.config.proxmox_api_node}/qemu/{self.config.vm_id}/status/shutdown",
+                        check=False,
+                        timeout=300,
+                    ),
                 )
             except Exception as error:
+                self.log_step(
+                    audit,
+                    "cleanup-vm-shutdown",
+                    "failed",
+                    error=str(error),
+                )
                 print(f"startup cleanup VM shutdown failed: {error}", file=sys.stderr)
         if started_host:
             try:
-                self.proxmox_api_post(
-                    f"/nodes/{self.config.proxmox_api_node}/status",
-                    data=[("command", "shutdown")],
-                    check=False,
-                    timeout=300,
+                self.run_step(
+                    audit,
+                    "cleanup-host-shutdown",
+                    lambda: self.proxmox_api_post(
+                        f"/nodes/{self.config.proxmox_api_node}/status",
+                        data=[("command", "shutdown")],
+                        check=False,
+                        timeout=300,
+                    ),
                 )
             except Exception as error:
+                self.log_step(
+                    audit,
+                    "cleanup-host-shutdown",
+                    "failed",
+                    error=str(error),
+                )
                 print(f"startup cleanup host shutdown failed: {error}", file=sys.stderr)
 
     def schedule_timeout(self, delay: float | None = None) -> None:
@@ -557,11 +702,37 @@ class WolfController:
             raise RuntimeError("Vault secret is empty")
         return secret
 
-    def wake_and_unlock(self, password: str) -> None:
-        self.runner.run(["wakeonlan", "-i", self.config.broadcast, self.config.mac])
-        self.wait_for_port(self.config.dropbear_host, 2222, "Dropbear SSH", 120, 2)
-        self.unlock_zfs(password)
-        self.wait_for_port(self.config.proxmox_host, 8006, "Proxmox API", 300, 5)
+    def wake_and_unlock(self, password: str, audit: AuditContext | None = None) -> None:
+        self.run_step(
+            audit,
+            "send-wake-on-lan",
+            lambda: self.runner.run(
+                ["wakeonlan", "-i", self.config.broadcast, self.config.mac]
+            ),
+            broadcast=self.config.broadcast,
+            mac=self.config.mac,
+        )
+        self.run_step(
+            audit,
+            "wait-dropbear-ssh",
+            lambda: self.wait_for_port(
+                self.config.dropbear_host, 2222, "Dropbear SSH", 120, 2
+            ),
+            host=self.config.dropbear_host,
+            port=2222,
+            timeout_seconds=120,
+        )
+        self.run_step(audit, "unlock-zfs", lambda: self.unlock_zfs(password))
+        self.run_step(
+            audit,
+            "wait-proxmox-api",
+            lambda: self.wait_for_port(
+                self.config.proxmox_host, 8006, "Proxmox API", 300, 5
+            ),
+            host=self.config.proxmox_host,
+            port=8006,
+            timeout_seconds=300,
+        )
 
     def unlock_zfs(self, password: str) -> None:
         expect_script = f"""
@@ -751,6 +922,93 @@ class WolfController:
             time.sleep(sleep_interval)
         raise RuntimeError(f"timed out waiting for {label} on {host}:{port}")
 
+    def run_step(
+        self,
+        audit: AuditContext | None,
+        step: str,
+        callback: Callable[[], Any],
+        **extra: Any,
+    ) -> Any:
+        started_at = time.monotonic()
+        self.log_step(audit, step, "started", **extra)
+        try:
+            result = callback()
+        except Exception as error:
+            self.log_step(
+                audit,
+                step,
+                "failed",
+                duration_ms=self.duration_ms(started_at),
+                error=str(error),
+                **extra,
+            )
+            raise
+        if isinstance(result, subprocess.CompletedProcess) and result.returncode != 0:
+            self.log_step(
+                audit,
+                step,
+                "failed",
+                duration_ms=self.duration_ms(started_at),
+                error=result.stderr.strip() or result.stdout.strip(),
+                returncode=result.returncode,
+                **extra,
+            )
+            return result
+        self.log_step(
+            audit,
+            step,
+            "ok",
+            duration_ms=self.duration_ms(started_at),
+            **extra,
+        )
+        return result
+
+    def observe_step(self, audit: AuditContext | None) -> Observation:
+        started_at = time.monotonic()
+        self.log_step(audit, "observe", "started")
+        try:
+            observation = self.observe()
+        except Exception as error:
+            self.log_step(
+                audit,
+                "observe",
+                "failed",
+                duration_ms=self.duration_ms(started_at),
+                error=str(error),
+            )
+            raise
+        self.log_step(
+            audit,
+            "observe",
+            "ok",
+            duration_ms=self.duration_ms(started_at),
+            observed=observation.as_dict(),
+        )
+        return observation
+
+    def log_step(
+        self,
+        audit: AuditContext | None,
+        step: str,
+        result: str,
+        **extra: Any,
+    ) -> None:
+        if audit is None:
+            return
+        log_event(
+            audit.user,
+            audit.source_ip,
+            audit.request_id,
+            audit.action,
+            result,
+            event="step",
+            step=step,
+            **extra,
+        )
+
+    def duration_ms(self, started_at: float) -> int:
+        return round((time.monotonic() - started_at) * 1000)
+
 
 def acquire_lock(path: str) -> object:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -791,7 +1049,7 @@ def log_event(
     request_id: str,
     action: str,
     result: str,
-    **extra: str,
+    **extra: Any,
 ) -> None:
     event = {
         "user": user,
@@ -860,11 +1118,12 @@ def make_handler(
         server_version = "wolf/1.0"
 
         def do_GET(self) -> None:
-            if self.path == "/":
+            parsed_path = urlparse(self.path)
+            if parsed_path.path == "/":
                 self.handle_ui()
-            elif self.path == "/healthz":
+            elif parsed_path.path == "/healthz":
                 self.handle_healthz()
-            elif self.path == "/v1/session/status":
+            elif parsed_path.path == "/v1/session/status":
                 self.handle_status()
             else:
                 self.respond_error(HTTPStatus.NOT_FOUND, "not found")
@@ -885,6 +1144,23 @@ def make_handler(
             user = html.escape(auth["user"])
             csrf_token = html.escape(controller.csrf_token)
             remaining = status["timeout_remaining_seconds"]
+            status_payload = {"user": auth["user"], **status}
+            status_json = html.escape(json.dumps(status_payload, indent=2))
+            query = parse_qs(urlparse(self.path).query)
+            result = query.get("result", [""])[-1]
+            error = query.get("error", [""])[-1]
+            banner = ""
+            if result:
+                banner = (
+                    f'<p class="banner ok">{html.escape(result.replace("-", " "))}</p>'
+                )
+            if error:
+                banner = (
+                    '<p class="banner failed">'
+                    "Operation failed. Request "
+                    f"{html.escape(error)}"
+                    "</p>"
+                )
             body = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -893,28 +1169,46 @@ def make_handler(
   <title>Wolf Power</title>
   <style>
     :root {{ color-scheme: dark; font-family: system-ui, sans-serif; }}
-    body {{ margin: 0; min-height: 100vh; display: grid; place-items: center; background: #101418; color: #f3f7fb; }}
-    main {{ width: min(34rem, calc(100vw - 2rem)); }}
-    h1 {{ font-size: 1.5rem; margin: 0 0 1rem; }}
-    dl {{ display: grid; grid-template-columns: auto 1fr; gap: .5rem 1rem; margin: 0 0 1.5rem; }}
-    dt {{ color: #a9b7c6; }}
-    dd {{ margin: 0; font-weight: 650; }}
-    form {{ display: flex; gap: .75rem; }}
+    body {{ margin: 0; min-height: 100vh; background: #101418; color: #f3f7fb; }}
+    main {{ width: min(58rem, calc(100vw - 2rem)); margin: 2rem auto; }}
+    header {{ display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }}
+    h1 {{ font-size: 1.35rem; margin: 0; }}
+    .actions {{ display: flex; flex-wrap: wrap; gap: .75rem; }}
+    .banner {{ margin: 0 0 1rem; padding: .75rem 1rem; border-radius: 6px; font-weight: 700; }}
+    .banner.ok {{ background: #143c27; color: #b7f7cf; }}
+    .banner.failed {{ background: #451923; color: #fecdd3; }}
+    .summary {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }}
+    .metric {{ background: #182028; border: 1px solid #2d3945; border-radius: 6px; padding: .75rem; }}
+    .metric span {{ display: block; color: #a9b7c6; font-size: .8rem; margin-bottom: .35rem; }}
+    .metric strong {{ display: block; font-size: 1rem; overflow-wrap: anywhere; }}
+    pre {{ margin: 0; padding: 1rem; background: #0b0f13; border: 1px solid #2d3945; border-radius: 6px; overflow: auto; line-height: 1.45; }}
+    form {{ margin: 0; }}
     button {{ border: 0; border-radius: 6px; padding: .8rem 1rem; font-weight: 700; cursor: pointer; }}
     button[value=start] {{ background: #4ade80; color: #102015; }}
     button[value=stop] {{ background: #fb7185; color: #2a0d12; }}
+    @media (max-width: 720px) {{
+      header {{ align-items: stretch; flex-direction: column; }}
+      .summary {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+    }}
   </style>
 </head>
 <body>
   <main>
-    <h1>Wolf Power</h1>
-    <dl>
-      <dt>Status</dt><dd>{"Running" if status["active"] else "Stopped"}</dd>
-      <dt>User</dt><dd>{user}</dd>
-      <dt>Timeout</dt><dd>{remaining // 60} min remaining</dd>
-    </dl>
-    <form method="post" action="/v1/session/start"><input type="hidden" name="csrf_token" value="{csrf_token}"><button name="action" value="start">Start</button></form>
-    <form method="post" action="/v1/session/stop"><input type="hidden" name="csrf_token" value="{csrf_token}"><button name="action" value="stop">Stop</button></form>
+    <header>
+      <h1>Wolf Power</h1>
+      <div class="actions">
+        <form method="post" action="/v1/session/start"><input type="hidden" name="csrf_token" value="{csrf_token}"><button name="action" value="start">Start</button></form>
+        <form method="post" action="/v1/session/stop"><input type="hidden" name="csrf_token" value="{csrf_token}"><button name="action" value="stop">Stop</button></form>
+      </div>
+    </header>
+    {banner}
+    <section class="summary">
+      <div class="metric"><span>Phase</span><strong>{html.escape(str(status["phase"]))}</strong></div>
+      <div class="metric"><span>Ownership</span><strong>{html.escape(str(status["ownership"]))}</strong></div>
+      <div class="metric"><span>Wolf</span><strong>{html.escape(str(status["observed"]["wolf"]))}</strong></div>
+      <div class="metric"><span>Timeout</span><strong>{remaining // 60} min</strong></div>
+    </section>
+    <pre>{status_json}</pre>
   </main>
 </body>
 </html>
@@ -942,11 +1236,12 @@ def make_handler(
                 return
             request_id = self.request_id()
             source_ip = self.source_ip()
+            audit = AuditContext(auth["user"], source_ip, request_id, action)
             try:
                 if action == "start":
-                    result = controller.start_session(auth["user"])
+                    result = controller.start_session(auth["user"], audit)
                 else:
-                    result = controller.stop_session("manual")
+                    result = controller.stop_session("manual", audit)
                 log_event(
                     auth["user"],
                     source_ip,
@@ -955,6 +1250,9 @@ def make_handler(
                     "ok",
                     reason=result.get("last_stop_reason") or "",
                 )
+                if not self.wants_json():
+                    self.respond_redirect(f"/?result={action}-ok")
+                    return
                 self.respond_json(HTTPStatus.OK, {"user": auth["user"], **result})
             except Exception as error:
                 log_event(
@@ -965,6 +1263,9 @@ def make_handler(
                     "failed",
                     error=str(error),
                 )
+                if not self.wants_json():
+                    self.respond_redirect(f"/?error={request_id}")
+                    return
                 self.respond_json(
                     HTTPStatus.INTERNAL_SERVER_ERROR,
                     {"error": "operation failed", "request_id": request_id},
@@ -1039,6 +1340,16 @@ def make_handler(
 
         def request_id(self) -> str:
             return self.headers.get("X-Request-Id", "") or str(uuid.uuid4())
+
+        def wants_json(self) -> bool:
+            accept = self.headers.get("Accept", "")
+            return "application/json" in accept and "text/html" not in accept
+
+        def respond_redirect(self, location: str) -> None:
+            self.send_response(HTTPStatus.SEE_OTHER)
+            self.send_header("Location", location)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
 
         def respond_json(self, status: HTTPStatus, body: dict[str, Any]) -> None:
             self.respond(
