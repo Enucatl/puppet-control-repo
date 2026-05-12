@@ -36,6 +36,12 @@ class profile::docker_host (
     require => Service['docker'],
   }
 
+  exec { 'enable-docker-bridge-directed-broadcast':
+    command => '/bin/sh -c \'for setting in /proc/sys/net/ipv4/conf/br-*/bc_forwarding; do [ -e "$setting" ] && echo 1 > "$setting"; done\'',
+    unless  => '/bin/sh -c \'for setting in /proc/sys/net/ipv4/conf/br-*/bc_forwarding; do [ -e "$setting" ] || exit 0; [ "$(cat "$setting")" = "1" ] || exit 1; done\'',
+    require => Service['docker'],
+  }
+
   if $maxmind_account_id != undef and $maxmind_license_key != undef {
     $rendered_maxmind_account_id = String($maxmind_account_id)
 
