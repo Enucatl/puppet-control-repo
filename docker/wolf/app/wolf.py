@@ -1146,6 +1146,16 @@ def make_handler(
             remaining = status["timeout_remaining_seconds"]
             status_payload = {"user": auth["user"], **status}
             status_json = html.escape(json.dumps(status_payload, indent=2))
+            observed = status["observed"]
+            observed_summary = "".join(
+                self.status_tile(label, observed[key])
+                for label, key in [
+                    ("Host", "host"),
+                    ("VM", "vm"),
+                    ("Guest", "guest"),
+                    ("Wolf", "wolf"),
+                ]
+            )
             query = parse_qs(urlparse(self.path).query)
             result = query.get("result", [""])[-1]
             error = query.get("error", [""])[-1]
@@ -1179,8 +1189,13 @@ def make_handler(
     .banner.failed {{ background: #451923; color: #fecdd3; }}
     .summary {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }}
     .metric {{ background: #182028; border: 1px solid #2d3945; border-radius: 6px; padding: .75rem; }}
+    .metric.running {{ background: #143c27; border-color: #267347; color: #d8ffe5; }}
+    .metric.stopped {{ background: #451923; border-color: #8f3345; color: #ffe2e7; }}
+    .metric.unknown {{ background: #2d3035; border-color: #545c66; color: #eef2f6; }}
     .metric span {{ display: block; color: #a9b7c6; font-size: .8rem; margin-bottom: .35rem; }}
+    .metric.running span, .metric.stopped span, .metric.unknown span {{ color: inherit; opacity: .72; }}
     .metric strong {{ display: block; font-size: 1rem; overflow-wrap: anywhere; }}
+    .shutdown {{ margin: -.25rem 0 1rem; color: #a9b7c6; }}
     pre {{ margin: 0; padding: 1rem; background: #0b0f13; border: 1px solid #2d3945; border-radius: 6px; overflow: auto; line-height: 1.45; }}
     form {{ margin: 0; }}
     button {{ border: 0; border-radius: 6px; padding: .8rem 1rem; font-weight: 700; cursor: pointer; }}
@@ -1203,17 +1218,27 @@ def make_handler(
     </header>
     {banner}
     <section class="summary">
-      <div class="metric"><span>Phase</span><strong>{html.escape(str(status["phase"]))}</strong></div>
-      <div class="metric"><span>Ownership</span><strong>{html.escape(str(status["ownership"]))}</strong></div>
-      <div class="metric"><span>Wolf</span><strong>{html.escape(str(status["observed"]["wolf"]))}</strong></div>
-      <div class="metric"><span>Timeout</span><strong>{remaining // 60} min</strong></div>
+      {observed_summary}
     </section>
+    <p class="shutdown">Shutdown in: {remaining // 60} min</p>
     <pre>{status_json}</pre>
   </main>
 </body>
 </html>
             """
             self.respond(HTTPStatus.OK, body.encode(), "text/html; charset=utf-8")
+
+        def status_tile(self, label: str, value: object) -> str:
+            state = str(value)
+            css_class = "running" if state == "running" else "stopped"
+            if state == "unknown":
+                css_class = "unknown"
+            return (
+                f'<div class="metric {css_class}">'
+                f"<span>{html.escape(label)}</span>"
+                f"<strong>{html.escape(state)}</strong>"
+                "</div>"
+            )
 
         def handle_healthz(self) -> None:
             self.respond(HTTPStatus.OK, b"ok\n", "text/plain; charset=utf-8")

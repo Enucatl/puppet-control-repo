@@ -614,6 +614,13 @@ def test_ui_renders_full_status_json(tmp_path: Path) -> None:
     assert b"&quot;observed&quot;" in body
     assert b"&quot;host&quot;: &quot;stopped&quot;" in body
     assert b"&quot;ownership&quot;: &quot;unknown&quot;" in body
+    assert b"<span>Host</span>" in body
+    assert b"<span>VM</span>" in body
+    assert b"<span>Guest</span>" in body
+    assert b"<span>Wolf</span>" in body
+    assert b"Shutdown in:" in body
+    assert b"<span>Phase</span>" not in body
+    assert b"<span>Ownership</span>" not in body
     assert captured["content_type"] == "text/html; charset=utf-8"
 
 
