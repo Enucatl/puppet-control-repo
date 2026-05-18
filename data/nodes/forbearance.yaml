@@ -67,4 +67,4 @@ profile::common::systemd::units:
 profile::common::udev::rules:
   99-logitech-c925e-disable-audio.rules:
     rules:
-      - 'ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", DRIVER=="snd-usb-audio", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="085b", ATTR{bInterfaceClass}=="01", RUN+="/bin/sh -c ''echo -n %k > /sys/bus/usb/drivers/snd-usb-audio/unbind''"'
+      - 'ACTION=="bind", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", DRIVER=="snd-usb-audio", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="085b", ATTR{bInterfaceClass}=="01", RUN+="/bin/sh -c ''echo -n %k > /sys/bus/usb/drivers/snd-usb-audio/unbind''"'
