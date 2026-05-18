@@ -1,6 +1,9 @@
 classes:
   - profile::vault_login
 
+packages::list:
+  - alsa-utils
+
 profile::common::cron::jobs:
   # Remove unused Docker images, containers, networks, and build cache.
   # Volumes are intentionally excluded (no --volumes flag) to avoid data loss.
@@ -43,3 +46,25 @@ profile::common::sysctl::settings:
     value: 1
   net.ipv6.conf.default.proxy_ndp:
     value: 1
+
+profile::common::systemd::units:
+  hyperx-headset-volume.service:
+    content: |
+      [Unit]
+      Description=Set HyperX headset ALSA playback volume
+      After=sound.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'for i in $(seq 1 30); do /usr/bin/amixer -c He sset PCM 54 && exit 0; sleep 1; done; exit 1'
+
+      [Install]
+      WantedBy=multi-user.target
+    enable: true
+    active: true
+    require: Package[alsa-utils]
+
+profile::common::udev::rules:
+  99-logitech-c925e-disable-audio.rules:
+    rules:
+      - 'ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", DRIVER=="snd-usb-audio", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="085b", ATTR{bInterfaceClass}=="01", RUN+="/bin/sh -c ''echo -n %k > /sys/bus/usb/drivers/snd-usb-audio/unbind''"'
