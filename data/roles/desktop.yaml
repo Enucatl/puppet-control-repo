@@ -7,7 +7,6 @@ classes:
   - neovim
 
 profile::user_toolchain::npm_globals:
-  - '@mermaid-js/mermaid-cli'
   - '@openai/codex'
 
 # commented cause temporarily not needed
