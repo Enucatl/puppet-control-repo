@@ -30,7 +30,15 @@ npm_installed_version() {
 }
 
 npm_remote_version() {
-  npm view "$1" version --json 2>/dev/null | tr -d '"'
+  local package_name="$1"
+  local before_date="${2:-}"
+
+  if [ -n "$before_date" ]; then
+    npm view "$package_name" version --json --before="$before_date" 2>/dev/null | tr -d '"'
+    return
+  fi
+
+  npm view "$package_name" version --json 2>/dev/null | tr -d '"'
 }
 
 install_uv() {
@@ -113,6 +121,17 @@ install_nvm() {
   # shellcheck disable=SC1091
   . "$NVM_DIR/nvm.sh"
 
+  npm_before_date() {
+    if date -v-"<%= $npm_before_days %>"d +%Y-%m-%d >/dev/null 2>&1; then
+      date -v-"<%= $npm_before_days %>"d +%Y-%m-%d
+      return
+    fi
+
+    date -d "<%= $npm_before_days %> days ago" +%Y-%m-%d
+  }
+
+  npm_before_cutoff="$(npm_before_date)"
+
   cat > "$NVM_DIR/default-packages" <<'NVM_DEFAULT_PACKAGES'
 <%- $npm_globals.each |$package| { -%>
 <%= $package %>
@@ -132,6 +151,10 @@ NVM_DEFAULT_PACKAGES
   nvm alias default '<%= $node_version %>'
   nvm use default
 
+<% if $npm_ignore_scripts { -%>
+  npm config set --location=user ignore-scripts true
+<% } -%>
+
   installed_npm_version="$(npm --version)"
   remote_npm_version="$(npm_remote_version npm)"
   if [ -z "$remote_npm_version" ] || [ "$installed_npm_version" != "$remote_npm_version" ]; then
@@ -146,10 +169,10 @@ NVM_DEFAULT_PACKAGES
 
 <%- $npm_globals.each |$package| { -%>
   installed_package_version="$(npm_installed_version '<%= $package %>')"
-  remote_package_version="$(npm_remote_version '<%= $package %>')"
+  remote_package_version="$(npm_remote_version '<%= $package %>' "$npm_before_cutoff")"
   if [ -z "$installed_package_version" ] || [ -z "$remote_package_version" ] || [ "$installed_package_version" != "$remote_package_version" ]; then
     log "updating npm package <%= $package %>: installed=${installed_package_version:-unknown} published=${remote_package_version:-unknown}"
-    npm install -g '<%= $package %>@latest'
+    npm install -g --before="$npm_before_cutoff" '<%= $package %>@latest'
     log "updated npm package <%= $package %>"
   else
     log "npm package <%= $package %> is already current: installed=${installed_package_version:-unknown} published=${remote_package_version:-unknown}"
