@@ -79,6 +79,9 @@ profile::common::certs::vault_certs_defaults:
   key_group: 'user'
   key_mode: '0600'
 
+profile::user_toolchain::npm_ignore_scripts: true
+profile::user_toolchain::npm_before_days: 7
+
 freeipa::install::client::options:
   mkhomedir:
   domain: home.arpa
