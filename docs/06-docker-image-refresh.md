@@ -4,6 +4,11 @@ This repository already refreshes Docker-based projects when code is pushed.
 That covers image rebuilds tied to repository changes, but it does not keep
 quiet services on newer upstream images between deploys.
 
+The scheduled image refresh and the daily `docker system prune` job are
+independent. Refreshes can pull newer upstream images before the old ones are
+reclaimed, so disk space from unused layers may not drop until the next prune
+run. The prune policy lives in `data/roles/docker.yaml`.
+
 ## Goal
 
 Add a Puppet-managed scheduled refresh for Docker Compose projects on
