@@ -51,12 +51,12 @@ profile::common::systemd::units:
   hyperx-headset-volume.service:
     content: |
       [Unit]
-      Description=Set HyperX headset ALSA playback volume
+      Description=Set HyperX Cloud III S Wireless ALSA playback volume
       After=sound.target
 
       [Service]
       Type=oneshot
-      ExecStart=/bin/sh -c 'for i in $(seq 1 30); do /usr/bin/amixer -c He sset PCM 54 && exit 0; sleep 1; done; exit 1'
+      ExecStart=/bin/sh -c 'for i in $(seq 1 30); do /usr/bin/amixer -c Wireless sset PCM 54 && exit 0; sleep 1; done; exit 1'
 
       [Install]
       WantedBy=multi-user.target
