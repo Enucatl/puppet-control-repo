@@ -65,3 +65,23 @@ threshold.config: suppress gen_id 1, sig_id 2260003
 2210016  # SURICATA STREAM CLOSEWAIT FIN out of window: This alert indicates a TCP stream state mismatch, which is common in network environments with asymmetric routing or packet loss and does not represent a security threat.
 # run_id=scheduled__2026-05-01T03:00:00+00:00 | Signature SURICATA STREAM CLOSEWAIT FIN out of window was classified as background noise for the full reporting window.
 threshold.config: suppress gen_id 1, sig_id 2210016
+
+# --- 8. Scheduled Background Noise Suppressions ---
+2057745  # ET INFO DNS Query to Cloudflare Page Developer Domain (pages .dev): The signature tracks DNS queries to a common cloud hosting platform (Cloudflare Pages), which is standard web traffic and does not indicate malicious intent in this context.
+# run_id=scheduled__2026-06-01T03:00:00+00:00 | Signature ET INFO DNS Query to Cloudflare Page Developer Domain (pages .dev) was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2057745
+2051767  # ET INFO Observed DNS Query to Cloudflare Developer Domain (workers .dev): The alert tracks DNS queries to Cloudflare's workers.dev domain, which is a common platform for legitimate web applications and services. Given the high volume and benign nature of this traffic in modern network environments, it constitutes routine background noise.
+# run_id=scheduled__2026-06-01T03:00:00+00:00 | Signature ET INFO Observed DNS Query to Cloudflare Developer Domain (workers .dev) was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2051767
+2016150  # ET INFO Session Traversal Utilities for NAT (STUN Binding Response): The signature represents routine STUN protocol traffic, which is standard for NAT traversal in VoIP and WebRTC applications. The high volume of alerts is consistent with expected background noise for this protocol.
+# run_id=scheduled__2026-06-01T03:00:00+00:00 | Signature ET INFO Session Traversal Utilities for NAT (STUN Binding Response) was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2016150
+2210027  # SURICATA STREAM ESTABLISHED SYN resend with different seq: This signature is a common Suricata engine alert indicating a TCP stream anomaly often caused by network jitter or retransmissions in established connections, which is typically considered routine background noise.
+# run_id=scheduled__2026-06-01T03:00:00+00:00 | Signature SURICATA STREAM ESTABLISHED SYN resend with different seq was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2210027
+2210023  # SURICATA STREAM ESTABLISHED SYNACK resend with different ACK: This is a standard Suricata stream engine alert indicating a TCP retransmission anomaly, which is common in noisy network environments and does not typically represent a security threat.
+# run_id=scheduled__2026-06-01T03:00:00+00:00 | Signature SURICATA STREAM ESTABLISHED SYNACK resend with different ACK was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2210023
+2200078  # SURICATA UDPv6 invalid checksum: This is a single instance of a checksum validation error, which is common in network traffic due to transient transmission issues or malformed packets and does not indicate a targeted security threat.
+# run_id=scheduled__2026-06-01T03:00:00+00:00 | Signature SURICATA UDPv6 invalid checksum was classified as background noise for the full reporting window.
+threshold.config: suppress gen_id 1, sig_id 2200078
