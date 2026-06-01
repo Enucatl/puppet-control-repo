@@ -123,7 +123,9 @@ user_rules:
   - '||apt-cacher-ng.home.arpa^$dnsrewrite=NOERROR;A;{{ docker_node_ip }}'
   # 2. Define the SRV Record pointing to port 3142
   - '||_apt_proxy._tcp.home.arpa^$dnsrewrite=NOERROR;SRV;0 0 3142 apt-cacher-ng.home.arpa'
-  # Block all .icu TLD resolutions
+  # Block all .icu TLD resolutions after Suricata flagged suspicious DNS
+  # queries for prreqcroab.icu from 10.0.30.180 and
+  # 2a02:0168:6278:001e:1c5c:6da3:c02e:9205 on 2026-05-10.
   - '||icu^$important'
 dhcp:
   # DHCP disabled: all subnets (LAN, Trusted WiFi, IoT, Guest) are now
