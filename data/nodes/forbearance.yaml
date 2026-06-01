@@ -56,7 +56,7 @@ profile::common::systemd::units:
 
       [Service]
       Type=oneshot
-      ExecStart=/bin/sh -c 'for i in $(seq 1 30); do /usr/bin/amixer -c Wireless sset PCM 54 && exit 0; sleep 1; done; exit 1'
+      ExecStart=/bin/sh -c 'for i in $(seq 1 30); do /usr/bin/amixer -c Wireless sset PCM 100% && exit 0; sleep 1; done; exit 1'
 
       [Install]
       WantedBy=multi-user.target
