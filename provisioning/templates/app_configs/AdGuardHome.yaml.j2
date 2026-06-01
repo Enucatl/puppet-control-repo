@@ -123,6 +123,8 @@ user_rules:
   - '||apt-cacher-ng.home.arpa^$dnsrewrite=NOERROR;A;{{ docker_node_ip }}'
   # 2. Define the SRV Record pointing to port 3142
   - '||_apt_proxy._tcp.home.arpa^$dnsrewrite=NOERROR;SRV;0 0 3142 apt-cacher-ng.home.arpa'
+  # Block all .icu TLD resolutions
+  - '||icu^$important'
 dhcp:
   # DHCP disabled: all subnets (LAN, Trusted WiFi, IoT, Guest) are now
   # served by the VyOS native DHCP server. AdGuard handles DNS only.
