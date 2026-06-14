@@ -63,7 +63,22 @@
     - vyos_upgrade_needed
     - not ansible_check_mode
   block:
+    - name: List installed VyOS images before upgrade
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo /usr/libexec/vyos/op_mode/image_manager.py --action list --no-prompt"
+      register: vyos_pre_upgrade_images
+      changed_when: false
+      vars:
+        ansible_command_timeout: 300
+
+    - name: Flag whether the latest image is already installed
+      ansible.builtin.set_fact:
+        vyos_latest_image_installed: "{{ vyos_pre_upgrade_images.stdout[0] is search(vyos_latest_release_tag) }}"
+      changed_when: false
+
     - name: Create a local staging directory for the VyOS image
+      when: not vyos_latest_image_installed
       delegate_to: localhost
       ansible.builtin.tempfile:
         state: directory
@@ -71,6 +86,7 @@
       register: vyos_upgrade_stage
 
     - name: Download the signed VyOS ISO
+      when: not vyos_latest_image_installed
       delegate_to: localhost
       ansible.builtin.get_url:
         url: "{{ vyos_latest_release_iso_url }}"
@@ -78,6 +94,7 @@
         mode: "0600"
 
     - name: Download the VyOS ISO signature
+      when: not vyos_latest_image_installed
       delegate_to: localhost
       ansible.builtin.get_url:
         url: "{{ vyos_latest_release_sig_url }}"
@@ -85,6 +102,7 @@
         mode: "0600"
 
     - name: Upload the image payload to the router
+      when: not vyos_latest_image_installed
       ansible.netcommon.net_put:
         src: "{{ vyos_upgrade_stage.path }}/{{ item }}"
         dest: "/tmp/{{ item }}"
@@ -93,6 +111,7 @@
         - "{{ vyos_latest_release_sig }}"
 
     - name: Verify the ISO signature on the router
+      when: not vyos_latest_image_installed
       vyos.vyos.vyos_command:
         commands:
           - "sudo minisign -Vm /tmp/{{ vyos_latest_release_iso }} -P {{ vyos_minisign_public_key }}"
@@ -100,6 +119,7 @@
         ansible_command_timeout: 300
 
     - name: Remove stale VyOS installer mount directory
+      when: not vyos_latest_image_installed
       vyos.vyos.vyos_command:
         commands:
           - "sudo sh -c 'mountpoint -q /mnt/installation/iso_src && umount /mnt/installation/iso_src || true'"
@@ -107,15 +127,30 @@
       changed_when: false
 
     - name: Install the verified VyOS image
+      when: not vyos_latest_image_installed
       vyos.vyos.vyos_command:
         commands:
           - "sudo /usr/libexec/vyos/op_mode/image_installer.py --action add --image-path /tmp/{{ vyos_latest_release_iso }} --no-prompt"
       register: vyos_image_install
       failed_when: >-
         vyos_image_install.stdout[0] is search('(?im)^Error:')
-        or vyos_image_install.stdout[0] is not search(vyos_latest_release_tag)
       vars:
         ansible_command_timeout: 1800
+
+    - name: Confirm the latest image is installed
+      vyos.vyos.vyos_command:
+        commands:
+          - "sudo /usr/libexec/vyos/op_mode/image_manager.py --action list --no-prompt"
+      register: vyos_pre_reboot_images
+      changed_when: false
+      vars:
+        ansible_command_timeout: 300
+
+    - name: Verify the latest image is available for reboot
+      ansible.builtin.assert:
+        that:
+          - vyos_pre_reboot_images.stdout[0] is search(vyos_latest_release_tag)
+        fail_msg: "The latest VyOS rolling image was not installed"
 
     - name: Reboot into the upgraded VyOS image
       vyos.vyos.vyos_command:
@@ -189,7 +224,9 @@
         commands:
           - "sudo rm -f /tmp/{{ vyos_latest_release_iso }} /tmp/{{ vyos_latest_release_sig }}"
       changed_when: false
-      when: vyos_upgrade_needed
+      when:
+        - vyos_upgrade_needed
+        - not vyos_latest_image_installed | default(false)
 
 - name: Run the full deployment after an upgrade check
   ansible.builtin.import_tasks: tasks/01_setup_dirs.yml
