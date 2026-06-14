@@ -5,7 +5,7 @@
 
 - name: Define VyOS rolling upgrade constants
   ansible.builtin.set_fact:
-    vyos_rolling_version_url: "https://raw.githubusercontent.com/vyos/vyos-nightly-build/refs/heads/current/version.json"
+    vyos_rolling_version_url: "https://raw.githubusercontent.com/vyos/vyos-nightly-build/refs/heads/rolling/version.json"
     vyos_minisign_public_key: "RWSIhkR/dkM2DSaBRniv/bbbAf8hmDqdbOEmgXkf1RxRoxzodgKcDyGq"
   changed_when: false
 
