@@ -42,6 +42,7 @@ packages::list:
   - libldap2-dev 
   - libsasl2-dev 
   - libssh-dev
+  - logcli
   - mktorrent
   - nemo
   - nmap
