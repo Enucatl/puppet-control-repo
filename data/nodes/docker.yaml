@@ -65,6 +65,37 @@ profile::common::services::resources:
     ensure: stopped
     enable: false
 
+profile::common::systemd::units:
+  backrest-kinit.service:
+    content: |
+      [Unit]
+      Description=Acquire Backrest Kerberos credentials
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/kinit -k -t /etc/krb5-backrest.keytab -c FILE:/tmp/krb5cc_175200010 backrest@HOME.ARPA
+      ExecStart=/bin/chown backrest:backrest /tmp/krb5cc_175200010
+    enable: false
+    active: false
+    require: File[/etc/krb5-backrest.keytab]
+  backrest-kinit.timer:
+    content: |
+      [Unit]
+      Description=Refresh Backrest Kerberos credentials
+
+      [Timer]
+      OnBootSec=1min
+      OnUnitActiveSec=12h
+      Unit=backrest-kinit.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[backrest-kinit.service]
+
 profile::common::cron::jobs:
   # backup the hashicorp vault to a location that is picked up by duplicati
   vault-snapshot:
