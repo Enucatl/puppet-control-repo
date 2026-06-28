@@ -18,15 +18,33 @@ class freeipa_users (
     }
 
     $users.each |$username, $attrs| {
-      $first = $attrs['first']
-      $last  = $attrs['last']
-      $shell = $attrs.get('shell', '/usr/sbin/nologin')
+      $first  = $attrs['first']
+      $last   = $attrs['last']
+      $shell  = $attrs.get('shell', '/usr/sbin/nologin')
+      $keytab = $attrs.get('keytab', undef)
 
       exec { "ipa-user-add-${username}":
         command => "bash -c 'kinit admin < /run/puppet-ipa-admin-pass && ipa user-add ${username} --first=${first} --last=${last} --shell=${shell}'",
         unless  => "bash -c 'kinit admin < /run/puppet-ipa-admin-pass && ipa user-show ${username}'",
         path    => ['/usr/bin', '/usr/sbin', '/bin'],
         require => File['/run/puppet-ipa-admin-pass'],
+      }
+
+      if $keytab {
+        exec { "ipa-getkeytab-${username}":
+          command => "bash -c 'kinit admin < /run/puppet-ipa-admin-pass && ipa-getkeytab -s freeipa.home.arpa -p ${username} -k ${keytab}'",
+          unless  => "bash -c 'test -s ${keytab} && klist -k ${keytab} | grep -qF ${username}@'",
+          path    => ['/usr/bin', '/usr/sbin', '/bin'],
+          require => Exec["ipa-user-add-${username}"],
+        }
+
+        file { $keytab:
+          ensure  => file,
+          owner   => 'root',
+          group   => 'root',
+          mode    => '0400',
+          require => Exec["ipa-getkeytab-${username}"],
+        }
       }
     }
   }
