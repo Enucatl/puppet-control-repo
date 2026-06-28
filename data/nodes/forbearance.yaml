@@ -4,6 +4,18 @@ classes:
 packages::list:
   - alsa-utils
 
+profile::common::acls::posix_acls:
+  "/home/user":
+    action: set
+    permission:
+      - "user:backrest:--x"
+  "/home/user/Documents":
+    action: set
+    permission:
+      - "user:backrest:r-X"
+      - "default:user:backrest:r-X"
+    recursive: true
+
 profile::common::cron::jobs:
   # Remove unused Docker images, containers, networks, and build cache.
   # Volumes are intentionally excluded (no --volumes flag) to avoid data loss.
