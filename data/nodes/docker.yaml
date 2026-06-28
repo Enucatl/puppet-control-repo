@@ -571,6 +571,10 @@ puppet_configuration::settings:
     value: /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py
 
 freeipa_users::users:
+  backrest:
+    first: Backrest
+    last: Backup
+    keytab: /etc/krb5-backrest.keytab
   ldap_ro:
     first: ldap
     last: ro
