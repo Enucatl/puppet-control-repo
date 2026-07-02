@@ -30,6 +30,8 @@ lookup_options:
     merge: deep
   profile::common::systemd::units:
     merge: deep
+  profile::common::systemd::user_services:
+    merge: deep
   profile::common::udev::rules:
     merge: deep
   profile::user_toolchain::npm_globals:
