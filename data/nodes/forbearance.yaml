@@ -61,10 +61,17 @@ profile::common::sysctl::settings:
 
 profile::common::systemd::units:
   hyperx-headset-volume.service:
+    ensure: absent
+    enable: false
+    active: false
+  hyperx-headset-volume-user.service:
+    path: /etc/systemd/user
     content: |
       [Unit]
       Description=Set HyperX Cloud III S Wireless ALSA playback volume
-      After=sound.target
+      ConditionUser=user
+      Wants=wireplumber.service
+      After=wireplumber.service
 
       [Service]
       Type=oneshot
@@ -72,9 +79,14 @@ profile::common::systemd::units:
       RemainAfterExit=yes
 
       [Install]
-      WantedBy=multi-user.target
+      WantedBy=default.target
+    daemon_reload: false
+
+profile::common::systemd::user_services:
+  hyperx-headset-volume-user.service:
+    unit: hyperx-headset-volume-user.service
+    global: true
     enable: true
-    active: true
     require: Package[alsa-utils]
 
 profile::common::udev::rules:
