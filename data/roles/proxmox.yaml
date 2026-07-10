@@ -1,5 +1,8 @@
 packages::list:
   - lm-sensors
+  - linux-cpupower
+  - nvme-cli
+  - powertop
 
 profile::dotfiles::username: root
 
