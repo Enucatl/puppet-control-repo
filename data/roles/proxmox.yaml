@@ -11,6 +11,23 @@ profile::common::services::resources:
     ensure: stopped
     enable: mask
 
+profile::common::systemd::units:
+  proxmox-cpu-power-policy.service:
+    content: |
+      [Unit]
+      Description=Apply Proxmox CPU power policy
+      After=multi-user.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'for cpu in /sys/devices/system/cpu/cpu*/cpufreq; do [ -d "$cpu" ] || continue; cat "$cpu/cpuinfo_min_freq" > "$cpu/scaling_min_freq"; echo 5000000 > "$cpu/scaling_max_freq"; echo powersave > "$cpu/scaling_governor"; done'
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+    enable: true
+    active: true
+
 ssh::server_options:
   PermitRootLogin: prohibit-password
 
