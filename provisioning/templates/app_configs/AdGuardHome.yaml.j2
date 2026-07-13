@@ -70,6 +70,7 @@ dns:
   private_networks:
     - 10.0.0.0/8
     - "{{ ipv6_prefix }}::/48"
+    - "{{ ula_prefix }}::/48"
   use_private_ptr_resolvers: true
   local_ptr_upstreams:
     - "127.0.0.1:{{ dnsmasq_dns_port }}"
