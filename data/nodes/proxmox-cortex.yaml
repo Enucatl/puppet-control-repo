@@ -48,12 +48,6 @@ profile::common::sysctl::settings:
     value: 0
   net.ipv6.conf.enp7s0.disable_ipv6:
     value: 1
-  net.ipv6.conf.vmbr0.accept_ra:
-    value: 2
-  net.ipv6.conf.vmbr0.autoconf:
-    value: 1
-  net.ipv6.conf.vmbr0.use_tempaddr:
-    value: 0
 
 profile::common::systemd::units:
   wol-enp7s0.service:
