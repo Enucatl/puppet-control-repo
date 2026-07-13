@@ -16,6 +16,7 @@ eth2_mac: "e8:eb:d3:08:d3:78"  # WAN NIC after moving the transceiver
 vyos_lan_ip: "10.0.0.1/24"
 lan_subnet: "10.0.0.0/24"
 vyos_ipv6: "fe80::be24:11ff:fe1c:ecb6"
+ula_prefix: "fd6b:d722:1738"
 
 # --- VLAN SEGMENTS ---
 # VLAN ID = third octet of subnet for easy log correlation
@@ -69,13 +70,14 @@ snmp_engineid: "800000000102030405060710"
 snmp_user: "vyos"
 
 # --- ADGUARD (DNS only; DHCP handled by dnsmasq) ---
-# All segments point DNS to 10.0.0.1 / {ipv6_prefix}::1 (AdGuard on router via host networking).
+# All segments point DNS to 10.0.0.1 / {ula_prefix}::1
+# (AdGuard on router via host networking).
 # IOT-LOCAL and GUEST-LOCAL firewall chains allow port 53 inbound to router.
 # AdGuard forwards home.arpa queries to dnsmasq for local hostname resolution.
 adguard_data_path: "/config/containers/adguard"
 adguard_dns_bind_hosts:
   - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
-  - "{{ ipv6_prefix }}::1"
+  - "{{ ula_prefix }}::1"
 adguard_image: "docker.io/adguard/adguardhome:latest"
 
 # --- DNSMASQ (DHCPv4 + authoritative DNS for home.arpa) ---
@@ -124,9 +126,11 @@ docker_node_ipv6_suffix: "::be24:11ff:fe4a:bfed"
 desktop_node_ipv6_suffix: "::be24:11ff:fef7:659b"
 
 proxmox_ip: "10.0.0.10"
+proxmox_ula: "{{ ula_prefix }}::9e6b:ff:fec3:761d"
 proxmox_mac: "9c:6b:00:c3:76:1d"
 proxmox_cortex_ip: "10.0.{{ cortex_vlan }}.2"
 proxmox_cortex_ipv6: "{{ ipv6_prefix }}:{{ '%x' | format(cortex_vlan | int) }}::2"
+proxmox_cortex_ula: "{{ ula_prefix }}:{{ '%x' | format(cortex_vlan | int) }}::2"
 proxmox_cortex_mac: "30:56:0f:5e:a9:de"
 chronicle_ip: "10.0.{{ cortex_vlan }}.154"
 chronicle_mac: "bc:24:11:9f:7b:29"

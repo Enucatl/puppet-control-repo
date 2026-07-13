@@ -16,16 +16,21 @@ set service ntp allow-client address fc00::/7
 set service ntp server time1.vyos.net
 set service ntp server time2.vyos.net
 set service ntp server time3.vyos.net
-set service router-advert interface {{ lan_interface }} name-server {{ ipv6_prefix }}::1
+set service router-advert interface {{ lan_interface }} name-server {{ ula_prefix }}::1
 set service router-advert interface {{ lan_interface }} prefix ::/64 valid-lifetime 172800
-set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} name-server {{ ipv6_prefix }}::1
+set service router-advert interface {{ lan_interface }} prefix {{ ula_prefix }}::/64 valid-lifetime 172800
+set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} name-server {{ ula_prefix }}::1
 set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} prefix ::/64 valid-lifetime 172800
-set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} name-server {{ ipv6_prefix }}::1
+set service router-advert interface {{ lan_interface }}.{{ trusted_wifi_vlan }} prefix {{ ula_prefix }}:{{ '%x' | format(trusted_wifi_vlan | int) }}::/64 valid-lifetime 172800
+set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} name-server {{ ula_prefix }}::1
 set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} prefix ::/64 valid-lifetime 172800
-set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server {{ ipv6_prefix }}::1
+set service router-advert interface {{ lan_interface }}.{{ iot_vlan }} prefix {{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}::/64 valid-lifetime 172800
+set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} name-server {{ ula_prefix }}::1
 set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} prefix ::/64 valid-lifetime 172800
-set service router-advert interface {{ cortex_interface }} name-server {{ ipv6_prefix }}::1
+set service router-advert interface {{ lan_interface }}.{{ guest_vlan }} prefix {{ ula_prefix }}:{{ '%x' | format(guest_vlan | int) }}::/64 valid-lifetime 172800
+set service router-advert interface {{ cortex_interface }} name-server {{ ula_prefix }}::1
 set service router-advert interface {{ cortex_interface }} prefix ::/64 valid-lifetime 172800
+set service router-advert interface {{ cortex_interface }} prefix {{ ula_prefix }}:{{ '%x' | format(cortex_vlan | int) }}::/64 valid-lifetime 172800
 set service snmp listen-address {{ snmp_listen_address }}
 set service snmp location '{{ snmp_location }}'
 set service snmp v3 engineid {{ snmp_engineid }}
@@ -53,6 +58,7 @@ set service suricata address-group home-net address {{ iot_subnet }}
 set service suricata address-group home-net address {{ guest_subnet }}
 set service suricata address-group home-net address {{ wg_subnet | ansible.utils.ipaddr('subnet') }}
 set service suricata address-group home-net address {{ ipv6_prefix }}::/48
+set service suricata address-group home-net address {{ ula_prefix }}::/48
 set service suricata address-group home-net address fe80::/10
 set service suricata address-group http-servers group home-net
 set service suricata address-group modbus-client group home-net

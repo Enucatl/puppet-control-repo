@@ -1,5 +1,6 @@
 set interfaces ethernet eth0 hw-id '{{ eth0_mac }}'
 set interfaces ethernet {{ lan_interface }} address {{ vyos_lan_ip }}
+set interfaces ethernet {{ lan_interface }} address {{ ula_prefix }}::1/64
 set interfaces ethernet {{ lan_interface }} description 'LAN - Wired Trusted'
 set interfaces ethernet {{ lan_interface }} hw-id '{{ lan_mac }}'
 set interfaces ethernet {{ lan_interface }} offload gro
@@ -7,12 +8,16 @@ set interfaces ethernet {{ lan_interface }} offload gso
 set interfaces ethernet {{ lan_interface }} offload sg
 set interfaces ethernet {{ lan_interface }} offload tso
 set interfaces ethernet {{ lan_interface }} vif {{ trusted_wifi_vlan }} address {{ trusted_wifi_ip }}
+set interfaces ethernet {{ lan_interface }} vif {{ trusted_wifi_vlan }} address {{ ula_prefix }}:{{ '%x' | format(trusted_wifi_vlan | int) }}::1/64
 set interfaces ethernet {{ lan_interface }} vif {{ trusted_wifi_vlan }} description 'Trusted WiFi'
 set interfaces ethernet {{ lan_interface }} vif {{ iot_vlan }} address {{ iot_ip }}
+set interfaces ethernet {{ lan_interface }} vif {{ iot_vlan }} address {{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}::1/64
 set interfaces ethernet {{ lan_interface }} vif {{ iot_vlan }} description IoT
 set interfaces ethernet {{ lan_interface }} vif {{ guest_vlan }} address {{ guest_ip }}
+set interfaces ethernet {{ lan_interface }} vif {{ guest_vlan }} address {{ ula_prefix }}:{{ '%x' | format(guest_vlan | int) }}::1/64
 set interfaces ethernet {{ lan_interface }} vif {{ guest_vlan }} description Guest
 set interfaces ethernet {{ cortex_interface }} address {{ cortex_ip }}
+set interfaces ethernet {{ cortex_interface }} address {{ ula_prefix }}:{{ '%x' | format(cortex_vlan | int) }}::1/64
 set interfaces ethernet {{ cortex_interface }} description 'Trusted LAN - proxmox-cortex DAC'
 set interfaces ethernet {{ cortex_interface }} hw-id '{{ cortex_mac }}'
 set interfaces ethernet {{ cortex_interface }} offload gro
@@ -47,10 +52,12 @@ set interfaces loopback lo
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} public-key '{{ peer.pubkey }}'
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} allowed-ips {{ peer.ip }}
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} allowed-ips {{ ipv6_prefix }}:c8::{{ peer.ipv6_host }}/128
+set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} allowed-ips {{ ula_prefix }}:c8::{{ peer.ipv6_host }}/128
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} description '{{ peer.name }}'
 set interfaces wireguard {{ wg_interface }} peer {{ peer.name }} persistent-keepalive 15
 {% endfor %}
 set interfaces wireguard {{ wg_interface }} address {{ wg_subnet }}
 set interfaces wireguard {{ wg_interface }} address {{ ipv6_prefix }}:c8::1/64
+set interfaces wireguard {{ wg_interface }} address {{ ula_prefix }}:c8::1/64
 set interfaces wireguard {{ wg_interface }} port {{ wg_port }}
 set interfaces wireguard {{ wg_interface }} private-key '{{ wg_server_private_key }}'

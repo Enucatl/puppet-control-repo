@@ -12,7 +12,7 @@ GUEST_IFACE="{{ guest_interface }}"
 WG_IFACE="{{ wg_interface }}"
 WG_V6_ADDR="{{ ipv6_prefix }}:c8::1/64"
 ADGUARD_V4="{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
-ADGUARD_V6="{{ ipv6_prefix }}::1"
+ADGUARD_V6="{{ ula_prefix }}::1"
 DNSMASQ_PORT="{{ dnsmasq_dns_port }}"
 DHCP_DOMAIN="{{ dhcp_domain }}"
 
