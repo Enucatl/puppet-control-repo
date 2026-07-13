@@ -19,3 +19,9 @@ profile::common::cron::jobs:
 profile::common::sysctl::settings:
   net.ipv6.conf.all.accept_ra:
     value: 0
+  net.ipv6.conf.vmbr0.accept_ra:
+    value: 2
+  net.ipv6.conf.vmbr0.autoconf:
+    value: 1
+  net.ipv6.conf.vmbr0.use_tempaddr:
+    value: 0
