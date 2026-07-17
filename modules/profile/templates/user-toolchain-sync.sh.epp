@@ -25,7 +25,7 @@ latest_nvm_tag() {
 npm_installed_version() {
   local package_name="$1"
 
-  npm list -g --depth=0 --json "$package_name" 2>/dev/null \
+  { npm list -g --depth=0 --json "$package_name" 2>/dev/null || true; } \
     | node -e 'const fs = require("fs"); const pkg = process.argv[1]; const data = JSON.parse(fs.readFileSync(0, "utf8")); const dep = data.dependencies && data.dependencies[pkg]; process.stdout.write((dep && dep.version) || "");' "$package_name"
 }
 
@@ -34,11 +34,11 @@ npm_remote_version() {
   local before_date="${2:-}"
 
   if [ -n "$before_date" ]; then
-    npm view "$package_name" version --json --before="$before_date" 2>/dev/null | tr -d '"'
+    npm view "$package_name" version --before="$before_date" 2>/dev/null
     return
   fi
 
-  npm view "$package_name" version --json 2>/dev/null | tr -d '"'
+  npm view "$package_name" version 2>/dev/null
 }
 
 install_uv() {
