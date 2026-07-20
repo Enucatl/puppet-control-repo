@@ -7,7 +7,7 @@ packages::list:
   - libevent-dev
   - libjansson-dev
   - liblua5.2-dev
-  - libpython-dev
+  - libpython3-dev
   - libreadline-dev
   - libssl-dev
   - lua5.2
