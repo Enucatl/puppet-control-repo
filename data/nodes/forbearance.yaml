@@ -3,6 +3,15 @@ classes:
 
 packages::list:
   - alsa-utils
+  - libconfig-dev
+  - libevent-dev
+  - libjansson-dev
+  - liblua5.2-dev
+  - libpython-dev
+  - libreadline-dev
+  - libssl-dev
+  - lua5.2
+  - make
 
 profile::common::acls::posix_acls:
   "/home/user":
