@@ -554,6 +554,27 @@ def test_origin_and_csrf_checks(tmp_path: Path) -> None:
 
     assert handler.origin_allowed() is False
 
+    del handler.headers["Origin"]
+    handler.headers["Sec-Fetch-Site"] = "same-origin"
+
+    assert handler.origin_allowed() is True
+
+
+def test_admin_group_is_authorized(tmp_path: Path) -> None:
+    config = wolf.Config(
+        allowed_group="admins,wolf-operators",
+        lock_file=str(tmp_path / "lock"),
+        state_file=str(tmp_path / "state.json"),
+    )
+    controller = wolf.WolfController(config, FakeRunner([]), FakeHttp([]))
+    handler = object.__new__(wolf.make_handler(controller, config))
+    handler.headers = Message()
+    handler.headers["Remote-User"] = "admin"
+    handler.headers["Remote-Groups"] = "admins"
+    handler.trusted_proxy = lambda: True  # type: ignore[method-assign]
+
+    assert handler.authorize() == {"user": "admin"}
+
 
 def test_healthz_is_public(tmp_path: Path) -> None:
     config = wolf.Config(

@@ -1256,7 +1256,17 @@ def make_handler(
             if auth is None:
                 return
             post_fields = self.post_fields()
-            if not self.origin_allowed() or not self.csrf_token_valid(post_fields):
+            origin_allowed = self.origin_allowed()
+            csrf_valid = self.csrf_token_valid(post_fields)
+            if not origin_allowed or not csrf_valid:
+                log_event(
+                    auth["user"],
+                    self.source_ip(),
+                    self.request_id(),
+                    action,
+                    "forbidden",
+                    reason="origin" if not origin_allowed else "csrf",
+                )
                 self.respond_error(HTTPStatus.FORBIDDEN, "forbidden")
                 return
             request_id = self.request_id()
@@ -1298,6 +1308,14 @@ def make_handler(
 
         def authorize(self) -> dict[str, str] | None:
             if not self.trusted_proxy():
+                log_event(
+                    "",
+                    self.source_ip(),
+                    self.request_id(),
+                    "authorize",
+                    "forbidden",
+                    reason="proxy",
+                )
                 self.respond_error(HTTPStatus.FORBIDDEN, "forbidden")
                 return None
             user = self.headers.get("Remote-User", "")
@@ -1309,7 +1327,20 @@ def make_handler(
             if not user:
                 self.respond_error(HTTPStatus.UNAUTHORIZED, "authentication required")
                 return None
-            if config.allowed_group not in groups:
+            allowed_groups = {
+                group.strip()
+                for group in config.allowed_group.split(",")
+                if group.strip()
+            }
+            if not groups & allowed_groups:
+                log_event(
+                    user,
+                    self.source_ip(),
+                    self.request_id(),
+                    "authorize",
+                    "forbidden",
+                    reason="group",
+                )
                 self.respond_error(HTTPStatus.FORBIDDEN, "forbidden")
                 return None
             return {"user": user}
@@ -1349,7 +1380,7 @@ def make_handler(
             host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host", "")
             origin = self.headers.get("Origin") or self.headers.get("Referer", "")
             if not host or not origin:
-                return False
+                return self.headers.get("Sec-Fetch-Site") == "same-origin"
             parsed = urlparse(origin)
             return parsed.netloc == host
 
