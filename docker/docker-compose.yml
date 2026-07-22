@@ -156,7 +156,7 @@ services:
     environment:
       - VAULT_ADDR=https://hcv.home.arpa:8200
       - VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
-      - WOLF_ALLOWED_GROUP=wolf-operators
+      - WOLF_ALLOWED_GROUP=admins,wolf-operators
       - WOLF_MAX_SESSION_SECONDS=14400
       - WOLF_DROPBEAR_KEY=/run/secrets/wolf_dropbear_key
       - WOLF_DROPBEAR_KNOWN_HOSTS=/run/secrets/wolf_dropbear_known_hosts
