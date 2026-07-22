@@ -67,6 +67,7 @@ packages::list:
 packages::sources:
   docker:
     comment: 'Official Docker Repository'
+    source_format: 'sources'
     location: 'https://download.docker.com/linux/ubuntu'
     release: "%{facts.os.distro.codename}"
     repos: 'stable'
@@ -76,6 +77,7 @@ packages::sources:
       ensure: present
   github-cli:
     comment: 'Official GitHub CLI Repository'
+    source_format: 'sources'
     location: 'https://cli.github.com/packages'
     release: 'stable'
     repos: 'main'
@@ -85,6 +87,7 @@ packages::sources:
 
   antigravity:
     comment: 'Antigravity Auto-Updater Repository'
+    source_format: 'sources'
     location: 'https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/'
     release: 'antigravity-debian'
     repos: 'main'
