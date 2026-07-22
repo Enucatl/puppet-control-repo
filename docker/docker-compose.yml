@@ -256,6 +256,10 @@ services:
 networks:
   apt_cache:
     enable_ipv6: true
+  authelia_proxy:
+    name: authelia_proxy
+    enable_ipv6: true
+    attachable: true
   infra:
     name: infra
     enable_ipv6: true
