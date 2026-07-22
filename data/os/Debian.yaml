@@ -47,7 +47,6 @@ nfs::nfs_v4_idmap_conf: true
 packages::sources:
   hashicorp:
     comment: "HashiCorp Stable Repository"
-    source_format: "sources"
     location: "https://apt.releases.hashicorp.com"
     release: "%{facts.os.distro.codename}"
     repos: "main"

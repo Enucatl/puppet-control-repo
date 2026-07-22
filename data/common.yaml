@@ -197,7 +197,6 @@ grafana_alloy::manage_package_repo: false
 packages::sources:
   grafana-alloy:
     comment: 'Grafana Alloy'
-    source_format: 'sources'
     location: 'https://apt.grafana.com'
     release: 'stable'
     repos: 'main'
