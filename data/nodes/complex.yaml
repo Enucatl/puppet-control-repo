@@ -20,6 +20,7 @@ packages::ppas:
 packages::sources:
   nvidia-container-toolkit:
     comment: 'NVIDIA Container Toolkit'
+    source_format: 'sources'
     # Flat repo; architecture interpolated from the OS fact (e.g. amd64).
     location: "https://nvidia.github.io/libnvidia-container/stable/deb/%{facts.os.architecture}"
     release: '/'
