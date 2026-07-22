@@ -28,7 +28,6 @@ kmod::list_of_loads:
 packages::sources:
   docker:
     comment: 'Official Docker Repository'
-    source_format: 'sources'
     location: 'https://download.docker.com/linux/ubuntu'
     release: "%{facts.os.distro.codename}"
     repos: 'stable'
@@ -38,7 +37,6 @@ packages::sources:
       ensure: present
   github-cli:
     comment: 'Official GitHub CLI Repository'
-    source_format: 'sources'
     location: 'https://cli.github.com/packages'
     release: 'stable'
     repos: 'main'
