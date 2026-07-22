@@ -229,6 +229,14 @@ profile::common::acls::posix_acls:
     permission:
       - "user:165532:r--" # remap base 100000 + cloudflared uid 65532
       - "mask::r--"
+  "/opt/docker/authelia/secrets":
+    action: set
+    permission:
+      - "user:100999:--x" # remap base 100000 + postgres uid 999
+      - "user:101000:--x" # remap base 100000 + authelia uid 1000
+      - "group::---"
+      - "mask::--x"
+      - "other::---"
   "/opt/docker/authelia/secrets/authelia_jwt_secret":
     action: set
     permission:
@@ -237,7 +245,13 @@ profile::common::acls::posix_acls:
   "/opt/docker/authelia/secrets/postgres_password":
     action: set
     permission:
-      - "user:100070:r--"
+      - "user:100999:r--" # remap base 100000 + postgres uid 999
+      - "user:101000:r--" # remap base 100000 + authelia uid 1000
+      - "mask::r--"
+  "/opt/docker/authelia/secrets/smtp_password":
+    action: set
+    permission:
+      - "user:101000:r--"
       - "mask::r--"
   "/opt/docker/authelia/secrets/ldap_password":
     action: set
