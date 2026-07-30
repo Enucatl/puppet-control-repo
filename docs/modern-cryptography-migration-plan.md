@@ -31,7 +31,7 @@ trust anchors short-lived where practical.
   supporting services.
 - `docker/puppet/config/r10k.yaml` deploys Puppet environments from branches
   under `/etc/puppetlabs/code/environments`.
-- `docker/puppet/config/post-receive` watches `production` and `dev` branches
+- `post-receive` watches `production` and `dev` branches
   and deploys the corresponding Puppet environment.
 - `scripts/external_node_classifier.py` maps `*.dev.home.arpa` certnames to the
   `dev` Puppet environment.
