@@ -91,9 +91,9 @@ freeipa::install::client::options:
   principal: admin
   password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
 
-fail2ban::config_file_template: 'fail2ban_configuration/jail.conf.epp'
 fail2ban::jails:
-  ssh: {}
+  sshd:
+    enabled: true
 fail2ban::ignoreip:
   - '127.0.0.1/8'
   - '10.0.0.0/24'
@@ -104,11 +104,6 @@ fail2ban::destemail: 'root@localhost'
 fail2ban::sender: 'fail2ban@localhost'
 fail2ban::iptables_chain: INPUT
 fail2ban::banaction: iptables-multiport
-fail2ban::action: action_
-fail2ban::sendmail_actions:
-  actionstart: ""
-  actionstop: ""
-
 postfix::configs:
   smtp_use_tls:
     value: 'yes'
