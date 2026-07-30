@@ -1,6 +1,6 @@
 class profile::docker_node (
-  String $printer_smb_password  = lookup('profile::docker_host::printer_smb_password'),
-  String $pictures_smb_password = lookup('profile::docker_host::pictures_smb_password'),
+  Sensitive[String] $printer_smb_password  = Sensitive(lookup('profile::docker_host::printer_smb_password')),
+  Sensitive[String] $pictures_smb_password = Sensitive(lookup('profile::docker_host::pictures_smb_password')),
 ) {
 
   require profile::common
@@ -29,16 +29,14 @@ class profile::docker_node (
 
   # Create 'printer' samba user
   exec { 'create_samba_user_printer':
-    path    => ['/bin', '/usr/bin'],
-    command => "printf '${printer_smb_password}\\n${printer_smb_password}\\n' | smbpasswd -a -s printer",
-    unless  => "pdbedit -L -u printer",
+    command => Sensitive("/usr/bin/printf '%s\\n%s\\n' ${stdlib::shell_escape($printer_smb_password.unwrap)} ${stdlib::shell_escape($printer_smb_password.unwrap)} | /usr/bin/smbpasswd -a -s printer"),
+    unless  => ['/usr/bin/pdbedit', '-L', '-u', 'printer'],
   }
 
   # Create 'pictures' samba user
   exec { 'create_samba_user_pictures':
-    path    => ['/bin', '/usr/bin'],
-    command => "printf '${pictures_smb_password}\\n${pictures_smb_password}\\n' | smbpasswd -a -s pictures",
-    unless  => "pdbedit -L -u pictures",
+    command => Sensitive("/usr/bin/printf '%s\\n%s\\n' ${stdlib::shell_escape($pictures_smb_password.unwrap)} ${stdlib::shell_escape($pictures_smb_password.unwrap)} | /usr/bin/smbpasswd -a -s pictures"),
+    unless  => ['/usr/bin/pdbedit', '-L', '-u', 'pictures'],
   }
 
   # Paperless consumption directory
