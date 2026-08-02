@@ -114,6 +114,11 @@ set firewall ipv4 name IOT-LOCAL rule 40 action accept
 set firewall ipv4 name IOT-LOCAL rule 40 description NTP
 set firewall ipv4 name IOT-LOCAL rule 40 destination port 123
 set firewall ipv4 name IOT-LOCAL rule 40 protocol udp
+set firewall ipv4 name IOT-LOCAL rule 50 action accept
+set firewall ipv4 name IOT-LOCAL rule 50 description 'Remarkable ScreenShare authentication'
+set firewall ipv4 name IOT-LOCAL rule 50 source address {{ remarkable_ip }}
+set firewall ipv4 name IOT-LOCAL rule 50 destination port 5901
+set firewall ipv4 name IOT-LOCAL rule 50 protocol udp
 set firewall ipv4 name LAN-FORWARD default-action drop
 set firewall ipv4 name LAN-FORWARD rule 10 action accept
 set firewall ipv4 name LAN-FORWARD rule 10 description 'Allow established/related from LAN'
