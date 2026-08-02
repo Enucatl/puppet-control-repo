@@ -131,9 +131,9 @@ set firewall ipv4 name LAN-FORWARD rule 40 destination port 80,443,631,9100
 set firewall ipv4 name LAN-FORWARD rule 40 outbound-interface group IOT
 set firewall ipv4 name LAN-FORWARD rule 40 protocol tcp
 set firewall ipv4 name LAN-FORWARD rule 45 action accept
-set firewall ipv4 name LAN-FORWARD rule 45 description 'LAN SSH/VNC to Remarkable'
+set firewall ipv4 name LAN-FORWARD rule 45 description 'LAN SSH to Remarkable'
 set firewall ipv4 name LAN-FORWARD rule 45 destination address {{ remarkable_ip }}
-set firewall ipv4 name LAN-FORWARD rule 45 destination port 22,5900
+set firewall ipv4 name LAN-FORWARD rule 45 destination port 22
 set firewall ipv4 name LAN-FORWARD rule 45 outbound-interface group IOT
 set firewall ipv4 name LAN-FORWARD rule 45 protocol tcp
 set firewall ipv4 name LAN-FORWARD rule 50 action accept
@@ -346,10 +346,10 @@ set firewall ipv6 name LAN-FORWARD6 rule 40 destination port 80,443,631,9100
 set firewall ipv6 name LAN-FORWARD6 rule 40 outbound-interface group IOT
 set firewall ipv6 name LAN-FORWARD6 rule 40 protocol tcp
 set firewall ipv6 name LAN-FORWARD6 rule 45 action accept
-set firewall ipv6 name LAN-FORWARD6 rule 45 description 'LAN SSH/VNC to Remarkable'
+set firewall ipv6 name LAN-FORWARD6 rule 45 description 'LAN SSH to Remarkable'
 set firewall ipv6 name LAN-FORWARD6 rule 45 destination address ::{{ remarkable_ipv6_host }}
 set firewall ipv6 name LAN-FORWARD6 rule 45 destination address-mask ::ffff:ffff:ffff:ffff
-set firewall ipv6 name LAN-FORWARD6 rule 45 destination port 22,5900
+set firewall ipv6 name LAN-FORWARD6 rule 45 destination port 22
 set firewall ipv6 name LAN-FORWARD6 rule 45 outbound-interface group IOT
 set firewall ipv6 name LAN-FORWARD6 rule 45 protocol tcp
 set firewall ipv6 name LAN-FORWARD6 rule 50 action accept
