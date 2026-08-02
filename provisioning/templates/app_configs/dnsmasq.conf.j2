@@ -121,6 +121,8 @@ address=/docker.{{ dhcp_domain }}/{{ docker_node_ip }}
 address=/complex.{{ dhcp_domain }}/{{ complex_node_ip }}
 address=/freeipa.{{ dhcp_domain }}/{{ docker_node_ip }}
 address=/hcv.{{ dhcp_domain }}/{{ docker_node_ip }}
+host-record=remarkable.{{ dhcp_domain }},{{ remarkable_ip }},{{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
+host-record=remarkable.{{ dhcp_domain }},{{ ipv6_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 
 # The Docker node IP is shared by multiple services. Keep its reverse DNS
 # canonical identity on the host while clients pin FreeIPA lookups explicitly.
@@ -136,3 +138,4 @@ dhcp-host={{ printer_mac }},{{ printer_ip }},infinite
 dhcp-host={{ proxmox_mac }},{{ proxmox_ip }},infinite
 dhcp-host={{ chronicle_mac }},{{ chronicle_ip }},infinite
 dhcp-host={{ proxmox_cortex_mac }},{{ proxmox_cortex_ip }},infinite
+dhcp-host={{ remarkable_mac }},{{ remarkable_ip }},infinite
