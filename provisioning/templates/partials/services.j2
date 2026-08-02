@@ -1,7 +1,3 @@
-set service broadcast-relay id 1 description 'Remarkable ScreenShare'
-set service broadcast-relay id 1 interface {{ lan_interface }}
-set service broadcast-relay id 1 interface {{ iot_interface }}
-set service broadcast-relay id 1 port 5901
 set service dns dynamic name cloudflare address interface {{ wan_interface }}
 set service dns dynamic name cloudflare host-name vpn.enucatl.com
 set service dns dynamic name cloudflare ip-version both
