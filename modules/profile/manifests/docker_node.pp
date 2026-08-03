@@ -30,13 +30,13 @@ class profile::docker_node (
   # Create 'printer' samba user
   exec { 'create_samba_user_printer':
     command => Sensitive("/usr/bin/printf '%s\\n%s\\n' ${stdlib::shell_escape($printer_smb_password.unwrap)} ${stdlib::shell_escape($printer_smb_password.unwrap)} | /usr/bin/smbpasswd -a -s printer"),
-    unless  => ['/usr/bin/pdbedit', '-L', '-u', 'printer'],
+    unless  => '/usr/bin/pdbedit -L -u printer',
   }
 
   # Create 'pictures' samba user
   exec { 'create_samba_user_pictures':
     command => Sensitive("/usr/bin/printf '%s\\n%s\\n' ${stdlib::shell_escape($pictures_smb_password.unwrap)} ${stdlib::shell_escape($pictures_smb_password.unwrap)} | /usr/bin/smbpasswd -a -s pictures"),
-    unless  => ['/usr/bin/pdbedit', '-L', '-u', 'pictures'],
+    unless  => '/usr/bin/pdbedit -L -u pictures',
   }
 
   # Paperless consumption directory
