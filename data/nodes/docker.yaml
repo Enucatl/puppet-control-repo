@@ -204,6 +204,11 @@ profile::common::acls::posix_acls:
     permission:
       - "user:110001:r--" # remap base 100000 + app uid 10001
       - "mask::r--"
+  "/opt/docker/paperless-ai/secrets/openrouter_api_key.txt":
+    action: set
+    permission:
+      - "user:110001:r--" # remap base 100000 + app uid 10001
+      - "mask::r--"
   "/opt/docker/paperless-ai/secrets/hf_token.txt":
     action: set
     permission:
