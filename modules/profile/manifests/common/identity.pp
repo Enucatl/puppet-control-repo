@@ -15,7 +15,7 @@ class profile::common::identity {
       "set target[.='domain/home.arpa']/krb5_renewable_lifetime 7d",
       "set target[.='domain/home.arpa']/krb5_renew_interval 1h",
     ],
-    require => Class['freeipa::install::client'],
+    require => Class['freeipa::client'],
     notify  => Service['sssd'],
   }
 
@@ -33,7 +33,7 @@ class profile::common::identity {
       'set libdefaults/dns_canonicalize_hostname false',
       'set libdefaults/rdns false',
     ],
-    require => Class['freeipa::install::client'],
+    require => Class['freeipa::client'],
     notify  => Service['sssd'],
   }
 
@@ -50,6 +50,6 @@ class profile::common::identity {
     ]:
     ensure  => stopped,
     enable  => false,
-    require => Class['freeipa::install::client'],
+    require => Class['freeipa::client'],
   }
 }
