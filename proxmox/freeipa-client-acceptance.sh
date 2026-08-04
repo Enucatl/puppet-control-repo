@@ -41,7 +41,10 @@ wait_for_acceptance_cloudinit() {
   local status
   echo 'Waiting for Cloud-Init to finish...'
   while true; do
-    status="$(qm guest exec "${VMID}" -- cloud-init status 2>/dev/null | jq -r '."out-data" // empty')"
+    # The QEMU guest agent starts after the VM.  Until then, treat its
+    # absence as a pending cloud-init state rather than a test failure.
+    status="$(qm guest exec "${VMID}" -- cloud-init status 2>/dev/null \
+      | jq -r '."out-data" // empty' || true)"
     if [[ "${status}" == *'status: done'* ]]; then
       echo '[Success] Cloud-Init reports done.'
       return
