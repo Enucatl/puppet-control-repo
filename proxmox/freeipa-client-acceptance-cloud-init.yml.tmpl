@@ -23,4 +23,9 @@ write_files:
       /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
 
 runcmd:
+  - wget -q -O /tmp/puppet.deb https://apt-puppetcore.puppet.com/public/puppet8-release-noble.deb
+  - dpkg -i /tmp/puppet.deb
+  - rm /tmp/puppet.deb
+  - apt-get update
+  - apt-get install -y puppet-agent
   - /usr/local/sbin/configure-puppet-acceptance
