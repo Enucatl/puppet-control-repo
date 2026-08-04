@@ -1,0 +1,23 @@
+#cloud-config
+output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+
+write_files:
+  - path: /usr/local/sbin/configure-puppet-acceptance
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      mkdir -p /etc/puppetlabs/puppet /etc/facter/facts.d
+      cat > /etc/puppetlabs/puppet/csr_attributes.yaml <<EOF
+      custom_attributes:
+        1.2.840.113549.1.9.7: "${VM_TOKEN}"
+      EOF
+      chmod 0640 /etc/puppetlabs/puppet/csr_attributes.yaml
+      echo 'node_type=${NODE_TYPE}' > /etc/facter/facts.d/node_type.txt
+      /opt/puppetlabs/bin/puppet config set server '${PUPPET_SERVER}' --section main
+      /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
+      systemctl enable puppet
+      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300
+
+runcmd:
+  - /usr/local/sbin/configure-puppet-acceptance
