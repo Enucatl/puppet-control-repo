@@ -1,10 +1,13 @@
 # FreeIPA client v7 rollout
 
-1. Run `docker/freeipa/bootstrap-puppet-enroller.sh` inside the FreeIPA server
-   container with an admin ticket and authenticated Vault environment. This
-   creates the least-privilege account/role and stores its password as
-   `kv/puppet:freeipa-client-enrollment-password`. Keep the distinct
-   `freeipa-admin-password` field only for the `freeipa_users` class.
+1. On an enrolled FreeIPA client with Vault access (for example,
+   `forbearance.home.arpa`), obtain an admin ticket with `kinit admin`, then
+   run `docker/freeipa/bootstrap-puppet-enroller.sh`. This creates the
+   least-privilege account, role, and 10,000-day password policy group, then
+   stores its password as
+   `kv/puppet:freeipa::client::password`. Keep the distinct
+   `kv/puppet:freeipa_users::admin_password` field only for the
+   `freeipa_users` class.
 2. Before deployment, inspect every client `/etc/ipa/default.conf`. Its
    normalized `domain` must be `home.arpa` and `server` must be
    `freeipa.home.arpa`; repair mismatches manually.
@@ -14,7 +17,7 @@
    `/etc/krb5.keytab`, `getent passwd` for an IPA identity, running/enabled
    SSSD, and a zero-change second Puppet run.
 5. Roll out to the remaining supported clients. Then rotate the enroller
-   password with `ROTATE_ENROLLER_PASSWORD=1` and remove the former enrollment
-   field from Vault.
+   password with `ROTATE_ENROLLER_PASSWORD=1` and remove the former
+   `freeipa::install::client::options::enrollment-password` field from Vault.
 
 Version 7 intentionally fails on non-Ubuntu and unsupported Ubuntu releases.
