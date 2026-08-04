@@ -90,9 +90,7 @@ profile::user_toolchain::npm_before_days: 7
 freeipa::client::domain: home.arpa
 freeipa::client::server: freeipa.home.arpa
 freeipa::client::principal: puppet-enroller
-freeipa::client::password: "%{lookup('freeipa-client-enrollment-password')}"
 freeipa::client::mkhomedir: true
-freeipa_users::admin_password: "%{lookup('freeipa-admin-password')}"
 
 fail2ban::jails:
   sshd:
