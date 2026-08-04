@@ -75,6 +75,12 @@ if [[ "${password_missing}" == true || "${ROTATE_ENROLLER_PASSWORD:-0}" == '1' ]
   printf '%s\n%s\n' "${password}" "${password}" | ipa passwd "${ENROLLER_USER}"
 fi
 
+# An administrator password reset marks the password as immediately expired.
+# Clear that one-time-change state while preserving the policy's long but
+# finite credential lifetime for the noninteractive enrollment principal.
+ipa user-mod "${ENROLLER_USER}" \
+  --password-expiration="$(date -u -d '+10000 days' +%Y%m%d%H%M%SZ)" >/dev/null
+
 if ! ipa role-show "${ENROLLER_ROLE}" --all --raw | grep -Fq "member: uid=${ENROLLER_USER},cn=users,"; then
   ipa role-add-member "${ENROLLER_ROLE}" --users="${ENROLLER_USER}"
 fi
