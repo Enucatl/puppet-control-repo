@@ -1,2 +1,3 @@
 ---
 classes: []
+freeipa::client::hostname: '%{trusted.certname}'
