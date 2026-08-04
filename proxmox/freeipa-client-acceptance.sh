@@ -89,3 +89,6 @@ run_guest /bin/bash -lc '
 
 passed=true
 echo "FreeIPA client acceptance passed for ${VMNAME}; destroying ${VMID}."
+echo "After the VM is removed, clean its FreeIPA host and Puppet CA certificate:"
+echo "  ipa host-del ${VM_FQDN}"
+echo "  sudo /opt/puppetlabs/bin/puppetserver ca clean --certname ${VM_FQDN}"
