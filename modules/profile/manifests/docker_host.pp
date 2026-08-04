@@ -2,7 +2,7 @@ class profile::docker_host (
   Hash                $git_deploy_projects         = {},
   Boolean             $scheduled_refresh           = false,
   String              $scheduled_refresh_calendar   = 'Sun *-*-01..07 04:00:00',
-  Optional[Integer]   $maxmind_account_id           = undef,
+  Optional[String]    $maxmind_account_id           = undef,
   Optional[String]    $maxmind_license_key         = undef,
 ) {
 
@@ -43,8 +43,6 @@ class profile::docker_host (
   }
 
   if $maxmind_account_id != undef and $maxmind_license_key != undef {
-    $rendered_maxmind_account_id = String($maxmind_account_id)
-
     package { 'geoipupdate':
       ensure => installed,
     }
@@ -62,7 +60,7 @@ class profile::docker_host (
       group   => 'root',
       mode    => '0600',
       content => epp('profile/GeoIP.conf.epp', {
-        'account_id'  => $rendered_maxmind_account_id,
+        'account_id'  => $maxmind_account_id,
         'license_key' => $maxmind_license_key,
       }),
       require => Package['geoipupdate'],
