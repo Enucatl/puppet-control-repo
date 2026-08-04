@@ -4,6 +4,10 @@ lookup_options:
     merge: unique
   freeipa_users::users:
     merge: hash
+  freeipa::client::password:
+    convert_to: Sensitive
+  freeipa_users::admin_password:
+    convert_to: Sensitive
   nfs_config::server_exports:
     merge: hash
   nfs_config::client_mounts:
@@ -52,8 +56,7 @@ classes:
   - ssh
   - nisdomainname
   - fail2ban
-  - freeipa
-  - freeipa::install::client
+  - freeipa::client
   - freeipa_users
   - postfix_configuration
   - profile::alloy
@@ -84,12 +87,12 @@ profile::common::certs::vault_certs_defaults:
 profile::user_toolchain::npm_ignore_scripts: true
 profile::user_toolchain::npm_before_days: 7
 
-freeipa::install::client::options:
-  mkhomedir:
-  domain: home.arpa
-  server: freeipa.home.arpa
-  principal: admin
-  password: "%{lookup('freeipa::install::client::options::enrollment-password')}"
+freeipa::client::domain: home.arpa
+freeipa::client::server: freeipa.home.arpa
+freeipa::client::principal: puppet-enroller
+freeipa::client::password: "%{lookup('freeipa-client-enrollment-password')}"
+freeipa::client::mkhomedir: true
+freeipa_users::admin_password: "%{lookup('freeipa-admin-password')}"
 
 fail2ban::jails:
   sshd:

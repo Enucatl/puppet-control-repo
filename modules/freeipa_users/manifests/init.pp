@@ -1,14 +1,13 @@
 class freeipa_users (
-  Hash $users       = {},
-  Hash $user_groups = {},
+  Sensitive[String] $admin_password,
+  Hash              $users       = {},
+  Hash              $user_groups = {},
 ) {
   # Create FreeIPA users that don't yet exist.
   # Host principals cannot create users, so this authenticates as the IPA
   # admin. The password is written to a root-only tmpfs file so it never
   # appears in the Puppet catalog, PuppetDB reports, or agent logs.
   if $users != {} {
-    $admin_password = Sensitive(lookup('freeipa::install::server::options::admin-password'))
-
     file { '/run/puppet-ipa-admin-pass':
       ensure  => file,
       content => $admin_password,
