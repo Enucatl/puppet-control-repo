@@ -28,4 +28,8 @@ runcmd:
   - rm /tmp/puppet.deb
   - apt-get update
   - apt-get install -y puppet-agent
+  # The package may start Puppet before its autosign token and node fact are
+  # configured. Stop it so the configuration script performs the sole first
+  # agent run.
+  - systemctl disable --now puppet
   - /usr/local/sbin/configure-puppet-acceptance

@@ -68,23 +68,12 @@ wait_for_acceptance_cloudinit() {
 wait_for_acceptance_cloudinit
 
 run_guest() {
-  local result pid status exit_code output
-  result="$(qm guest exec "${VMID}" --synchronous 0 -- "$@")"
-  pid="$(jq -r '.pid' <<<"${result}")"
-  if [[ ! "${pid}" =~ ^[0-9]+$ ]]; then
-    echo "Guest command did not return a PID: ${result}" >&2
-    return 1
-  fi
-  while true; do
-    status="$(qm guest exec-status "${VMID}" "${pid}")"
-    if [[ "$(jq -r '.exited' <<<"${status}")" == true ]]; then
-      output="$(jq -r '."out-data" // ."err-data" // empty' <<<"${status}")"
-      printf '%s\n' "${output}"
-      exit_code="$(jq -r '.exitcode // 1' <<<"${status}")"
-      return "${exit_code}"
-    fi
-    sleep 2
-  done
+  local result exit_code output
+  result="$(qm guest exec "${VMID}" --timeout 3600 -- "$@")"
+  output="$(jq -r '."out-data" // ."err-data" // empty' <<<"${result}")"
+  printf '%s\n' "${output}"
+  exit_code="$(jq -r '.exitcode // 1' <<<"${result}")"
+  return "${exit_code}"
 }
 
 run_guest /bin/bash -lc '
