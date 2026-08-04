@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Run as root on proxmox.home.arpa. It creates one disposable Ubuntu 24.04
-# client from template 9000 and always destroys the VM on exit.
+# client from template 9000. Successful runs destroy it; failed runs retain it
+# and its cloud-init snippet for diagnosis.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/lib.sh"
@@ -15,8 +16,13 @@ VMNAME="freeipa-acceptance-${VMID}"
 SNIPPET="/var/lib/vz/snippets/freeipa-client-acceptance-${VMID}.yml"
 readonly NODE_TYPE='freeipa_acceptance'
 readonly STORAGE="${DEFAULT_STORAGE}"
+passed=false
 
 cleanup() {
+  if [[ "${passed}" != true ]]; then
+    echo "Acceptance failed; retaining ${VMNAME} (${VMID}) and ${SNIPPET}." >&2
+    return
+  fi
   qm stop "${VMID}" >/dev/null 2>&1 || true
   qm destroy "${VMID}" --purge >/dev/null 2>&1 || true
   rm -f "${SNIPPET}"
@@ -63,8 +69,12 @@ wait_for_acceptance_cloudinit
 
 run_guest() {
   local result pid status exit_code output
-  result="$(qm guest exec "${VMID}" -- "$@")"
+  result="$(qm guest exec "${VMID}" --synchronous 0 -- "$@")"
   pid="$(jq -r '.pid' <<<"${result}")"
+  if [[ ! "${pid}" =~ ^[0-9]+$ ]]; then
+    echo "Guest command did not return a PID: ${result}" >&2
+    return 1
+  fi
   while true; do
     status="$(qm guest exec-status "${VMID}" "${pid}")"
     if [[ "$(jq -r '.exited' <<<"${status}")" == true ]]; then
@@ -87,4 +97,5 @@ run_guest /bin/bash -lc '
   /opt/puppetlabs/bin/puppet agent --test --tags freeipa --detailed-exitcodes
 '
 
+passed=true
 echo "FreeIPA client acceptance passed for ${VMNAME}; destroying ${VMID}."
