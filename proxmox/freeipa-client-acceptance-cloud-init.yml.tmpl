@@ -1,5 +1,7 @@
 #cloud-config
 output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+fqdn: ${VM_FQDN}
+manage_etc_hosts: true
 
 write_files:
   - path: /usr/local/sbin/configure-puppet-acceptance

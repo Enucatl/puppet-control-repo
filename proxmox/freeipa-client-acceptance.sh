@@ -13,6 +13,7 @@ vault token lookup -format=json >/dev/null
 
 VMID="${1:-$(pvesh get /cluster/nextid)}"
 VMNAME="freeipa-acceptance-${VMID}"
+VM_FQDN="${VMNAME}.home.arpa"
 SNIPPET="/var/lib/vz/snippets/freeipa-client-acceptance-${VMID}.yml"
 readonly NODE_TYPE='freeipa_acceptance'
 readonly STORAGE="${DEFAULT_STORAGE}"
@@ -34,8 +35,8 @@ if [[ -z "${VM_TOKEN}" || "${VM_TOKEN}" == 'null' ]]; then
   echo 'Unable to create the Puppet autosign token.' >&2
   exit 1
 fi
-export VM_TOKEN NODE_TYPE PUPPET_SERVER
-envsubst '${VM_TOKEN}${NODE_TYPE}${PUPPET_SERVER}' \
+export VM_TOKEN NODE_TYPE PUPPET_SERVER VM_FQDN
+envsubst '${VM_TOKEN}${NODE_TYPE}${PUPPET_SERVER}${VM_FQDN}' \
   < "${SCRIPT_DIR}/freeipa-client-acceptance-cloud-init.yml.tmpl" > "${SNIPPET}"
 
 qm clone "${TEMPLATE_ID}" "${VMID}" --name "${VMNAME}" --storage "${STORAGE}" --full 1
