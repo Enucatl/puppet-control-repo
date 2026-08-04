@@ -17,7 +17,10 @@ write_files:
       /opt/puppetlabs/bin/puppet config set server '${PUPPET_SERVER}' --section main
       /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
       systemctl enable puppet
-      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300
+      # The acceptance runner performs the authoritative Puppet run after
+      # cloud-init.  Do not discard the VM's diagnostics if this bootstrap
+      # catalog is temporarily unavailable.
+      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
 
 runcmd:
   - /usr/local/sbin/configure-puppet-acceptance
