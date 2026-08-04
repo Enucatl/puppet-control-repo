@@ -36,7 +36,27 @@ qm clone "${TEMPLATE_ID}" "${VMID}" --name "${VMNAME}" --storage "${STORAGE}" --
 qm set "${VMID}" --cores 2 --memory 2048 --agent 1 --ipconfig0 ip=dhcp \
   --cicustom "vendor=${SNIPPET_STORAGE}:snippets/$(basename "${SNIPPET}")"
 qm start "${VMID}"
-wait_for_cloudinit "${VMID}"
+
+wait_for_acceptance_cloudinit() {
+  local status
+  echo 'Waiting for Cloud-Init to finish...'
+  while true; do
+    status="$(qm guest exec "${VMID}" -- cloud-init status 2>/dev/null | jq -r '."out-data" // empty')"
+    if [[ "${status}" == *'status: done'* ]]; then
+      echo '[Success] Cloud-Init reports done.'
+      return
+    fi
+    if [[ "${status}" == *'status: error'* ]]; then
+      echo 'Cloud-init failed; retaining its output in this test log:' >&2
+      qm guest exec "${VMID}" -- /bin/bash -lc 'tail -200 /var/log/cloud-init-output.log' \
+        | jq -r '."out-data" // ."err-data" // empty' >&2 || true
+      return 1
+    fi
+    sleep 10
+  done
+}
+
+wait_for_acceptance_cloudinit
 
 run_guest() {
   local result pid status exit_code output
