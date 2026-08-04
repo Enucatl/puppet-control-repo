@@ -1,4 +1,10 @@
 class profile::common::identity {
+  exec { 'restart_sssd_after_identity_configuration':
+    command     => '/bin/systemctl restart sssd',
+    refreshonly => true,
+    require     => Class['freeipa::client'],
+  }
+
   # Enable SSSD Kerberos ticket renewal so NFS krb5p mounts stay accessible
   # beyond the default 24h TGT lifetime. FreeIPA already issues 7-day renewable
   # tickets; this tells SSSD to actually renew them every hour. Pin FreeIPA
@@ -16,7 +22,7 @@ class profile::common::identity {
       "set target[.='domain/home.arpa']/krb5_renew_interval 1h",
     ],
     require => Class['freeipa::client'],
-    notify  => Service['sssd'],
+    notify  => Exec['restart_sssd_after_identity_configuration'],
   }
 
   # Some FreeIPA maintenance paths, including certmonger helpers and ipa CLI
@@ -34,7 +40,7 @@ class profile::common::identity {
       'set libdefaults/rdns false',
     ],
     require => Class['freeipa::client'],
-    notify  => Service['sssd'],
+    notify  => Exec['restart_sssd_after_identity_configuration'],
   }
 
   # Debian enables SSSD responder sockets by preset, but ipa-client-install
