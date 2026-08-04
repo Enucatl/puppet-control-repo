@@ -57,4 +57,4 @@ mod 'vault_secrets',
     branch: 'master'
 mod 'freeipa',
     git: 'https://github.com/enucatl/puppet-freeipa.git',
-    branch: 'master'
+    branch: 'main'
