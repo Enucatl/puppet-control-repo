@@ -151,6 +151,20 @@ profile::common::certs::vault_certs:
       alt_names: wolf.docker.home.arpa
 
 profile::common::acls::posix_acls:
+  "/opt/docker/tor-i2pd/secrets":
+    action: set
+    permission:
+      - "user:101000:--x" # remap base 100000 + cloudflare-ddns uid 1000
+      - "group::---"
+      - "mask::--x"
+      - "other::---"
+  "/opt/docker/tor-i2pd/secrets/cloudflare_api_token":
+    action: set
+    permission:
+      - "user:101000:r--" # remap base 100000 + cloudflare-ddns uid 1000
+      - "group::---"
+      - "mask::r--"
+      - "other::---"
   "/opt/docker/camillo/secrets/postgres_password":
     action: set
     permission:
