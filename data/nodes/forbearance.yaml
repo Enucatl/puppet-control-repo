@@ -18,7 +18,9 @@ profile::common::acls::posix_acls:
     action: set
     permission:
       - "user:backrest:r-X"
+      - "mask::r-X"
       - "default:user:backrest:r-X"
+      - "default:mask::r-X"
     recursive: true
 
 profile::common::cron::jobs:
