@@ -111,6 +111,7 @@ dhcp-option=tag:cortex,option:domain-name,{{ dhcp_domain }}
 
 address=/router.{{ dhcp_domain }}/{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 address=/router.{{ dhcp_domain }}/{{ ula_prefix }}::1
+address=/proxmox.{{ dhcp_domain }}/{{ proxmox_ip }}
 address=/proxmox.{{ dhcp_domain }}/{{ proxmox_ula }}
 address=/proxmox-cortex.{{ dhcp_domain }}/{{ proxmox_cortex_ip }}
 address=/proxmox-cortex.{{ dhcp_domain }}/{{ proxmox_cortex_ula }}
