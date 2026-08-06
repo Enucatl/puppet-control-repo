@@ -669,35 +669,31 @@ class WolfController:
             )
 
     def read_vault_secret(self, field: str | None = None) -> str:
-        env = os.environ.copy()
-        env.setdefault("VAULT_ADDR", self.config.vault_addr)
-        env.setdefault("VAULT_CACERT", self.config.vault_cacert)
+        if self.config.dry_run:
+            return "dry-run-secret"
+
         field_name = self.config.vault_field if field is None else field
-        command = [
-            "vault",
-            "kv",
-            "get",
-            f"-field={field_name}",
-            self.config.vault_path,
-        ]
-        result = self.runner.run(command, env=env, check=False)
-        if result.returncode != 0:
-            login = self.runner.run(
-                [
-                    "vault",
-                    "login",
-                    "-no-store",
-                    f"-client-cert={self.config.vault_client_cert}",
-                    f"-client-key={self.config.vault_client_key}",
-                    "-method=cert",
-                    "-format=json",
-                    f"name={self.config.vault_cert_role}",
-                ],
-                env=env,
-            )
-            env["VAULT_TOKEN"] = json.loads(login.stdout)["auth"]["client_token"]
-            result = self.runner.run(command, env=env)
-        secret = result.stdout.strip()
+        login = niquests.post(
+            f"{self.config.vault_addr.rstrip('/')}/v1/auth/cert/login",
+            json={"name": self.config.vault_cert_role},
+            cert=(self.config.vault_client_cert, self.config.vault_client_key),
+            verify=self.config.vault_cacert,
+            timeout=self.config.command_timeout,
+        )
+        login.raise_for_status()
+        token = login.json()["auth"]["client_token"]
+
+        mount, separator, secret_path = self.config.vault_path.partition("/")
+        if not separator or not secret_path:
+            raise ValueError("Vault KV path must include a mount and secret path")
+        response = niquests.get(
+            f"{self.config.vault_addr.rstrip('/')}/v1/{mount}/data/{secret_path}",
+            headers={"X-Vault-Token": token},
+            verify=self.config.vault_cacert,
+            timeout=self.config.command_timeout,
+        )
+        response.raise_for_status()
+        secret = str(response.json()["data"]["data"].get(field_name, "")).strip()
         if not secret:
             raise RuntimeError("Vault secret is empty")
         return secret
