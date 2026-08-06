@@ -293,3 +293,4 @@ secrets:
     file: ./wolf/secrets/dropbear_known_hosts
   wolf_proxmox_api_ca:
     file: ./wolf/proxmox-cortex-pve-root-ca.pem
+
