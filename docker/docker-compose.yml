@@ -60,7 +60,10 @@ services:
     extends:
       file: ../../compose-security-baseline/hardening.yml
       service: hardened-small
-    image: nicolaka/netshoot:v0.14
+    build:
+      context: ./vault/unsealer
+      dockerfile: Dockerfile
+    image: infra-vault-unsealer
     depends_on:
       vault:
         condition: service_healthy
