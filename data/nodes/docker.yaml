@@ -291,6 +291,13 @@ profile::common::certs::vault_certs:
       alt_names: wolf.docker.home.arpa
 
 profile::common::acls::posix_acls:
+  "/opt/docker/barbero-scripts/secrets/cloudflare-tunnel-token":
+    action: set
+    permission:
+      - "user:100000:r--" # Docker-remapped container root
+      - "group::---"
+      - "mask::r--"
+      - "other::---"
   "/opt/docker/tor-i2pd/secrets":
     action: set
     permission:
