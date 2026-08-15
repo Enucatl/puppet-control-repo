@@ -55,6 +55,7 @@ packages::list:
   - gh
   - parallel
   - python3-docker
+  - terraform
 
 profile::alloy::enable_docker: true
 
