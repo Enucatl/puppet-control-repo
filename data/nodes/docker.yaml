@@ -21,6 +21,7 @@ profile::docker_host::git_deploy_projects:
     build_command: 'docker compose --profile runner build exam download-zanzara puppet-release-watch cyber-analyst'
   authelia: {}
   backrest: {}
+  barbero-scripts: {}
   camillo:
     build_command: "docker compose build"
   checkmk: {}
