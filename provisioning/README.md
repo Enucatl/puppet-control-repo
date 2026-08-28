@@ -10,42 +10,42 @@ uv sync
 
 ### 1 — syntax check (local only, no vault/router needed)
 ```bash
-uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --syntax-check
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --syntax-check
 ```
 
 ### 2 — diff (read-only, safe)
 Fetches `show configuration commands` from the router, renders the template locally, and diffs both sides in set-command format.
 ```bash
-uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags diff
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags diff
 ```
 
 ### 3 — dry-run apply (no commit)
 Enters configure mode, loads the commands into candidate config, reports what would change, then discards.
 ```bash
-uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags apply --check
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags apply --check
 ```
 
 ### 4 — apply
 ```bash
-uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags apply
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags apply
 ```
 
 For changes that only touch the declarative VyOS config, skip app files,
 container image pulls, restarts, and smoke checks:
 ```bash
-uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags vyos_config
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags vyos_config
 ```
 
 ### 5 — smoke checks
 Runs automatically at the end of `--tags apply` and can also be executed on its own.
 ```bash
-uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags healthcheck
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags healthcheck
 ```
 
 ### 6 — rolling upgrade
 Downloads the latest signed VyOS rolling ISO, verifies it with minisign, installs it, reboots, then runs the full deployment and smoke checks.
 ```bash
-uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags upgrade
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags upgrade
 ```
 
 ## Workflow for any change
