@@ -72,7 +72,8 @@ unattended_upgrades::age:
 unattended_upgrades::auto:
   fix_interrupted_dpkg: true
   remove: true
-  reboot: false
+  reboot: true
+  reboot_withusers: true
   reboot_time: "02:00"
 unattended_upgrades::update: 1
 unattended_upgrades::upgrade: 1

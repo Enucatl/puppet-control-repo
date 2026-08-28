@@ -4,6 +4,12 @@ packages::list:
   - nvme-cli
   - powertop
 
+unattended_upgrades::auto:
+  reboot: false
+unattended_upgrades::upgrade: 0
+unattended_upgrades::upgradeable_packages:
+  download_only: 1
+
 profile::dotfiles::username: root
 
 profile::common::services::resources:
