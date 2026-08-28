@@ -69,10 +69,24 @@ discovery.docker "containers" {
 discovery.relabel "docker_relabel" {
   targets = discovery.docker.containers.targets
   rule {
-    source_labels = ["__meta_docker_container_name"]
-    regex = "/(.*)"
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project", "__meta_docker_container_label_com_docker_compose_service"]
+    separator = "/"
+    regex = "(.+)/(.+)"
+    replacement = "$1/$2"
     action = "replace"
     target_label = "service_name"
+  }
+  rule {
+    source_labels = ["service_name", "__meta_docker_container_name"]
+    separator = ";"
+    regex = ";/(.*)"
+    replacement = "$1"
+    action = "replace"
+    target_label = "service_name"
+  }
+  rule {
+    target_label = "host"
+    replacement = "<%= $trusted['certname'] %>"
   }
   rule {
     target_label = "job"
