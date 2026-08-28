@@ -18,7 +18,7 @@ nfs_config::client_mounts:
 profile::docker_host::git_deploy_projects:
   airflow:
     pull: true
-    build_command: 'docker compose --profile runner build exam download-zanzara puppet-release-watch cyber-analyst'
+    build_command: 'docker compose --profile runner build exam download-zanzara puppet-release-watch cyber-analyst operations-analyst'
   authelia: {}
   backrest: {}
   barbero-scripts: {}
@@ -236,6 +236,41 @@ profile::common::systemd::units:
     enable: true
     active: true
     require: Systemd::Unit_file[automation-cyber-analyst.service]
+  automation-operations-analyst.service:
+    content: |
+      [Unit]
+      Description=Run weekly operations analyst pipeline
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      User=user_l
+      EnvironmentFile=/opt/docker/.env
+      WorkingDirectory=/opt/docker/airflow
+      ExecStartPre=/usr/bin/docker compose up -d postgres-outputs
+      ExecStart=/usr/bin/docker compose run --build --rm --no-deps operations-analyst
+      SyslogIdentifier=automation-operations-analyst
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  automation-operations-analyst.timer:
+    content: |
+      [Unit]
+      Description=Run operations analyst weekly
+
+      [Timer]
+      OnCalendar=Fri *-*-* 02:00:00 UTC
+      Persistent=false
+      Unit=automation-operations-analyst.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[automation-operations-analyst.service]
 
 profile::common::cron::jobs:
   # backup the hashicorp vault to a location that is picked up by duplicati
