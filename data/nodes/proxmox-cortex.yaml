@@ -3,6 +3,12 @@ classes:
   - profile::dropbear_initramfs
   - profile::proxmox_vfio_passthrough
 
+unattended_upgrades::auto:
+  reboot: false
+unattended_upgrades::upgrade: 1
+unattended_upgrades::upgradeable_packages:
+  download_only: 0
+
 profile::dropbear_initramfs::authorized_keys:
   - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGq9Xk+V5Bejuuu9Jq37qKYzVxyBo8efqYKPRz39AvEe wolf-dropbear'
   - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO1zLY2stYvi4mF5lUjvvskARuI86SusWqaWyO2F3ioQ root@docker'
