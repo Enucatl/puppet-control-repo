@@ -3,6 +3,8 @@ classes:
 
 packages::list:
   - alsa-utils
+  - clang-format
+  - clang-tidy
   - cmake
   - gperf
   - libssl-dev

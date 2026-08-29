@@ -31,6 +31,8 @@ packages::sources:
       source: 'https://nvidia.github.io/libnvidia-container/gpgkey'
 
 packages::list:
+  - clang-format
+  - clang-tidy
   - libavcodec-dev
   - libavdevice-dev
   - libavfilter-dev
