@@ -26,8 +26,6 @@ dns:
     - 149.112.112.10
     - 2620:fe::10
     - 2620:fe::fe:10
-    - https://dns10.quad9.net/dns-query
-    - tls://dns10.quad9.net
     # Forward home.arpa to dnsmasq, which auto-registers DHCPv4 leases as hostnames
     - "[/{{ dhcp_domain }}/]127.0.0.1:{{ dnsmasq_dns_port }}"
     # Forward local reverse zones to dnsmasq so PTR answers match DHCP/static DNS
