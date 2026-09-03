@@ -127,7 +127,7 @@ loki.process "barbero_caddy" {
   forward_to = [loki.write.remote_loki.receiver]
 
   stage.match {
-    selector = "{service_name=\"barbero-scripts-caddy-1\"}"
+    selector = "{service_name=\"barbero-scripts/caddy\"}"
 
     stage.json {
       expressions = {
