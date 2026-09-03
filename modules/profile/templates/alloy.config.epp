@@ -134,6 +134,36 @@ loki.process "barbero_caddy" {
         trusted_client_ip = "request.headers.\"Cf-Connecting-Ip\"[0]",
       }
     }
+
+    stage.regex {
+      source = "trusted_client_ip"
+      expression = "^(?P<trusted_client_geoip_skip>(?:10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.|100\\.(?:6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[0-1][0-9]|12[0-7])\\.|22[4-9]\\.|23[0-9]\\.|0\\.0\\.0\\.0$|::1$|fe80:|fc|fd|ff|2001:db8:|__LOCAL_IPV6_PREFIX__:))"
+    }
+
+    stage.template {
+      source = "trusted_client_geoip_run"
+      template = "{{ if .trusted_client_geoip_skip }}false{{ else }}true{{ end }}"
+    }
+
+    stage.labels {
+      values = {
+        trusted_client_geoip_run = "",
+      }
+    }
+
+    stage.match {
+      selector = "{trusted_client_geoip_run=\"true\"}"
+
+      stage.geoip {
+        source  = "trusted_client_ip"
+        db      = "/var/lib/geoip/GeoLite2-City.mmdb"
+        db_type = "city"
+      }
+    }
+
+    stage.label_drop {
+      values = ["trusted_client_geoip_run"]
+    }
   }
 }
 
