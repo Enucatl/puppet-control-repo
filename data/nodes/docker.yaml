@@ -166,14 +166,6 @@ profile::common::systemd::units:
     enable: true
     active: true
     require: Systemd::Unit_file[automation-download-zanzara.service]
-  automation-puppet-release-watch.service:
-    ensure: absent
-    enable: false
-    active: false
-  automation-puppet-release-watch.timer:
-    ensure: absent
-    enable: false
-    active: false
   automation-cyber-analyst.service:
     content: |
       [Unit]
