@@ -18,7 +18,7 @@ nfs_config::client_mounts:
 profile::docker_host::git_deploy_projects:
   airflow:
     pull: true
-    build_command: 'docker compose --profile runner build exam download-zanzara puppet-release-watch cyber-analyst operations-analyst'
+    build_command: 'docker compose --profile runner build exam download-zanzara cyber-analyst operations-analyst'
   authelia: {}
   backrest: {}
   barbero-scripts: {}
@@ -167,40 +167,13 @@ profile::common::systemd::units:
     active: true
     require: Systemd::Unit_file[automation-download-zanzara.service]
   automation-puppet-release-watch.service:
-    content: |
-      [Unit]
-      Description=Run Puppet release watch pipeline
-      Wants=network-online.target docker.service
-      After=network-online.target docker.service
-      Requires=docker.service
-
-      [Service]
-      Type=oneshot
-      User=user_l
-      EnvironmentFile=/opt/docker/.env
-      WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose up -d postgres-outputs
-      ExecStart=/usr/bin/docker compose run --build --rm --no-deps puppet-release-watch
-      SyslogIdentifier=automation-puppet-release-watch
-      StandardOutput=journal
-      StandardError=journal
+    ensure: absent
     enable: false
     active: false
   automation-puppet-release-watch.timer:
-    content: |
-      [Unit]
-      Description=Run Puppet release watch daily
-
-      [Timer]
-      OnCalendar=*-*-* 00:00:00 UTC
-      Persistent=false
-      Unit=automation-puppet-release-watch.service
-
-      [Install]
-      WantedBy=timers.target
-    enable: true
-    active: true
-    require: Systemd::Unit_file[automation-puppet-release-watch.service]
+    ensure: absent
+    enable: false
+    active: false
   automation-cyber-analyst.service:
     content: |
       [Unit]
