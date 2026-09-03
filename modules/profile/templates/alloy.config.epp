@@ -159,6 +159,26 @@ loki.process "barbero_caddy" {
         db      = "/var/lib/geoip/GeoLite2-City.mmdb"
         db_type = "city"
       }
+
+      stage.labels {
+        values = {
+          country_code = "geoip_country_code",
+        }
+      }
+
+      stage.structured_metadata {
+        values = {
+          geoip_country_code      = "geoip_country_code",
+          geoip_country_name      = "geoip_country_name",
+          geoip_city              = "geoip_city_name",
+          geoip_continent         = "geoip_continent_name",
+          geoip_subdivision       = "geoip_subdivision_name",
+          geoip_timezone           = "geoip_timezone",
+          geoip_postal_code        = "geoip_postal_code",
+          geoip_latitude           = "geoip_location_latitude",
+          geoip_longitude          = "geoip_location_longitude",
+        }
+      }
     }
 
     stage.label_drop {
