@@ -107,7 +107,7 @@ discovery.relabel "docker_relabel" {
 }
 
 loki.process "docker_logs" {
-  forward_to = [loki.write.remote_loki.receiver]
+  forward_to = [loki.process.barbero_caddy.receiver]
 
   // i2pd emits ANSI-colored severity names. Normalize and parse only this
   // container so other Docker log bodies remain unchanged.
@@ -119,6 +119,20 @@ loki.process "docker_logs" {
     stage.regex {
       expression         = "^\\[[^]]+\\]@[0-9]+/(?P<level>debug|info|warn|error) - "
       labels_from_groups = true
+    }
+  }
+}
+
+loki.process "barbero_caddy" {
+  forward_to = [loki.write.remote_loki.receiver]
+
+  stage.match {
+    selector = "{service_name=\"barbero-scripts-caddy-1\"}"
+
+    stage.json {
+      expressions = {
+        trusted_client_ip = "request.headers.\"Cf-Connecting-Ip\"[0]",
+      }
     }
   }
 }
