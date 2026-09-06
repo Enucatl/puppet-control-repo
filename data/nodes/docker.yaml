@@ -849,7 +849,7 @@ samba::extra_global_options:
   'ntlm auth': 'ntlmv2-only'
 samba::hosts_allow:
    - '10.0.0.'
-   - '10.0.20.'
+   - '10.0.40.'
 samba::hosts_deny:
    - 'ALL'
 samba::shares:
