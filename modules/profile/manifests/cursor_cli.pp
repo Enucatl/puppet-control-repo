@@ -43,7 +43,7 @@ class profile::cursor_cli (
   exec { 'update-cursor-cli':
     command => "/usr/local/sbin/cursor-install ${os} ${arch}",
     unless  => '/usr/local/sbin/cursor-latest-version --current',
-    user    => $user,
+    user    => $username,
     environment => [
       "HOME=${home}",
     ],
