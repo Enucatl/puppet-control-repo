@@ -41,11 +41,11 @@ class profile::cursor_cli (
   }
 
   exec { 'update-cursor-cli':
-    command => "/usr/local/sbin/cursor-install ${os} ${arch}",
-    unless  => '/usr/local/sbin/cursor-latest-version --current',
+    command => "/usr/local/sbin/cursor-install ${resolved_home} ${os} ${arch}",
+    unless  => '/usr/local/sbin/cursor-latest-version --current ${resolved_home}',
     user    => $username,
     environment => [
-      "HOME=${home}",
+      "HOME=${resolved_home}",
     ],
     require => [
       File['/usr/local/sbin/cursor-latest-version'],

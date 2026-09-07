@@ -1,32 +1,43 @@
 #!/bin/sh
 set -eu
 
-os="${1:?missing OS}"
-arch="${2:?missing architecture}"
+home="${1:?missing home directory}"
+os="${2:?missing OS}"
+arch="${3:?missing architecture}"
 
-version="$(/usr/local/sbin/cursor-latest-version)"
+version=$(/usr/local/sbin/cursor-latest-version)
 
-versions="$HOME/.local/share/cursor-agent/versions"
+versions="$home/.local/share/cursor-agent/versions"
+bin="$home/.local/bin"
+
 target="$versions/$version"
 tmp="$versions/.${version}.$$"
 
 url="https://downloads.cursor.com/lab/$version/$os/$arch/agent-cli-package.tar.gz"
 
-mkdir -p "$versions" "$HOME/.local/bin"
+mkdir -p "$versions"
+mkdir -p "$bin"
+
 rm -rf "$tmp"
 mkdir "$tmp"
 
-trap 'rm -rf "$tmp"' EXIT
+cleanup() {
+  rm -rf "$tmp"
+}
+trap cleanup EXIT INT TERM
 
 curl -fsSL "$url" |
   tar --strip-components=1 -xzf - -C "$tmp"
 
-test -x "$tmp/cursor-agent"
+[ -x "$tmp/cursor-agent" ] || {
+  echo "Downloaded Cursor archive does not contain cursor-agent" >&2
+  exit 1
+}
 
 rm -rf "$target"
 mv "$tmp" "$target"
 
-ln -sfn "$target/cursor-agent" "$HOME/.local/bin/agent"
-ln -sfn "$target/cursor-agent" "$HOME/.local/bin/cursor-agent"
+ln -sfn "$target/cursor-agent" "$bin/agent"
+ln -sfn "$target/cursor-agent" "$bin/cursor-agent"
 
-trap - EXIT
+trap - EXIT INT TERM

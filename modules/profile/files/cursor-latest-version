@@ -1,24 +1,43 @@
 #!/bin/sh
 set -eu
 
-latest="$(
-  curl -fsSL https://cursor.com/install |
-    sed -n \
-      's#^DOWNLOAD_URL="https://downloads.cursor.com/lab/\([^/]*\)/.*#\1#p' |
-    head -n1
-)"
+# Cursor missing             → exit 1 → Puppet installs
+# Cursor symlink broken      → exit 1 → Puppet installs
+# Version cannot be parsed   → exit 1 → Puppet installs
+# Current < latest           → exit 1 → Puppet installs
+# Current == latest          → exit 0 → Puppet does nothing
+# Release lookup fails       → exit 2 → Puppet reports failure
 
-[ -n "$latest" ] || exit 2
+latest=$(
+  curl -fsSL https://cursor.com/install |
+    sed -n 's#^DOWNLOAD_URL="https://downloads.cursor.com/lab/\([^/]*\)/.*#\1#p' |
+    head -n1
+)
+
+[ -n "$latest" ] || {
+  echo "Unable to determine latest Cursor CLI version" >&2
+  exit 2
+}
 
 case "${1:-}" in
   --current)
-    current="$(
-      readlink -f "$HOME/.local/bin/agent" 2>/dev/null |
+    home="${2:?missing home directory}"
+    agent="$home/.local/bin/agent"
+
+    # First installation: no agent exists yet.
+    [ -e "$agent" ] || exit 1
+
+    current=$(
+      readlink -f "$agent" 2>/dev/null |
         sed -n 's#.*/versions/\([^/]*\)/cursor-agent$#\1#p'
     )
 
+    # Broken/unexpected installation should also trigger reinstall.
+    [ -n "$current" ] || exit 1
+
     [ "$current" = "$latest" ]
     ;;
+
   *)
     printf '%s\n' "$latest"
     ;;
