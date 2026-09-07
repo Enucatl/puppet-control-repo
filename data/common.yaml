@@ -8,6 +8,10 @@ lookup_options:
     convert_to: Sensitive
   freeipa_users::admin_password:
     convert_to: Sensitive
+  profile::beszel_agent::key:
+    convert_to: Sensitive
+  profile::beszel_agent::token:
+    convert_to: Sensitive
   nfs_config::server_exports:
     merge: hash
   nfs_config::client_mounts:
