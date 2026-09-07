@@ -1,10 +1,11 @@
 ---
 classes:
   - freeipa_firefox
-  - nfs_config
-  - profile::user_toolchain
-  - profile::codex_mtls
   - neovim
+  - nfs_config
+  - profile::codex_mtls
+  - profile::cursor_cli
+  - profile::user_toolchain
 
 profile::user_toolchain::npm_globals:
   - '@openai/codex'

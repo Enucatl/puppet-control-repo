@@ -1,9 +1,10 @@
 ---
 classes:
-  - profile::docker_host
   - nfs_config
-  - profile::user_toolchain
   - profile::codex_mtls
+  - profile::cursor_cli
+  - profile::docker_host
+  - profile::user_toolchain
 
 profile::user_toolchain::npm_globals:
   - '@openai/codex'

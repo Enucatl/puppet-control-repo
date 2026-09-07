@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+latest="$(
+  curl -fsSL https://cursor.com/install |
+    sed -n \
+      's#^DOWNLOAD_URL="https://downloads.cursor.com/lab/\([^/]*\)/.*#\1#p' |
+    head -n1
+)"
+
+[ -n "$latest" ] || exit 2
+
+case "${1:-}" in
+  --current)
+    current="$(
+      readlink -f "$HOME/.local/bin/agent" 2>/dev/null |
+        sed -n 's#.*/versions/\([^/]*\)/cursor-agent$#\1#p'
+    )
+
+    [ "$current" = "$latest" ]
+    ;;
+  *)
+    printf '%s\n' "$latest"
+    ;;
+esac
