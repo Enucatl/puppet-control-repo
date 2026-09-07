@@ -29,7 +29,7 @@ class profile::cursor_cli (
     owner  => 'root',
     group  => 'root',
     mode   => '0755',
-    source => 'puppet:///modules/cursor/cursor-latest-version',
+    source => 'puppet:///modules/profile/cursor-latest-version',
   }
 
   file { '/usr/local/sbin/cursor-install':
@@ -37,7 +37,7 @@ class profile::cursor_cli (
     owner  => 'root',
     group  => 'root',
     mode   => '0755',
-    source => 'puppet:///modules/cursor/cursor-install',
+    source => 'puppet:///modules/profile/cursor-install',
   }
 
   exec { 'update-cursor-cli':
