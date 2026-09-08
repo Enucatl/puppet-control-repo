@@ -68,6 +68,10 @@ classes:
   - profile::dotfiles
   - puppet_configuration
 
+# Shared Beszel agent defaults (per-node: system_name, enable_docker_metrics)
+profile::beszel_agent::hub_url: 'https://beszel-agent.docker.home.arpa'
+profile::beszel_agent::version: '0.19.0'
+profile::beszel_agent::user: 'beszel'
 
 nisdomainname::domain: home.arpa
 

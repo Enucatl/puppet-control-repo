@@ -3,11 +3,8 @@ classes:
   - profile::docker_node
   - profile::beszel_agent
 
-profile::beszel_agent::hub_url: 'http://127.0.0.1:8090'
 profile::beszel_agent::system_name: 'docker.home.arpa'
 profile::beszel_agent::enable_docker_metrics: true
-profile::beszel_agent::user: 'beszel'
-profile::beszel_agent::version: '0.19.0'
 
 nfs_config::server_exports:
   '/scratch':
