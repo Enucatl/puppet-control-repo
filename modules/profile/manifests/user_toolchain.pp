@@ -34,22 +34,35 @@ class profile::user_toolchain (
     }
   }
 
+  $toolchain_script_vars = {
+    'home'               => $resolved_home,
+    'manage_uv'          => $manage_uv,
+    'manage_rustup'      => $manage_rustup,
+    'manage_nvm'         => $manage_nvm,
+    'npm_ignore_scripts' => $npm_ignore_scripts,
+    'npm_before_days'    => $npm_before_days,
+    'npm_globals'        => $npm_globals,
+    'rust_toolchain'     => $rust_toolchain,
+    'username'           => $username,
+    'node_version'       => $node_version,
+  }
+
   file { '/usr/local/sbin/puppet-user-toolchain-sync':
     ensure  => file,
     owner   => 'root',
     group   => 'root',
     mode    => '0755',
-    content => epp('profile/user-toolchain-sync.sh.epp', {
-      'home'           => $resolved_home,
-      'manage_uv'      => $manage_uv,
-      'manage_rustup'  => $manage_rustup,
-      'manage_nvm'     => $manage_nvm,
-      'npm_ignore_scripts' => $npm_ignore_scripts,
-      'npm_before_days'    => $npm_before_days,
-      'npm_globals'    => $npm_globals,
-      'rust_toolchain' => $rust_toolchain,
-      'username'       => $username,
-      'node_version'   => $node_version,
+    content => epp('profile/user-toolchain-sync.sh.epp', $toolchain_script_vars),
+  }
+
+  file { '/usr/local/sbin/puppet-user-toolchain-cache-prune':
+    ensure  => file,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    content => epp('profile/user-toolchain-cache-prune.sh.epp', {
+      'home'     => $resolved_home,
+      'username' => $username,
     }),
   }
 

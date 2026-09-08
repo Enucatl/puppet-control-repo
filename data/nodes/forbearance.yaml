@@ -27,12 +27,13 @@ profile::common::acls::posix_acls:
 
 profile::common::cron::jobs:
   # Remove unused Docker images, containers, networks, and build cache.
-  # Volumes are intentionally excluded (no --volumes flag) to avoid data loss.
+  # Named unused volumes are left alone (retired stacks may still hold data).
+  # Anonymous dangling volumes (64-char hex ids from recreate/rm) are pruned.
   docker-prune:
     minute: 0
     hour: 3
     user: root
-    command: '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
+    command: '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info; /usr/bin/docker volume ls -f dangling=true -q | /usr/bin/grep -E "^[0-9a-f]{64}$" | /usr/bin/xargs -r /usr/bin/docker volume rm 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
 
 nfs_config::server_exports:
   '/home/user/Documents':

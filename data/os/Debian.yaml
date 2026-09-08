@@ -55,12 +55,16 @@ packages::sources:
       source: "https://apt.releases.hashicorp.com/gpg"
 
 profile::common::cron::jobs:
-  # Prune stale uv cache entries for the primary interactive user.
+  # Replaced by user-toolchain-cache-prune (npm/nvm/uv/puppeteer).
   uv-cache-prune:
+    ensure: absent
+  # Clear regenerable user toolchain caches for the primary interactive user.
+  # No-ops on nodes where profile::user_toolchain has not installed the script.
+  user-toolchain-cache-prune:
     minute: 30
     hour: 4
     user: user
-    command: 'HOME=/home/user /home/user/.local/bin/uv cache prune 2>&1 | /usr/bin/logger -t uv-cache-prune -p user.info'
+    command: 'if [ -x /usr/local/sbin/puppet-user-toolchain-cache-prune ]; then /usr/local/sbin/puppet-user-toolchain-cache-prune; fi 2>&1 | /usr/bin/logger -t user-toolchain-cache-prune -p user.info'
 
 tidy::files:
   downloads:

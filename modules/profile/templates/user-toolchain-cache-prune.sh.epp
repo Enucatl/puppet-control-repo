@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export HOME='<%= $home %>'
+export USER='<%= $username %>'
+export LOGNAME='<%= $username %>'
+export PROFILE=/dev/null
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+export NVM_DIR="$HOME/.nvm"
+
+log() {
+  printf '%s user-toolchain-cache-prune: %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$*"
+}
+
+load_nvm() {
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$NVM_DIR/nvm.sh"
+    return 0
+  fi
+  return 1
+}
+
+prune_npm_cache() {
+  if ! command -v npm >/dev/null 2>&1; then
+    log 'npm not found; skipping npm cache clean'
+    return 0
+  fi
+
+  log 'cleaning npm cache'
+  npm cache clean --force
+  log 'cleaned npm cache'
+}
+
+prune_old_nvm_nodes() {
+  if ! load_nvm; then
+    log 'nvm not found; skipping old node uninstalls'
+    return 0
+  fi
+
+  local keep
+  keep="$(nvm version default 2>/dev/null || true)"
+  if [ -z "$keep" ] || [ "$keep" = 'N/A' ] || [ "$keep" = 'system' ]; then
+    keep="$(nvm version current 2>/dev/null || true)"
+  fi
+  if [ -z "$keep" ] || [ "$keep" = 'N/A' ] || [ "$keep" = 'system' ]; then
+    log 'no nvm default/current node to keep; skipping old node uninstalls'
+    return 0
+  fi
+
+  if [ ! -d "$NVM_DIR/versions/node" ]; then
+    log 'no nvm node installs present'
+    return 0
+  fi
+
+  local dir ver
+  for dir in "$NVM_DIR/versions/node"/v*; do
+    [ -d "$dir" ] || continue
+    ver="$(basename "$dir")"
+    if [ "$ver" = "$keep" ]; then
+      continue
+    fi
+    log "removing unused nvm node ${ver} (keeping ${keep})"
+    nvm uninstall "$ver" >/dev/null 2>&1 || rm -rf "$dir"
+  done
+  log "nvm node prune complete (kept ${keep})"
+}
+
+prune_uv_cache() {
+  if [ ! -x "$HOME/.local/bin/uv" ]; then
+    log 'uv not found; skipping uv cache clean'
+    return 0
+  fi
+
+  log 'cleaning uv cache'
+  "$HOME/.local/bin/uv" cache clean
+  log 'cleaned uv cache'
+}
+
+prune_puppeteer_cache() {
+  if [ ! -e "$HOME/.cache/puppeteer" ]; then
+    log 'puppeteer cache absent; nothing to remove'
+    return 0
+  fi
+
+  log 'removing puppeteer cache'
+  rm -rf "$HOME/.cache/puppeteer"
+  log 'removed puppeteer cache'
+}
+
+if load_nvm; then
+  nvm use default >/dev/null 2>&1 || true
+fi
+
+prune_npm_cache
+prune_old_nvm_nodes
+prune_uv_cache
+prune_puppeteer_cache
+
+log 'complete'

@@ -9,6 +9,8 @@ profile::vllm_weekly_window::timer_calendar: 'Tue *-*-* 01:05:00 UTC'
 profile::common::cron::jobs:
   uv-cache-prune:
     ensure: absent
+  user-toolchain-cache-prune:
+    ensure: absent
   wake-proxmox-cortex:
     ensure: absent
   chronicle-enable:

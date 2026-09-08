@@ -26,6 +26,8 @@ profile::proxmox_vfio_passthrough::pci_ids:
 profile::common::cron::jobs:
   uv-cache-prune:
     ensure: absent
+  user-toolchain-cache-prune:
+    ensure: absent
 
 profile::common::ssh_keys::authorized_keys:
   root-docker:

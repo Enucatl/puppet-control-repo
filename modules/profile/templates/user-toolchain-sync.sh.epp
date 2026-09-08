@@ -151,6 +151,18 @@ NVM_DEFAULT_PACKAGES
   nvm alias default '<%= $node_version %>'
   nvm use default
 
+  keep_node_version="$(nvm version default)"
+  if [ -n "$keep_node_version" ] && [ "$keep_node_version" != 'N/A' ] && [ "$keep_node_version" != 'system' ] && [ -d "$NVM_DIR/versions/node" ]; then
+    for installed_node_dir in "$NVM_DIR/versions/node"/v*; do
+      [ -d "$installed_node_dir" ] || continue
+      installed_node_version="$(basename "$installed_node_dir")"
+      if [ "$installed_node_version" != "$keep_node_version" ]; then
+        log "removing unused nvm node ${installed_node_version} (keeping ${keep_node_version})"
+        nvm uninstall "$installed_node_version" >/dev/null 2>&1 || rm -rf "$installed_node_dir"
+      fi
+    done
+  fi
+
 <% if $npm_ignore_scripts { -%>
   npm config set --location=user ignore-scripts true
 <% } -%>
