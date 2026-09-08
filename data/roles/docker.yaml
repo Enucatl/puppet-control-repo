@@ -22,6 +22,8 @@ profile::user_toolchain::npm_globals:
 freeipa_users::user_groups:
   user:
     - docker
+  beszel:
+    - docker
 
 kmod::list_of_loads:
   'br_netfilter': {}

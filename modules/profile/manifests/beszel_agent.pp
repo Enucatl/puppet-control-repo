@@ -1,19 +1,23 @@
 # Installs the Beszel agent binary and manages its systemd unit.
 #
-# Does not create a dedicated `beszel` user (unlike get.beszel.dev); runs as an
-# existing account (default: user_l). Pin $version to the hub image tag.
+# Runs as the FreeIPA `beszel` user (created via freeipa_users on docker,
+# available on all hosts through SSSD). Do not use get.beszel.dev — it would
+# create a conflicting local user. Pin $version to the hub image tag.
 #
 # Required Hiera (Vault-backed secrets + per-node hub URL):
 #   profile::beszel_agent::key
 #   profile::beszel_agent::token
 #   profile::beszel_agent::hub_url
 #
+# On the Docker host, add beszel to the local docker group via
+# freeipa_users::user_groups so the agent can read docker.sock.
+#
 class profile::beszel_agent (
   String[1]                $hub_url,
   Sensitive[String[1]]     $key,
   Sensitive[String[1]]     $token,
   String[1]                $version               = '0.19.0',
-  String[1]                $user                  = 'user_l',
+  String[1]                $user                  = 'beszel',
   String[1]                $group                 = $user,
   String[1]                $system_name           = $facts['networking']['fqdn'],
   String[1]                $listen                = '45876',
@@ -36,7 +40,13 @@ class profile::beszel_agent (
   $source       = "https://github.com/henrygd/beszel/releases/download/v${version}/${archive_name}"
   $key_file     = "${config_dir}/key"
   $token_file   = "${config_dir}/token"
-  $marker = "${cache_dir}/.installed-${version}"
+  $marker       = "${cache_dir}/.installed-${version}"
+
+  # IPA user is created on the docker node; other hosts resolve it via SSSD.
+  # Collectors avoid parse-order issues with defined().
+  Exec <| title == "ipa-user-add-${user}" |> -> File[$config_dir]
+  Exec <| title == "ipa-user-add-${user}" |> -> File[$data_dir]
+  Exec <| title == "add_ipa_user_${user}_to_groups" |> -> Systemd::Unit_file['beszel-agent.service']
 
   if $ensure == 'present' {
     file { [$config_dir, $cache_dir]:
