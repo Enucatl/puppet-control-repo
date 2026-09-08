@@ -6,48 +6,6 @@ packages:
   - gnupg
 
 write_files:
-  # CheckMK Installer
-  - path: /usr/local/bin/install-checkmk.sh
-    permissions: '0755'
-    content: |
-      #!/bin/bash
-      set -euo pipefail
-
-      export VAULT_TOKEN='${VM_TOKEN}'
-      export VAULT_ADDR='${VAULT_ADDR}'
-
-      CMK_DOMAIN='${CMK_DOMAIN}'
-      CMK_SITE='${CMK_SITE}'
-      REG_USER='${CMK_REG_USER}'
-      DOWNLOAD_PATH="/tmp/checkmk_agent.deb"
-      OS_TYPE="linux_deb"
-
-      echo "Fetching Secret from Vault..."
-      API_SECRET=$(vault kv get -field=checkmk::agent_registration_password kv/puppet)
-
-      API_URL="https://\${CMK_DOMAIN}/\${CMK_SITE}/check_mk/api/1.0"
-
-      echo "Downloading agent..."
-      curl -f -L -k -G \
-          --header "Authorization: Bearer \${REG_USER} \${API_SECRET}" \
-          --header "Accept: application/octet-stream" \
-          --data-urlencode "agent_type=generic" \
-          --data-urlencode "os_type=\${OS_TYPE}" \
-          -o "\$DOWNLOAD_PATH" \
-          "\${API_URL}/domain-types/agent/actions/download_by_host/invoke"
-
-      dpkg -i "\$DOWNLOAD_PATH"
-      apt-get install -f -y
-
-      echo "Registering agent with CheckMK (TLS)..."
-      cmk-agent-ctl register \
-          --hostname "\$(hostname).${DOMAIN_SUFFIX}" \
-          --server "\${CMK_DOMAIN}" \
-          --site "\${CMK_SITE}" \
-          --user "\${REG_USER}" \
-          --password "\${API_SECRET}" \
-          --trust-cert
-
   # Puppet Enrollment Script
   - path: /usr/local/bin/configure-puppet.sh
     permissions: '0755'
@@ -100,9 +58,6 @@ runcmd:
   - /usr/local/bin/configure-puppet.sh desktop '${VM_TOKEN}' '${PUPPET_SERVER}'
 
   - systemctl start qemu-guest-agent
-
-  # CheckMK Setup
-  - /usr/local/bin/install-checkmk.sh
 
   # Desktop Finalization
   - systemctl set-default graphical.target

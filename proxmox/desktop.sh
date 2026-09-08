@@ -60,8 +60,8 @@ create_vault_token
 
 # 2. Inject Token into Cloud-Init using envsubst
 echo "[2/5] Injecting variables into Cloud-Init..."
-export PUPPET_SERVER CMK_DOMAIN CMK_SITE CMK_REG_USER DOMAIN_SUFFIX
-envsubst '${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${CMK_DOMAIN}${CMK_SITE}${CMK_REG_USER}${DOMAIN_SUFFIX}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+export PUPPET_SERVER DOMAIN_SUFFIX
+envsubst '${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
 
 # 3. VM Cleanup
 if qm status "$VMID" >/dev/null 2>&1; then

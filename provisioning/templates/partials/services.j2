@@ -34,11 +34,11 @@ set service router-advert interface {{ cortex_interface }} prefix {{ ula_prefix 
 set service snmp listen-address {{ snmp_listen_address }}
 set service snmp location '{{ snmp_location }}'
 set service snmp v3 engineid {{ snmp_engineid }}
-set service snmp v3 group checkmk_group mode ro
-set service snmp v3 group checkmk_group view all_view
+set service snmp v3 group ro_group mode ro
+set service snmp v3 group ro_group view all_view
 set service snmp v3 user {{ snmp_user }} auth plaintext-password '{{ snmp_v3_password }}'
 set service snmp v3 user {{ snmp_user }} auth type sha
-set service snmp v3 user {{ snmp_user }} group checkmk_group
+set service snmp v3 user {{ snmp_user }} group ro_group
 set service snmp v3 user {{ snmp_user }} privacy plaintext-password '{{ snmp_v3_password }}'
 set service snmp v3 user {{ snmp_user }} privacy type aes
 set service snmp v3 view all_view oid 1
