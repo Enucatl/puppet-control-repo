@@ -77,7 +77,7 @@ class profile::beszel_agent (
       command => "install -o root -g root -m 0755 ${cache_dir}/beszel-agent ${binary_path} && touch ${marker}",
       creates => $marker,
       path    => ['/usr/bin', '/bin'],
-      notify  => Service['beszel-agent'],
+      notify  => Service['beszel-agent.service'],
     }
 
     file { $key_file:
@@ -87,7 +87,7 @@ class profile::beszel_agent (
       mode      => '0640',
       content   => Sensitive("${key.unwrap}\n"),
       show_diff => false,
-      notify    => Service['beszel-agent'],
+      notify    => Service['beszel-agent.service'],
     }
 
     file { $token_file:
@@ -97,7 +97,7 @@ class profile::beszel_agent (
       mode      => '0640',
       content   => Sensitive("${token.unwrap}\n"),
       show_diff => false,
-      notify    => Service['beszel-agent'],
+      notify    => Service['beszel-agent.service'],
     }
 
     $docker_env = $enable_docker_metrics ? {
@@ -150,11 +150,6 @@ class profile::beszel_agent (
       ],
     }
   } else {
-    service { 'beszel-agent':
-      ensure => stopped,
-      enable => false,
-    }
-
     systemd::unit_file { 'beszel-agent.service':
       ensure => absent,
     }
