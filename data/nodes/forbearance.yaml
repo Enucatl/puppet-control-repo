@@ -2,8 +2,6 @@ classes:
   - profile::vault_login
   - profile::beszel_agent
 
-profile::beszel_agent::system_name: 'forbearance.home.arpa'
-
 packages::list:
   - alsa-utils
   - clang-format

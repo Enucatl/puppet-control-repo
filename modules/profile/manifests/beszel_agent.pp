@@ -4,11 +4,11 @@
 # available on all hosts through SSSD). Do not use get.beszel.dev — it would
 # create a conflicting local user. Pin $version to the hub image tag.
 #
-# Required Hiera (Vault-backed secrets + per-node hub URL):
+# Required Hiera (Vault-backed secrets; hub_url defaults in common.yaml):
 #   profile::beszel_agent::key
 #   profile::beszel_agent::token
-#   profile::beszel_agent::hub_url
 #
+# SYSTEM_NAME defaults to $trusted['certname'] (do not hardcode per node).
 # On the Docker host, add beszel to the local docker group via
 # freeipa_users::user_groups so the agent can read docker.sock.
 #
@@ -19,7 +19,7 @@ class profile::beszel_agent (
   String[1]                $version               = '0.19.0',
   String[1]                $user                  = 'beszel',
   String[1]                $group                 = $user,
-  String[1]                $system_name           = $facts['networking']['fqdn'],
+  String[1]                $system_name           = $trusted['certname'],
   String[1]                $listen                = '45876',
   Stdlib::Absolutepath     $binary_path           = '/usr/local/bin/beszel-agent',
   Stdlib::Absolutepath     $config_dir            = '/etc/beszel-agent',
