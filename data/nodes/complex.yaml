@@ -13,6 +13,7 @@ profile::nvidia_docker::temp_target_celsius: 80
 
 classes:
   - profile::nvidia_docker
+  - profile::beszel_agent
 
 packages::ppas:
   - 'ppa:graphics-drivers/ppa'
