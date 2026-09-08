@@ -24,6 +24,12 @@ services:
       - netflow://:2055
     networks:
       - infra
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/__health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   vault:
     <<: *vault-runtime
@@ -74,6 +80,16 @@ services:
     command: /scripts/unseal.sh
     networks:
       - infra
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf --max-time 5 \"$VAULT_ADDR/v1/sys/health\" | jq -e '.initialized == true and .sealed == false' >/dev/null",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   freeipa:
     # no hardening on the docker image, it has to run privileged
@@ -198,7 +214,7 @@ services:
     restart: no
     depends_on:
       vault-unsealer:
-        condition: service_completed_successfully
+        condition: service_healthy
     environment:
       - VAULT_ADDR
       - KEYS_FILE
@@ -217,7 +233,7 @@ services:
     restart: no
     depends_on:
       vault-unsealer:
-        condition: service_completed_successfully
+        condition: service_healthy
     environment:
       - KEYS_FILE
       - VAULT_ADDR
@@ -236,7 +252,7 @@ services:
     restart: no
     depends_on:
       vault-unsealer:
-        condition: service_completed_successfully
+        condition: service_healthy
     environment:
       - KEYS_FILE
       - VAULT_ADDR
