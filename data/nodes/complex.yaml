@@ -8,6 +8,10 @@ nfs_config::server_exports:
     clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,root_squash)'
     atboot: true
 
+nfs_config::client_mounts:
+  '/export/scratch':
+    server: 'docker.home.arpa'
+
 profile::nvidia_docker::power_limit_watts: 400
 profile::nvidia_docker::temp_target_celsius: 80
 
