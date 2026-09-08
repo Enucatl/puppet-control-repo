@@ -2,7 +2,6 @@
 classes:
   - profile::dropbear_initramfs
   - profile::proxmox_vfio_passthrough
-  - profile::beszel_agent
 
 unattended_upgrades::auto:
   reboot: false

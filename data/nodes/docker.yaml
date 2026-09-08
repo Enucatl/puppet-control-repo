@@ -1,7 +1,6 @@
 ---
 classes:
   - profile::docker_node
-  - profile::beszel_agent
 
 profile::beszel_agent::enable_docker_metrics: true
 

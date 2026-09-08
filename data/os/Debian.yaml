@@ -4,6 +4,7 @@ classes:
   - nfs
   - nfs_config
   - packages
+  - profile::beszel_agent
   - tidy
   - unattended_upgrades
 

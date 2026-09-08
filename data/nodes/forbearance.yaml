@@ -1,6 +1,5 @@
 classes:
   - profile::vault_login
-  - profile::beszel_agent
 
 packages::list:
   - alsa-utils
