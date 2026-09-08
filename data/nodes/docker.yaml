@@ -479,6 +479,11 @@ profile::common::acls::posix_acls:
     permission:
       - "user:101000:r--"
       - "mask::r--"
+  "/opt/docker/authelia/secrets/oidc_beszel_client_secret_digest":
+    action: set
+    permission:
+      - "user:101000:r--"
+      - "mask::r--"
   "/opt/docker/authelia/secrets/oidc_hmac_secret":
     action: set
     permission:
