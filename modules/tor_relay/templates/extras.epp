@@ -1,4 +1,0 @@
-<%- | Integer $metrics_port | -%>
-
-MetricsPort 127.0.0.1:<%= $metrics_port %>
-MetricsPortPolicy accept 127.0.0.1
