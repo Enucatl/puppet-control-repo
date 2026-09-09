@@ -32,7 +32,7 @@ jobs:
   profiles:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v9.0.0
       - name: Install the public Puppet 8 test runtime
         run: |
