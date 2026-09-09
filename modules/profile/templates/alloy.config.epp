@@ -1,4 +1,4 @@
-<%- | String $loki_url, Boolean $enable_docker, String $extra_config | -%>
+<%- | String $loki_url, Boolean $enable_docker, String $router_config | -%>
 // 1. Output: Remote Loki
 loki.write "remote_loki" {
   endpoint {
@@ -153,6 +153,6 @@ loki.source.docker "docker_logs" {
 }
 <% } -%>
 
-<% if $extra_config != '' { -%>
-<%= $extra_config %>
+<% if $router_config != '' { -%>
+<%= $router_config %>
 <% } -%>

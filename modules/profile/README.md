@@ -57,44 +57,12 @@ router configuration, while retaining base and Docker logging. The initial downl
 remains ordered before `Service[alloy]`. Missing credentials do not purge an already
 installed updater; this preserves the previous resource-omission behavior.
 
-`extra_config` remains a compatibility extension, still gated by credentials and
-supporting `__LOCAL_IPV6_PREFIX__`. The repository's router configuration no longer
-uses that string interface.
-
-## Secret migration
-
-| Legacy field in `kv/puppet` | Canonical field |
-|---|---|
-| `profile::docker_host::maxmind_account_id` | `profile::alloy::maxmind_account_id` |
-| `profile::docker_host::maxmind_license_key` | `profile::alloy::maxmind_license_key` |
-| `profile::docker_host::printer_smb_password` | `profile::docker_node::printer_smb_password` |
-| `profile::docker_host::pictures_smb_password` | `profile::docker_node::pictures_smb_password` |
-
-Automatic parameter lookup prefers the canonical name. A parameter's default reads
-the legacy name only when the canonical value is absent. Samba canonical keys have
-`Sensitive` conversion in `data/common.yaml`, matching the legacy lookup handling.
-The old MaxMind **parameters on `docker_host`** are removed; callers should configure
-`profile::alloy` instead. Existing legacy Hiera/Vault fields continue to work.
-
-From the repository root, using a Vault identity allowed to read and patch `kv/puppet`:
-
-```sh
-uv run --frozen python scripts/migrate_profile_secrets.py
-uv run --frozen python scripts/migrate_profile_secrets.py --apply
-```
-
-The first command inventories the four names without printing values. The second
-first checks deployed `data/common.yaml` for the Samba `Sensitive` conversions, then
-copies missing canonical fields with a compare-and-set version check and verifies
-them. By default it checks `/etc/puppetlabs/code/environments/production`; use
-`--deployed-environment` when the deployed checkout is elsewhere. It preserves
-existing canonical values, unrelated fields, and legacy fields.
-No secret values are placed in command arguments, files, or logs.
-
-Deploy and verify canonical lookups and successful affected-node runs before removing
-legacy fields. Retain them throughout the rollback window. Legacy deletion and
-fallback removal are a later coordinated change, not part of the copy script.
-Beszel fields, `ipv6-prefix`, and `kv/wolf` remain unchanged.
+MaxMind credentials use `profile::alloy::maxmind_account_id` and
+`profile::alloy::maxmind_license_key`. Samba credentials use
+`profile::docker_node::printer_smb_password` and
+`profile::docker_node::pictures_smb_password`; the two Samba keys are converted to
+`Sensitive` through `data/common.yaml`. Beszel fields, `ipv6-prefix`, and `kv/wolf`
+remain unchanged.
 
 ## Operational contracts
 

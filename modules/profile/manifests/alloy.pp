@@ -5,11 +5,8 @@ class profile::alloy (
   Boolean           $manage_geoip        = false,
   Boolean           $enable_router_enrichment = false,
   String            $router_listen_address = '10.0.0.128',
-  String            $extra_config        = '',
-  # Canonical Alloy names take precedence; legacy Docker-host names remain a
-  # fallback until the staged Vault migration is complete.
-  Optional[String]   $maxmind_account_id  = lookup('profile::alloy::maxmind_account_id', Optional[String], 'first', lookup('profile::docker_host::maxmind_account_id', Optional[String], 'first', undef)),
-  Optional[String]   $maxmind_license_key = lookup('profile::alloy::maxmind_license_key', Optional[String], 'first', lookup('profile::docker_host::maxmind_license_key', Optional[String], 'first', undef)),
+  Optional[String]   $maxmind_account_id  = lookup('profile::alloy::maxmind_account_id', Optional[String], 'first', undef),
+  Optional[String]   $maxmind_license_key = lookup('profile::alloy::maxmind_license_key', Optional[String], 'first', undef),
   Optional[String]   $local_ipv6_prefix   = lookup('ipv6-prefix', Optional[String], 'first', undef),
 ) {
   $geoip_credentials_available = $maxmind_account_id != undef and $maxmind_license_key != undef
@@ -42,13 +39,6 @@ class profile::alloy (
     undef   => 'no-local-ipv6-prefix-configured',
     default => $local_ipv6_prefix,
   }
-  $rendered_extra_config = regsubst(
-    $extra_config,
-    '__LOCAL_IPV6_PREFIX__',
-    $local_ipv6_geoip_skip_prefix,
-    'G',
-  )
-
   $router_config = if $enable_router_enrichment and $geoip_credentials_available {
     epp('profile/alloy/router.config.epp', {
       'listen_address'    => $router_listen_address,
@@ -58,18 +48,11 @@ class profile::alloy (
     ''
   }
 
-  # Retain extra_config for callers outside this repository during migration.
-  $effective_extra_config = if $geoip_credentials_available {
-    "${router_config}${rendered_extra_config}"
-  } else {
-    ''
-  }
-
   # Generate the configuration string from the template
   $config_content = epp('profile/alloy.config.epp', {
-    'loki_url'      => $loki_url,
-    'enable_docker' => $enable_docker,
-    'extra_config'  => $effective_extra_config,
+    'loki_url'       => $loki_url,
+    'enable_docker'  => $enable_docker,
+    'router_config'  => $router_config,
   })
 
   # Pass the generated string to the official module

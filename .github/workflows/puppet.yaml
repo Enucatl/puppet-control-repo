@@ -8,7 +8,6 @@ on:
       - 'data/**'
       - 'manifests/**'
       - 'tests/**'
-      - 'scripts/migrate_profile_secrets.py'
       - 'Puppetfile'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -19,7 +18,6 @@ on:
       - 'data/**'
       - 'manifests/**'
       - 'tests/**'
-      - 'scripts/migrate_profile_secrets.py'
       - 'Puppetfile'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -49,6 +47,6 @@ jobs:
         run: >-
           uv run --frozen pytest -q
           tests/test_cursor_version.py
-          tests/test_migrate_profile_secrets.py tests/test_docker_compose_health_check.py
+          tests/test_docker_compose_health_check.py
           tests/test_proxmox_orchestration.py tests/test_chronicle_backup_orchestrator.py
           tests/test_vllm_weekly_window.py

@@ -14,10 +14,10 @@ DUMMY_SECRETS = {
     "freeipa_users::admin_password": "fixture-password",
     "profile::beszel_agent::key": "fixture-key",
     "profile::beszel_agent::token": "fixture-token",
-    "profile::docker_host::maxmind_account_id": "12345",
-    "profile::docker_host::maxmind_license_key": "fixture-license",
-    "profile::docker_host::printer_smb_password": "fixture-printer",
-    "profile::docker_host::pictures_smb_password": "fixture-pictures",
+    "profile::alloy::maxmind_account_id": "12345",
+    "profile::alloy::maxmind_license_key": "fixture-license",
+    "profile::docker_node::printer_smb_password": "fixture-printer",
+    "profile::docker_node::pictures_smb_password": "fixture-pictures",
     "smtp_sasl_username": "fixture@example.org",
     "smtp_sasl_password": "fixture-smtp",
     "recipient_canonical": "fixture@example.org",
@@ -171,44 +171,31 @@ def test_base_alloy_catalog(tmp_path: Path) -> None:
     assert "Service[alloy]" in result
 
 
-@pytest.mark.parametrize("mode", ["legacy", "canonical", "both", "missing", "partial"])
-def test_secret_migration_and_geoip_gate(tmp_path: Path, mode: str) -> None:
+@pytest.mark.parametrize("mode", ["complete", "missing", "partial"])
+def test_canonical_secret_consumers_and_geoip_gate(tmp_path: Path, mode: str) -> None:
     data = DUMMY_SECRETS.copy()
-    suffixes = [
-        "maxmind_account_id",
-        "maxmind_license_key",
-        "printer_smb_password",
-        "pictures_smb_password",
-    ]
-    for suffix in suffixes:
-        old = f"profile::docker_host::{suffix}"
-        owner = "alloy" if suffix.startswith("maxmind") else "docker_node"
-        new = f"profile::{owner}::{suffix}"
-        if mode in ("canonical", "both"):
-            data[new] = "canonical-" + suffix
-        if (
-            mode == "canonical"
-            or (mode == "missing" and owner == "alloy")
-            or (mode == "partial" and suffix == "maxmind_license_key")
-        ):
-            del data[old]
+    if mode == "missing":
+        del data["profile::alloy::maxmind_account_id"]
+        del data["profile::alloy::maxmind_license_key"]
+    elif mode == "partial":
+        del data["profile::alloy::maxmind_license_key"]
     catalog = compile_catalog(
         tmp_path, "lookup('classes', Array[String]).include", data
     )
     result = resources(catalog)
     config = result["File[/etc/alloy/config.alloy]"]["content"]
-    available = mode not in ("missing", "partial")
+    available = mode == "complete"
     assert ("Package[geoipupdate]" in result) == available
     assert ('loki.process "suricata_geoip"' in config) == available
     assert "loki.source.journal" in config
     assert 'loki.source.docker "docker_logs"' in config
-    if mode in ("canonical", "both"):
+    command = str(result["Exec[create_samba_user_printer]"]["command"])
+    assert "fixture-printer" in command
+    if available:
         geoip = result["File[/etc/GeoIP.conf]"]["content"]
-        assert "canonical-maxmind_license_key" in geoip
-        assert "fixture-license" not in geoip
-        command = str(result["Exec[create_samba_user_printer]"]["command"])
-        assert "canonical-printer_smb_password" in command
-        assert "fixture-printer" not in command
+        assert "fixture-license" in geoip
+    else:
+        assert "File[/etc/GeoIP.conf]" not in result
 
 
 @pytest.mark.parametrize("refresh", [True, False])

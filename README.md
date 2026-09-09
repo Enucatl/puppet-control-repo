@@ -159,8 +159,8 @@ GeoIP enrichment is centralized on `docker.home.arpa`.
 
 Alloy configuration is assembled from base, Docker, and optional router-enrichment
 templates. Hiera enables those layers and supplies host-specific values. See
-[the profile module](modules/profile/README.md) for ownership, compatibility lookups,
-the staged Vault field migration, and catalog regression tests.
+[the profile module](modules/profile/README.md) for ownership and catalog regression
+tests.
 
 The enrichment boundary is Alloy, not GoFlow2. Country codes are Loki labels because they are low-cardinality and useful for filtering. City-level fields are Loki structured metadata, not labels and not JSON-body rewrites. That keeps the original Suricata and IPFIX JSON bodies intact while exposing city, continent, latitude, longitude, postal code, timezone, and subdivision fields in Grafana and LogQL result fields.
 

@@ -1,8 +1,6 @@
 class profile::docker_node (
-  # Canonical component names take precedence; legacy Docker-host names remain
-  # a fallback until the staged Vault migration is complete.
-  Sensitive[String] $printer_smb_password  = Sensitive(lookup('profile::docker_node::printer_smb_password', String, 'first', lookup('profile::docker_host::printer_smb_password'))),
-  Sensitive[String] $pictures_smb_password = Sensitive(lookup('profile::docker_node::pictures_smb_password', String, 'first', lookup('profile::docker_host::pictures_smb_password'))),
+  Sensitive[String] $printer_smb_password  = Sensitive(lookup('profile::docker_node::printer_smb_password', String)),
+  Sensitive[String] $pictures_smb_password = Sensitive(lookup('profile::docker_node::pictures_smb_password', String)),
 ) {
 
   require profile::common
