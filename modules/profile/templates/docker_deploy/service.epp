@@ -1,0 +1,21 @@
+<%- | String $project, String $run_as, String $base_dir,
+      String $exec_start, String $compose_cmd, String $health_check,
+      String $description, String $action, String $condition | -%>
+[Unit]
+Description=<%= $description %>
+Requires=docker.service
+After=docker.service
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=<%= $run_as %>
+WorkingDirectory=<%= $base_dir %>
+Environment=COMPOSE_ENV_FILES=../.env,./.env
+<%= $condition %>ExecStartPre=/bin/sleep 5
+<%= $exec_start %>
+ExecStartPost=<%= $compose_cmd %> ps
+<%= $health_check %>
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=<%= $project %>-<%= $action %>

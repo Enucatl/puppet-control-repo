@@ -61,6 +61,8 @@ packages::list:
   - terraform
 
 profile::alloy::enable_docker: true
+profile::alloy::manage_docker_user: true
+profile::alloy::manage_geoip: true
 
 profile::common::cron::jobs:
   # Remove unused Docker images, containers, networks, and build cache.

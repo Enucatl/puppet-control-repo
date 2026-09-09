@@ -1,0 +1,99 @@
+<%- | String $listen_address, String $local_ipv6_prefix | -%>
+// Central log enrichment for router-derived Suricata and flow data.
+
+loki.source.api "suricata_push" {
+  http {
+    listen_address = "<%= $listen_address %>"
+    listen_port    = 12345
+  }
+
+  forward_to = [loki.process.suricata_geoip.receiver]
+}
+
+loki.process "suricata_geoip" {
+  stage.json {
+    expressions = {
+      event_type = "event_type",
+      src_ip     = "src_ip",
+      dest_ip    = "dest_ip",
+    }
+  }
+
+<%= epp('profile/alloy/geoip-stage.epp', {
+  'prefix' => 'src',
+  'local_ipv6_prefix' => $local_ipv6_prefix,
+  'include_event_type' => true,
+}) %>
+
+<%= epp('profile/alloy/geoip-stage.epp', {
+  'prefix' => 'dest',
+  'local_ipv6_prefix' => $local_ipv6_prefix,
+  'include_event_type' => false,
+}) %>
+
+  forward_to = [loki.write.remote_loki.receiver]
+}
+
+discovery.docker "goflow2_containers" {
+  host = "unix:///var/run/docker.sock"
+  refresh_interval = "60s"
+}
+
+discovery.relabel "goflow2_relabel" {
+  targets = discovery.docker.goflow2_containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = ".*goflow2.*"
+    action = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(.*)"
+    action = "replace"
+    target_label = "container_name"
+  }
+
+  rule {
+    target_label = "job"
+    replacement = "ipfix"
+  }
+}
+
+loki.source.docker "goflow2_logs" {
+  targets = discovery.relabel.goflow2_relabel.output
+  host = "unix:///var/run/docker.sock"
+  labels = {
+    app = "goflow2",
+    host = "docker.home.arpa",
+  }
+
+  forward_to = [loki.process.ipfix_geoip.receiver]
+}
+
+loki.process "ipfix_geoip" {
+  stage.json {
+    expressions = {
+      src_ip  = "src_addr",
+      dest_ip = "dst_addr",
+      proto   = "proto",
+      packets = "packets",
+      bytes   = "bytes",
+    }
+  }
+
+<%= epp('profile/alloy/geoip-stage.epp', {
+  'prefix' => 'src',
+  'local_ipv6_prefix' => $local_ipv6_prefix,
+  'include_event_type' => false,
+}) %>
+
+<%= epp('profile/alloy/geoip-stage.epp', {
+  'prefix' => 'dest',
+  'local_ipv6_prefix' => $local_ipv6_prefix,
+  'include_event_type' => false,
+}) %>
+
+  forward_to = [loki.write.remote_loki.receiver]
+}

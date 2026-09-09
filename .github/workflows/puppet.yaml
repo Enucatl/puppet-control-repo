@@ -1,0 +1,54 @@
+name: Puppet profiles
+
+on:
+  push:
+    branches: [production, main]
+    paths:
+      - 'modules/**'
+      - 'data/**'
+      - 'manifests/**'
+      - 'tests/**'
+      - 'scripts/migrate_profile_secrets.py'
+      - 'Puppetfile'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/puppet.yaml'
+  pull_request:
+    paths:
+      - 'modules/**'
+      - 'data/**'
+      - 'manifests/**'
+      - 'tests/**'
+      - 'scripts/migrate_profile_secrets.py'
+      - 'Puppetfile'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/puppet.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  profiles:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v9
+      - name: Install the public Puppet 8 test runtime
+        run: |
+          curl -fsSLo /tmp/puppet8-release.deb https://apt.puppet.com/puppet8-release-noble.deb
+          sudo dpkg -i /tmp/puppet8-release.deb
+          sudo apt-get update
+          sudo apt-get install -y puppet-agent=8.10.0-1noble
+          sudo systemctl stop puppet
+      - name: Validate Puppet and EPP syntax
+        run: |
+          /opt/puppetlabs/bin/puppet parser validate modules/profile/manifests modules/proxmox_workflows/manifests
+          rg --files modules/profile/templates -g '*.epp' -0 | xargs -0 /opt/puppetlabs/bin/puppet epp validate
+      - name: Test catalogs and workflows with dummy secrets
+        run: >-
+          uv run --frozen pytest -q
+          tests/test_cursor_version.py
+          tests/test_migrate_profile_secrets.py tests/test_docker_compose_health_check.py
+          tests/test_proxmox_orchestration.py tests/test_chronicle_backup_orchestrator.py
+          tests/test_vllm_weekly_window.py

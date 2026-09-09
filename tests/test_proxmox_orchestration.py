@@ -12,7 +12,7 @@ import pytest
 MODULE_PATH = (
     Path(__file__).parents[1]
     / "modules"
-    / "profile"
+    / "proxmox_workflows"
     / "files"
     / "proxmox_orchestration.py"
 )

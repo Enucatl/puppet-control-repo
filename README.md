@@ -151,11 +151,16 @@ GeoIP enrichment is centralized on `docker.home.arpa`.
 
 - `geoipupdate` is installed on the Docker host, not in a container.
 - MaxMind credentials come from the existing Vault-backed Puppet values:
-  - `profile::docker_host::maxmind_account_id`
-  - `profile::docker_host::maxmind_license_key`
+  - `profile::alloy::maxmind_account_id`
+  - `profile::alloy::maxmind_license_key`
 - If either secret is missing, Puppet suppresses the GeoIP updater and the central Alloy enrichment config.
 - The MaxMind City database is stored under `/var/lib/geoip`.
 - Puppet runs one initial `geoipupdate` before Alloy restarts and keeps the database fresh with a weekly systemd timer.
+
+Alloy configuration is assembled from base, Docker, and optional router-enrichment
+templates. Hiera enables those layers and supplies host-specific values. See
+[the profile module](modules/profile/README.md) for ownership, compatibility lookups,
+the staged Vault field migration, and catalog regression tests.
 
 The enrichment boundary is Alloy, not GoFlow2. Country codes are Loki labels because they are low-cardinality and useful for filtering. City-level fields are Loki structured metadata, not labels and not JSON-body rewrites. That keeps the original Suricata and IPFIX JSON bodies intact while exposing city, continent, latitude, longitude, postal code, timezone, and subdivision fields in Grafana and LogQL result fields.
 
@@ -211,9 +216,11 @@ Introduce IPFIX sampling only if the 24-hour volume, disk growth, query latency,
 
 - [data/nodes/docker.yaml](/opt/docker/puppet-control-repo/data/nodes/docker.yaml)
 - [docker/docker-compose.yml](/opt/docker/puppet-control-repo/docker/docker-compose.yml)
-- [modules/profile/manifests/docker_host.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/docker_host.pp)
+- [modules/profile/manifests/alloy.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/alloy.pp)
+- [modules/profile/manifests/alloy/geoip.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/alloy/geoip.pp)
 - [modules/profile/templates/GeoIP.conf.epp](/opt/docker/puppet-control-repo/modules/profile/templates/GeoIP.conf.epp)
 - [modules/profile/templates/alloy.config.epp](/opt/docker/puppet-control-repo/modules/profile/templates/alloy.config.epp)
+- [modules/profile/templates/alloy/router.config.epp](/opt/docker/puppet-control-repo/modules/profile/templates/alloy/router.config.epp)
 - [provisioning/templates/partials/system.j2](/opt/docker/puppet-control-repo/provisioning/templates/partials/system.j2)
 - [provisioning/templates/app_configs/alloy-vyos.alloy.j2](/opt/docker/puppet-control-repo/provisioning/templates/app_configs/alloy-vyos.alloy.j2)
 - [provisioning/templates/app_configs/vyos-ndp-snapshot.sh.j2](/opt/docker/puppet-control-repo/provisioning/templates/app_configs/vyos-ndp-snapshot.sh.j2)

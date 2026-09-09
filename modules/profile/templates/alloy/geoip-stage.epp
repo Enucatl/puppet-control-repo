@@ -1,0 +1,55 @@
+<%- | String $prefix, String $local_ipv6_prefix, Boolean $include_event_type = false | -%>
+  stage.regex {
+    source = "<%= $prefix %>_ip"
+    expression = "^(?P<<%= $prefix %>_geoip_skip>(?:10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.|100\\.(?:6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[0-1][0-9]|12[0-7])\\.|22[4-9]\\.|23[0-9]\\.|0\\.0\\.0\\.0$|::1$|fe80:|fc|fd|ff|2001:db8:|<%= $local_ipv6_prefix %>:))"
+  }
+
+  stage.template {
+    source = "<%= $prefix %>_geoip_run"
+    template = "{{ if .<%= $prefix %>_geoip_skip }}false{{ else }}true{{ end }}"
+  }
+
+  stage.labels {
+    values = {
+<% if $include_event_type { -%>
+      event_type  = "event_type",
+<% } -%>
+      <%= $prefix %>_geoip_run = "",
+    }
+  }
+
+  stage.match {
+    selector = "{<%= $prefix %>_geoip_run=\"true\"}"
+
+    stage.geoip {
+      source  = "<%= $prefix %>_ip"
+      db      = "/var/lib/geoip/GeoLite2-City.mmdb"
+      db_type = "city"
+    }
+
+    stage.labels {
+      values = {
+        <%= $prefix %>_country = "geoip_country_code",
+      }
+    }
+
+    stage.structured_metadata {
+      values = {
+        <%= $prefix %>_geoip_city_name          = "geoip_city_name",
+        <%= $prefix %>_geoip_country_name       = "geoip_country_name",
+        <%= $prefix %>_geoip_country_code       = "geoip_country_code",
+        <%= $prefix %>_geoip_continent_name     = "geoip_continent_name",
+        <%= $prefix %>_geoip_continent_code     = "geoip_continent_code",
+        <%= $prefix %>_geoip_location_latitude  = "geoip_location_latitude",
+        <%= $prefix %>_geoip_location_longitude = "geoip_location_longitude",
+        <%= $prefix %>_geoip_postal_code        = "geoip_postal_code",
+        <%= $prefix %>_geoip_timezone           = "geoip_timezone",
+        <%= $prefix %>_geoip_subdivision_name   = "geoip_subdivision_name",
+        <%= $prefix %>_geoip_subdivision_code   = "geoip_subdivision_code",
+      }
+    }
+  }
+
+  stage.label_drop {
+    values = ["<%= $prefix %>_geoip_run"]
+  }

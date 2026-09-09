@@ -20,8 +20,7 @@
 #   watch_dir     - Only redeploy if the last push touched files under this
 #                   subdirectory (relative to the repo root); omit to redeploy
 #                   on any push
-#   scheduled_refresh - Create a periodic refresh timer that starts the deploy
-#                       service
+#   scheduled_refresh - Create a periodic refresh timer and separate refresh service
 #   refresh_calendar  - systemd OnCalendar value for scheduled_refresh
 #
 # Example (Hiera, via profile::docker_host::git_deploy_projects):
@@ -77,6 +76,15 @@ define profile::docker_deploy (
     default => '',
   }
 
+  $service_template_vars = {
+    'project'      => $name,
+    'run_as'       => $run_as,
+    'base_dir'     => $base_dir,
+    'exec_start'   => $exec_start_str,
+    'compose_cmd'  => $compose_cmd,
+    'health_check' => $refresh_health_check_str,
+  }
+
   systemd::unit_file { "${name}-deploy.path":
     ensure  => $ensure,
     content => @("UNIT"),
@@ -95,26 +103,11 @@ define profile::docker_deploy (
 
   systemd::unit_file { "${name}-deploy.service":
     ensure  => $ensure,
-    content => @("UNIT"),
-      [Unit]
-      Description=Rebuild and restart ${name}
-      Requires=docker.service
-      After=docker.service
-      After=network-online.target
-
-      [Service]
-      Type=oneshot
-      User=${run_as}
-      WorkingDirectory=${base_dir}
-      Environment=COMPOSE_ENV_FILES=../.env,./.env
-      ${watch_dir_str}ExecStartPre=/bin/sleep 5
-      ${exec_start_str}
-      ExecStartPost=${compose_cmd} ps
-      ${refresh_health_check_str}
-      StandardOutput=journal
-      StandardError=journal
-      SyslogIdentifier=${name}-deploy
-      | UNIT
+    content => epp('profile/docker_deploy/service.epp', $service_template_vars + {
+      'description' => "Rebuild and restart ${name}",
+      'action'      => 'deploy',
+      'condition'   => $watch_dir_str,
+    }),
     enable  => false,
     active  => false,
     require => Class['profile::docker_deploy::health_check'],
@@ -123,26 +116,11 @@ define profile::docker_deploy (
   if $scheduled_refresh {
     systemd::unit_file { "${name}-refresh.service":
       ensure  => $ensure,
-      content => @("UNIT"),
-        [Unit]
-        Description=Refresh and restart ${name}
-        Requires=docker.service
-        After=docker.service
-        After=network-online.target
-
-        [Service]
-        Type=oneshot
-        User=${run_as}
-        WorkingDirectory=${base_dir}
-        Environment=COMPOSE_ENV_FILES=../.env,./.env
-        ExecStartPre=/bin/sleep 5
-        ${exec_start_str}
-        ExecStartPost=${compose_cmd} ps
-        ${refresh_health_check_str}
-        StandardOutput=journal
-        StandardError=journal
-        SyslogIdentifier=${name}-refresh
-        | UNIT
+      content => epp('profile/docker_deploy/service.epp', $service_template_vars + {
+        'description' => "Refresh and restart ${name}",
+        'action'      => 'refresh',
+        'condition'   => '',
+      }),
       enable  => false,
       active  => false,
       require => Class['profile::docker_deploy::health_check'],

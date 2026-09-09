@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-FILES_DIR = Path(__file__).parents[1] / "modules" / "profile" / "files"
+FILES_DIR = Path(__file__).parents[1] / "modules" / "proxmox_workflows" / "files"
 SHARED_SPEC = importlib.util.spec_from_file_location(
     "proxmox_orchestration", FILES_DIR / "proxmox_orchestration.py"
 )
