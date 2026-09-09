@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v9
+      - uses: astral-sh/setup-uv@v9.0.0
       - name: Install the public Puppet 8 test runtime
         run: |
           curl -fsSLo /tmp/puppet8-release.deb https://apt.puppet.com/puppet8-release-noble.deb
