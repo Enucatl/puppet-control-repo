@@ -27,8 +27,6 @@ profile::docker_host::git_deploy_projects:
   beszel: {}
   camillo:
     build_command: "docker compose build"
-  checkmk:
-    ensure: absent
   crabberbot:
     build_command: 'YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
   echo-server: {}
@@ -38,8 +36,6 @@ profile::docker_host::git_deploy_projects:
     build_command: "docker compose -f docker/docker-compose.yml build"
     compose_file: docker/docker-compose.yml
     watch_dir: docker
-  iventoy:
-    ensure: absent
   kms: {}
   monerod:
     build_command: "docker compose build"
@@ -54,9 +50,6 @@ profile::docker_host::git_deploy_projects:
   teamspeak: {}
   tor-i2pd: {}
   traefik: {}
-  unifi-network-application:
-    ensure: absent
-
 profile::docker_host::scheduled_refresh: true
 
 packages::list:

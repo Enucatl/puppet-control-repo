@@ -7,15 +7,7 @@ profile::chronicle_backup::backup_job_id: backup-9c78eb79-950c
 profile::vllm_weekly_window::timer_calendar: 'Tue *-*-* 01:05:00 UTC'
 
 profile::common::cron::jobs:
-  uv-cache-prune:
-    ensure: absent
   user-toolchain-cache-prune:
-    ensure: absent
-  wake-proxmox-cortex:
-    ensure: absent
-  chronicle-enable:
-    ensure: absent
-  chronicle-disable:
     ensure: absent
 
 profile::common::sysctl::settings:

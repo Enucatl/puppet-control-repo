@@ -59,11 +59,3 @@ kmod::list_of_loads:
   'uinput': {}
 
 profile::common::systemd::units:
-  vllm-weekly-up.service:
-    ensure: absent
-  vllm-weekly-up.timer:
-    ensure: absent
-  vllm-weekly-down.service:
-    ensure: absent
-  vllm-weekly-down.timer:
-    ensure: absent

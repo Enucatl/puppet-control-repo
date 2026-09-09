@@ -70,10 +70,6 @@ profile::common::sysctl::settings:
     value: 1
 
 profile::common::systemd::units:
-  hyperx-headset-volume.service:
-    ensure: absent
-    enable: false
-    active: false
   hyperx-headset-volume-user.service:
     path: /etc/systemd/user
     content: |

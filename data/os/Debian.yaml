@@ -55,9 +55,10 @@ packages::sources:
       source: "https://apt.releases.hashicorp.com/gpg"
 
 profile::common::cron::jobs:
-  # Replaced by user-toolchain-cache-prune (npm/nvm/uv/puppeteer).
+  # Remove the legacy uv-only job; user-toolchain-cache-prune replaces it.
   uv-cache-prune:
     ensure: absent
+    user: user
   # Clear regenerable user toolchain caches for the primary interactive user.
   # No-ops on nodes where profile::user_toolchain has not installed the script.
   user-toolchain-cache-prune:
