@@ -33,12 +33,35 @@ npm_remote_version() {
   local package_name="$1"
   local before_date="${2:-}"
 
-  if [ -n "$before_date" ]; then
-    npm view "$package_name" version --before="$before_date" 2>/dev/null
+  if [ -z "$before_date" ]; then
+    npm view "$package_name" version 2>/dev/null
     return
   fi
 
-  npm view "$package_name" version 2>/dev/null
+  # npm view --before is unreliable on npm 12+ (ignores the cutoff and returns
+  # whatever @latest is). Resolve the newest stable x.y.z published strictly
+  # before midnight UTC on before_date, matching npm install --before=YYYY-MM-DD.
+  npm view "$package_name" time --json 2>/dev/null | node -e '
+    const fs = require("fs");
+    const beforeDate = process.argv[1];
+    const cutoff = Date.parse(`${beforeDate}T00:00:00.000Z`);
+    if (Number.isNaN(cutoff)) process.exit(1);
+    const raw = JSON.parse(fs.readFileSync(0, "utf8"));
+    // npm 12 may wrap the times object in a one-element array.
+    const times = Array.isArray(raw) ? (raw[0] || {}) : raw;
+    let best = "";
+    let bestTime = -1;
+    for (const [version, stamp] of Object.entries(times)) {
+      if (!/^\d+\.\d+\.\d+$/.test(version)) continue;
+      const published = Date.parse(stamp);
+      if (Number.isNaN(published) || published >= cutoff) continue;
+      if (published >= bestTime) {
+        bestTime = published;
+        best = version;
+      }
+    }
+    process.stdout.write(best);
+  ' "$before_date"
 }
 
 install_uv() {
@@ -182,12 +205,16 @@ NVM_DEFAULT_PACKAGES
 <%- $npm_globals.each |$package| { -%>
   installed_package_version="$(npm_installed_version '<%= $package %>')"
   remote_package_version="$(npm_remote_version '<%= $package %>' "$npm_before_cutoff")"
-  if [ -z "$installed_package_version" ] || [ -z "$remote_package_version" ] || [ "$installed_package_version" != "$remote_package_version" ]; then
-    log "updating npm package <%= $package %>: installed=${installed_package_version:-unknown} published=${remote_package_version:-unknown}"
-    npm install -g --before="$npm_before_cutoff" '<%= $package %>@latest'
+  if [ -z "$remote_package_version" ]; then
+    echo "warning: could not resolve npm package <%= $package %> version before ${npm_before_cutoff}" >&2
+  elif [ -z "$installed_package_version" ] || [ "$installed_package_version" != "$remote_package_version" ]; then
+    log "updating npm package <%= $package %>: installed=${installed_package_version:-unknown} published=${remote_package_version}"
+    # Install the resolved version exactly so compare and install cannot disagree
+    # the way `npm view --before` vs `npm install --before` did on npm 12+.
+    npm install -g '<%= $package %>@'"$remote_package_version"
     log "updated npm package <%= $package %>"
   else
-    log "npm package <%= $package %> is already current: installed=${installed_package_version:-unknown} published=${remote_package_version:-unknown}"
+    log "npm package <%= $package %> is already current: installed=${installed_package_version} published=${remote_package_version}"
   fi
 <%- } -%>
 }

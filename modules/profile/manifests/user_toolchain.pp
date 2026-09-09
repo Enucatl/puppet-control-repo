@@ -5,7 +5,7 @@ class profile::user_toolchain (
   Boolean $manage_rustup     = true,
   Boolean $manage_nvm        = true,
   Boolean $npm_ignore_scripts = true,
-  Integer $npm_before_days    = 7,
+  Integer $npm_before_days    = 3,
   String $rust_toolchain     = 'stable',
   String $node_version       = 'node',
   Array[String] $npm_globals = [],

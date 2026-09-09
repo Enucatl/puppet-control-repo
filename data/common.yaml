@@ -93,7 +93,7 @@ profile::common::certs::vault_certs_defaults:
   key_mode: '0600'
 
 profile::user_toolchain::npm_ignore_scripts: true
-profile::user_toolchain::npm_before_days: 7
+profile::user_toolchain::npm_before_days: 3
 
 freeipa::client::domain: home.arpa
 freeipa::client::server: freeipa.home.arpa
