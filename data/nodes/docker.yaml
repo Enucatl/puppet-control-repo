@@ -106,7 +106,7 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user_l
-      EnvironmentFile=/opt/docker/.env
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose up -d postgres-outputs
       ExecStart=/usr/bin/docker compose run --build --rm --no-deps exam
@@ -141,7 +141,7 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user_l
-      EnvironmentFile=/opt/docker/.env
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose up -d postgres-outputs
       ExecStart=/usr/bin/docker compose run --build --rm --no-deps download-zanzara
@@ -176,7 +176,7 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user_l
-      EnvironmentFile=/opt/docker/.env
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose up -d postgres-outputs
       ExecStart=/usr/bin/docker compose run --build --rm --no-deps cyber-analyst
@@ -211,7 +211,7 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user_l
-      EnvironmentFile=/opt/docker/.env
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose up -d postgres-outputs
       ExecStart=/usr/bin/docker compose run --build --rm --no-deps operations-analyst
@@ -246,7 +246,7 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user_l
-      EnvironmentFile=/opt/docker/.env
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose up -d postgres-outputs
       ExecStart=/usr/bin/docker compose run --build --rm --no-deps podcast-statistics
