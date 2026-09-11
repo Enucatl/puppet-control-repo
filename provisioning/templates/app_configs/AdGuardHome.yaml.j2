@@ -16,9 +16,9 @@ dns:
 {{ adguard_dns_bind_hosts | to_yaml | indent(4, first=true) }}
   port: 53
   anonymize_client_ip: false
-  ratelimit: 20
-  ratelimit_subnet_len_ipv4: 24
-  ratelimit_subnet_len_ipv6: 56
+  ratelimit: 100
+  ratelimit_subnet_len_ipv4: 32
+  ratelimit_subnet_len_ipv6: 64
   ratelimit_whitelist: []
   refuse_any: true
   upstream_dns:
