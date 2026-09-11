@@ -31,4 +31,4 @@ vault write "auth/cert/certs/${AIRFLOW_CERT_AUTH_ROLE}" \
   certificate=@"$AIRFLOW_CERT_CA" \
   token_policies="airflow" \
   allowed_dns_sans="$AIRFLOW_CERT_DNS_SAN" \
-  token_ttl=2h
+  token_ttl=15m
