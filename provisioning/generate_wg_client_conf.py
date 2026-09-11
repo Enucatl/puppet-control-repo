@@ -32,6 +32,7 @@ def generate_conf(
 
     client_ip = client_config["ip"]
     client_ipv6 = f"{ipv6_prefix}:c8::{client_config['ipv6_host']}/128"
+    ula_prefix = router_config["ula_prefix"]
 
     conf = f"""# WireGuard configuration for {client_name}
 # Generated from router configuration
@@ -47,7 +48,7 @@ def generate_conf(
 PrivateKey = REPLACE_WITH_CLIENT_PRIVATE_KEY
 Address = {client_ip}
 Address = {client_ipv6}
-DNS = 10.0.0.1, {ipv6_prefix}::1
+DNS = 10.0.0.1, {ula_prefix}::1
 
 [Peer]
 PublicKey = {server_public_key}
