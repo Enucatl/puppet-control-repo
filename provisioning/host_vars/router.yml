@@ -63,7 +63,7 @@ wg_peers:
     ip: "10.0.200.5/32"
     ipv6_host: "5"
   - name: "franceschin"
-    pubkey: "sObkL8Hl0phZA1JzdvxKfrc+YazP8q+z9MDU6vNyTQ4="
+    pubkey: "2apRCZCq94k+uCFMsiLiQO8lntNqeefVA33GZ3dJuxA="
     ip: "10.0.200.6/32"
     ipv6_host: "6"
 
