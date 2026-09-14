@@ -45,6 +45,7 @@ packages::list:
   - libsox-dev
   - libswresample-dev
   - libswscale-dev
+  - nsight-systems
   - nvidia-container-toolkit
   - nvidia-driver-590-open
   - portaudio19-dev
