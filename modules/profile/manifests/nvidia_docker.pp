@@ -3,6 +3,7 @@
 # Configures a Docker host with NVIDIA GPU support:
 #   - Creates a udev rule granting the 'input' group rw access to /dev/uinput
 #     (required for Wolf/Moonlight virtual controller/keyboard/mouse passthrough)
+#   - Allows non-root NVIDIA performance-counter access for Nsight Compute
 #   - Manages a systemd oneshot service that applies nvidia-smi settings at boot
 #     (persistence mode always; power cap, clock cap, temp target all optional)
 #
@@ -20,6 +21,20 @@ class profile::nvidia_docker (
 ) {
 
   require profile::common
+
+  file { '/etc/modprobe.d/nvidia.conf':
+    ensure  => file,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0644',
+    content => "options nvidia NVreg_RestrictProfilingToAdminUsers=0\n",
+    notify  => Exec['update-initramfs-for-nvidia'],
+  }
+
+  exec { 'update-initramfs-for-nvidia':
+    command     => '/usr/sbin/update-initramfs -u -k all',
+    refreshonly => true,
+  }
 
   $power_limit_exec = $power_limit_watts ? {
     undef   => '',
