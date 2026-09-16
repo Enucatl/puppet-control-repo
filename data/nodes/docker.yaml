@@ -27,8 +27,6 @@ profile::docker_host::git_deploy_projects:
   beszel:
     build_command: "docker compose build alerts-init"
     deploy_command: "docker compose up -d --force-recreate --wait beszel && docker compose run --rm alerts-init"
-  camillo:
-    build_command: "docker compose build"
   crabberbot:
     build_command: 'YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
   echo-server: {}
@@ -303,15 +301,6 @@ profile::common::certs::vault_certs:
     key_owner: 150000
     key_group: 100000
     key_mode: '0600'
-  camillo:
-    cert_chain_file: /opt/docker/camillo/secrets/fullchain.pem
-    cert_chain_owner: 110000
-    cert_chain_group: 110000
-    cert_chain_mode: '0640'
-    key_file: /opt/docker/camillo/secrets/key.pem
-    key_owner: 110000
-    key_group: 110000
-    key_mode: '0600'
   wolf:
     cert_chain_file: /opt/docker/puppet-control-repo/docker/wolf/secrets/fullchain.pem
     cert_chain_owner: 101000
@@ -360,12 +349,6 @@ profile::common::acls::posix_acls:
       - "group::---"
       - "mask::r--"
       - "other::---"
-  "/opt/docker/camillo/secrets/postgres_password":
-    action: set
-    permission:
-      - "user:100999:r--"
-      - "user:110000:r--"
-      - "mask::r--"
   "/opt/docker/grafana-loki/secrets":
     action: set
     permission:
