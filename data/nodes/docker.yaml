@@ -116,10 +116,10 @@ profile::common::systemd::units:
   automation-exam.timer:
     content: |
       [Unit]
-      Description=Run exam automation hourly
+      Description=Run exam automation hourly outside quiet hours
 
       [Timer]
-      OnCalendar=*-*-* *:00:00 UTC
+      OnCalendar=*-*-* 00,05..23:00:00 UTC
       Persistent=false
       Unit=automation-exam.service
 
