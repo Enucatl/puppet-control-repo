@@ -64,6 +64,41 @@ profile::common::services::resources:
     enable: false
 
 profile::common::systemd::units:
+  paperless-correspondent-cleanup.service:
+    content: |
+      [Unit]
+      Description=Run weekly Paperless correspondent cleanup
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      User=user
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/paperless-ai/.env
+      WorkingDirectory=/opt/docker/paperless-ai
+      ExecStart=/opt/docker/paperless-ai/scripts/correspondent-cleanup weekly
+      TimeoutStartSec=2h
+      SyslogIdentifier=paperless-correspondent-cleanup
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  paperless-correspondent-cleanup.timer:
+    content: |
+      [Unit]
+      Description=Schedule weekly Paperless correspondent cleanup
+
+      [Timer]
+      OnCalendar=Tue *-*-* 01:10:00 UTC
+      Persistent=false
+      Unit=paperless-correspondent-cleanup.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[paperless-correspondent-cleanup.service]
   backrest-kinit.service:
     content: |
       [Unit]
