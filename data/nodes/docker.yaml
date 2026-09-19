@@ -446,11 +446,20 @@ profile::common::acls::posix_acls:
     permission:
       - "user:110001:r--" # remap base 100000 + app uid 10001
       - "mask::r--"
+  "/opt/docker/paperless-ai/secrets/phoenix_postgres_password.txt":
+    action: set
+    permission:
+      - "user:100999:r--" # remapped PostgreSQL uid 999
+      - "user:100000:r--" # remapped container root for the db and Phoenix services
+      - "mask::r--"
+      - "other::---"
   "/opt/docker/crabberbot/secrets":
     action: set
     permission:
       - "user:100101:--x" # remap base 100000 + telegram-bot-api uid 101
       - "user:165532:--x" # remap base 100000 + cloudflared uid 65532
+      - "user:101000:--x" # remap base 100000 + crabberbot uid 1000
+      - "user:100999:--x" # remap base 100000 + postgres uid 999
       - "mask::--x"
   "/opt/docker/crabberbot/secrets/telegram_api_hash":
     action: set
@@ -466,6 +475,32 @@ profile::common::acls::posix_acls:
     action: set
     permission:
       - "user:165532:r--" # remap base 100000 + cloudflared uid 65532
+      - "mask::r--"
+  "/opt/docker/crabberbot/secrets/telegram_bot_token":
+    action: set
+    permission:
+      - "user:101000:r--" # remap base 100000 + crabberbot uid 1000
+      - "mask::r--"
+  "/opt/docker/crabberbot/secrets/postgres_password":
+    action: set
+    permission:
+      - "user:101000:r--" # remap base 100000 + crabberbot uid 1000
+      - "user:100999:r--" # remap base 100000 + postgres uid 999
+      - "mask::r--"
+  "/opt/docker/crabberbot/secrets/deepgram_api_key":
+    action: set
+    permission:
+      - "user:101000:r--" # remap base 100000 + crabberbot uid 1000
+      - "mask::r--"
+  "/opt/docker/crabberbot/secrets/openrouter_api_key":
+    action: set
+    permission:
+      - "user:101000:r--" # remap base 100000 + crabberbot uid 1000
+      - "mask::r--"
+  "/opt/docker/crabberbot/secrets/owner_chat_id":
+    action: set
+    permission:
+      - "user:101000:r--" # remap base 100000 + crabberbot uid 1000
       - "mask::r--"
   "/opt/docker/rclone/secrets":
     action: set
