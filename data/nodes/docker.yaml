@@ -618,6 +618,16 @@ profile::common::acls::posix_acls:
     permission:
       - "user:100999:r--" # remap base 100000 + controller app uid 999
       - "mask::r--"
+  "/opt/docker/browser-use/secrets/audit_signing_key":
+    action: set
+    permission:
+      - "user:100999:r--" # remap base 100000 + controller app uid 999
+      - "mask::r--"
+  "/opt/docker/browser-use/secrets/audit_signing_public_key":
+    action: set
+    permission:
+      - "user:100999:r--" # remap base 100000 + controller app uid 999
+      - "mask::r--"
 profile::alloy::enable_router_enrichment: true
 profile::alloy::router_listen_address: '10.0.0.128'
 
