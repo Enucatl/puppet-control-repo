@@ -27,6 +27,8 @@ profile::docker_host::git_deploy_projects:
   beszel:
     build_command: "docker compose build alerts-init"
     deploy_command: "docker compose up -d --force-recreate --wait beszel && docker compose run --rm alerts-init"
+  browser-use:
+    build_command: "docker compose build"
   crabberbot:
     build_command: 'YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
   echo-server: {}
