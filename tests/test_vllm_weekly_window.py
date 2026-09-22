@@ -68,11 +68,58 @@ def run_case(responses: list[tuple[str, int, str]]) -> tuple[int, list[str]]:
 
 
 class TestVllmWeeklyWindow:
-    def test_already_on_is_noop(self) -> None:
-        result, commands = run_case([("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, "")])
+    def test_hosts_already_on_starts_and_cleans_up_vllm(self) -> None:
+        result, commands = run_case(
+            [
+                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
+                (
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 200",
+                    0,
+                    "status: running\n",
+                ),
+                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("nc -z -w 2 complex.home.arpa 8100", 1, ""),
+                (
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
+                    0,
+                    "",
+                ),
+                ("nc -z -w 1 complex.home.arpa 8100", 0, ""),
+                (
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
+                    0,
+                    "",
+                ),
+            ]
+        )
 
         assert result == 0
-        assert commands == ["nc -z -w 2 proxmox-cortex.home.arpa 22"]
+        assert any(
+            "docker compose --profile extraction up -d" in cmd for cmd in commands
+        )
+        assert any(
+            "docker compose --profile extraction down" in cmd for cmd in commands
+        )
+        assert all("qm shutdown 200" not in cmd for cmd in commands)
+        assert all("shutdown -h now" not in cmd for cmd in commands)
+
+    def test_already_running_vllm_is_left_alone(self) -> None:
+        result, commands = run_case(
+            [
+                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
+                (
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 200",
+                    0,
+                    "status: running\n",
+                ),
+                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("nc -z -w 2 complex.home.arpa 8100", 0, ""),
+            ]
+        )
+
+        assert result == 0
+        assert all("docker compose" not in cmd for cmd in commands)
+        assert all("qm shutdown 200" not in cmd for cmd in commands)
 
     def test_full_sequence_cleans_up_started_layers(self) -> None:
         result, commands = run_case(
@@ -90,16 +137,13 @@ class TestVllmWeeklyWindow:
                 ),
                 ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 200", 0, ""),
                 ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("nc -z -w 2 complex.home.arpa 8100", 1, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
                     0,
                     "",
                 ),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
-                    0,
-                    "",
-                ),
+                ("nc -z -w 1 complex.home.arpa 8100", 0, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 200",
                     0,
@@ -115,8 +159,12 @@ class TestVllmWeeklyWindow:
 
         assert result == 0
         assert "qm start 200" in " ".join(commands)
-        assert "docker compose --profile extraction up -d" in commands[9]
-        assert "docker compose --profile extraction down" in commands[10]
+        assert any(
+            "docker compose --profile extraction up -d" in cmd for cmd in commands
+        )
+        assert any(
+            "docker compose --profile extraction down" in cmd for cmd in commands
+        )
         assert commands[-2].endswith("qm shutdown 200")
         assert commands[-1].endswith("shutdown -h now 'vLLM weekly window complete'")
 
@@ -136,6 +184,7 @@ class TestVllmWeeklyWindow:
                 ),
                 ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 200", 0, ""),
                 ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("nc -z -w 2 complex.home.arpa 8100", 1, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
                     1,
@@ -160,7 +209,9 @@ class TestVllmWeeklyWindow:
         )
 
         assert result == 1
-        assert "docker compose --profile extraction down" in commands[10]
+        assert any(
+            "docker compose --profile extraction down" in cmd for cmd in commands
+        )
         assert commands[-2].endswith("qm shutdown 200")
         assert commands[-1].endswith("'vLLM weekly window complete'")
 

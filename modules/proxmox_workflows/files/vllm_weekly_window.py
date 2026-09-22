@@ -31,6 +31,7 @@ class Config:
     compose_env_files: str = "../.env,./.env"
     compose_profile: str = "extraction"
     window_seconds: int = 3600
+    model_start_timeout: int = 600
     vault_path: str = "kv/wolf"
     vault_field: str = "proxmox-cortex"
     vault_addr: str = "https://hcv.home.arpa:8200"
@@ -49,7 +50,6 @@ class Orchestrator:
         self.woke_host = False
         self.reliable_proxmox_ssh = False
         self.started_vm = False
-        self.vm_shutdown_needed = False
         self.compose_up_attempted = False
 
     def run(self) -> int:
@@ -57,19 +57,37 @@ class Orchestrator:
             if proxmox_orchestration.port_open(
                 self.runner, self.config.proxmox_host, 22, timeout=2
             ):
-                print("proxmox-cortex SSH is already reachable; no vLLM window needed")
-                return 0
-
-            password = proxmox_orchestration.read_vault_secret(self.config, self.runner)
-            proxmox_orchestration.wake_and_unlock(self.config, self.runner, password)
-            self.woke_host = True
+                print("Proxmox SSH is already reachable")
+            else:
+                password = proxmox_orchestration.read_vault_secret(
+                    self.config, self.runner
+                )
+                proxmox_orchestration.wake_and_unlock(
+                    self.config, self.runner, password
+                )
+                self.woke_host = True
             self.reliable_proxmox_ssh = True
 
             self.ensure_vm_running()
             proxmox_orchestration.wait_for_port(
                 self.runner, self.config.vm_host, 22, "complex SSH", 300, 5
             )
-            self.compose_up()
+            if proxmox_orchestration.port_open(
+                self.runner, self.config.vm_host, 8100, timeout=2
+            ):
+                print("vLLM is already reachable")
+                if not (self.woke_host or self.started_vm):
+                    return 0
+            else:
+                self.compose_up()
+                proxmox_orchestration.wait_for_port(
+                    self.runner,
+                    self.config.vm_host,
+                    8100,
+                    "vLLM",
+                    self.config.model_start_timeout,
+                    5,
+                )
             time.sleep(self.config.window_seconds)
             return 0
         except Exception as error:
@@ -82,11 +100,9 @@ class Orchestrator:
         status = self.proxmox_ssh([f"qm status {self.config.vm_id}"], check=False)
         if "status: running" in status.stdout:
             print(f"VM {self.config.vm_id} is already running")
-            self.vm_shutdown_needed = True
             return
         self.proxmox_ssh([f"qm start {self.config.vm_id}"], timeout=120)
         self.started_vm = True
-        self.vm_shutdown_needed = True
 
     def compose_up(self) -> None:
         self.compose_up_attempted = True
@@ -99,7 +115,7 @@ class Orchestrator:
             except Exception as error:
                 print(f"compose cleanup failed: {error}", file=sys.stderr)
 
-        if self.vm_shutdown_needed and self.reliable_proxmox_ssh:
+        if self.started_vm and self.reliable_proxmox_ssh:
             try:
                 self.proxmox_ssh([f"qm shutdown {self.config.vm_id}"], check=False)
             except Exception as error:
@@ -162,6 +178,9 @@ def parse_args(argv: Sequence[str]) -> Config:
     parser.add_argument("--compose-env-files", default=Config.compose_env_files)
     parser.add_argument("--compose-profile", default=Config.compose_profile)
     parser.add_argument("--window-seconds", type=int, default=Config.window_seconds)
+    parser.add_argument(
+        "--model-start-timeout", type=int, default=Config.model_start_timeout
+    )
     parser.add_argument("--vault-path", default=Config.vault_path)
     parser.add_argument("--vault-field", default=Config.vault_field)
     parser.add_argument("--vault-cert-role", default=Config.vault_cert_role)
