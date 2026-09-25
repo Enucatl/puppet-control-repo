@@ -27,7 +27,7 @@ def release(version: str, days_old: int) -> dict[str, object]:
 
 @pytest.fixture
 def plugin_home(tmp_path: Path) -> Path:
-    """Create fake Codex and GitHub commands in an isolated home directory."""
+    """Create fake plugin clients and GitHub in an isolated home directory."""
     home = tmp_path / "home"
     fake_bin = home / ".local/bin"
     fake_bin.mkdir(parents=True)
@@ -91,6 +91,49 @@ fi
 """
     )
     codex.chmod(0o755)
+
+    claude = fake_bin / "claude"
+    claude.write_text(
+        """#!/usr/bin/env bash
+set -euo pipefail
+state="$HOME/claude-state.json"
+actions="$HOME/claude-actions"
+if [ "$1 $2" = 'plugin marketplace' ] && [ "$3" = add ]; then
+  touch "$HOME/claude-marketplace-added"
+  printf 'marketplace add\\n' >> "$actions"
+elif [ "$1 $2" = 'plugin marketplace' ] && [ "$3" = list ]; then
+  if [ -f "$HOME/claude-marketplace-added" ]; then
+    jq -n --arg path "$HOME/.local/share/claude/ponytail-marketplace" \\
+      '[{name: "ponytail", path: $path}]'
+  else
+    printf '[]\\n'
+  fi
+elif [ "$1 $2" = 'plugin list' ]; then
+  if [ -s "$state" ]; then
+    jq -n --slurpfile plugin "$state" '$plugin'
+  else
+    printf '[]\\n'
+  fi
+elif [ "$1" = plugin ] && { [ "$2" = install ] || [ "$2" = update ]; }; then
+  catalog="$HOME/.local/share/claude/ponytail-marketplace/.claude-plugin/marketplace.json"
+  version="$(jq -r '.plugins[0].source.ref | ltrimstr("v")' "$catalog")"
+  enabled=true
+  if [ "$2" = update ]; then
+    enabled="$(jq -r '.enabled' "$state")"
+  fi
+  jq -n --arg version "$version" --argjson enabled "$enabled" \\
+    '{id: "ponytail@ponytail", scope: "user", version: $version, enabled: $enabled}' > "$state"
+  printf '%s\\n' "$2" >> "$actions"
+elif [ "$1 $2" = 'plugin enable' ]; then
+  jq '.enabled = true' "$state" > "$state.tmp"
+  mv "$state.tmp" "$state"
+  printf 'enable\\n' >> "$actions"
+else
+  exit 2
+fi
+"""
+    )
+    claude.chmod(0o755)
     return home
 
 
@@ -112,6 +155,15 @@ def catalog_ref(home: Path) -> str:
     return json.loads(catalog.read_text())["plugins"][0]["source"]["ref"]
 
 
+def claude_catalog_ref(home: Path) -> str:
+    """Read the Git ref pinned in the generated Claude marketplace."""
+    catalog = (
+        home
+        / ".local/share/claude/ponytail-marketplace/.claude-plugin/marketplace.json"
+    )
+    return json.loads(catalog.read_text())["plugins"][0]["source"]["ref"]
+
+
 def test_fast_path_and_reenable(plugin_home: Path) -> None:
     """Use local state on repeated runs and repair a disabled installation."""
     (plugin_home / "releases-fixture.json").write_text(
@@ -119,12 +171,21 @@ def test_fast_path_and_reenable(plugin_home: Path) -> None:
     )
     assert sync(plugin_home).returncode == 0
     assert catalog_ref(plugin_home) == "v1.0.0"
+    assert claude_catalog_ref(plugin_home) == "v1.0.0"
     assert (plugin_home / "curl-count").read_text().strip() == "1"
     assert (plugin_home / "add-count").read_text().strip() == "1"
+    assert (plugin_home / "claude-actions").read_text().splitlines() == [
+        "marketplace add",
+        "install",
+    ]
 
     assert sync(plugin_home).returncode == 0
     assert (plugin_home / "curl-count").read_text().strip() == "1"
     assert (plugin_home / "add-count").read_text().strip() == "1"
+    assert (plugin_home / "claude-actions").read_text().splitlines() == [
+        "marketplace add",
+        "install",
+    ]
 
     state = plugin_home / "codex-state.json"
     state.write_text(
@@ -136,10 +197,28 @@ def test_fast_path_and_reenable(plugin_home: Path) -> None:
     assert (plugin_home / "curl-count").read_text().strip() == "1"
     assert (plugin_home / "add-count").read_text().strip() == "2"
 
+    claude_state = plugin_home / "claude-state.json"
+    claude_state.write_text(
+        json.dumps(
+            {
+                "id": "ponytail@ponytail",
+                "scope": "user",
+                "version": "1.0.0",
+                "enabled": False,
+            }
+        )
+    )
+    assert sync(plugin_home).returncode == 0
+    assert (plugin_home / "claude-actions").read_text().splitlines()[-1] == "enable"
+
     state.unlink()
     assert sync(plugin_home).returncode == 0
     assert (plugin_home / "curl-count").read_text().strip() == "1"
     assert (plugin_home / "add-count").read_text().strip() == "3"
+
+    claude_state.unlink()
+    assert sync(plugin_home).returncode == 0
+    assert (plugin_home / "claude-actions").read_text().splitlines()[-1] == "install"
 
 
 def test_refresh_and_cached_fallback(plugin_home: Path) -> None:
@@ -153,8 +232,10 @@ def test_refresh_and_cached_fallback(plugin_home: Path) -> None:
     checked_at.write_text("0\n")
     assert sync(plugin_home).returncode == 0
     assert catalog_ref(plugin_home) == "v1.1.0"
+    assert claude_catalog_ref(plugin_home) == "v1.1.0"
     assert (plugin_home / "curl-count").read_text().strip() == "2"
     assert (plugin_home / "add-count").read_text().strip() == "2"
+    assert (plugin_home / "claude-actions").read_text().splitlines()[-1] == "update"
 
     checked_at.write_text("0\n")
     assert sync(plugin_home, http_status=304).returncode == 0

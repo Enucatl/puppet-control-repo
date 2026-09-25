@@ -223,6 +223,13 @@ NVM_DEFAULT_PACKAGES
   else
     log "npm package <%= $package %> is already current: installed=${installed_package_version} published=${remote_package_version}"
   fi
+<% if $package == '@anthropic-ai/claude-code' { -%>
+  if [ -f "$(npm root -g)/@anthropic-ai/claude-code/install.cjs" ] && ! claude --version >/dev/null 2>&1; then
+    log 'repairing Claude Code native binary'
+    node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs"
+    claude --version >/dev/null
+  fi
+<% } -%>
 <%- } -%>
 }
 

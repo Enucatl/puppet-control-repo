@@ -5,11 +5,13 @@ export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 state_dir="$HOME/.cache/puppet/codex-ponytail"
 marketplace_dir="$HOME/.local/share/codex/ponytail-marketplace"
 catalog="$marketplace_dir/.agents/plugins/marketplace.json"
+claude_marketplace_dir="$HOME/.local/share/claude/ponytail-marketplace"
+claude_catalog="$claude_marketplace_dir/.claude-plugin/marketplace.json"
 releases="$state_dir/releases.json"
 checked_at="$state_dir/checked-at"
 etag="$state_dir/etag"
 
-mkdir -p "$state_dir" "$(dirname "$catalog")"
+mkdir -p "$state_dir" "$(dirname "$catalog")" "$(dirname "$claude_catalog")"
 exec 9>"$state_dir/lock"
 flock 9
 
@@ -88,19 +90,61 @@ fi
 rm -f "$new_catalog"
 trap - EXIT
 
-current="$(codex plugin list --marketplace ponytail --json)"
-installed_version="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .version // empty' <<< "$current")"
-enabled="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .enabled' <<< "$current")"
-if [ "$installed_version" = "$desired_version" ] && [ "$enabled" = true ]; then
-  exit 0
+new_claude_catalog="$(mktemp "$(dirname "$claude_catalog")/marketplace.XXXXXX")"
+trap 'rm -f "$new_claude_catalog"' EXIT
+jq -n --arg tag "$tag" '{
+  name: "ponytail",
+  owner: { name: "Dietrich Gebert" },
+  plugins: [{
+    name: "ponytail",
+    source: { source: "github", repo: "DietrichGebert/ponytail", ref: $tag }
+  }]
+}' > "$new_claude_catalog"
+if ! cmp -s "$new_claude_catalog" "$claude_catalog"; then
+  mv "$new_claude_catalog" "$claude_catalog"
 fi
+rm -f "$new_claude_catalog"
+trap - EXIT
 
-echo "syncing Ponytail: installed=${installed_version:-none}, desired=$desired_version, enabled=${enabled:-false}"
-codex plugin add ponytail@ponytail --json >/dev/null
 current="$(codex plugin list --marketplace ponytail --json)"
 installed_version="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .version // empty' <<< "$current")"
 enabled="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .enabled' <<< "$current")"
 if [ "$installed_version" != "$desired_version" ] || [ "$enabled" != true ]; then
-  echo "Ponytail did not reach the requested version and enabled state: version=${installed_version:-none}, enabled=${enabled:-false}" >&2
+  echo "syncing Codex Ponytail: installed=${installed_version:-none}, desired=$desired_version, enabled=${enabled:-false}"
+  codex plugin add ponytail@ponytail --json >/dev/null
+  current="$(codex plugin list --marketplace ponytail --json)"
+  installed_version="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .version // empty' <<< "$current")"
+  enabled="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .enabled' <<< "$current")"
+  if [ "$installed_version" != "$desired_version" ] || [ "$enabled" != true ]; then
+    echo "Codex Ponytail did not reach the requested version and enabled state: version=${installed_version:-none}, enabled=${enabled:-false}" >&2
+    exit 1
+  fi
+fi
+
+if ! claude plugin marketplace list --json | jq -e --arg dir "$claude_marketplace_dir" \
+  '.[] | select(.name == "ponytail" and .path == $dir)' >/dev/null; then
+  claude plugin marketplace add "$claude_marketplace_dir" >/dev/null
+fi
+current="$(claude plugin list --json)"
+installed_version="$(jq -r '.[] | select(.id == "ponytail@ponytail" and .scope == "user") | .version // empty' <<< "$current")"
+enabled="$(jq -r '.[] | select(.id == "ponytail@ponytail" and .scope == "user") | .enabled' <<< "$current")"
+if [ "$installed_version" != "$desired_version" ]; then
+  echo "syncing Claude Ponytail: installed=${installed_version:-none}, desired=$desired_version"
+  if [ -z "$installed_version" ]; then
+    claude plugin install ponytail@ponytail --scope user >/dev/null
+  else
+    claude plugin update ponytail@ponytail --scope user >/dev/null
+  fi
+  current="$(claude plugin list --json)"
+  enabled="$(jq -r '.[] | select(.id == "ponytail@ponytail" and .scope == "user") | .enabled' <<< "$current")"
+fi
+if [ "$enabled" != true ]; then
+  claude plugin enable ponytail@ponytail --scope user >/dev/null
+fi
+current="$(claude plugin list --json)"
+installed_version="$(jq -r '.[] | select(.id == "ponytail@ponytail" and .scope == "user") | .version // empty' <<< "$current")"
+enabled="$(jq -r '.[] | select(.id == "ponytail@ponytail" and .scope == "user") | .enabled' <<< "$current")"
+if [ "$installed_version" != "$desired_version" ] || [ "$enabled" != true ]; then
+  echo "Claude Ponytail did not reach the requested version and enabled state: version=${installed_version:-none}, enabled=${enabled:-false}" >&2
   exit 1
 fi
