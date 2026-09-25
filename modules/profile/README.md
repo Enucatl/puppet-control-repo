@@ -77,13 +77,15 @@ remain unchanged.
   both services retain their health check. Command order is pull, build, deploy, check.
 - Setting a project's `ensure: absent` removes its declared units. Merely turning off
   `scheduled_refresh` omits refresh resources; it does not remove existing timers.
+- User-toolchain sync retains its lock, update checks, and npm publication delay.
+  npm install scripts remain disabled except when installing Claude Code, whose
+  npm package needs its postinstall script to link the binary. Cache cleanup
+  retains its existing cron schedule and behavior.
 - Codex plugin sync runs after the user toolchain and dotfiles. Ponytail uses a
   locally generated marketplace pinned to the newest release at least three
   days old. Release metadata is checked at most daily with an ETag; ordinary
   Puppet runs only compare local plugin state and restore missing or disabled
   installations.
-- User-toolchain sync retains its lock, update checks, npm publication delay, and
-  `ignore-scripts` policy. Cache cleanup retains its existing cron schedule and behavior.
 - Dropbear/VFIO retain their initramfs notifications. Beszel retains its FreeIPA
   identity, credential permissions, and systemd hardening.
 - Keep historical `ensure: absent` resources until host evidence confirms cleanup.

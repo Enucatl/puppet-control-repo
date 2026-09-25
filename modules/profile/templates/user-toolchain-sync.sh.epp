@@ -157,7 +157,9 @@ install_nvm() {
 
   cat > "$NVM_DIR/default-packages" <<'NVM_DEFAULT_PACKAGES'
 <%- $npm_globals.each |$package| { -%>
+<% if $package != '@anthropic-ai/claude-code' { -%>
 <%= $package %>
+<% } -%>
 <%- } -%>
 NVM_DEFAULT_PACKAGES
 
@@ -211,7 +213,12 @@ NVM_DEFAULT_PACKAGES
     log "updating npm package <%= $package %>: installed=${installed_package_version:-unknown} published=${remote_package_version}"
     # Install the resolved version exactly so compare and install cannot disagree
     # the way `npm view --before` vs `npm install --before` did on npm 12+.
+<% if $package == '@anthropic-ai/claude-code' { -%>
+    # Claude Code's npm package links its binary in a postinstall script.
+    npm install -g --ignore-scripts=false '<%= $package %>@'"$remote_package_version"
+<% } else { -%>
     npm install -g '<%= $package %>@'"$remote_package_version"
+<% } -%>
     log "updated npm package <%= $package %>"
   else
     log "npm package <%= $package %> is already current: installed=${installed_package_version} published=${remote_package_version}"
