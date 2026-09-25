@@ -70,6 +70,10 @@ profile::common::sysctl::settings:
     value: 1
 
 profile::common::systemd::units:
+  gpg-agent-ssh.socket:
+    path: /etc/systemd/user
+    target: /dev/null
+    daemon_reload: false
   hyperx-headset-volume-user.service:
     path: /etc/systemd/user
     content: |
