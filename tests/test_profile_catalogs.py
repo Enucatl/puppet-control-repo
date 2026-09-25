@@ -171,6 +171,24 @@ def test_base_alloy_catalog(tmp_path: Path) -> None:
     assert "Service[alloy]" in result
 
 
+def test_codex_plugins_catalog(tmp_path: Path) -> None:
+    catalog = compile_catalog(
+        tmp_path,
+        """
+        exec { 'sync-user-toolchain-user': command => '/bin/true' }
+        exec { 'dotfiles-rake-links': command => '/bin/true' }
+        include profile::codex_plugins
+        """,
+    )
+    result = resources(catalog)
+    script = result["File[/usr/local/sbin/puppet-codex-plugins-sync]"]
+    assert script["source"] == "puppet:///modules/profile/codex-plugins-sync"
+    assert result["Exec[sync-codex-plugins-user]"]["user"] == "user"
+    pairs = ordered_pairs(catalog)
+    assert ("Exec[sync-user-toolchain-user]", "Exec[sync-codex-plugins-user]") in pairs
+    assert ("Exec[dotfiles-rake-links]", "Exec[sync-codex-plugins-user]") in pairs
+
+
 @pytest.mark.parametrize("mode", ["complete", "missing", "partial"])
 def test_canonical_secret_consumers_and_geoip_gate(tmp_path: Path, mode: str) -> None:
     data = DUMMY_SECRETS.copy()

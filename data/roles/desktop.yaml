@@ -6,6 +6,7 @@ classes:
   - profile::codex_mtls
   - profile::cursor_cli
   - profile::user_toolchain
+  - profile::codex_plugins
 
 profile::user_toolchain::npm_globals:
   - '@openai/codex'
