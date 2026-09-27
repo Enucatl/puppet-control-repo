@@ -66,6 +66,38 @@ profile::common::services::resources:
     enable: false
 
 profile::common::systemd::units:
+  paperless-snapshot.service:
+    content: |
+      [Unit]
+      Description=Export Paperless data and documents
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/paperless-ai/.env
+      ExecStart=/opt/docker/paperless-ai/backup.sh
+      TimeoutStartSec=4h
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  paperless-snapshot.timer:
+    content: |
+      [Unit]
+      Description=Schedule weekly Paperless export
+
+      [Timer]
+      OnCalendar=Mon *-*-* 01:00:00 UTC
+      Persistent=true
+      Unit=paperless-snapshot.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[paperless-snapshot.service]
   paperless-correspondent-cleanup.service:
     content: |
       [Unit]
@@ -314,13 +346,6 @@ profile::common::cron::jobs:
     weekday: 'Monday'
     user: root
     command: '/opt/docker/puppet-control-repo/docker/vault/scripts/backup.sh 2>&1 | /usr/bin/logger -t vault-snapshot -p user.info'
-  paperless-snapshot:
-    minute: 0
-    hour: 1
-    weekday: 'Monday'
-    user: root
-    command: '/opt/docker/paperless-ai/backup.sh 2>&1 | /usr/bin/logger -t paperless-snapshot -p user.info'
-
 profile::common::certs::vault_certs_default_location: /opt/docker/traefik/data/certs
 
 profile::common::certs::vault_certs:
