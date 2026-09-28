@@ -12,84 +12,21 @@ fi
 export VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
 
 vault policy write admin - <<'EOF'
-# Vault admin policy — based on HashiCorp recommendations
-# https://support.hashicorp.com/hc/en-us/articles/42417725566483
-
-# --- ACL policy management ---
-path "sys/policies/acl/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-path "sys/policies/acl" {
-  capabilities = ["list"]
+# Full administration, including new secrets engines and auth methods.
+# This does not grant the root policy or replace unseal-key quorum operations.
+path "*" {
+  capabilities = ["create", "read", "update", "patch", "delete", "list", "sudo"]
 }
 
-# --- Secrets engine management ---
-path "sys/mounts/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
+# More specific rules in the default policy otherwise mask the wildcard.
+path "sys/leases/lookup" {
+  capabilities = ["create", "read", "update", "patch", "delete", "list", "sudo"]
 }
-path "sys/mounts" {
-  capabilities = ["read"]
+path "identity/entity/id/{{identity.entity.id}}" {
+  capabilities = ["create", "read", "update", "patch", "delete", "list", "sudo"]
 }
-
-# --- Auth method management ---
-path "sys/auth/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-path "sys/auth" {
-  capabilities = ["read"]
-}
-
-# --- Audit device management ---
-path "sys/audit/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-path "sys/audit" {
-  capabilities = ["read", "list", "sudo"]
-}
-
-# --- System health and status ---
-path "sys/health" {
-  capabilities = ["read", "sudo"]
-}
-path "sys/seal" {
-  capabilities = ["update", "sudo"]
-}
-path "sys/unseal" {
-  capabilities = ["update", "sudo"]
-}
-path "sys/leader" {
-  capabilities = ["read"]
-}
-path "sys/config/state/sanitized" {
-  capabilities = ["read"]
-}
-
-# --- Token management ---
-path "auth/token/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-# --- PKI engines (pki = root CA, pki_int = intermediate CA) ---
-path "pki/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-path "pki_int/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-# --- KV v2 secrets engine ---
-path "kv/*" {
-  capabilities = ["create", "read", "update", "patch", "delete", "list"]
-}
-
-# --- LDAP auth configuration ---
-path "auth/ldap/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-
-# --- Certificate auth configuration ---
-path "auth/cert/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
+path "identity/entity/name/{{identity.entity.name}}" {
+  capabilities = ["create", "read", "update", "patch", "delete", "list", "sudo"]
 }
 EOF
 

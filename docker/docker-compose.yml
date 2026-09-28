@@ -66,17 +66,18 @@ services:
       context: ./vault/unsealer
       dockerfile: Dockerfile
     image: infra-vault-unsealer
+    user: 100:100
     depends_on:
       vault:
-        condition: service_healthy
+        condition: service_started
     environment:
-      - CURL_CA_BUNDLE=${VAULT_CACERT}
-      - KEYS_FILE
+      - CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+      - UNSEAL_KEY_FILE=/unseal/key
       - VAULT_ADDR
-      - VAULT_CACERT
     volumes:
-      - ./vault/scripts:/scripts
-      - certificates:/certificates
+      - ./vault/scripts/unseal.sh:/scripts/unseal.sh:ro
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      - vault_unseal:/unseal:ro
     command: /scripts/unseal.sh
     networks:
       - infra
@@ -206,6 +207,27 @@ services:
   # TEMPORARY CONTAINERS
   # only to document one-off setup
 
+  vault-init:
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: hardened-small
+    profiles: [init]
+    image: infra-vault-unsealer
+    user: 100:100
+    restart: no
+    environment:
+      - VAULT_ADDR
+      - CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+    volumes:
+      - ./vault/scripts/00-vault-init.sh:/scripts/00-vault-init.sh:ro
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      - vault_recovery:/recovery
+      - vault_bootstrap:/bootstrap
+      - vault_unseal:/unseal
+    networks:
+      - infra
+    command: /scripts/00-vault-init.sh
+
   # after running this, setup TLS for vault, changing the env and the config file
   vault-pki-core-setup:
     <<: *vault-runtime
@@ -217,10 +239,11 @@ services:
         condition: service_healthy
     environment:
       - VAULT_ADDR
-      - KEYS_FILE
+      - ROOT_TOKEN_FILE=/bootstrap/root-token
     volumes:
       - ./vault/scripts:/scripts
       - certificates:/certificates
+      - vault_bootstrap:/bootstrap:ro
     networks:
       - infra
     entrypoint: /scripts/01-pki-core-setup.sh
@@ -235,12 +258,13 @@ services:
       vault-unsealer:
         condition: service_healthy
     environment:
-      - KEYS_FILE
+      - ROOT_TOKEN_FILE=/bootstrap/root-token
       - VAULT_ADDR
       - VAULT_CACERT
     volumes:
       - ./vault/scripts:/scripts
       - certificates:/certificates
+      - vault_bootstrap:/bootstrap:ro
     entrypoint: /scripts/02-pki-intermediate.sh
     networks:
       - infra
@@ -254,13 +278,14 @@ services:
       vault-unsealer:
         condition: service_healthy
     environment:
-      - KEYS_FILE
+      - ROOT_TOKEN_FILE=/bootstrap/root-token
       - VAULT_ADDR
       - VAULT_CACERT
     volumes:
       - ./vault/scripts:/scripts
       - freeipa_data:/data
       - certificates:/certificates
+      - vault_bootstrap:/bootstrap:ro
     entrypoint: /scripts/04-sign-csr.sh
     networks:
       - infra
@@ -289,6 +314,9 @@ volumes:
   certificates:
   freeipa_data:
   vault_data:
+  vault_recovery:
+  vault_bootstrap:
+  vault_unseal:
   vault_logs:
   wolf_state:
 
@@ -303,4 +331,3 @@ secrets:
     file: ./wolf/secrets/dropbear_known_hosts
   wolf_proxmox_api_ca:
     file: ./wolf/proxmox-cortex-pve-root-ca.pem
-

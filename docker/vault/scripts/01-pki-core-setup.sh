@@ -16,7 +16,7 @@ esac
 # We suppress output to keep logs clean
 apk add --no-cache jq > /dev/null 2>&1
 
-KEYS_FILE="/certificates/keys.json"
+ROOT_TOKEN_FILE=${ROOT_TOKEN_FILE:-/bootstrap/root-token}
 
 vault status || true
 
@@ -45,14 +45,16 @@ if [ $counter -eq "$VAULT_RETRIES" ]; then
 fi
 
 # 2. Login
-if [ ! -f "$KEYS_FILE" ]; then
-  echo "Keys file not found at $KEYS_FILE"
+if [ -z "${VAULT_TOKEN:-}" ] && [ ! -s "$ROOT_TOKEN_FILE" ]; then
+  echo "Bootstrap token is missing; provide an administrator VAULT_TOKEN for reruns."
   exit 1
 fi
 
 # Extract root token and login locally
-ROOT_TOKEN=$(jq -r ".root_token" "$KEYS_FILE")
-export VAULT_TOKEN="$ROOT_TOKEN"
+if [ -z "${VAULT_TOKEN:-}" ]; then
+  VAULT_TOKEN=$(cat "$ROOT_TOKEN_FILE")
+fi
+export VAULT_TOKEN
 
 # 3. Idempotency Check: Is PKI enabled?
 if vault secrets list -format=json | jq -e '."pki/"' > /dev/null; then

@@ -26,8 +26,10 @@ done
 echo "CSR found. Signing with Vault..."
 
 # 2. Login
-ROOT_TOKEN=$(jq -r ".root_token" "$KEYS_FILE")
-export VAULT_TOKEN="$ROOT_TOKEN"
+if [ -z "${VAULT_TOKEN:-}" ]; then
+  VAULT_TOKEN=$(cat "${ROOT_TOKEN_FILE:-/bootstrap/root-token}")
+fi
+export VAULT_TOKEN
 
 # 4. Sign the CSR
 # Note: FreeIPA acts as an intermediate CA, so we use 'sign-intermediate'

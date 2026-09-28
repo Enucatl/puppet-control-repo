@@ -232,6 +232,7 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 
 | Script | Purpose |
 |--------|---------|
+| `00-vault-init.sh` | One-off initialization; save recovery output and split runtime credentials |
 | `01-pki-core-setup.sh` | Root CA, Vault TLS cert |
 | `02-pki-intermediate.sh` | Intermediate CA |
 | `03-puppet-external-ca.sh` | Puppet external CA config |
@@ -243,6 +244,37 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 | `10-vault-ldap.sh` | LDAP auth backend |
 | `11-vault-airflow.sh` | Airflow KV policy |
 | `13-vault-admin-policy.sh` | Admin policy + LDAP group mapping |
+| `99-revoke-root-token.sh` | Final step after all setup and an independent admin login have been tested |
+
+Vault credentials use three separate volumes: `vault_recovery` holds the complete
+initialization response, `vault_bootstrap` holds only the temporary root token,
+and `vault_unseal` holds only the unseal share. Directories are mode `0700` and
+credential files `0600`, owned by container UID/GID `100:100`. Only the one-off
+initializer mounts all three. Setup containers mount the bootstrap token
+read-only; the running unsealer mounts only the unseal share read-only and the
+host's public CA bundle. The Vault server mounts none of these volumes.
+
+For a new Vault, build the unsealer image, start Vault, then run
+`docker compose --profile init run --rm vault-init` from `docker/` before running
+the numbered setup scripts. The initializer never prints credentials or
+overwrites an existing recovery file. An already initialized server with missing
+recovery output requires restoring the saved credentials, not reinitializing.
+Use the appropriate `VAULT_ADDR` for the initial HTTP bootstrap; switch to HTTPS
+after installing the server certificate.
+
+Back up the unseal share outside this host, independently of Vault, and verify a
+restore with a Vault data backup. The recovery volume is not an off-host backup.
+Never keep recovery material in the shared `certificates` volume.
+
+After every setup step (including optional Wolf setup), log in using the LDAP
+admin account and test it. Run `99-revoke-root-token.sh` on the host with
+`ROOT_TOKEN_FILE` pointing to a private local copy of the bootstrap token.
+The script checks independent admin access and removes that local copy after
+successful revocation. Remove the token from the bootstrap volume afterward.
+Normal root revocation also revokes its child tokens and leases: review these
+first. Setup reruns must use an administrator `VAULT_TOKEN` once root is revoked.
+Emergency root generation requires the unseal-key quorum; ordinary admin access
+does not replace possession of those shares.
 
 Wolf-specific bootstrap scripts:
 
