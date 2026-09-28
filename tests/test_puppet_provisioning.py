@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,13 @@ AUTH = {
     "num_uses": 1,
     "lease_duration": 7200,
 }
+
+SPEC = importlib.util.spec_from_file_location(
+    "desktop_cloud_init", PROXMOX / "desktop_cloud_init.py"
+)
+assert SPEC is not None and SPEC.loader is not None
+DESKTOP_CLOUD_INIT = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(DESKTOP_CLOUD_INIT)
 
 
 def issue_token(
@@ -152,19 +160,58 @@ def test_rendered_enrollment_configures_exact_identity(
         assert caller.index(
             "systemctl mask --runtime --now puppet.service"
         ) < caller.index("apt-get install -y puppet-agent")
+    elif kind == "desktop":
+        config = DESKTOP_CLOUD_INIT.build_cloud_config(
+            TOKEN, CERTNAME, "puppet.example", "home.arpa"
+        )
+        assert config["bootcmd"] == [
+            [
+                "cloud-init-per",
+                "instance",
+                "puppet-enrollment-mask",
+                "systemctl",
+                "mask",
+                "--runtime",
+                "--now",
+                "puppet.service",
+            ]
+        ]
+        script = config["write_files"][0]["content"]
+        assert script == (PROXMOX / "configure-puppet.sh").read_text()
+        invocation = next(
+            command
+            for command in config["runcmd"]
+            if isinstance(command, list)
+            and command[0] == "/usr/local/bin/configure-puppet.sh"
+        )
+        args = invocation[1:]
     else:
         caller = {
             "docker": "docker-server.sh",
-            "desktop": "desktop.sh",
             "freeipa-client-acceptance": "freeipa-client-acceptance.sh",
         }[kind]
-        substitutions = re.search(r"envsubst '([^']+)'", (PROXMOX / caller).read_text())
+        caller_script = (PROXMOX / caller).read_text()
+        substitutions = re.search(r"envsubst '([^']+)'", caller_script)
         assert substitutions is not None
+        preparation = ""
+        if kind == "docker":
+            embedding = re.search(
+                r"^CONFIGURE_PUPPET_SCRIPT=.*\nexport .*\n", caller_script, re.M
+            )
+            assert embedding is not None
+            preparation = embedding[0]
         rendered = subprocess.run(
-            ["envsubst", substitutions[1]],
+            [
+                "bash",
+                "-c",
+                preparation + 'exec envsubst "$1"',
+                "render",
+                substitutions[1],
+            ],
             input=(PROXMOX / f"{kind}-cloud-init.yml.tmpl").read_text(),
             env={
                 **os.environ,
+                "SCRIPT_DIR": str(PROXMOX),
                 "VM_TOKEN": TOKEN,
                 "VM_FQDN": CERTNAME,
                 "NODE_TYPE": node_type,
@@ -184,6 +231,10 @@ def test_rendered_enrollment_configures_exact_identity(
         embedded = re.search(r"    content: \|\n((?:      .*\n|\n)+)", rendered)
         assert embedded is not None
         script = "\n".join(line[6:] for line in embedded[1].splitlines())
+        if kind == "docker":
+            assert script.rstrip("\n") == (
+                PROXMOX / "configure-puppet.sh"
+            ).read_text().rstrip("\n")
         invocation = re.search(
             r"^  - /usr/local/(?:bin|sbin)/configure-puppet[^\n]*", rendered, re.M
         )
@@ -229,6 +280,29 @@ def test_rendered_enrollment_configures_exact_identity(
         < commands.index("systemctl unmask --runtime puppet.service")
         < commands.index("systemctl enable puppet")
         < commands.index("puppet agent --test --waitforlock 300")
+    )
+
+
+def test_desktop_enrollment_arguments_survive_serialization() -> None:
+    """Keep credential quotes and shell metacharacters as literal arguments."""
+    token = "dummy'\"$TOKEN; $(id)\\token\nsecond line"
+    config = json.loads(
+        json.dumps(
+            DESKTOP_CLOUD_INIT.build_cloud_config(
+                token, CERTNAME, "puppet.example", "home.arpa"
+            )
+        )
+    )
+    assert [
+        "/usr/local/bin/configure-puppet.sh",
+        "desktop",
+        token,
+        CERTNAME,
+        "puppet.example",
+    ] in config["runcmd"]
+    assert (
+        config["write_files"][0]["content"]
+        == (PROXMOX / "configure-puppet.sh").read_text()
     )
 
 

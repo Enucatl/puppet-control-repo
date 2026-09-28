@@ -55,9 +55,9 @@ jobs:
       - name: Check enrollment scripts and single-use authorization
         run: |
           for script in proxmox/*.sh docker/vault/scripts/08-vault-puppet-policy.sh; do bash -n "$script"; done
-          uv run --frozen ruff check scripts/autosign.py tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py
-          uv run --frozen ruff format --check scripts/autosign.py tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py
-          uv run --frozen pytest -q tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py
+          uv run --frozen ruff check scripts/autosign.py proxmox/desktop.py proxmox/desktop_cloud_init.py tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py tests/test_desktop_provisioning.py
+          uv run --frozen ruff format --check scripts/autosign.py proxmox/desktop.py proxmox/desktop_cloud_init.py tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py tests/test_desktop_provisioning.py
+          uv run --frozen pytest -q tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py tests/test_desktop_provisioning.py
   profiles:
     runs-on: ubuntu-24.04
     steps:

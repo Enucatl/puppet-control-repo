@@ -28,7 +28,8 @@ A monorepo for home lab infrastructure. It combines Puppet configuration managem
 │       └── config/              # Puppet Server configuration
 ├── proxmox/                     # Scripts that run ON the Proxmox hypervisor
 │   ├── configure-pve-backups.sh # Proxmox Backup Server setup
-│   ├── desktop.sh               # Desktop VM provisioning
+│   ├── desktop.sh               # Launcher for desktop.py
+│   ├── desktop.py               # Desktop VM provisioning
 │   ├── docker-server.sh         # Docker VM provisioning
 │   ├── ubuntu-server-template.sh# Ubuntu cloud-init template creation
 │   └── *.sh                     # Other node provisioning helpers
@@ -65,9 +66,35 @@ A monorepo for home lab infrastructure. It combines Puppet configuration managem
 
 - **`docker/`** is the infrastructure that hosts Puppet itself. The Puppet Server runs as a container and serves the catalog to all managed nodes, including `docker.home.arpa` itself.
 - **`modules/` + `data/`** are the Puppet content — profiles, roles, and Hiera data consumed by every node.
-- **`proxmox/`** contains one-shot shell scripts for provisioning new VMs/LXC containers on the hypervisor. They are not managed by Puppet; they run manually or via cron.
+- **`proxmox/`** contains provisioning scripts for new VMs/LXC containers on the hypervisor. They are not managed by Puppet; they run manually or via cron.
 - **`provisioning/`** handles infrastructure that Puppet cannot reach at boot time — primarily router/VyOS configuration via Ansible.
 - **`scripts/`** are server-side Puppet helpers (autosign policy, ENC) deployed alongside the Puppet Server.
+
+## Desktop VM Provisioning
+
+On the Proxmox host, install `uv` and run the existing command from a directory
+containing your `.env`:
+
+```bash
+bash /path/to/puppet-control-repo/proxmox/desktop.sh -l a -i 123 -c 8 -m 8000 -d 128G
+```
+
+The launcher runs Python with the repository's locked dependencies. The same
+options are available with `uv run --frozen python proxmox/desktop.py` from the
+repository root. Defaults remain 8 cores, 8000 MB RAM, and a 128G disk; omitting
+`-i` asks Proxmox for the next VM ID, and `-l` restricts the dictionary hostname's
+first letter. An existing VM at the selected ID is replaced.
+
+Shared defaults still come from `proxmox/config.sh`. The `.env` file overrides
+those defaults and must provide `VAULT_ADDR`, `VAULT_TOKEN`, and `LOG_DIR`
+(or leave them set in the environment). `VAULT_CACERT` optionally selects the
+Vault CA certificate. Use one `KEY=value` assignment per line; quote values
+containing spaces or `#`. Values in `.env` are literal, with no shell expansion.
+
+Desktop cloud-init is built as structured data and written as JSON, which is
+valid YAML, after the `#cloud-config` header. It embeds `configure-puppet.sh`
+directly and passes enrollment values as command arguments. The temporary
+snippet is restricted to its owner and removed when provisioning exits.
 
 ## Puppet Agent Setup (New Node)
 

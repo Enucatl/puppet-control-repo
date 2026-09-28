@@ -18,34 +18,7 @@ write_files:
   - path: /usr/local/bin/configure-puppet.sh
     permissions: '0755'
     content: |
-      #!/bin/bash
-      set -euo pipefail
-      NODE_TYPE="${1:?node_type required}"
-      VAULT_TOKEN="${2:?vault_token required}"
-      CERTNAME="${3:?certname required}"
-      PUPPET_SERVER="${4:-docker.home.arpa}"
-
-      systemctl stop puppet
-
-      mkdir -p /etc/puppetlabs/puppet/
-      cat <<CSREOF > /etc/puppetlabs/puppet/csr_attributes.yaml
-      custom_attributes:
-        1.2.840.113549.1.9.7: "${VAULT_TOKEN}"
-      CSREOF
-      chmod 0640 /etc/puppetlabs/puppet/csr_attributes.yaml
-
-      mkdir -p /etc/facter/facts.d/
-      echo "node_type=${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
-
-      /opt/puppetlabs/bin/puppet config set server "$PUPPET_SERVER" --section main
-      /opt/puppetlabs/bin/puppet config set certname "$CERTNAME" --section main
-      /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
-
-      systemctl unmask --runtime puppet.service
-      systemctl enable puppet
-      /opt/puppetlabs/bin/puppet resource service puppet enable=true
-      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
-      /opt/puppetlabs/bin/puppet resource service puppet ensure=running
+${CONFIGURE_PUPPET_SCRIPT}
 
   - path: /etc/docker/daemon.json
     content: |

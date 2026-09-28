@@ -65,7 +65,9 @@ echo "--- Starting Deployment for VM $VMID ($NEW_VM_NAME) ---"
 # 1. Generate Vault token and inject all variables into the template
 echo "[1/6] Generating Vault Token and Cloud-Init from template..."
 create_vault_token "$VM_FQDN"
-envsubst '${IPV6_POOL}${IPV6_FIXED}${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}${NODE_TYPE}${VM_FQDN}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+CONFIGURE_PUPPET_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/configure-puppet.sh")
+export CONFIGURE_PUPPET_SCRIPT
+envsubst '${IPV6_POOL}${IPV6_FIXED}${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}${NODE_TYPE}${VM_FQDN}${CONFIGURE_PUPPET_SCRIPT}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
 
 # 2. Pre-flight Cleanup
 if qm status "$VMID" >/dev/null 2>&1; then
