@@ -11,15 +11,17 @@ profile::user_toolchain::npm_globals:
   - '@openai/codex'
   - '@anthropic-ai/claude-code'
 
-# commented cause temporarily not needed
-# profile::common::certs::vault_certs:
-#   codex:
-#     cert_chain_file: /home/user/.config/home-arpa/mtls/codex.crt
-#     cert_chain_mode: '0644'
-#     key_file: /home/user/.config/home-arpa/mtls/codex.key
-#     cert_data:
-#       common_name: "codex.%{facts.networking.fqdn}"
-#       alt_names: "codex.%{facts.networking.fqdn}"
+profile::common::certs::vault_certs:
+  codex:
+    cert_chain_file: /home/user/.config/home-arpa/mtls/codex.crt
+    cert_chain_mode: '0644'
+    key_file: /home/user/.config/home-arpa/mtls/codex.key
+    key_owner: user
+    key_group: user
+    key_mode: '0600'
+    cert_data:
+      common_name: "codex.%{facts.networking.fqdn}"
+      alt_names: "codex.%{facts.networking.fqdn}"
 
 freeipa_users::user_groups:
   user:
