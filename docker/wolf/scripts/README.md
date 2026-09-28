@@ -10,7 +10,7 @@ Run them in this order:
 3. `30-create-wolf-operator.sh` anywhere with access to the FreeIPA container
 
 The Dropbear initramfs key is still generated locally and added through Puppet
-data under `data/nodes/proxmox-cortex.yaml`.
+data under `data/nodes/proxmox-cortex.home.arpa.yaml`.
 
 Capture the Dropbear host key while the initramfs SSH endpoint is up:
 

@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from puppet_catalog import compile_catalog, resources
+from puppet_catalog import ROOT, compile_catalog, resources
 
 DUMMY_SECRETS = {
     "freeipa::client::password": "fixture-password",
@@ -119,6 +119,45 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
         assert managed_resources(catalog) == managed_resources(before)
         assert ordered_pairs(catalog) == ordered_pairs(before)
         assert notifications(catalog) == notifications(before)
+
+
+@pytest.mark.parametrize(
+    "certname", ["forbearance.home.arpa", "docker.example.org", "ordinary.home.arpa"]
+)
+def test_forged_role_cannot_retrieve_docker_secrets(
+    tmp_path: Path, certname: str
+) -> None:
+    """Authorize catalog secrets by certificate despite forged role/host facts."""
+    catalog = compile_catalog(
+        tmp_path,
+        (ROOT / "manifests/site.pp").read_text(),
+        DUMMY_SECRETS,
+        hostname="docker",
+        node_type="docker",
+        certname=certname,
+    )
+    serialized = str(catalog)
+    for secret in ("fixture-license", "fixture-printer", "fixture-pictures"):
+        assert secret not in serialized
+    result = resources(catalog)
+    assert "Class[Profile::Docker_host]" not in result
+    assert "Class[Profile::Docker_node]" not in result
+    assert "File[/etc/GeoIP.conf]" not in result
+
+
+@pytest.mark.parametrize("field", ["family", "name"])
+def test_os_hierarchy_rejects_fact_path_traversal(tmp_path: Path, field: str) -> None:
+    """Reject facts that try to load privileged Hiera files through OS paths."""
+    with pytest.raises(AssertionError, match="OS hierarchy facts must be simple names"):
+        compile_catalog(
+            tmp_path,
+            (ROOT / "manifests/site.pp").read_text(),
+            DUMMY_SECRETS,
+            certname="ordinary.home.arpa",
+            fact_overrides={
+                "os": {"family": "Debian", "name": "Ubuntu", field: "../roles/docker"}
+            },
+        )
 
 
 @pytest.mark.parametrize(

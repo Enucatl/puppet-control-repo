@@ -24,6 +24,13 @@ File { backup => false }
 # Puppet Enterprise console and External Node Classifiers (ENC's).
 #
 # For more on node definitions, see: https://puppet.com/docs/puppet/latest/lang_node_definitions.html
+# These facts select Hiera files; reject path traversal before any lookup.
+[$facts['os']['family'], $facts['os']['name']].each |$segment| {
+  if $segment !~ Pattern[/\A[A-Za-z0-9_-]+\z/] {
+    fail('OS hierarchy facts must be simple names')
+  }
+}
+
 $classes = lookup('classes', Array[String])
 
 node default {

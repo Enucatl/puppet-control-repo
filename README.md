@@ -241,7 +241,7 @@ Introduce IPFIX sampling only if the 24-hour volume, disk growth, query latency,
 
 ### Relevant Files
 
-- [data/nodes/docker.yaml](/opt/docker/puppet-control-repo/data/nodes/docker.yaml)
+- [data/nodes/docker.home.arpa.yaml](/opt/docker/puppet-control-repo/data/nodes/docker.home.arpa.yaml)
 - [docker/docker-compose.yml](/opt/docker/puppet-control-repo/docker/docker-compose.yml)
 - [modules/profile/manifests/alloy.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/alloy.pp)
 - [modules/profile/manifests/alloy/geoip.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/alloy/geoip.pp)

@@ -182,6 +182,7 @@ if ! verify_puppet_ca_issuer_encoding "$PUPPET_ENCODING_TEST_CERTNAME"; then
 fi
 
 update_vault_puppet_cert_auth
+PUPPET_CERT_AUTH_ROLE="$PUPPET_CERT_AUTH_ROLE" bash "$(dirname "$0")/08-vault-puppet-policy.sh"
 verify_vault_puppet_cert_auth "$PUPPET_ENCODING_TEST_CERTNAME"
 cleanup_encoding_test_cert
 trap - EXIT

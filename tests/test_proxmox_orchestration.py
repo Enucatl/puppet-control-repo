@@ -34,7 +34,7 @@ class Config:
     vault_field: str = "proxmox-cortex"
     vault_addr: str = "https://hcv.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
-    vault_cert_role: str = "puppet"
+    vault_cert_role: str = "puppet-wolf"
     certname: str = "proxmox.home.arpa"
     command_timeout: int = 60
     dry_run: bool = False
@@ -90,6 +90,7 @@ class TestProxmoxOrchestration:
         secret = shared.read_vault_secret(Config(), runner)
 
         assert secret == "secret"
+        assert "name=puppet-wolf" in runner.commands[1].split()
         assert runner.envs[-1]["VAULT_TOKEN"] == "token"
 
     def test_lock_contention_raises_runtime_error(self, tmp_path: Path) -> None:

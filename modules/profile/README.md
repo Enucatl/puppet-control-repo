@@ -1,8 +1,10 @@
 # Profiles
 
 Profiles connect this site's Hiera configuration to Puppet resources and component
-modules. `manifests/site.pp` includes the merged `classes` list. Hiera selects node,
-`node_type` role, OS, and common data, with Vault taking priority. No separate Puppet
+modules. `manifests/site.pp` includes the merged `classes` list. Hiera selects the
+full authenticated certificate name, its server-assigned
+role link under `data/roles/nodes`, OS, and common data, with Vault taking priority.
+Agent-supplied `node_type` facts do not grant role membership. No separate Puppet
 `role` module is needed.
 
 ## Ownership
@@ -38,7 +40,7 @@ discovery and processing; `manage_docker_user` grants Alloy membership in `docke
 `manage_geoip` installs the database updater when both credentials are available.
 The updater still runs on Docker-role hosts without a router receiver.
 
-Only `data/nodes/docker.yaml` enables the central router layer:
+Only `data/nodes/docker.home.arpa.yaml` enables the central router layer:
 
 ```yaml
 profile::alloy::enable_router_enrichment: true

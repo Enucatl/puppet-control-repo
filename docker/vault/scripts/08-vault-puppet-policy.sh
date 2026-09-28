@@ -12,6 +12,35 @@ export VAULT_CACERT=${VAULT_CACERT:-/etc/ssl/certs/ca-certificates.crt}
 
 CERT_AUTH_ACCESSOR=$(vault auth list -format=json | jq -er '."cert/".accessor')
 PUPPET_CERTNAME="{{identity.entity.aliases.${CERT_AUTH_ACCESSOR}.name}}"
+PUPPET_CA_CERT=$(vault read -field=certificate "auth/cert/certs/${PUPPET_CERT_AUTH_ROLE:-puppet}")
+
+# Separate logins keep Hiera and runtime KV access out of every agent's policy.
+vault policy write puppet-server - <<'EOF'
+path "kv/data/puppet" {
+    capabilities = ["read"]
+}
+EOF
+
+vault policy write puppet-wolf - <<'EOF'
+path "kv/data/wolf" {
+    capabilities = ["read"]
+}
+EOF
+
+# The CA and exact certificate CN enforce access, not the requested role name.
+vault write auth/cert/certs/puppet-server \
+  certificate="$PUPPET_CA_CERT" \
+  allowed_common_names=docker.home.arpa \
+  allowed_dns_sans=docker.home.arpa \
+  token_policies=puppet-server \
+  token_ttl=15m
+
+vault write auth/cert/certs/puppet-wolf \
+  certificate="$PUPPET_CA_CERT" \
+  allowed_common_names=docker.home.arpa,proxmox.home.arpa \
+  allowed_dns_sans=docker.home.arpa,proxmox.home.arpa \
+  token_policies=puppet-wolf \
+  token_ttl=15m
 
 # The identity comes from the authenticated Puppet certificate, never request data.
 vault write pki_int/roles/puppet \
@@ -41,14 +70,6 @@ vault write pki_int/roles/puppet-docker.home.arpa \
   max_ttl=8760h
 
 vault policy write puppet - <<EOF
-path "kv/data/puppet" {
-    capabilities = ["read"]
-}
-
-path "kv/data/wolf" {
-    capabilities = ["read"]
-}
-
 # Ordinary nodes can issue only within their authenticated hostname.
 path "pki_int/issue/puppet" {
     capabilities = ["create", "update"]

@@ -17,7 +17,13 @@ import hvac
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-NODES = ("complex.home.arpa", "docker.home.arpa", "forbearance.home.arpa")
+NODES = (
+    "complex.home.arpa",
+    "docker.home.arpa",
+    "forbearance.home.arpa",
+    "proxmox.home.arpa",
+    "proxmox-cortex.home.arpa",
+)
 DOCKER_ROLE = "puppet-docker.home.arpa"
 
 
@@ -75,6 +81,11 @@ def vault(
             root = hvac.Client(
                 url=address, token=environment["VAULT_TOKEN"], verify=str(ca)
             )
+            root.sys.enable_secrets_engine("kv", path="kv", options={"version": "2"})
+            for path in ("puppet", "wolf"):
+                root.secrets.kv.v2.create_or_update_secret(
+                    path=path, secret={"value": "fixture-secret"}, mount_point="kv"
+                )
             for mount in ("pki_int", "puppet_ca"):
                 root.sys.enable_secrets_engine(
                     "pki",
@@ -109,7 +120,9 @@ def vault(
             )
             root.sys.create_or_update_policy(
                 "puppet",
-                'path "pki_int/issue/general" { capabilities = ["update"] }',
+                'path "pki_int/issue/general" { capabilities = ["update"] }\n'
+                'path "kv/data/puppet" { capabilities = ["read"] }\n'
+                'path "kv/data/wolf" { capabilities = ["read"] }',
             )
             clients = {}
             for node in NODES:
@@ -125,6 +138,10 @@ def vault(
                     name="puppet", cert_pem=str(cert_file), key_pem=str(key_file)
                 )
                 clients[node] = client
+                for path in ("puppet", "wolf"):
+                    assert client.read(f"kv/data/{path}")["data"]["data"] == {
+                        "value": "fixture-secret"
+                    }
             # Keep these pre-existing tokens through policy replacement.
             assert clients[NODES[0]].write(
                 "pki_int/issue/general", common_name="*.home.arpa"
@@ -272,3 +289,80 @@ def test_policy_without_certificate_identity_cannot_issue(
     )
     with pytest.raises((hvac.exceptions.Forbidden, hvac.exceptions.InvalidRequest)):
         client.write(f"pki_int/issue/{role}", common_name="docker.home.arpa")
+
+
+@pytest.mark.parametrize("node", NODES)
+@pytest.mark.parametrize("path", ("puppet", "wolf"))
+def test_existing_agent_tokens_lose_kv_access(
+    vault: tuple[hvac.Client, dict[str, hvac.Client]], node: str, path: str
+) -> None:
+    """Replacing the shared policy removes KV access from existing tokens."""
+    _, clients = vault
+    with pytest.raises(hvac.exceptions.Forbidden):
+        clients[node].read(f"kv/data/{path}")
+
+
+@pytest.mark.parametrize("node", NODES)
+@pytest.mark.parametrize("role", ("puppet", "puppet-server", "puppet-wolf", ""))
+def test_certificate_roles_enforce_kv_boundaries(
+    vault: tuple[hvac.Client, dict[str, hvac.Client]], node: str, role: str
+) -> None:
+    """Explicit or automatic role selection cannot grant another node's KV."""
+    root, _ = vault
+    directory = Path(root.adapter._kwargs["verify"]).parent
+    client = hvac.Client(url=root.url, verify=root.adapter._kwargs["verify"])
+    login = {
+        "name": role,
+        "cert_pem": str(directory / f"{node}.pem"),
+        "key_pem": str(directory / f"{node}.key"),
+    }
+    allowed_nodes = {
+        "puppet-server": ("docker.home.arpa",),
+        "puppet-wolf": ("docker.home.arpa", "proxmox.home.arpa"),
+    }
+    if role in allowed_nodes and node not in allowed_nodes[role]:
+        with pytest.raises(hvac.exceptions.InvalidRequest):
+            client.auth.cert.login(**login)
+        return
+    result = client.auth.cert.login(**login)
+    if role:
+        assert set(result["auth"]["policies"]) - {"default"} == {role}
+    for path, policy in (("puppet", "puppet-server"), ("wolf", "puppet-wolf")):
+        if policy in result["auth"]["policies"]:
+            assert node in allowed_nodes[policy]
+            assert client.read(f"kv/data/{path}")["data"]["data"] == {
+                "value": "fixture-secret"
+            }
+        else:
+            with pytest.raises(hvac.exceptions.Forbidden):
+                client.read(f"kv/data/{path}")
+    if role in allowed_nodes:
+        with pytest.raises(hvac.exceptions.Forbidden):
+            client.write("pki_int/issue/puppet", common_name=node)
+
+
+@pytest.mark.parametrize("role", ("puppet-server", "puppet-wolf"))
+@pytest.mark.parametrize("mount", ("puppet_ca", "pki_int"))
+def test_privileged_login_requires_puppet_ca_and_exact_common_name(
+    vault: tuple[hvac.Client, dict[str, hvac.Client]],
+    tmp_path: Path,
+    role: str,
+    mount: str,
+) -> None:
+    """A privileged SAN or a service-CA certificate cannot impersonate Docker."""
+    root, _ = vault
+    certificate = root.secrets.pki.generate_certificate(
+        "nodes" if mount == "puppet_ca" else "general",
+        common_name="complex.home.arpa" if mount == "puppet_ca" else "docker.home.arpa",
+        extra_params={"alt_names": "docker.home.arpa"},
+        mount_point=mount,
+    )["data"]
+    cert_file = tmp_path / "cert.pem"
+    key_file = tmp_path / "key.pem"
+    cert_file.write_text(certificate["certificate"])
+    key_file.write_text(certificate["private_key"])
+    client = hvac.Client(url=root.url, verify=root.adapter._kwargs["verify"])
+    with pytest.raises(hvac.exceptions.InvalidRequest):
+        client.auth.cert.login(
+            name=role, cert_pem=str(cert_file), key_pem=str(key_file)
+        )

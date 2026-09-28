@@ -9,7 +9,7 @@ PUPPET_REPO_ROOT="$(cd "$PUPPET_CONFIG_DIR/../../.." && pwd)"
 
 puppet_allowed_dns_sans_csv() {
   find "$PUPPET_REPO_ROOT/data/nodes" -maxdepth 1 -type f -name '*.yaml' |
-    sed 's|.*/||; s/\.yaml$/.home.arpa/' |
+    sed 's|.*/||; s/\.yaml$//' |
     sort |
     paste -sd, -
 }

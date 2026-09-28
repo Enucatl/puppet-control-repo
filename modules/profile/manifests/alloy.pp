@@ -5,10 +5,16 @@ class profile::alloy (
   Boolean           $manage_geoip        = false,
   Boolean           $enable_router_enrichment = false,
   String            $router_listen_address = '10.0.0.128',
-  Optional[String]   $maxmind_account_id  = lookup('profile::alloy::maxmind_account_id', Optional[String], 'first', undef),
-  Optional[String]   $maxmind_license_key = lookup('profile::alloy::maxmind_license_key', Optional[String], 'first', undef),
   Optional[String]   $local_ipv6_prefix   = lookup('ipv6-prefix', Optional[String], 'first', undef),
 ) {
+  # Class parameters are serialized into every catalog, even when unused.
+  if $manage_geoip or $enable_router_enrichment {
+    $maxmind_account_id = lookup('profile::alloy::maxmind_account_id', Optional[String], 'first', undef)
+    $maxmind_license_key = lookup('profile::alloy::maxmind_license_key', Optional[String], 'first', undef)
+  } else {
+    $maxmind_account_id = undef
+    $maxmind_license_key = undef
+  }
   $geoip_credentials_available = $maxmind_account_id != undef and $maxmind_license_key != undef
 
   # These resources used to belong to docker_host, after profile::common.

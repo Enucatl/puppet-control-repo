@@ -2,7 +2,7 @@
 
 `freeipa_users` only manages local group membership and removes the retired
 `/run/puppet-ipa-admin-pass` file. `freeipa_users::provision` and its users are
-included by `data/nodes/docker.yaml`. The class requires Puppet's authenticated
+included by `data/nodes/docker.home.arpa.yaml`. The class requires Puppet's authenticated
 remote certname to equal `docker.home.arpa`, regardless of hostname/role facts.
 
 Run `docker/freeipa/bootstrap-puppet-provisioner.sh` as root on that host with

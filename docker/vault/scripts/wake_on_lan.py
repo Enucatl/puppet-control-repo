@@ -111,6 +111,7 @@ def main(
                     "-format=json",
                     "-client-cert=/etc/puppetlabs/puppet/ssl/certs/docker.home.arpa.pem",
                     "-client-key=/etc/puppetlabs/puppet/ssl/private_keys/docker.home.arpa.pem",
+                    "name=puppet-wolf",
                 ],
                 env=vault_env,
                 stderr=subprocess.DEVNULL,

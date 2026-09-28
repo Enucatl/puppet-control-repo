@@ -27,6 +27,7 @@ def compile_catalog(
     certname: str | None = None,
     authenticated: str = "remote",
     root: Path = ROOT,
+    fact_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compile an isolated catalog with explicit facts and certificate identity."""
     if not DEPENDENCIES.is_dir():
@@ -37,26 +38,6 @@ def compile_catalog(
     workdir.mkdir(parents=True, exist_ok=True)
     overrides = workdir / "overrides.json"
     overrides.write_text(json.dumps(data or {}))
-    hiera = workdir / "hiera.yaml"
-    hiera.write_text(
-        json.dumps(
-            {
-                "version": 5,
-                "defaults": {"data_hash": "yaml_data", "datadir": str(root / "data")},
-                "hierarchy": [
-                    {"name": "Test overrides, never Vault", "path": str(overrides)},
-                    {"name": "Node", "path": "nodes/%{trusted.hostname}.yaml"},
-                    {"name": "Role", "path": "roles/%{facts.node_type}.yaml"},
-                    {
-                        "name": "OS",
-                        "path": "os/%{facts.os.family}/%{facts.os.name}.yaml",
-                    },
-                    {"name": "Family", "path": "os/%{facts.os.family}.yaml"},
-                    {"name": "Common", "path": "common.yaml"},
-                ],
-            }
-        )
-    )
     debian = node_type == "proxmox"
     facts = {
         "fqdn": f"{hostname}.home.arpa",
@@ -96,12 +77,15 @@ def compile_catalog(
         "puppetversion": "8.21.0",
         "path": "/usr/bin:/bin:/usr/sbin:/sbin",
     }
+    facts.update(fact_overrides or {})
     result = subprocess.run(
         [str(RUBY), str(ROOT / "tests/puppet/compile.rb")],
         input=json.dumps(
             {
                 "workdir": str(workdir),
-                "hiera_config": str(hiera),
+                "hiera_config": str(root / "hiera.yaml"),
+                "overrides": str(overrides),
+                "datadir": str(root / "data"),
                 "code": code,
                 "certname": certname or f"{hostname}.home.arpa",
                 "authenticated": authenticated,

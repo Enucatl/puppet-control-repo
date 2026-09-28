@@ -1,12 +1,19 @@
 # Compile only; never apply resources or contact the production Hiera backend.
 require 'json'
 require 'puppet'
+require 'yaml'
 
 input = JSON.parse(STDIN.read)
+hiera = YAML.safe_load(File.read(input.fetch('hiera_config')))
+hiera['defaults']['datadir'] = input.fetch('datadir')
+hiera['hierarchy'].reject! { |entry| entry['data_hash'] == 'vault_hiera_hash' }
+hiera['hierarchy'].unshift({ 'name' => 'Test overrides, never Vault', 'path' => input.fetch('overrides') })
+hiera_config = File.join(input.fetch('workdir'), 'hiera.yaml')
+File.write(hiera_config, YAML.dump(hiera))
 Puppet.initialize_settings([
   '--confdir', input.fetch('workdir'),
   '--vardir', File.join(input.fetch('workdir'), 'cache'),
-  '--hiera_config', input.fetch('hiera_config'),
+  '--hiera_config', hiera_config,
   '--code', input.fetch('code'),
   '--node_terminus', 'plain',
   '--strict', 'warning',

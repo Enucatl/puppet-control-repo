@@ -232,7 +232,7 @@ ssh-keygen -t ed25519 -f docker/wolf/secrets/dropbear_key -N '' -C wolf-dropbear
 ```
 
 Then ensure the public key is present in
-`data/nodes/proxmox-cortex.yaml` under
+`data/nodes/proxmox-cortex.home.arpa.yaml` under
 `profile::dropbear_initramfs::authorized_keys`, and apply Puppet on
 `proxmox-cortex` so the initramfs key is rebuilt.
 

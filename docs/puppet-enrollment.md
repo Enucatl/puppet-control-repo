@@ -93,19 +93,49 @@ endpoint; other nodes use `puppet`. Changing a node's facts or requested endpoin
 cannot change its Vault certificate identity or permissions.
 
 The broad `general` issuance role remains available to administrators for manual
-device issuance, but the `puppet` policy no longer grants access to it. The
-existing `kv/data/puppet` and `kv/data/wolf` read permissions are unchanged.
+device issuance, but the `puppet` policy no longer grants access to it or to KV.
 
 Deploy the updated Hiera data and run
 `docker/vault/scripts/08-vault-puppet-policy.sh` with administrator credentials
 against the same Vault. The script creates both roles and then replaces the
-shared policy; it can be rerun on an existing installation. The `cert` auth mount
-and `pki_int` engine must already exist. The cert-auth setup scripts also require
+shared policy; it can be rerun on an existing installation. The `cert` auth mount,
+its existing `puppet` certificate role, and `pki_int` engine must already exist.
+The cert-auth setup scripts also require
 the login certificate CN to match an admitted node, in addition to its DNS SAN.
 
 Policy changes apply to existing tokens immediately. Cached catalogs that still
 use `general` must be refreshed before they can renew certificates. Previously
 issued certificates remain valid until expiry or revocation.
+
+## Runtime secret access
+
+The shared `puppet` certificate role grants only scoped certificate issuance.
+Hiera explicitly logs in as `puppet-server`, whose policy reads only
+`kv/data/puppet`. Vault restricts this login to the Puppet CA and the exact
+`docker.home.arpa` certificate CN. This is the current compiler identity; the
+Docker host's agent shares that identity and therefore the same access boundary.
+
+The `puppet-wolf` login reads only `kv/data/wolf`, and accepts only
+`docker.home.arpa` and `proxmox.home.arpa` certificates from that CA. The Docker
+wake script and Proxmox backup/vLLM workflows select this role explicitly. Wolf's
+existing dedicated `wolf` certificate role is unchanged. KV permissions cover
+the whole document, including all fields; `vault kv get -field=...` does not
+restrict authorization to that field. Administrative bootstrap scripts still
+use an administrator login.
+
+For migration, deploy the Hiera `auth_name` and runtime login changes together
+with `08-vault-puppet-policy.sh`. The script installs the restricted roles before
+removing both KV grants from the shared policy. Existing shared-policy tokens
+lose their KV reads immediately, so refresh deployed workflow scripts before
+their next run. A cached CLI token without the new permission causes those
+scripts to reauthenticate under `puppet-wolf`. Re-running the CA import also
+refreshes the restricted roles' trusted CA.
+
+Verify an ordinary node cannot read either KV document or log in under either
+restricted role; verify the compiler can read `kv/puppet`, the runtime consumers
+can read `kv/wolf`, and ordinary certificate renewal still works. The disposable
+Vault tests below exercise these boundaries, including tokens issued before the
+policy replacement and certificates with forged privileged DNS SANs.
 
 ## Verification
 
@@ -118,3 +148,20 @@ binary. They cover replay, concurrent use, expiry, consumed mismatches, and
 permission isolation when the issuer has identity policies. Provisioning tests
 use dummy credentials; they require `jq` and `envsubst`. CI installs these
 tools and runs these checks on enrollment-related changes.
+
+### Server-controlled catalog roles
+
+Catalog role membership comes from a server-controlled symlink under
+`data/roles/nodes/<full-certname>.yaml` pointing to the shared role YAML. For
+example, `data/roles/nodes/docker.home.arpa.yaml` points to `../docker.yaml`.
+Add the link before provisioning a new node that needs a role; put any
+node-specific settings in `data/nodes/<full-certname>.yaml`. The enrollment
+`node_type` argument still supplies an informational fact; it no longer authorizes a role.
+Unclassified certificates receive only common and OS configuration. A certificate
+for `docker.example.org` cannot select `docker.home.arpa` node configuration.
+
+OS name and family facts may select OS defaults, but cannot contain path
+separators or traversal segments. Docker-only MaxMind credentials are looked up
+only for enabled GeoIP consumers, so unused class parameters do not expose them
+to ordinary nodes. Shared enrollment, SMTP, and Beszel credentials remain in
+catalogs for the nodes that require them.
