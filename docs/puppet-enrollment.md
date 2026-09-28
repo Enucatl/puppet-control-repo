@@ -26,8 +26,8 @@ or separate revocation request is involved.
    during package installation and unmasks it only after enrollment is configured.
 4. Replace outstanding legacy bootstrap tokens. Ordinary `puppet` runtime
    tokens no longer authorize enrollment. Existing enrolled agents continue to
-   use their certificates; certificate namespaces and runtime secret access
-   are unchanged by this work.
+   use their certificates. Enrollment does not grant runtime secret access;
+   runtime certificate issuance is restricted as described below.
 
 VM provisioning derives the certname once from the chosen VM name and domain.
 Host provisioning uses `hostname -f`. Enrollment stops the background Puppet
@@ -77,10 +77,40 @@ sudo /opt/puppetlabs/bin/puppetserver ca clean --certname node.home.arpa
 Enrolled-agent certificate rotation is a separate operation; this recovery
 procedure is for a failed initial enrollment.
 
+## Runtime certificate issuance
+
+Puppet certificate login grants the `puppet` policy. Its `pki_int/issue/puppet`
+endpoint uses the authenticated certificate's common name (the Vault cert-auth
+identity alias), allowing that hostname and named subdomains beneath it. It
+rejects wildcards, other nodes' names, localhost, and IP SANs. Both the requested
+CN and DNS SANs are checked, including when `exclude_cn_from_sans` is enabled.
+
+Only the authenticated `docker.home.arpa` identity can use
+`pki_int/issue/puppet-docker.home.arpa`. That role also permits wildcards beneath
+`docker.home.arpa`, including `*.docker.home.arpa` and
+`*.service.docker.home.arpa`. The node-specific Hiera defaults select this
+endpoint; other nodes use `puppet`. Changing a node's facts or requested endpoint
+cannot change its Vault certificate identity or permissions.
+
+The broad `general` issuance role remains available to administrators for manual
+device issuance, but the `puppet` policy no longer grants access to it. The
+existing `kv/data/puppet` and `kv/data/wolf` read permissions are unchanged.
+
+Deploy the updated Hiera data and run
+`docker/vault/scripts/08-vault-puppet-policy.sh` with administrator credentials
+against the same Vault. The script creates both roles and then replaces the
+shared policy; it can be rerun on an existing installation. The `cert` auth mount
+and `pki_int` engine must already exist. The cert-auth setup scripts also require
+the login certificate CN to match an admitted node, in addition to its DNS SAN.
+
+Policy changes apply to existing tokens immediately. Cached catalogs that still
+use `general` must be refreshed before they can renew certificates. Previously
+issued certificates remain valid until expiry or revocation.
+
 ## Verification
 
 ```bash
-uv run --frozen pytest -q tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py
+uv run --frozen pytest -q tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_pki_vault.py tests/test_puppet_provisioning.py
 ```
 
 The Vault tests launch a disposable localhost server and require the `vault`

@@ -110,6 +110,7 @@ update_vault_puppet_cert_auth() {
   vault write "auth/cert/certs/${PUPPET_CERT_AUTH_ROLE}" \
     certificate=@"$ca_cert" \
     token_policies="puppet" \
+    allowed_common_names="$PUPPET_ALLOWED_DNS_SANS" \
     allowed_dns_sans="$PUPPET_ALLOWED_DNS_SANS" \
     token_ttl=15m
 }

@@ -45,6 +45,13 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     )
     assert "Service[alloy]" in resources(catalog)
     result = resources(catalog)
+    certificate_role = "puppet-docker.home.arpa" if hostname == "docker" else "puppet"
+    for resource_name, parameters in result.items():
+        if resource_name.startswith("Vault_cert["):
+            assert parameters["vault_uri"] == (
+                f"https://hcv.home.arpa:8200/v1/pki_int/issue/{certificate_role}"
+            )
+            assert parameters["auth_name"] == "puppet"
     assert "Vcsrepo[/root/.vim]" not in result
     home = result["File[/home/user]"]
     assert home["ensure"] == "directory"

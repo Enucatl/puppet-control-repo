@@ -18,17 +18,10 @@ vault auth list 2>/dev/null | grep -q '^cert/' || vault auth enable cert
 vault write auth/cert/certs/puppet \
     certificate=@/etc/puppetlabs/puppet/ssl/certs/ca.pem \
     policies="puppet" \
+    allowed_common_names="$PUPPET_ALLOWED_DNS_SANS" \
     allowed_dns_sans="$PUPPET_ALLOWED_DNS_SANS" \
     ttl=15m
 
-vault policy write puppet - <<EOF
-path "kv/data/puppet" {
-    capabilities = ["read"]
-}
-
-path "kv/data/wolf" {
-    capabilities = ["read"]
-}
-EOF
-
 vault secrets list 2>/dev/null | grep -q '^kv/' || vault secrets enable -version=2 kv
+
+bash "$(dirname "$0")/08-vault-puppet-policy.sh"

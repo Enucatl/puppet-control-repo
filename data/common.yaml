@@ -79,8 +79,9 @@ nfs::nfs_v4_export_root_clients: '*.home.arpa(ro,fsid=root,no_subtree_check,asyn
 
 profile::common::certs::vault_certs_defaults:
   ensure: 'present'
-  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/general'
+  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/puppet'
   auth_path: 'cert'
+  auth_name: 'puppet'
   cert_data:
     ttl: '2160h'  # 90 days
     exclude_cn_from_sans: true

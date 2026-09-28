@@ -349,6 +349,9 @@ profile::common::cron::jobs:
     command: '/opt/docker/puppet-control-repo/docker/vault/scripts/backup.sh 2>&1 | /usr/bin/logger -t vault-snapshot -p user.info'
 profile::common::certs::vault_certs_default_location: /opt/docker/traefik/data/certs
 
+profile::common::certs::vault_certs_defaults:
+  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/puppet-docker.home.arpa'
+
 profile::common::certs::vault_certs:
   docker:
     cert_data:
