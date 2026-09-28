@@ -226,7 +226,9 @@ def test_concurrent_attempts_approve_at_most_once(
         try:
             approve(vault, token)
             return True
-        except hvac.exceptions.Forbidden:
+        except hvac.exceptions.Forbidden, hvac.exceptions.InternalServerError:
+            # Vault can return 500 while concurrent requests consume the token.
+            # Autosign denies these requests too, so they are not approvals.
             return False
 
     with ThreadPoolExecutor(max_workers=8) as executor:
