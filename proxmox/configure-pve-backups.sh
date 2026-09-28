@@ -3,7 +3,8 @@
 # Run on any node in the target PVE cluster.
 #
 # Reads PBS connection details from .env (PBS_SERVER, PBS_DATASTORE, PBS_USER,
-# PBS_TOKEN_NAME, PBS_TOKEN_VALUE, PBS_FINGERPRINT).
+# PBS_TOKEN_NAME, PBS_TOKEN_VALUE, PBS_FINGERPRINT). Use this namespace's token.
+# Retention is enforced by PBS; client pruning is disabled.
 #
 # Usage: configure-pve-backups.sh -n NAMESPACE [-S STORAGE_ID] [-j JOB_ID] [-s SCHEDULE]
 
@@ -19,29 +20,27 @@ NAMESPACE=""
 STORAGE_ID=""
 JOB_ID=""
 SCHEDULE="mon 01:00"
-RETENTION="keep-monthly=6"
 
 usage() {
-    echo "Usage: $0 -n NAMESPACE [-S STORAGE_ID] [-j JOB_ID] [-s SCHEDULE] [-r RETENTION]"
+    echo "Usage: $0 -n NAMESPACE [-S STORAGE_ID] [-j JOB_ID] [-s SCHEDULE]"
     echo ""
     echo "  -n  PBS namespace to store this cluster's backups in (e.g. chronicle, proxmox-cortex)"
     echo "  -S  Storage ID to register in PVE (default: pbs-<namespace>)"
     echo "  -j  Backup job ID (default: pbs-<namespace>-weekly)"
     echo "  -s  Backup schedule in PVE format, using the server timezone (default: mon 01:00)"
-    echo "  -r  Retention policy (default: keep-monthly=6)"
+    echo "Retention is configured on PBS (configure-pbs.sh); PVE keeps all backups."
     echo ""
     echo "Required .env vars: PBS_SERVER, PBS_DATASTORE, PBS_USER, PBS_TOKEN_NAME,"
     echo "                    PBS_TOKEN_VALUE, PBS_FINGERPRINT"
     exit 1
 }
 
-while getopts "n:S:j:s:r:h" opt; do
+while getopts "n:S:j:s:h" opt; do
     case $opt in
         n) NAMESPACE="$OPTARG" ;;
         S) STORAGE_ID="$OPTARG" ;;
         j) JOB_ID="$OPTARG" ;;
         s) SCHEDULE="$OPTARG" ;;
-        r) RETENTION="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -66,7 +65,7 @@ echo "PBS server:   $PBS_SERVER"
 echo "Datastore:    $PBS_DATASTORE"
 echo "Namespace:    $NAMESPACE"
 echo "Storage ID:   $STORAGE_ID"
-echo "Backup job:   $JOB_ID  (schedule: $SCHEDULE, retention: $RETENTION)"
+echo "Backup job:   $JOB_ID  (schedule: $SCHEDULE, retention managed by PBS)"
 echo ""
 
 # 1/2 Register PBS as a storage target in this cluster
@@ -78,7 +77,8 @@ pvesm add pbs "$STORAGE_ID" \
     --namespace "$NAMESPACE" \
     --username "$PBS_AUTHID" \
     --password "$PBS_TOKEN_VALUE" \
-    --fingerprint "$PBS_FINGERPRINT"
+    --fingerprint "$PBS_FINGERPRINT" \
+    --prune-backups keep-all=1
 
 # 2/2 Create a backup job covering all VMs and containers
 echo "[2/2] Creating backup job '$JOB_ID' (schedule: $SCHEDULE)..."
@@ -90,7 +90,7 @@ pvesh create /cluster/backup \
     --mode snapshot \
     --compress zstd \
     --notes-template "{{guestname}}" \
-    --prune-backups "$RETENTION"
+    --prune-backups keep-all=1
 
 echo ""
 echo "=== Done ==="
