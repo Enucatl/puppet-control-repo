@@ -161,7 +161,10 @@ def claude_catalog_ref(home: Path) -> str:
         home
         / ".local/share/claude/ponytail-marketplace/.claude-plugin/marketplace.json"
     )
-    return json.loads(catalog.read_text())["plugins"][0]["source"]["ref"]
+    source = json.loads(catalog.read_text())["plugins"][0]["source"]
+    assert source["source"] == "url"
+    assert source["url"] == "https://github.com/DietrichGebert/ponytail.git"
+    return source["ref"]
 
 
 def test_fast_path_and_reenable(plugin_home: Path) -> None:

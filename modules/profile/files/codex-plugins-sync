@@ -97,7 +97,7 @@ jq -n --arg tag "$tag" '{
   owner: { name: "Dietrich Gebert" },
   plugins: [{
     name: "ponytail",
-    source: { source: "github", repo: "DietrichGebert/ponytail", ref: $tag }
+    source: { source: "url", url: "https://github.com/DietrichGebert/ponytail.git", ref: $tag }
   }]
 }' > "$new_claude_catalog"
 if ! cmp -s "$new_claude_catalog" "$claude_catalog"; then

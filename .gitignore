@@ -1,4 +1,5 @@
 .claude
+.codex-wake-run/
 #modules/
 .yardoc
 .venv
