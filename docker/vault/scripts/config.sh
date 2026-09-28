@@ -4,19 +4,14 @@
 #   Container scripts: . /scripts/config.sh
 #   Host scripts:      . "$(dirname "$0")/config.sh"
 
-PUPPET_CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUPPET_CONFIG_DIR="${PUPPET_CONFIG_DIR:-$(CDPATH= cd "$(dirname "$0")" && pwd)}"
 PUPPET_REPO_ROOT="$(cd "$PUPPET_CONFIG_DIR/../../.." && pwd)"
 
 puppet_allowed_dns_sans_csv() {
-  local -a allowed_dns_sans=()
-
-  mapfile -t allowed_dns_sans < <(
-    find "$PUPPET_REPO_ROOT/data/nodes" -maxdepth 1 -type f -name '*.yaml' -printf '%f\n' |
-      sed 's/\.yaml$/.home.arpa/' |
-      sort
-  )
-
-  (IFS=,; printf '%s' "${allowed_dns_sans[*]}")
+  find "$PUPPET_REPO_ROOT/data/nodes" -maxdepth 1 -type f -name '*.yaml' |
+    sed 's|.*/||; s/\.yaml$/.home.arpa/' |
+    sort |
+    paste -sd, -
 }
 
 # Domain

@@ -3,6 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+PUPPET_CONFIG_DIR="$REPO_ROOT/docker/vault/scripts"
 . "$REPO_ROOT/docker/vault/scripts/config.sh"
 
 usage() {

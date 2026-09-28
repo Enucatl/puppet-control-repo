@@ -52,7 +52,7 @@ services:
     command: vault server -config /vault/config/vault-conf.hcl
     #command: vault server -config /vault/config/vault-conf-insecure.hcl
     healthcheck:
-      test: ["CMD-SHELL", "vault status -format=json | grep -q '\"initialized\": true'"]
+      test: ["CMD-SHELL", "vault status -format=json >/dev/null 2>&1 || [ \"$$?\" -eq 2 ]"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -214,6 +214,9 @@ services:
     image: infra-vault-unsealer
     user: 100:100
     restart: no
+    depends_on:
+      vault:
+        condition: service_healthy
     environment:
       - VAULT_ADDR
       - CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt

@@ -281,9 +281,9 @@ initializer mounts all three. Setup containers mount the bootstrap token
 read-only; the running unsealer mounts only the unseal share read-only and the
 host's public CA bundle. The Vault server mounts none of these volumes.
 
-For a new Vault, build the unsealer image, start Vault, then run
-`docker compose --profile init run --rm vault-init` from `docker/` before running
-the numbered setup scripts. The initializer never prints credentials or
+For a new Vault, run `docker/vault/bootstrap.sh` once from the repository root.
+It builds the unsealer image, starts Vault, initializes it after the server is
+ready, and starts the unsealer. The initializer never prints credentials or
 overwrites an existing recovery file. An already initialized server with missing
 recovery output requires restoring the saved credentials, not reinitializing.
 Use the appropriate `VAULT_ADDR` for the initial HTTP bootstrap; switch to HTTPS
