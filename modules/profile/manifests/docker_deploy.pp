@@ -12,7 +12,10 @@
 #                   (wrapped in bash -c '...'); omit for image-only projects
 #   deploy_command - Custom deploy command run after pull/build
 #                    (wrapped in bash -c '...'); omit to use the default
-#                    docker compose up -d --force-recreate
+#                    docker compose up --force-recreate --wait --wait-timeout 300
+#                    Overrides must handle their own waiting, timeout, and setup jobs.
+#   wait_timeout  - Compose readiness timeout in seconds (default: 300);
+#                   applies only to the default deploy command, not pull/build/setup
 #   compose_file  - Path to the compose file, relative to the project dir or
 #                   absolute; omit to let docker compose auto-discover
 #   env_file      - Path to an env file passed via --env-file; omit to use
@@ -29,13 +32,14 @@
 #     crabberbot:
 #       build_command: "CARGO_PACKAGE_VERSION=$(git describe --long | sed 's/-/./') docker compose build"
 #     paperless-ai:
-#       deploy_command: "docker compose --profile ai up -d"
+#       deploy_command: "docker compose --profile ai up --wait --wait-timeout 300"
 #     paperless-ngx:
 #       pull: true
 #     myapp:
 #       pull: true
 #       env_file: /opt/docker/myapp/production.env
 #       compose_file: docker-compose.prod.yml
+#       wait_timeout: 600
 #
 define profile::docker_deploy (
   Enum['present','absent'] $ensure        = 'present',
@@ -44,6 +48,7 @@ define profile::docker_deploy (
   Boolean                  $pull          = true,
   Optional[String]         $build_command = undef,
   Optional[String]         $deploy_command = undef,
+  Integer[1]               $wait_timeout = 300,
   Optional[String]         $compose_file  = undef,
   Optional[String]         $env_file      = undef,
   Optional[String]         $watch_dir     = undef,
@@ -63,17 +68,13 @@ define profile::docker_deploy (
   $pull_exec       = $pull          ? { true  => ["ExecStart=${compose_cmd} pull"], default => [] }
   $build_exec      = $build_command ? { undef => [],                                default => ["ExecStart=/bin/bash -c '${build_command}'"] }
   $deploy_exec     = $deploy_command ? {
-    undef   => ["ExecStart=${compose_cmd} up -d --force-recreate"],
+    undef   => ["ExecStart=${compose_cmd} up --force-recreate --wait --wait-timeout ${wait_timeout}"],
     default => ["ExecStart=/bin/bash -c '${deploy_command}'"],
   }
   $exec_start_str  = join($pull_exec + $build_exec + $deploy_exec, "\n")
   $watch_dir_str   = $watch_dir ? {
     undef   => '',
     default => "ExecCondition=/bin/bash -c 'git diff --name-only HEAD@{1} HEAD -- ${watch_dir} | grep -q .'\n",
-  }
-  $refresh_health_check_str = $scheduled_refresh ? {
-    true    => "ExecStartPost=/usr/local/sbin/docker-compose-health-check ${compose_cmd}\n",
-    default => '',
   }
 
   $service_template_vars = {
@@ -82,7 +83,6 @@ define profile::docker_deploy (
     'base_dir'     => $base_dir,
     'exec_start'   => $exec_start_str,
     'compose_cmd'  => $compose_cmd,
-    'health_check' => $refresh_health_check_str,
   }
 
   systemd::unit_file { "${name}-deploy.path":

@@ -1,4 +1,4 @@
-# Docker Image Refresh Plan
+# Docker Deployments and Image Refresh
 
 This repository already refreshes Docker-based projects when code is pushed.
 That covers image rebuilds tied to repository changes, but it does not keep
@@ -11,7 +11,7 @@ run. The prune policy lives in `data/roles/docker.yaml`.
 
 ## Goal
 
-Add a Puppet-managed scheduled refresh for Docker Compose projects on
+Puppet manages scheduled refreshes for Docker Compose projects on
 `docker.home.arpa` so containers periodically pick up upstream image updates
 even when no code has changed.
 
@@ -20,7 +20,8 @@ The intended behavior is:
 - keep the existing push-triggered deploy flow intact
 - run a scheduled refresh for all present Docker Compose projects
 - include projects with custom `build_command`
-- fail the refresh if Docker Compose reports an unhealthy or exited stack
+- wait for readiness on both push deployments and scheduled refreshes
+- fail when readiness times out, a server exits before readiness, or setup fails
 - surface failures through journald and the existing log pipeline
 
 ## Chosen Policy
@@ -29,25 +30,63 @@ The intended behavior is:
 - Scope: all present projects in `profile::docker_host::git_deploy_projects`
 - Custom build projects: included
 - Failure notification: journald only
-- Health gate: structured `docker compose ps --all --format json` after deploy
+- Readiness gate: `docker compose up --force-recreate --wait --wait-timeout 300`
 
 This is a broad policy on purpose. It favors image freshness and vulnerability
 exposure reduction over minimizing container restarts.
 
 ## Implementation Shape
 
-The implementation should extend the existing Puppet profiles rather than add a
-parallel updater:
+The existing Puppet profiles manage both deployment paths:
 
-- `profile::docker_host` gets a scheduled-refresh toggle and a default timer
+- `profile::docker_host` has a scheduled-refresh toggle and a default timer
   calendar
-- `profile::docker_deploy` gets a separate scheduled-refresh service and timer
+- `profile::docker_deploy` has a separate scheduled-refresh service and timer
 - each opted-in project gets a `${name}-refresh.timer` that starts the
   `${name}-refresh.service`
-- the push-triggered deploy service keeps the current pull/build/up flow
+- the push-triggered deploy service runs pull/build/up with native Compose waiting
 - the scheduled refresh service uses the same flow, skips the commit-path gate,
-  and checks stack status with `docker compose ps --all --format json`
-- exited one-shot containers pass only when their exit code is zero
+  and uses the same readiness timeout
+- both services retain `docker compose ps` for diagnostic output
+- waiting applies even when scheduled refresh is disabled, including on `complex`
+
+The default readiness timeout is 300 seconds. Override it per project through
+the existing Hiera parameters:
+
+```yaml
+profile::docker_host::git_deploy_projects:
+  myapp:
+    wait_timeout: 600
+    compose_file: docker-compose.prod.yml
+    env_file: production.env
+```
+
+`wait_timeout` must be a positive integer. It controls Compose readiness waiting,
+not the total pull/build/setup sequence. Compose waits for health checks where
+configured; services without health checks receive only a running-state check.
+`--wait` implies detached mode. File and environment flags apply to pull, up, and ps.
+
+`deploy_command` remains an unchanged shell-command override. It must implement
+its own waiting, timeout, and setup-job handling; `wait_timeout` does not modify
+custom commands. For example, Beszel waits for its server before running setup:
+
+```yaml
+profile::docker_host::git_deploy_projects:
+  beszel:
+    build_command: "docker compose build alerts-init"
+    deploy_command: "docker compose up -d --force-recreate --wait --wait-timeout 300 beszel && docker compose run --rm alerts-init"
+```
+
+The `&&` preserves readiness and setup failures in the systemd result. Backrest
+and qBittorrent keep their existing `service_completed_successfully` dependencies:
+Compose accepts these one-shot jobs only when they exit zero during native waiting
+([Compose implementation](https://raw.githubusercontent.com/docker/compose/v5.5.1/pkg/compose/start.go)).
+Profile-gated maintenance and setup jobs remain excluded from normal deployment;
+do not enable their profiles unless the deployment explicitly needs them.
+
+The Python checker and its post-start invocation are removed.
+`profile::docker_deploy::health_check` temporarily remains as a cleanup class,
+ensuring `/usr/local/sbin/docker-compose-health-check` is absent on existing hosts.
 
 The plan intentionally avoids:
 
@@ -57,15 +96,25 @@ The plan intentionally avoids:
 
 ## Verification
 
-After implementation, verify the behavior with:
+Verify changes before rollout with:
 
 - Puppet parser validation for the touched manifests
-- Puppet noop or compile on the Docker node
+- catalog tests for both services, custom commands, timeout overrides, and checker removal
+- disposable Compose projects covering readiness, timeout, early exit, running-only
+  services, successful/failed setup dependencies, and no selected services
+
+Deploy through the normal Puppet process, then inspect:
+
 - `systemctl list-timers '*-refresh.timer'`
 - `systemctl cat <project>-refresh.timer`
 - `systemctl cat <project>-deploy.service`
-- one manual refresh of a low-risk project to confirm the service logs and
-  failure behavior
+- `systemctl cat <project>-refresh.service`
+- removal of `/usr/local/sbin/docker-compose-health-check`
+
+Observe the next deployment or refresh through its systemd result and
+`journalctl -u <project>-deploy.service` or `journalctl -u <project>-refresh.service`.
+Do not restart production projects solely for verification. No automatic rollback
+or new monitoring service is added.
 
 ## Assumptions
 
