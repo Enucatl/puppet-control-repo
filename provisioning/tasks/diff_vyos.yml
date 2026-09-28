@@ -5,52 +5,64 @@
 # Run with:
 #   ansible-playbook router.yml --tags diff --vault-password-file vars/password
 
-- name: Fetch current VyOS config as set commands
-  vyos.vyos.vyos_command:
-    commands:
-      - show configuration commands
-  register: current_config
+- name: Preview VyOS configuration changes
+  block:
+    - name: Create private local directory for config preview
+      delegate_to: localhost
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: vyos-diff-
+      register: vyos_diff_dir
 
-- name: Save current config commands to local temp file
-  delegate_to: localhost
-  ansible.builtin.copy:
-    content: "{{ current_config.stdout[0] }}"
-    dest: /tmp/config.current.cmds.raw
+    - name: Fetch current VyOS config as set commands
+      vyos.vyos.vyos_command:
+        commands:
+          - show configuration commands
+      register: current_config
+      no_log: true
 
-- name: Render target config locally from template
-  delegate_to: localhost
-  ansible.builtin.template:
-    src: templates/vyos-config.j2
-    dest: /tmp/config.target.cmds.raw
-    mode: "0600"
+    - name: Save current config commands to local temp file
+      delegate_to: localhost
+      ansible.builtin.copy:
+        content: "{{ current_config.stdout[0] }}"
+        dest: "{{ vyos_diff_dir.path }}/config.current.cmds.raw"
+        mode: "0600"
+      no_log: true
 
-- name: Normalize quotes for clean comparison (VyOS always quotes values in show output)
-  delegate_to: localhost
-  ansible.builtin.shell:
-    cmd: |
-      sed "s/'//g; s/\x1b\[[0-9;]*m//g" /tmp/config.current.cmds.raw | grep -v '^$' | sort > /tmp/config.current.cmds
-      sed "s/'//g"                        /tmp/config.target.cmds.raw  | grep -v '^$' | sort > /tmp/config.target.cmds
+    - name: Render target config locally from template
+      delegate_to: localhost
+      ansible.builtin.template:
+        src: templates/vyos-config.j2
+        dest: "{{ vyos_diff_dir.path }}/config.target.cmds.raw"
+        mode: "0600"
+      no_log: true
 
-- name: Diff current vs target (exit code 1 = differences found, which is expected)
-  delegate_to: localhost
-  ansible.builtin.command:
-    cmd: diff -u /tmp/config.current.cmds /tmp/config.target.cmds
-  register: config_diff
-  changed_when: config_diff.rc == 1
-  failed_when: config_diff.rc > 1
+    - name: Normalize and redact config commands before comparison
+      delegate_to: localhost
+      ansible.builtin.shell:
+        cmd: |
+          umask 077
+          redact='/(^|[[:space:]])[^[:space:]]*(key|password|passphrase|secret|token|community|psk|credential)[^[:space:]]*([[:space:]]|$)/I s/.*/[REDACTED]/'
+          sed -E "s/'//g; s/\x1b\[[0-9;]*m//g; $redact" "{{ vyos_diff_dir.path }}/config.current.cmds.raw" | grep -v '^$' | sort > "{{ vyos_diff_dir.path }}/config.current.cmds"
+          sed -E "s/'//g; $redact" "{{ vyos_diff_dir.path }}/config.target.cmds.raw" | grep -v '^$' | sort > "{{ vyos_diff_dir.path }}/config.target.cmds"
 
-- name: Show diff
-  delegate_to: localhost
-  ansible.builtin.debug:
-    var: config_diff.stdout_lines
+    - name: Diff current vs target (exit code 1 = differences found, which is expected)
+      delegate_to: localhost
+      ansible.builtin.command:
+        cmd: "diff -u {{ vyos_diff_dir.path }}/config.current.cmds {{ vyos_diff_dir.path }}/config.target.cmds"
+      register: config_diff
+      changed_when: config_diff.rc == 1
+      failed_when: config_diff.rc > 1
 
-- name: Clean up local temp files
-  delegate_to: localhost
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /tmp/config.current.cmds.raw
-    - /tmp/config.target.cmds.raw
-    - /tmp/config.current.cmds
-    - /tmp/config.target.cmds
+    - name: Show diff
+      delegate_to: localhost
+      ansible.builtin.debug:
+        var: config_diff.stdout_lines
+
+  always:
+    - name: Remove private local config preview directory
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ vyos_diff_dir.path }}"
+        state: absent
+      when: vyos_diff_dir.path is defined
