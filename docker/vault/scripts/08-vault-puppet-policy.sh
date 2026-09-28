@@ -28,3 +28,11 @@ path "auth/token/lookup-self" {
   capabilities = ["read"]
 }
 EOF
+
+# Bootstrap credentials have no runtime secret access and are never granted to
+# the Puppet certificate auth role.
+vault policy write puppet-enrollment - <<'EOF'
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+EOF

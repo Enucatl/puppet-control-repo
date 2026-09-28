@@ -1,5 +1,7 @@
 #cloud-config
 output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+bootcmd:
+  - cloud-init-per instance puppet-enrollment-mask systemctl mask --runtime --now puppet.service
 users:
   - name: user_l
     groups: sudo, docker
@@ -43,8 +45,9 @@ runcmd:
   - apt-get update
   - apt-get install -y puppet-agent
 
-  # Enable Puppet (do not start)
-  - systemctl enable puppet
+  # Cloned guests configure their enrollment identity before enabling Puppet.
+  - systemctl unmask --runtime puppet.service
+  - systemctl disable --now puppet.service
 
   # Clean APT
   - apt-get autoremove -y

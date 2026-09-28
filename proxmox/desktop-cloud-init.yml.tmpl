@@ -1,5 +1,7 @@
 #cloud-config
 output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+bootcmd:
+  - cloud-init-per instance puppet-enrollment-mask systemctl mask --runtime --now puppet.service
 
 packages:
   - auto-apt-proxy
@@ -12,23 +14,28 @@ write_files:
     content: |
       #!/bin/bash
       set -euo pipefail
-      NODE_TYPE="${1:-desktop}"
-      VAULT_TOKEN="${2}"
-      PUPPET_SERVER="${3:-${PUPPET_SERVER}}"
+      NODE_TYPE="${1:?node_type required}"
+      VAULT_TOKEN="${2:?vault_token required}"
+      CERTNAME="${3:?certname required}"
+      PUPPET_SERVER="${4:-docker.home.arpa}"
+
+      systemctl stop puppet
 
       mkdir -p /etc/puppetlabs/puppet/
       cat <<CSREOF > /etc/puppetlabs/puppet/csr_attributes.yaml
       custom_attributes:
-        1.2.840.113549.1.9.7: "\${VAULT_TOKEN}"
+        1.2.840.113549.1.9.7: "${VAULT_TOKEN}"
       CSREOF
       chmod 0640 /etc/puppetlabs/puppet/csr_attributes.yaml
 
       mkdir -p /etc/facter/facts.d/
-      echo "node_type=\${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
+      echo "node_type=${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
 
-      /opt/puppetlabs/bin/puppet config set server "\$PUPPET_SERVER" --section main
+      /opt/puppetlabs/bin/puppet config set server "$PUPPET_SERVER" --section main
+      /opt/puppetlabs/bin/puppet config set certname "$CERTNAME" --section main
       /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
 
+      systemctl unmask --runtime puppet.service
       systemctl enable puppet
       /opt/puppetlabs/bin/puppet resource service puppet enable=true
       /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
@@ -55,7 +62,7 @@ runcmd:
   - systemctl mask systemd-networkd-wait-online.service
 
   # Puppet Setup
-  - /usr/local/bin/configure-puppet.sh desktop '${VM_TOKEN}' '${PUPPET_SERVER}'
+  - /usr/local/bin/configure-puppet.sh desktop '${VM_TOKEN}' '${VM_FQDN}' '${PUPPET_SERVER}'
 
   - systemctl start qemu-guest-agent
 

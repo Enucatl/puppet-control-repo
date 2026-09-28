@@ -240,7 +240,7 @@ Numbered scripts run once to set up Vault and surrounding infrastructure:
 | `05-clone-puppet-repo.sh` | Clone this repo onto the server |
 | `06-vault-puppet.sh` | Cert auth + KV v2 for Puppet |
 | `07-configure-sudo.sh` | FreeIPA sudo rules |
-| `08-vault-puppet-policy.sh` | Puppet Vault policy |
+| `08-vault-puppet-policy.sh` | Puppet runtime and single-use enrollment policies |
 | `10-vault-ldap.sh` | LDAP auth backend |
 | `11-vault-airflow.sh` | Airflow KV policy |
 | `13-vault-admin-policy.sh` | Admin policy + LDAP group mapping |
@@ -275,6 +275,10 @@ Normal root revocation also revokes its child tokens and leases: review these
 first. Setup reruns must use an administrator `VAULT_TOKEN` once root is revoked.
 Emergency root generation requires the unseal-key quorum; ordinary admin access
 does not replace possession of those shares.
+
+Puppet bootstrap tokens are single-use and bound to one exact certname. See
+[Puppet enrollment](docs/puppet-enrollment.md) for rollout and replacement-token
+instructions. Certificate logins retain their existing runtime policy.
 
 Wolf-specific bootstrap scripts:
 

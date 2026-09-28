@@ -2,10 +2,52 @@
 
 import os
 import re
+from typing import BinaryIO
 
 import click
 import hvac
-import cryptography.x509
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+
+
+def validate_csr(
+    certname: str, csr_data: bytes, vault_addr: str, verify: str, domain: str
+) -> None:
+    """Consume a certname-bound enrollment token to authorize a signed CSR."""
+    if not re.fullmatch(
+        rf"[a-z0-9]([a-z0-9-]*[a-z0-9])?\.(dev\.)?{re.escape(domain)}",
+        certname,
+    ):
+        raise ValueError("Invalid certname")
+
+    csr = x509.load_pem_x509_csr(csr_data)
+    names = csr.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+    if not csr.is_signature_valid or len(names) != 1 or names[0].value != certname:
+        raise ValueError("CSR common name or signature does not match")
+    try:
+        sans = csr.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+    except x509.ExtensionNotFound:
+        sans = []
+    if any(
+        not isinstance(name, x509.DNSName) or name.value != certname for name in sans
+    ):
+        raise ValueError("CSR requests additional identities")
+
+    token = csr.attributes.get_attribute_for_oid(
+        x509.ObjectIdentifier("1.2.840.113549.1.9.7")
+    ).value.decode()
+    if not token:
+        raise ValueError("Missing enrollment token")
+    client = hvac.Client(
+        url=vault_addr, token=token, verify=verify, timeout=10, allow_redirects=False
+    )
+    # This single request consumes the token, including on a metadata mismatch.
+    data = client.auth.token.lookup_self()["data"]
+    if (
+        data["policies"] != ["puppet-enrollment"]
+        or data["meta"]["certname"] != certname
+    ):
+        raise PermissionError("Enrollment policy or certname does not match")
 
 
 @click.command()
@@ -14,76 +56,17 @@ import cryptography.x509
 @click.option(
     "--vault_addr", default=os.environ.get("VAULT_ADDR", "https://hcv.home.arpa:8200")
 )
-@click.option("--policy", default="puppet")
 @click.option("--verify", default="/etc/ssl/certs/ca-certificates.crt")
 @click.option("--domain", default="home.arpa")
-def main(certname, input_file, vault_addr, policy, verify, domain):
-    """
-    Check the challengePassword OID in a Certificate Signing Request (CSR)
-    to verify if it's a valid token for HashiCorp Vault login.
-
-    To be used as an autosign policy executable:
-    https://www.puppet.com/docs/puppet/8/ssl_autosign#ssl_policy_based_autosigning-custom-policy-executables
-
-    Parameters:
-    - certname (str): Name or identifier of the certificate.
-    - input_file (file): Input file containing PEM-encoded CSR data.
-    - vault_addr (str, optional): HashiCorp Vault server address.
-    - policy (str, optional): Policy name to check in HashiCorp Vault.
-    - verify (str, optional): Location of the root CA certificate for SSL.
-
-    Raises:
-    - cryptography.x509.base.AttributeNotFound: If 'challengePassword' attribute is not found.
-    - PermissionError: If the token lacks the specified policy in HashiCorp Vault.
-    - hvac.exceptions.InvalidRequest: If the token can't authenticate with Vault.
-
-    Procedure:
-    1. Read CSR data from the input file.
-    2. Load CSR data into a cryptography.x509.CertificateSigningRequest object.
-    3. Define ChallengePassword OID as '1.2.840.113549.1.9.7'.
-    4. Retrieve ChallengePassword attribute from CSR using the OID.
-    5. Decode the attribute value into a token.
-    6. Initialize HashiCorp Vault client with Vault address and token from the attribute.
-    7. Check if the token can authenticate with HashiCorp Vault.
-    8. Get the list of policies associated with the token.
-    9. Check if the specified policy is in the list of policies; if not, raise a PermissionError.
-
-    Example Usage:
-    ```
-    $ python script.py mycertname csr.pem --vault_addr="https://vault.example.com" --policy="my_policy"
-    ```
-    """
-
-    domain_pattern = re.compile(
-        rf"^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.(dev\.)?{re.escape(domain)}$"
-    )
-    if not domain_pattern.match(certname):
-        raise ValueError(
-            f"certname '{certname}' does not match expected pattern <host>.[dev.]{domain}"
-        )
-
-    csr_data = input_file.read()
-    csr = cryptography.x509.load_pem_x509_csr(csr_data)
-
-    # challengePassword OID
-    dotted_string = "1.2.840.113549.1.9.7"
-
-    # Create an ObjectIdentifier for the ChallengePassword OID
-    oid = cryptography.x509.ObjectIdentifier(dotted_string)
-
-    # will raise cryptography.x509.base.AttributeNotFound if not found
-    attribute = csr.attributes.get_attribute_for_oid(oid)
-    token = attribute.value.decode()
-    vault_client = hvac.Client(
-        url=vault_addr,
-        token=token,
-        verify=verify,
-    )
-    # will raise if the token cannot authenticate itself
-    current_token = vault_client.auth.token.lookup_self()
-    policies = current_token["data"]["policies"]
-    if policy not in policies:
-        raise PermissionError(f"token does not have the policy {policy}: {policies}")
+def main(
+    certname: str, input_file: BinaryIO, vault_addr: str, verify: str, domain: str
+) -> None:
+    """Approve enrollment only for a matching single-use Vault credential."""
+    try:
+        validate_csr(certname, input_file.read(), vault_addr, verify, domain)
+    except Exception:
+        # Vault errors can contain credentials; never include their text in logs.
+        raise click.ClickException("Puppet enrollment denied") from None
 
 
 if __name__ == "__main__":

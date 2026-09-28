@@ -9,6 +9,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "click",
+    "cryptography",
+    "hvac",
     "pytest",
     "ruff",
 ]

@@ -21,19 +21,42 @@ load_env() {
 }
 
 create_vault_token() {
+    local certname="${1:?Usage: create_vault_token <certname>}"
     : "${VAULT_TOKEN:?VAULT_TOKEN is not set}"
     : "${VAULT_ADDR:?VAULT_ADDR is not set}"
 
-    export VM_TOKEN
-    VM_TOKEN=$(curl --insecure -s --header "X-Vault-Token: $VAULT_TOKEN" \
-        --request POST \
-        --data '{"policies": ["puppet"], "ttl": "2h", "renewable": true}' \
-        "$VAULT_ADDR/v1/auth/token/create" | jq -r .auth.client_token)
-
-    if [ -z "$VM_TOKEN" ] || [ "$VM_TOKEN" == "null" ]; then
-        echo "Error: Failed to generate Vault Token."
-        exit 1
+    local payload response
+    local tls_args=()
+    if [ -n "${VAULT_CACERT:-}" ]; then
+        tls_args=(--cacert "$VAULT_CACERT")
     fi
+    payload=$(jq -n --arg certname "$certname" '{
+        policies: ["puppet-enrollment"], type: "service", ttl: "2h",
+        num_uses: 1, renewable: false, no_default_policy: true,
+        meta: {certname: $certname}
+    }') || return 1
+    if ! response=$(curl --fail --silent --show-error "${tls_args[@]}" \
+        --header "X-Vault-Token: $VAULT_TOKEN" \
+        --header 'Content-Type: application/json' \
+        --request POST \
+        --data "$payload" \
+        "$VAULT_ADDR/v1/auth/token/create-orphan"); then
+        echo 'Error: Failed to generate Vault enrollment token.' >&2
+        return 1
+    fi
+    if ! VM_TOKEN=$(jq -er --arg certname "$certname" '
+        .auth | select(
+            .policies == ["puppet-enrollment"] and
+            .metadata.certname == $certname and
+            .token_type == "service" and .orphan == true and
+            .renewable == false and .num_uses == 1 and
+            (.lease_duration | type == "number" and . > 0 and . <= 7200)
+        ) | .client_token | select(type == "string" and length > 0)
+    ' <<<"$response"); then
+        echo 'Error: Invalid Vault enrollment token response.' >&2
+        return 1
+    fi
+    export VM_TOKEN
 }
 
 wait_for_cloudinit() {

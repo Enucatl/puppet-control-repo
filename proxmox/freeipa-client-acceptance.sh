@@ -9,11 +9,12 @@ source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/lib.sh"
 
 export VAULT_ADDR="${VAULT_ADDR:-https://hcv.home.arpa:8200}"
-vault token lookup -format=json >/dev/null
+VAULT_TOKEN="${VAULT_TOKEN:-$(vault token lookup -format=json | jq -er '.data.id')}"
+export VAULT_TOKEN
 
 VMID="${1:-$(pvesh get /cluster/nextid)}"
 VMNAME="freeipa-acceptance-${VMID}"
-VM_FQDN="${VMNAME}.home.arpa"
+VM_FQDN="${VMNAME}.${DOMAIN_SUFFIX}"
 SNIPPET="/var/lib/vz/snippets/freeipa-client-acceptance-${VMID}.yml"
 readonly NODE_TYPE='freeipa_acceptance'
 readonly STORAGE="${DEFAULT_STORAGE}"
@@ -30,11 +31,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-VM_TOKEN="$(vault token create -policy=puppet -ttl=2h -renewable -format=json | jq -r '.auth.client_token')"
-if [[ -z "${VM_TOKEN}" || "${VM_TOKEN}" == 'null' ]]; then
-  echo 'Unable to create the Puppet autosign token.' >&2
-  exit 1
-fi
+create_vault_token "$VM_FQDN"
 export VM_TOKEN NODE_TYPE PUPPET_SERVER VM_FQDN
 envsubst '${VM_TOKEN}${NODE_TYPE}${PUPPET_SERVER}${VM_FQDN}' \
   < "${SCRIPT_DIR}/freeipa-client-acceptance-cloud-init.yml.tmpl" > "${SNIPPET}"

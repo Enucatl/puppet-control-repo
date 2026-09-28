@@ -8,6 +8,10 @@ on:
       - 'data/**'
       - 'manifests/**'
       - 'tests/**'
+      - 'scripts/autosign.py'
+      - 'proxmox/**'
+      - 'docker/vault/scripts/06-vault-puppet.sh'
+      - 'docker/vault/scripts/08-vault-puppet-policy.sh'
       - 'Puppetfile'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -18,6 +22,10 @@ on:
       - 'data/**'
       - 'manifests/**'
       - 'tests/**'
+      - 'scripts/autosign.py'
+      - 'proxmox/**'
+      - 'docker/vault/scripts/06-vault-puppet.sh'
+      - 'docker/vault/scripts/08-vault-puppet-policy.sh'
       - 'Puppetfile'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -27,6 +35,29 @@ permissions:
   contents: read
 
 jobs:
+  enrollment:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v9.0.0
+      - name: Install disposable Vault test runtime
+        env:
+          VAULT_VERSION: '2.1.0'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base jq
+          cd "$RUNNER_TEMP"
+          curl -fsSLO "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip"
+          curl -fsSLO "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_SHA256SUMS"
+          grep " vault_${VAULT_VERSION}_linux_amd64.zip$" "vault_${VAULT_VERSION}_SHA256SUMS" | sha256sum -c -
+          unzip "vault_${VAULT_VERSION}_linux_amd64.zip" vault
+          sudo install vault /usr/local/bin/vault
+      - name: Check enrollment scripts and single-use authorization
+        run: |
+          for script in proxmox/*.sh docker/vault/scripts/08-vault-puppet-policy.sh; do bash -n "$script"; done
+          uv run --frozen ruff check scripts/autosign.py tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py
+          uv run --frozen ruff format --check scripts/autosign.py tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py
+          uv run --frozen pytest -q tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_provisioning.py
   profiles:
     runs-on: ubuntu-24.04
     steps:

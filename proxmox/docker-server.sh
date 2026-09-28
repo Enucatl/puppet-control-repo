@@ -46,7 +46,8 @@ load_env
 VM_LETTER="${NEW_VM_NAME:0:1}"
 IPV6_POOL="${IPV6_PREFIX}:${VM_LETTER}000::/56"
 IPV6_FIXED="${IPV6_PREFIX}:${VM_LETTER}100::/64"
-export IPV6_POOL IPV6_FIXED PUPPET_SERVER DOMAIN_SUFFIX NODE_TYPE
+VM_FQDN="${NEW_VM_NAME}.${DOMAIN_SUFFIX}"
+export IPV6_POOL IPV6_FIXED PUPPET_SERVER DOMAIN_SUFFIX NODE_TYPE VM_FQDN
 
 # --- DEFAULTS ---
 if [ -z "$VMID" ]; then
@@ -63,8 +64,8 @@ echo "--- Starting Deployment for VM $VMID ($NEW_VM_NAME) ---"
 
 # 1. Generate Vault token and inject all variables into the template
 echo "[1/6] Generating Vault Token and Cloud-Init from template..."
-create_vault_token
-envsubst '${IPV6_POOL}${IPV6_FIXED}${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}${NODE_TYPE}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+create_vault_token "$VM_FQDN"
+envsubst '${IPV6_POOL}${IPV6_FIXED}${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}${NODE_TYPE}${VM_FQDN}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
 
 # 2. Pre-flight Cleanup
 if qm status "$VMID" >/dev/null 2>&1; then

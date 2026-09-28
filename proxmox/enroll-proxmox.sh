@@ -13,7 +13,8 @@ load_env
 : "${FORGE_KEY:?FORGE_KEY is not set}"
 
 # --- 2. GENERATE VAULT TOKEN ---
-create_vault_token
+CERTNAME=$(hostname -f)
+create_vault_token "$CERTNAME"
 
 # --- 3. CONFIGURE REPO AUTHENTICATION ---
 mkdir -p /etc/apt/auth.conf.d/
@@ -25,6 +26,7 @@ EOF
 chmod 0600 /etc/apt/auth.conf.d/puppet-core.conf
 
 # --- 4. INSTALL PUPPET AGENT ---
+systemctl mask --runtime --now puppet.service
 wget -O /tmp/puppet.deb https://apt-puppetcore.puppet.com/public/puppet8-release-noble.deb
 dpkg -i /tmp/puppet.deb
 rm /tmp/puppet.deb
@@ -32,4 +34,4 @@ apt-get update
 apt-get install -y puppet-agent
 
 # --- 5. CONFIGURE AND RUN PUPPET ---
-"$SCRIPT_DIR/configure-puppet.sh" proxmox "$VM_TOKEN" "$PUPPET_SERVER"
+"$SCRIPT_DIR/configure-puppet.sh" proxmox "$VM_TOKEN" "$CERTNAME" "$PUPPET_SERVER"

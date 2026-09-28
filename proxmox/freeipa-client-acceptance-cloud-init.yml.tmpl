@@ -1,5 +1,7 @@
 #cloud-config
 output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+bootcmd:
+  - cloud-init-per instance puppet-enrollment-mask systemctl mask --runtime --now puppet.service
 fqdn: ${VM_FQDN}
 manage_etc_hosts: true
 
@@ -9,6 +11,8 @@ write_files:
     content: |
       #!/bin/bash
       set -euo pipefail
+      CERTNAME="${1:?certname required}"
+      systemctl stop puppet
       mkdir -p /etc/puppetlabs/puppet /etc/facter/facts.d
       cat > /etc/puppetlabs/puppet/csr_attributes.yaml <<EOF
       custom_attributes:
@@ -17,7 +21,9 @@ write_files:
       chmod 0640 /etc/puppetlabs/puppet/csr_attributes.yaml
       echo 'node_type=${NODE_TYPE}' > /etc/facter/facts.d/node_type.txt
       /opt/puppetlabs/bin/puppet config set server '${PUPPET_SERVER}' --section main
+      /opt/puppetlabs/bin/puppet config set certname "$CERTNAME" --section main
       /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
+      systemctl unmask --runtime puppet.service
       systemctl enable puppet
       # The acceptance runner performs the authoritative Puppet run after
       # cloud-init.  Do not discard the VM's diagnostics if this bootstrap
@@ -30,8 +36,4 @@ runcmd:
   - rm /tmp/puppet.deb
   - apt-get update
   - apt-get install -y puppet-agent
-  # The package may start Puppet before its autosign token and node fact are
-  # configured. Stop it so the configuration script performs the sole first
-  # agent run.
-  - systemctl disable --now puppet
-  - /usr/local/sbin/configure-puppet-acceptance
+  - /usr/local/sbin/configure-puppet-acceptance '${VM_FQDN}'

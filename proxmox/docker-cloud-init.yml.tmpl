@@ -1,5 +1,7 @@
 #cloud-config
 output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+bootcmd:
+  - cloud-init-per instance puppet-enrollment-mask systemctl mask --runtime --now puppet.service
 
 packages:
   - ca-certificates
@@ -20,7 +22,10 @@ write_files:
       set -euo pipefail
       NODE_TYPE="${1:?node_type required}"
       VAULT_TOKEN="${2:?vault_token required}"
-      PUPPET_SERVER="${3:-${PUPPET_SERVER}}"
+      CERTNAME="${3:?certname required}"
+      PUPPET_SERVER="${4:-docker.home.arpa}"
+
+      systemctl stop puppet
 
       mkdir -p /etc/puppetlabs/puppet/
       cat <<CSREOF > /etc/puppetlabs/puppet/csr_attributes.yaml
@@ -33,8 +38,10 @@ write_files:
       echo "node_type=${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
 
       /opt/puppetlabs/bin/puppet config set server "$PUPPET_SERVER" --section main
+      /opt/puppetlabs/bin/puppet config set certname "$CERTNAME" --section main
       /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
 
+      systemctl unmask --runtime puppet.service
       systemctl enable puppet
       /opt/puppetlabs/bin/puppet resource service puppet enable=true
       /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
@@ -87,7 +94,7 @@ runcmd:
   - apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin puppet-agent vault
 
   - mkdir -p /home/user/docker
-  - /usr/local/bin/configure-puppet.sh '${NODE_TYPE}' '${VM_TOKEN}' '${PUPPET_SERVER}'
+  - /usr/local/bin/configure-puppet.sh '${NODE_TYPE}' '${VM_TOKEN}' '${VM_FQDN}' '${PUPPET_SERVER}'
 
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent

@@ -41,6 +41,7 @@ if [ -z "$VMID" ]; then
 fi
 
 NEW_VM_NAME=$(pick_vm_name "$LETTER")
+VM_FQDN="${NEW_VM_NAME}.${DOMAIN_SUFFIX}"
 
 STORAGE="$DEFAULT_STORAGE"
 
@@ -56,12 +57,12 @@ echo "--- Preparing Deployment for $NEW_VM_NAME (VMID: $VMID) ---"
 
 # 1. Generate Short-Lived Token for the VM
 echo "[1/5] Generating Vault Token for Autosigning..."
-create_vault_token
+create_vault_token "$VM_FQDN"
 
 # 2. Inject Token into Cloud-Init using envsubst
 echo "[2/5] Injecting variables into Cloud-Init..."
-export PUPPET_SERVER DOMAIN_SUFFIX
-envsubst '${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+export PUPPET_SERVER DOMAIN_SUFFIX VM_FQDN
+envsubst '${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}${VM_FQDN}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
 
 # 3. VM Cleanup
 if qm status "$VMID" >/dev/null 2>&1; then
