@@ -31,5 +31,10 @@ echo "node_type=${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
 systemctl unmask --runtime puppet.service
 systemctl enable puppet
 /opt/puppetlabs/bin/puppet resource service puppet enable=true
-/opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
+PUPPET_STATUS=0
+/opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || PUPPET_STATUS=$?
+case "$PUPPET_STATUS" in
+    0|2) ;; # Successful run, with or without changes.
+    *) exit "$PUPPET_STATUS" ;;
+esac
 /opt/puppetlabs/bin/puppet resource service puppet ensure=running

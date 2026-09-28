@@ -4,9 +4,6 @@ set -eu
 
 . /scripts/config.sh
 
-# Install jq
-apk add --no-cache jq > /dev/null 2>&1
-
 echo "--- Starting Intermediate CA Setup ---"
 
 # 1. Wait for Vault

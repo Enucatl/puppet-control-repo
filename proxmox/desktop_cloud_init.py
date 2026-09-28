@@ -35,6 +35,7 @@ def build_cloud_config(
             }
         ],
         "runcmd": [
+            "set -e",
             "export DEBIAN_FRONTEND=noninteractive",
             ["systemctl", "restart", "systemd-networkd"],
             ["/lib/systemd/systemd-networkd-wait-online", "--timeout=60"],

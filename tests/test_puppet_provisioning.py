@@ -146,10 +146,11 @@ def test_failed_request_and_missing_certname(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "kind", ["docker", "desktop", "freeipa-client-acceptance", "host"]
 )
+@pytest.mark.parametrize("puppet_status", [0, 2, 1, 4, 6])
 def test_rendered_enrollment_configures_exact_identity(
-    tmp_path: Path, kind: str
+    tmp_path: Path, kind: str, puppet_status: int
 ) -> None:
-    """Execute embedded scripts with dummy commands and a private filesystem."""
+    """Check identity and exit handling using isolated rendered enrollment scripts."""
     node_type = {"docker": "docker", "desktop": "desktop", "host": "proxmox"}.get(
         kind, "freeipa_acceptance"
     )
@@ -252,20 +253,33 @@ def test_rendered_enrollment_configures_exact_identity(
         executable.parent.mkdir(exist_ok=True)
         executable.write_text(
             '#!/bin/bash\nprintf "%s %s\\n" "${0##*/}" "$*" >> "$COMMAND_LOG"\n'
+            + (
+                'if [ "$1" = agent ]; then exit "$MOCK_PUPPET_STATUS"; fi\n'
+                if command == "puppet"
+                else ""
+            )
         )
         executable.chmod(0o755)
     subprocess.run(["bash", "-n"], input=script, text=True, check=True)
-    subprocess.run(
+    result = subprocess.run(
         ["bash", "-c", script, "test", *args],
         env={
             **os.environ,
             "PATH": f"{tmp_path / 'bin'}:{tmp_path}:{os.environ['PATH']}",
             "COMMAND_LOG": str(tmp_path / "commands"),
+            "MOCK_PUPPET_STATUS": str(puppet_status),
         },
         text=True,
         capture_output=True,
-        check=True,
+        check=False,
     )
+    # Acceptance deliberately delegates its authoritative run to the runner.
+    expected_status = (
+        0
+        if kind == "freeipa-client-acceptance" or puppet_status in (0, 2)
+        else puppet_status
+    )
+    assert result.returncode == expected_status, result.stderr
     assert (tmp_path / "puppet" / "csr_attributes.yaml").read_text() == (
         f'custom_attributes:\n  1.2.840.113549.1.9.7: "{TOKEN}"\n'
     )
@@ -281,6 +295,46 @@ def test_rendered_enrollment_configures_exact_identity(
         < commands.index("systemctl enable puppet")
         < commands.index("puppet agent --test --waitforlock 300")
     )
+    if kind != "freeipa-client-acceptance":
+        assert ("puppet resource service puppet ensure=running" in commands) == (
+            expected_status == 0
+        )
+
+    if kind in ("desktop", "docker"):
+        # Exercise the guest shell's failure handling with a successful command
+        # after enrollment, without running package or service setup on this host.
+        prefix = (
+            config["runcmd"][0]
+            if kind == "desktop"
+            else rendered.split("runcmd:\n", 1)[1].splitlines()[0].removeprefix("  - ")
+        )
+        enrollment = tmp_path / "enroll.sh"
+        enrollment.write_text(script)
+        marker = tmp_path / "finalized"
+        cloudinit = subprocess.run(
+            [
+                "sh",
+                "-c",
+                "\n".join(
+                    [
+                        prefix,
+                        shlex.join(["bash", str(enrollment), *args]),
+                        shlex.join(["touch", str(marker)]),
+                    ]
+                ),
+            ],
+            env={
+                **os.environ,
+                "PATH": f"{tmp_path / 'bin'}:{tmp_path}:{os.environ['PATH']}",
+                "COMMAND_LOG": str(tmp_path / "commands"),
+                "MOCK_PUPPET_STATUS": str(puppet_status),
+            },
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert cloudinit.returncode == expected_status, cloudinit.stderr
+        assert marker.exists() == (expected_status == 0)
 
 
 def test_desktop_enrollment_arguments_survive_serialization() -> None:

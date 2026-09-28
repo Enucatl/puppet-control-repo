@@ -1,4 +1,4 @@
-api_addr = "http://hashicorpvault.home.arpa:8200"
+api_addr = "http://vault:8200"
 ui = "false"
 
 storage "file" {

@@ -7,6 +7,14 @@ x-vault-runtime: &vault-runtime
     service: hardened-large
   user: 100:100
 
+x-vault-setup: &vault-setup
+  <<: *vault-runtime
+  build:
+    context: ./vault/setup
+  image: infra-vault-setup
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=16m,uid=100,gid=100,mode=0700
+
 services:
 
   goflow2:
@@ -44,13 +52,12 @@ services:
     environment:
       - VAULT_LOG_LEVEL=info
       - VAULT_ADDR
-      - VAULT_CACERT
+      - VAULT_CACERT=/certificates/ca.crt
       - SKIP_CHOWN=true
       - SKIP_SETCAP=true
     networks:
       - infra
     command: vault server -config /vault/config/vault-conf.hcl
-    #command: vault server -config /vault/config/vault-conf-insecure.hcl
     healthcheck:
       test: ["CMD-SHELL", "vault status -format=json >/dev/null 2>&1 || [ \"$$?\" -eq 2 ]"]
       interval: 10s
@@ -85,7 +92,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -sf --max-time 5 \"$VAULT_ADDR/v1/sys/health\" | jq -e '.initialized == true and .sealed == false' >/dev/null",
+          "curl -sf --max-time 5 \"$$VAULT_ADDR/v1/sys/health\" | jq -e '.initialized == true and .sealed == false' >/dev/null",
         ]
       interval: 30s
       timeout: 5s
@@ -230,9 +237,9 @@ services:
       - infra
     command: /scripts/00-vault-init.sh
 
-  # after running this, setup TLS for vault, changing the env and the config file
+  # Bootstrap uses this to generate certificates before switching to HTTPS.
   vault-pki-core-setup:
-    <<: *vault-runtime
+    <<: *vault-setup
     profiles:
       - setup
     restart: no
@@ -251,10 +258,9 @@ services:
     entrypoint: /scripts/01-pki-core-setup.sh
 
   vault-pki-intermediate-setup:
-    <<: *vault-runtime
+    <<: *vault-setup
     profiles:
       - setup
-    image: hashicorp/vault:latest
     restart: no
     depends_on:
       vault-unsealer:
@@ -262,7 +268,7 @@ services:
     environment:
       - ROOT_TOKEN_FILE=/bootstrap/root-token
       - VAULT_ADDR
-      - VAULT_CACERT
+      - VAULT_CACERT=/certificates/ca.crt
     volumes:
       - ./vault/scripts:/scripts
       - certificates:/certificates
@@ -272,7 +278,12 @@ services:
       - infra
 
   freeipa-sign-csr:
-    <<: *vault-runtime
+    <<: *vault-setup
+    # FreeIPA's existing /data volume is owned by root.
+    user: 0:0
+    # Read the UID 100 bootstrap token while retaining the other capability drops.
+    cap_add:
+      - DAC_READ_SEARCH
     profiles:
       - setup
     restart: no
@@ -282,7 +293,7 @@ services:
     environment:
       - ROOT_TOKEN_FILE=/bootstrap/root-token
       - VAULT_ADDR
-      - VAULT_CACERT
+      - VAULT_CACERT=/certificates/ca.crt
     volumes:
       - ./vault/scripts:/scripts
       - freeipa_data:/data

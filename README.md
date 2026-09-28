@@ -282,12 +282,34 @@ read-only; the running unsealer mounts only the unseal share read-only and the
 host's public CA bundle. The Vault server mounts none of these volumes.
 
 For a new Vault, run `docker/vault/bootstrap.sh` once from the repository root.
-It builds the unsealer image, starts Vault, initializes it after the server is
-ready, and starts the unsealer. The initializer never prints credentials or
-overwrites an existing recovery file. An already initialized server with missing
-recovery output requires restoring the saved credentials, not reinitializing.
-Use the appropriate `VAULT_ADDR` for the initial HTTP bootstrap; switch to HTTPS
-after installing the server certificate.
+It builds the unsealer and setup images, selects the HTTP listener using
+`docker/vault/bootstrap.compose.yml`, initializes and unseals Vault, and generates
+the root CA and server certificate. The temporary HTTP port is published only on
+host loopback. The script stops Vault and the unsealer after generating the
+certificates. The initializer never prints credentials or overwrites an existing
+recovery file. An already initialized server with missing recovery output requires
+restoring the saved credentials, not reinitializing.
+
+Install the generated public CA in the Docker host's trust store, then start the
+normal HTTPS configuration. On this Debian/Ubuntu host, run from the repository
+root:
+
+```bash
+vault_ca=$(mktemp)
+docker compose -f docker/docker-compose.yml run --rm --no-deps \
+  --entrypoint cat vault-pki-core-setup /certificates/ca.crt > "$vault_ca"
+sudo install -m 0644 "$vault_ca" /usr/local/share/ca-certificates/vault-ca.crt
+sudo update-ca-certificates
+rm "$vault_ca"
+export VAULT_ADDR=https://hcv.home.arpa:8200
+export VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
+docker compose -f docker/docker-compose.yml up -d --wait --wait-timeout 180 vault vault-unsealer
+```
+
+Persist these HTTPS environment values in the deployment environment. Continue
+with the intermediate CA and FreeIPA signing setup jobs using the normal Compose
+file. Setup jobs use a built image with `jq` already installed and a writable
+temporary filesystem; they do not install packages at runtime.
 
 Back up the unseal share outside this host, independently of Vault, and verify a
 restore with a Vault data backup. The recovery volume is not an off-host backup.

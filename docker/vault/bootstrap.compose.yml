@@ -1,0 +1,21 @@
+# Used only by bootstrap.sh, before the server certificate exists.
+services:
+  vault:
+    command: vault server -config /vault/config/vault-conf-insecure.hcl
+    ports: !override
+      - "127.0.0.1:8200:8200"
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+      VAULT_CACERT: ""
+
+  vault-init:
+    environment:
+      VAULT_ADDR: http://vault:8200
+
+  vault-unsealer:
+    environment:
+      VAULT_ADDR: http://vault:8200
+
+  vault-pki-core-setup:
+    environment:
+      VAULT_ADDR: http://vault:8200

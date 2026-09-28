@@ -12,10 +12,6 @@ case "$VAULT_ADDR" in
         ;;
 esac
 
-# Install jq for JSON processing (Vault image is Alpine based)
-# We suppress output to keep logs clean
-apk add --no-cache jq > /dev/null 2>&1
-
 ROOT_TOKEN_FILE=${ROOT_TOKEN_FILE:-/bootstrap/root-token}
 
 vault status || true

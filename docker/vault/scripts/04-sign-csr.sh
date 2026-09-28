@@ -4,9 +4,6 @@ set -eu
 
 . /scripts/config.sh
 
-# 1. Install dependencies (Vault image is minimal)
-apk add --no-cache jq
-
 # 2. Define paths
 CSR_FILE="/data/ipa.csr"
 CRT_FILE="/data/ipa.crt"
