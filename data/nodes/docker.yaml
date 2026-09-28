@@ -1,6 +1,7 @@
 ---
 classes:
   - profile::docker_node
+  - freeipa_users::provision
 
 profile::beszel_agent::enable_docker_metrics: true
 
@@ -690,7 +691,7 @@ puppet_configuration::settings:
     setting: external_nodes
     value: /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py
 
-freeipa_users::users:
+freeipa_users::provision::users:
   backrest:
     first: Backrest
     last: Backup

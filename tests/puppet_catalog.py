@@ -24,8 +24,11 @@ def compile_catalog(
     *,
     hostname: str = "docker",
     node_type: str = "docker",
+    certname: str | None = None,
+    authenticated: str = "remote",
     root: Path = ROOT,
 ) -> dict[str, Any]:
+    """Compile an isolated catalog with explicit facts and certificate identity."""
     if not DEPENDENCIES.is_dir():
         pytest.skip(
             "Puppet Forge dependencies are not installed; set PUPPET_TEST_MODULEPATH "
@@ -100,7 +103,8 @@ def compile_catalog(
                 "workdir": str(workdir),
                 "hiera_config": str(hiera),
                 "code": code,
-                "certname": f"{hostname}.home.arpa",
+                "certname": certname or f"{hostname}.home.arpa",
+                "authenticated": authenticated,
                 "facts": facts,
                 "modulepath": [str(root / "modules"), str(DEPENDENCIES)],
             }

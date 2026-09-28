@@ -2,11 +2,7 @@
 lookup_options:
   classes:
     merge: unique
-  freeipa_users::users:
-    merge: hash
   freeipa::client::password:
-    convert_to: Sensitive
-  freeipa_users::admin_password:
     convert_to: Sensitive
   profile::beszel_agent::key:
     convert_to: Sensitive

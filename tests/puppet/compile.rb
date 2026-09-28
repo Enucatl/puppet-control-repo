@@ -18,7 +18,7 @@ facts = Puppet::Node::Facts.new(input.fetch('certname'), input.fetch('facts'))
 node = Puppet::Node.new(input.fetch('certname'), environment: environment, facts: facts)
 node.fact_merge(facts)
 node.trusted_data = {
-  'authenticated' => 'remote', 'certname' => node.name,
+  'authenticated' => input.fetch('authenticated', 'remote'), 'certname' => node.name,
   'hostname' => node.name.split('.').first, 'domain' => 'home.arpa', 'extensions' => {},
 }
 catalog = Puppet::Parser::Compiler.compile(node)

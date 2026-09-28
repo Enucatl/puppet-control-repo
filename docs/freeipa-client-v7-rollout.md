@@ -5,9 +5,9 @@
    run `docker/freeipa/bootstrap-puppet-enroller.sh`. This creates the
    least-privilege account, role, and 10,000-day password policy group, then
    stores its password as
-   `kv/puppet:freeipa::client::password`. Keep the distinct
-   `kv/puppet:freeipa_users::admin_password` field only for the
-   `freeipa_users` class.
+   `kv/puppet:freeipa::client::password`. User provisioning uses a separate
+   service keytab restricted to `docker.home.arpa`; see
+   [the provisioning migration](freeipa-provisioning.md).
 2. Before deployment, inspect every client `/etc/ipa/default.conf`. Its
    normalized `domain` must be `home.arpa` and `server` must be
    `freeipa.home.arpa`; repair mismatches manually.

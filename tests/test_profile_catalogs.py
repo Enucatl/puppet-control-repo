@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import os
 import re
+import shlex
 from typing import Any
 
 import pytest
@@ -11,7 +12,6 @@ from puppet_catalog import compile_catalog, resources
 
 DUMMY_SECRETS = {
     "freeipa::client::password": "fixture-password",
-    "freeipa_users::admin_password": "fixture-password",
     "profile::beszel_agent::key": "fixture-key",
     "profile::beszel_agent::token": "fixture-token",
     "profile::alloy::maxmind_account_id": "12345",
@@ -45,6 +45,10 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     )
     assert "Service[alloy]" in resources(catalog)
     result = resources(catalog)
+    assert ("Class[Freeipa_users::Provision]" in result) == (hostname == "docker")
+    assert ("Exec[ipa-user-provision-backrest]" in result) == (hostname == "docker")
+    assert result["File[/run/puppet-ipa-admin-pass]"]["ensure"] == "absent"
+    assert "kinit admin" not in str(catalog)
     docker_role = node_type == "docker"
     assert ("User[alloy]" in result) == docker_role
     assert ("Package[geoipupdate]" in result) == docker_role
@@ -76,6 +80,68 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
         assert managed_resources(catalog) == managed_resources(before)
         assert ordered_pairs(catalog) == ordered_pairs(before)
         assert notifications(catalog) == notifications(before)
+
+
+@pytest.mark.parametrize(
+    ("certname", "authenticated"),
+    [
+        ("complex.home.arpa", "remote"),
+        ("docker.example.org", "remote"),
+        ("docker.home.arpa", "local"),
+        ("docker.home.arpa", "false"),
+    ],
+)
+def test_freeipa_provision_requires_docker_certificate(
+    tmp_path: Path, certname: str, authenticated: str
+) -> None:
+    """Reject provisioning despite Docker hostname and role facts."""
+    with pytest.raises(
+        AssertionError, match="authenticated docker.home.arpa certificate"
+    ):
+        compile_catalog(
+            tmp_path,
+            "include freeipa_users::provision",
+            hostname="docker",
+            node_type="docker",
+            certname=certname,
+            authenticated=authenticated,
+        )
+
+
+def test_freeipa_provision_command_arguments(tmp_path: Path) -> None:
+    """Preserve argument boundaries and keep keytab contents out of catalogs."""
+    first = "First; $(touch /tmp/injected)"
+    last = "O'Last"
+    catalog = compile_catalog(
+        tmp_path,
+        "include freeipa_users::provision",
+        {
+            "freeipa_users::provision::users": {
+                "backrest": {
+                    "first": first,
+                    "last": last,
+                    "keytab": "/etc/krb5-backrest.keytab",
+                }
+            }
+        },
+    )
+    result = resources(catalog)
+    command = result["Exec[ipa-user-provision-backrest]"]
+    expected = [
+        "/usr/local/sbin/puppet-ipa-provision-user",
+        "backrest",
+        first,
+        last,
+        "/usr/sbin/nologin",
+        "/etc/krb5-backrest.keytab",
+    ]
+    assert shlex.split(command["command"]) == expected
+    assert shlex.split(command["unless"]) == [expected[0], "--check", *expected[1:]]
+    for path in ("/etc/puppet-ipa-provisioner.keytab", "/etc/krb5-backrest.keytab"):
+        keytab = result[f"File[{path}]"]
+        assert keytab["owner"] == keytab["group"] == "root"
+        assert keytab["mode"] == "0400"
+        assert "source" not in keytab and "content" not in keytab
 
 
 def managed_resources(catalog: dict[str, Any]) -> dict[str, Any]:
