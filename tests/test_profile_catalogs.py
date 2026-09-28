@@ -46,9 +46,16 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     assert "Service[alloy]" in resources(catalog)
     result = resources(catalog)
     assert "Vcsrepo[/root/.vim]" not in result
+    home = result["File[/home/user]"]
+    assert home["ensure"] == "directory"
+    assert home["owner"] == home["group"] == "user"
+    assert home["mode"] == "0700"
+    assert ("File[/home/user]", "Vcsrepo[/home/user/.vim]") in ordered_pairs(catalog)
     assert result["Vcsrepo[/home/user/.vim]"]["user"] == "user"
     assert result["Exec[dotfiles-rake-links]"]["user"] == "user"
     assert result["Exec[dotfiles-rake-links]"]["cwd"] == "/home/user/.vim"
+    if node_type == "proxmox":
+        assert result["Package[sudo]"]["ensure"] == "installed"
     assert ("Class[Freeipa_users::Provision]" in result) == (hostname == "docker")
     assert ("Exec[ipa-user-provision-backrest]" in result) == (hostname == "docker")
     assert result["File[/run/puppet-ipa-admin-pass]"]["ensure"] == "absent"

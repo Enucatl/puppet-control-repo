@@ -11,6 +11,14 @@ class profile::dotfiles (
 
   ensure_packages(['rake'])
 
+  # IPA creates homes at login; Puppet may run before the first login.
+  file { $home:
+    ensure => directory,
+    owner  => $username,
+    group  => $username,
+    mode   => '0700',
+  }
+
   vcsrepo { $repo_dir:
     ensure   => latest,
     provider => git,
@@ -18,6 +26,7 @@ class profile::dotfiles (
     user     => $username,
     owner    => $username,
     group    => $username,
+    require  => File[$home],
   }
 
   # Run rake links once after initial clone to set up symlinks.

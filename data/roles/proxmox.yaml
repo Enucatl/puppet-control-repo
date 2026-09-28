@@ -3,6 +3,7 @@ packages::list:
   - linux-cpupower
   - nvme-cli
   - powertop
+  - sudo
 
 unattended_upgrades::auto:
   reboot: false
