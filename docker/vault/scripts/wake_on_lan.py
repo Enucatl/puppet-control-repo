@@ -210,7 +210,7 @@ def main(
         click.echo(f"[+] Proxmox Host is up. Starting VM {vm_id}...")
         try:
             subprocess.check_call(
-                f"ssh '{proxmox_host}' 'qm start {vm_id}'", shell=True
+                f"ssh -l root '{proxmox_host}' '/usr/sbin/qm start {vm_id}'", shell=True
             )
         except subprocess.CalledProcessError:
             click.echo("[!] Failed to start VM.", err=True)
@@ -220,7 +220,8 @@ def main(
         click.echo(f"[+] Proxmox Host is up. Starting container {ct_id}...")
         try:
             subprocess.check_call(
-                f"ssh '{proxmox_host}' 'pct start {ct_id}'", shell=True
+                f"ssh -l root '{proxmox_host}' '/usr/sbin/pct start {ct_id}'",
+                shell=True,
             )
         except subprocess.CalledProcessError:
             click.echo("[!] Failed to start container.", err=True)
@@ -240,7 +241,7 @@ def main(
         click.echo(f"[-] Scheduling shutdown in {shutdown_delay} minutes...")
         try:
             subprocess.check_call(
-                f"ssh '{proxmox_host}' \"shutdown +{shutdown_delay} 'Automated shutdown'\"",
+                f"ssh -l root '{proxmox_host}' \"/usr/sbin/shutdown +{shutdown_delay} 'Automated shutdown'\"",
                 shell=True,
             )
         except subprocess.CalledProcessError:
