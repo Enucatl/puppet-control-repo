@@ -1,0 +1,7 @@
+abi <abi/4.0>,
+include <tunables/global>
+
+# Permit bubblewrap's namespace setup while retaining the global restriction.
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+}
