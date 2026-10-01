@@ -98,6 +98,11 @@ discovery.relabel "docker_relabel" {
     regex = "grafana-loki/loki"
     action = "drop"
   }
+  rule {
+    source_labels = ["service_name"]
+    regex = "crabberbot/egress-proxy"
+    action = "drop"
+  }
   // GoFlow2 is scraped by a dedicated pipeline for GeoIP enrichment, so exclude it here to avoid duplicate ingestion and feedback loops.
   rule {
     source_labels = ["service_name"]
