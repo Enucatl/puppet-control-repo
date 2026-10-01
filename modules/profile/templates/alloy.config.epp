@@ -95,7 +95,7 @@ discovery.relabel "docker_relabel" {
   // Drop Loki logs here to avoid re-ingesting the Loki container through this Docker scrape path and creating a loop.
   rule {
     source_labels = ["service_name"]
-    regex = "grafana-loki-loki-1" 
+    regex = "grafana-loki/loki"
     action = "drop"
   }
   // GoFlow2 is scraped by a dedicated pipeline for GeoIP enrichment, so exclude it here to avoid duplicate ingestion and feedback loops.
@@ -108,6 +108,26 @@ discovery.relabel "docker_relabel" {
 
 loki.process "docker_logs" {
   forward_to = [loki.process.barbero_caddy.receiver]
+
+  // Traefik logs the requests that deliver these logs to Loki; drop those
+  // records here to prevent the access-log feedback loop.
+  stage.match {
+    selector = "{service_name=\"traefik/traefik\"}"
+
+    stage.json {
+      expressions = {
+        RequestHost   = "RequestHost",
+        RequestMethod = "RequestMethod",
+        RequestPath   = "RequestPath",
+      }
+    }
+
+    stage.drop {
+      source    = "RequestHost,RequestMethod,RequestPath"
+      separator = ";"
+      value     = "loki.docker.home.arpa;POST;/loki/api/v1/push"
+    }
+  }
 
   // i2pd emits ANSI-colored severity names. Normalize and parse only this
   // container so other Docker log bodies remain unchanged.
