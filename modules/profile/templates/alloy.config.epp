@@ -132,9 +132,14 @@ loki.process "docker_logs" {
   // i2pd emits ANSI-colored severity names. Normalize and parse only this
   // container so other Docker log bodies remain unchanged.
   stage.match {
-    selector = "{service_name=\"tor-i2pd-i2pd-1\"}"
+    selector = "{service_name=\"tor-i2pd/i2pd\"}"
 
     stage.decolorize {}
+
+    stage.drop {
+      expression = ".*(SSU2: Send exception: Network unreachable|NTCP2: RouterInfo verification failed).*"
+      drop_counter_reason = "i2pd_peer_noise"
+    }
 
     stage.regex {
       expression         = "^\\[[^]]+\\]@[0-9]+/(?P<level>debug|info|warn|error) - "
