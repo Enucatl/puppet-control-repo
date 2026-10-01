@@ -381,6 +381,20 @@ profile::common::certs::vault_certs:
       alt_names: wolf.docker.home.arpa
 
 profile::common::acls::posix_acls:
+  "/opt/docker/protonmail-bridge/secrets":
+    action: set
+    permission:
+      - "user:101000:--x" # remap base 100000 + bridge uid 1000
+      - "group::---"
+      - "mask::--x"
+      - "other::---"
+  "/opt/docker/protonmail-bridge/secrets/vault_key":
+    action: set
+    permission:
+      - "user:101000:r--" # remap base 100000 + bridge uid 1000
+      - "group::---"
+      - "mask::r--"
+      - "other::---"
   "/opt/docker/beszel/secrets":
     action: set
     permission:
