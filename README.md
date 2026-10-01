@@ -140,7 +140,7 @@ Router observability is split between VyOS, the Docker host, and Loki.
 - DHCP, DNS, and IPv6 NDP identity streams are shipped directly from VyOS Alloy to Loki.
 - Suricata remains limited to IoT and Guest VLANs.
 - Suricata EVE is tailed by VyOS Alloy, sent to the central Alloy receiver on `docker.home.arpa`, enriched there, and then written once to Loki.
-- VyOS exports unsampled IPFIX to `docker.home.arpa`.
+- VyOS exports IPFIX sampled at one in ten packets from `eth1.20` and `eth1.30` only to `docker.home.arpa`.
 - GoFlow2 runs from [docker/docker-compose.yml](/opt/docker/puppet-control-repo/docker/docker-compose.yml), receives IPFIX on UDP/2055, and writes decoded flow JSON to stdout. It does not perform GeoIP enrichment.
 - Docker-host Alloy scrapes GoFlow2 container logs, enriches IPFIX records, and writes them to Loki.
 
@@ -207,7 +207,7 @@ Avoid broad metadata filters without an indexed stream selector. Start with labe
 
 ### IPFIX Volume Checks
 
-Unsampled IPFIX is currently enabled so real volume can be measured before introducing sampling.
+IPFIX sampling is set to one in ten packets on `eth1.20` and `eth1.30`; exported flow statistics are estimates.
 
 Measure event rate in Loki:
 
@@ -228,7 +228,7 @@ docker volume inspect grafana-loki_loki_data
 sudo du -sh /var/lib/docker/100000.100000/volumes/grafana-loki_loki_data/_data
 ```
 
-Check again roughly 24 hours later. That delta is the useful signal for whether unsampled IPFIX is sustainable with current retention.
+Check again roughly 24 hours later. That delta is the useful signal for whether the sampled IPFIX volume is sustainable with current retention.
 
 During larger transfers or speed tests, watch:
 
@@ -237,7 +237,7 @@ During larger transfers or speed tests, watch:
 - Docker-host Alloy CPU and memory.
 - Loki ingest, disk growth, and query responsiveness.
 
-Introduce IPFIX sampling only if the 24-hour volume, disk growth, query latency, or router/resource metrics justify it.
+Adjust the IPFIX sampling rate or monitored interfaces if the 24-hour volume, disk growth, query latency, or router/resource metrics justify it.
 
 ### Relevant Files
 
