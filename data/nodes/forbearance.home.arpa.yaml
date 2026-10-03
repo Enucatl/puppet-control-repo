@@ -26,16 +26,6 @@ profile::common::acls::posix_acls:
       - "default:mask::r-X"
     recursive: true
 
-profile::common::cron::jobs:
-  # Remove unused Docker images, containers, networks, and build cache.
-  # Named unused volumes are left alone (retired stacks may still hold data).
-  # Anonymous dangling volumes (64-char hex ids from recreate/rm) are pruned.
-  docker-prune:
-    minute: 0
-    hour: 3
-    user: root
-    command: '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info; /usr/bin/docker volume ls -f dangling=true -q | /usr/bin/grep -E "^[0-9a-f]{64}$" | /usr/bin/xargs -r /usr/bin/docker volume rm 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
-
 nfs_config::server_exports:
   '/home/user/Documents':
     clients: 'docker.home.arpa(sec=krb5p,ro,sync,no_subtree_check,root_squash)'
@@ -71,6 +61,36 @@ profile::common::sysctl::settings:
     value: 1
 
 profile::common::systemd::units:
+  docker-prune.service:
+    content: |
+      [Unit]
+      Description=Prune unused Docker objects
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  docker-prune.timer:
+    content: |
+      [Unit]
+      Description=Run Docker cleanup daily
+
+      [Timer]
+      OnCalendar=*-*-* 03:00:00 UTC
+      Persistent=true
+      Unit=docker-prune.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[docker-prune.service]
   gpg-agent-ssh.socket:
     path: /etc/systemd/user
     target: /dev/null

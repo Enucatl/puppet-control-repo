@@ -68,19 +68,37 @@ profile::alloy::enable_docker: true
 profile::alloy::manage_docker_user: true
 profile::alloy::manage_geoip: true
 
-profile::common::cron::jobs:
-  # Remove unused Docker images, containers, networks, and build cache.
-  # --all: removes all unused images (not just dangling ones)
-  # --force: skips the confirmation prompt
-  # --filter until=Nh: only removes objects not used in the last N hours,
-  #   giving recently-pulled but not-yet-started containers a grace period.
-  # Named unused volumes are left alone (retired stacks may still hold data).
-  # Anonymous dangling volumes (64-char hex ids from recreate/rm) are pruned.
-  docker-prune:
-    minute: 0
-    hour: 3
-    user: root
-    command: '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info; /usr/bin/docker volume ls -f dangling=true -q | /usr/bin/grep -E "^[0-9a-f]{64}$" | /usr/bin/xargs -r /usr/bin/docker volume rm 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
+profile::common::systemd::units:
+  docker-prune.service:
+    content: |
+      [Unit]
+      Description=Prune unused Docker objects
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  docker-prune.timer:
+    content: |
+      [Unit]
+      Description=Run Docker cleanup daily
+
+      [Timer]
+      OnCalendar=*-*-* 03:00:00 UTC
+      Persistent=true
+      Unit=docker-prune.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[docker-prune.service]
 
 profile::common::sysctl::settings:
   net.ipv6.conf.all.accept_redirects:
