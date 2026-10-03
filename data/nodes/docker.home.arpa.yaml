@@ -32,7 +32,8 @@ profile::docker_host::git_deploy_projects:
     build_command: "docker compose build"
   crabberbot:
     build_command: 'YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
-  echo-server: {}
+  echo-server:
+    ensure: absent
   grafana-loki: {}
   puppet-control-repo:
     branch: production
