@@ -41,6 +41,7 @@ profile::docker_host::git_deploy_projects:
     watch_dir: docker
   kms: {}
   monerod:
+    ensure: absent # Run on demand; remove deploy watcher and scheduled refresh units.
     build_command: "docker compose build"
   paperless-ai:
     build_command: "docker compose build"
