@@ -125,11 +125,13 @@ services:
       - IPA_SERVER_INSTALL_OPTS=--external_cert_file=/data/ipa.crt --external_ca_file=/data/ca.crt
     volumes:
       - freeipa_data:/data
+      - ./freeipa/tune-homelab.sh:/opt/freeipa-homelab/tune-homelab.sh:ro
+      - ./freeipa/homelab-tuning.conf:/etc/systemd/system/ipa.service.d/homelab-tuning.conf:ro
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=0
       - net.ipv6.conf.all.forwarding=1
     healthcheck:
-      test: ["CMD-SHELL", "echo | openssl s_client -connect localhost:443 -servername freeipa.home.arpa 2>/dev/null | grep -q 'Verify return code: 0'"]
+      test: ["CMD-SHELL", "systemctl is-active --quiet ipa.service && echo | openssl s_client -connect localhost:443 -servername freeipa.home.arpa 2>/dev/null | grep -q 'Verify return code: 0'"]
       interval: 30s
       timeout: 10s
       retries: 5
