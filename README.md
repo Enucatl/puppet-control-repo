@@ -20,12 +20,12 @@ A monorepo for home lab infrastructure. It combines Puppet configuration managem
 │   ├── freeipa_users/           # Local user management via IPA
 │   └── ...                      # Other custom modules
 ├── docker/                      # Docker Compose stack (runs ON docker.home.arpa)
-│   ├── docker-compose.yml       # Core services: Vault, FreeIPA, Puppet Server, APT cache
+│   ├── docker-compose.yml       # Core services: Vault, FreeIPA, APT cache
 │   ├── vault/
 │   │   ├── config/              # Vault server configuration
 │   │   └── scripts/             # Bootstrap scripts (01-13) + wake_on_lan.py
 │   └── puppet/
-│       └── config/              # Puppet Server configuration
+│       └── config/              # r10k configuration and empty puppet.conf placeholder
 ├── proxmox/                     # Scripts that run ON the Proxmox hypervisor
 │   ├── configure-pve-backups.sh # Proxmox Backup Server setup
 │   ├── desktop.sh               # Launcher for desktop.py
@@ -40,6 +40,7 @@ A monorepo for home lab infrastructure. It combines Puppet configuration managem
 │   └── pyproject.toml / uv.lock # Python deps managed via uv
 ├── scripts/                     # Puppet Server helper scripts
 │   ├── autosign.py              # Policy-based certificate autosigning
+│   ├── configure-puppetserver.sh # Host Puppet Server JRuby tuning
 │   └── external_node_classifier.py # ENC for environment selection
 ├── Puppetfile                   # r10k-managed external module list (generated)
 └── post-receive                 # Git hook: triggers r10k deploy on push
@@ -54,8 +55,10 @@ A monorepo for home lab infrastructure. It combines Puppet configuration managem
 │  docker/docker-compose.yml                              │
 │  ├── Vault       ← PKI, secrets, cert auth              │
 │  ├── FreeIPA     ← LDAP / Kerberos                      │
-│  ├── Puppet      ← reads THIS repo via r10k             │
 │  └── APT cache   ← package mirror for all nodes         │
+│                                                         │
+│  puppetserver.service (host systemd service)             │
+│  └── Puppet      ← reads THIS repo via r10k               │
 └────────────────┬────────────────────────────────────────┘
                  │ manages (puppet agent)
      ┌───────────┼───────────────┐
@@ -64,7 +67,7 @@ A monorepo for home lab infrastructure. It combines Puppet configuration managem
   (self)      pihole, ...
 ```
 
-- **`docker/`** is the infrastructure that hosts Puppet itself. The Puppet Server runs as a container and serves the catalog to all managed nodes, including `docker.home.arpa` itself.
+- **Puppet Server** runs as the host systemd service `puppetserver.service` on `docker.home.arpa` and serves catalogs to all managed nodes, including that host. **`docker/`** contains the accompanying container services.
 - **`modules/` + `data/`** are the Puppet content — profiles, roles, and Hiera data consumed by every node.
 - **`proxmox/`** contains provisioning scripts for new VMs/LXC containers on the hypervisor. They are not managed by Puppet; they run manually or via cron.
 - **`provisioning/`** handles infrastructure that Puppet cannot reach at boot time — primarily router/VyOS configuration via Ansible.
@@ -95,6 +98,44 @@ Desktop cloud-init is built as structured data and written as JSON, which is
 valid YAML, after the `#cloud-config` header. It embeds `configure-puppet.sh`
 directly and passes enrollment values as command arguments. The temporary
 snippet is restricted to its owner and removed when provisioning exits.
+
+## Puppet Server Host Configuration
+
+The server is installed directly on `docker.home.arpa`; the current bootstrap
+scripts assume it is already installed. Its runtime configuration lives in
+`/etc/puppetlabs/puppetserver/conf.d/`, and JVM settings are in
+`/etc/default/puppetserver`.
+
+To configure one JRuby worker and recycle it after 10,000 handled HTTP requests,
+run from this repository on the server host:
+
+```bash
+bash scripts/configure-puppetserver.sh
+sudo systemctl restart puppetserver
+```
+
+The script preserves a first-run backup beside `puppetserver.conf` as
+`puppetserver.conf.before-homelab-tuning` and replaces its own tuning block on
+reruns. It preserves the existing 1 GiB heap (`-Xms1024m -Xmx1024m`) and other
+configuration. Restarting applies the changes and briefly interrupts service.
+One worker serializes compilations; recycling reloads Puppet code and can delay
+queued requests. The threshold counts requests, not agent runs or elapsed time.
+This script is run manually; pushing the repo does not apply these settings.
+
+Other explicit settings observed in the host's `puppet.conf`:
+
+| Setting | Purpose |
+|---------|---------|
+| `server = docker.home.arpa` | Agent's primary server |
+| `certificate_revocation = leaf` in `[main]` | Check leaf certificate revocation rather than the whole chain |
+| `autosign = /etc/puppetlabs/code/environments/production/scripts/autosign.py` | Repository autosigning policy |
+| `node_terminus = exec` and `external_nodes = /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py` | Repository ENC selects `dev` for `.dev.home.arpa` nodes, otherwise `production` |
+| `number_of_facts_soft_limit = 10000` in `[agent]` | Raised fact-count warning threshold |
+
+The server's data/log/run/code paths are explicitly set to the usual package
+locations. The installed systemd unit has no visible local drop-ins. The protected
+`conf.d` files could not be read during this inspection, so this is not a complete
+inventory of server overrides or confirmation of its current worker count.
 
 ## Puppet Agent Setup (New Node)
 
