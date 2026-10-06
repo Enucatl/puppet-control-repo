@@ -10,6 +10,7 @@ classes:
 profile::user_toolchain::npm_globals:
   - '@openai/codex'
   - '@anthropic-ai/claude-code'
+profile::user_toolchain::manage_rustup: false
 
 profile::common::certs::vault_certs:
   codex:
@@ -30,7 +31,6 @@ packages::list:
   - build-essential
   - calendar
   - calibre
-  - cargo
   - containerd.io
   - docker-buildx-plugin
   - docker-ce
