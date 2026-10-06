@@ -6,6 +6,13 @@ classes:
 profile::chronicle_backup::backup_job_id: backup-9c78eb79-950c
 profile::vllm_weekly_window::timer_calendar: 'Tue *-*-* 01:05:00 UTC'
 
+systemd::dropin_files:
+  proxmox-cpu-energy-preference.conf:
+    unit: proxmox-cpu-power-policy.service
+    content: |
+      [Service]
+      ExecStartPost=/bin/sh -ec 'for cpu in /sys/devices/system/cpu/cpufreq/policy*; do echo balance_power > "$cpu/energy_performance_preference"; done'
+
 profile::common::cron::jobs:
   user-toolchain-cache-prune:
     ensure: absent
