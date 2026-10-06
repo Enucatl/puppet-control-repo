@@ -66,6 +66,14 @@ class profile::user_toolchain (
     }),
   }
 
+  file { '/usr/local/sbin/puppet-toolchain-versions-prune':
+    ensure => file,
+    owner  => 'root',
+    group  => 'root',
+    mode   => '0755',
+    source => 'puppet:///modules/profile/toolchain-versions-prune',
+  }
+
   exec { "sync-user-toolchain-${username}":
     command     => '/usr/local/sbin/puppet-user-toolchain-sync',
     user        => $username,
@@ -79,6 +87,7 @@ class profile::user_toolchain (
     onlyif      => "id ${username}",
     require     => [
       File['/usr/local/sbin/puppet-user-toolchain-sync'],
+      File['/usr/local/sbin/puppet-toolchain-versions-prune'],
       Package[$required_packages],
     ],
   }

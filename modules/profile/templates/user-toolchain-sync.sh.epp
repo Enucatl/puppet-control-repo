@@ -243,4 +243,7 @@ install_rustup
 install_nvm
 <% } -%>
 
+/usr/local/sbin/puppet-toolchain-versions-prune "$HOME/.local/share/claude/versions"
+/usr/local/sbin/puppet-toolchain-versions-prune "$HOME/.codex/packages/app-server-daemon/releases"
+
 log 'user toolchain sync complete'

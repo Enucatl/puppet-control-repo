@@ -447,18 +447,3 @@ def test_deploy_options(tmp_path: Path, refresh: bool, ensure: str) -> None:
         assert managed_resources(catalog) == managed_resources(before)
         assert ordered_pairs(catalog) == ordered_pairs(before)
         assert notifications(catalog) == notifications(before)
-
-
-@pytest.mark.parametrize(
-    ("parameters", "home"),
-    [("username => 'root'", "/root"), ("home => '/srv/user'", "/srv/user")],
-)
-def test_cursor_guard_resolves_home(tmp_path: Path, parameters: str, home: str) -> None:
-    catalog = compile_catalog(
-        tmp_path,
-        f"class {{ 'profile::cursor_cli': {parameters} }}",
-        hostname="fixture",
-        node_type="proxmox",
-    )
-    guard = resources(catalog)["Exec[update-cursor-cli]"]["unless"]
-    assert guard == f"/usr/local/sbin/cursor-latest-version --current {home}"

@@ -2,7 +2,6 @@
 classes:
   - nfs_config
   - profile::codex_mtls
-  - profile::cursor_cli
   - profile::docker_host
   - profile::user_toolchain
   - profile::codex_plugins

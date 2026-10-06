@@ -81,8 +81,9 @@ remain unchanged.
   `scheduled_refresh` omits refresh resources; it does not remove existing timers.
 - User-toolchain sync retains its lock, update checks, and npm publication delay.
   npm install scripts remain disabled except when installing Claude Code, whose
-  npm package needs its postinstall script to link the binary. Cache cleanup
-  retains its existing cron schedule and behavior.
+  npm package needs its postinstall script to link the binary. It keeps the two
+  newest Claude Code and Codex app-server releases. Cache cleanup retains its
+  existing cron schedule and behavior.
 - Plugin sync runs after the user toolchain and dotfiles. Codex and Claude Code
   install Ponytail through local marketplaces pinned to the newest release at
   least three days old. Release metadata is checked at most daily with an ETag;
