@@ -24,3 +24,14 @@ def test_keeps_two_newest_versions(tmp_path: Path) -> None:
         "0.160.0-x86_64-unknown-linux-musl",
         "0.160.1-x86_64-unknown-linux-musl",
     ]
+
+
+def test_prunes_file_based_versions(tmp_path: Path) -> None:
+    releases = tmp_path / "releases"
+    releases.mkdir()
+    for version in ("2.1.91", "2.1.92", "2.1.283"):
+        (releases / version).touch()
+
+    subprocess.run(["bash", str(SCRIPT), str(releases)], check=True)
+
+    assert sorted(path.name for path in releases.iterdir()) == ["2.1.283", "2.1.92"]

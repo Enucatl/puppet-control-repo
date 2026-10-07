@@ -6,7 +6,7 @@ versions_dir="${1:?missing versions directory}"
 
 versions="$(
   for version_dir in "$versions_dir"/*; do
-    if [ -d "$version_dir" ]; then
+    if [ -d "$version_dir" ] || [ -f "$version_dir" ]; then
       printf '%s\n' "${version_dir##*/}"
     fi
   done | sort -t. -k1,1nr -k2,2nr -k3,3nr
