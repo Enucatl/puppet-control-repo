@@ -19,6 +19,9 @@ nfs_config::client_mounts:
     options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p'
 
 profile::docker_host::git_deploy_projects:
+  ais:
+    pull: true
+    build_command: "docker compose build"
   airflow:
     pull: true
     build_command: 'docker compose --profile runner build exam download-zanzara cyber-analyst operations-analyst podcast-statistics'
@@ -693,6 +696,26 @@ profile::common::acls::posix_acls:
     permission:
       - "user:100999:r--" # remap base 100000 + controller app uid 999
       - "mask::r--"
+  "/opt/docker/ais/secrets":
+    action: set
+    permission:
+      - "user:110001:--x" # remap base 100000 + app uid 10001
+      - "user:100999:--x" # remap base 100000 + PostgreSQL uid 999
+      - "mask::--x"
+      - "other::---"
+  "/opt/docker/ais/secrets/aisstream_api_key":
+    action: set
+    permission:
+      - "user:110001:r--" # remap base 100000 + app uid 10001
+      - "mask::r--"
+      - "other::---"
+  "/opt/docker/ais/secrets/postgres_password":
+    action: set
+    permission:
+      - "user:110001:r--" # remap base 100000 + app uid 10001
+      - "user:100999:r--" # remap base 100000 + PostgreSQL uid 999
+      - "mask::r--"
+      - "other::---"
 profile::alloy::enable_router_enrichment: true
 profile::alloy::router_listen_address: '10.0.0.128'
 
