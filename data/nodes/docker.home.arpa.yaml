@@ -384,6 +384,18 @@ profile::common::certs::vault_certs:
     cert_data:
       common_name: wolf.docker.home.arpa
       alt_names: wolf.docker.home.arpa
+  browser-use:
+    cert_chain_file: /opt/docker/browser-use/secrets/browser-use.crt
+    cert_chain_owner: 101000 # userns-remap base 100000 + browser UID 1000
+    cert_chain_group: 100000
+    cert_chain_mode: '0444'
+    key_file: /opt/docker/browser-use/secrets/browser-use.key
+    key_owner: 101000
+    key_group: 100000
+    key_mode: '0400'
+    cert_data:
+      common_name: browser-use.docker.home.arpa
+      alt_names: browser-use.docker.home.arpa
 
 profile::common::acls::posix_acls:
   "/opt/docker/protonmail-bridge/secrets":
