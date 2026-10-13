@@ -774,6 +774,7 @@ samba::extra_global_options:
   # using NTLMv1; this forces NTLMv2 for all clients.
   'ntlm auth': 'ntlmv2-only'
 samba::hosts_allow:
+   - '10.0.20.189'
    - '10.0.0.'
    - '10.0.40.'
 samba::hosts_deny:
