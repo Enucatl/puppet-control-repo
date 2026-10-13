@@ -713,9 +713,16 @@ profile::common::acls::posix_acls:
     permission:
       - "user:110001:--x" # remap base 100000 + app uid 10001
       - "user:100999:--x" # remap base 100000 + PostgreSQL uid 999
+      - "user:100472:--x" # remap base 100000 + Grafana uid 472
       - "mask::--x"
       - "other::---"
   "/opt/docker/ais/secrets/aisstream_api_key":
+    action: set
+    permission:
+      - "user:110001:r--" # remap base 100000 + app uid 10001
+      - "mask::r--"
+      - "other::---"
+  "/opt/docker/ais/secrets/vesselapi_api_key":
     action: set
     permission:
       - "user:110001:r--" # remap base 100000 + app uid 10001
@@ -726,6 +733,13 @@ profile::common::acls::posix_acls:
     permission:
       - "user:110001:r--" # remap base 100000 + app uid 10001
       - "user:100999:r--" # remap base 100000 + PostgreSQL uid 999
+      - "mask::r--"
+      - "other::---"
+  "/opt/docker/ais/secrets/grafana-datasource.yaml":
+    action: set
+    permission:
+      - "user:100472:r--" # remap base 100000 + Grafana uid 472
+      - "group::---"
       - "mask::r--"
       - "other::---"
 profile::alloy::enable_router_enrichment: true
