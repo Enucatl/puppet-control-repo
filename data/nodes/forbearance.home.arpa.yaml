@@ -107,10 +107,22 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       ExecStart=/bin/sh -c 'for i in $(seq 1 30); do /usr/bin/amixer -c Wireless sset PCM 100% && exit 0; sleep 1; done; exit 1'
-      RemainAfterExit=yes
 
       [Install]
       WantedBy=default.target
+    daemon_reload: false
+  hyperx-headset-volume-user.timer:
+    path: /etc/systemd/user
+    content: |
+      [Unit]
+      Description=Reset HyperX headset ALSA playback volume hourly
+
+      [Timer]
+      OnUnitActiveSec=1h
+      Unit=hyperx-headset-volume-user.service
+
+      [Install]
+      WantedBy=timers.target
     daemon_reload: false
 
 profile::common::systemd::user_services:
@@ -119,6 +131,10 @@ profile::common::systemd::user_services:
     global: true
     enable: true
     require: Package[alsa-utils]
+  hyperx-headset-volume-user.timer:
+    unit: hyperx-headset-volume-user.timer
+    global: true
+    enable: true
 
 profile::common::udev::rules:
   99-logitech-c925e-disable-audio.rules:
