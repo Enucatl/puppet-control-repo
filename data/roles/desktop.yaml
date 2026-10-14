@@ -6,6 +6,15 @@ classes:
   - profile::codex_mtls
   - profile::user_toolchain
   - profile::codex_plugins
+  - profile::typst
+
+profile::common::cron::jobs:
+  typst-update:
+    minute: 15
+    hour: 3
+    weekday: 0
+    user: root
+    command: '/usr/bin/flock -n /run/lock/typst-update.lock /usr/local/bin/typst update --backup-path /var/lib/typst/typst_backup.part 2>&1 | /usr/bin/logger -t typst-update -p user.info'
 
 profile::user_toolchain::npm_globals:
   - '@openai/codex'

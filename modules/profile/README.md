@@ -18,6 +18,7 @@ Agent-supplied `node_type` facts do not grant role membership. No separate Puppe
 | `profile::docker_deploy` | Per-project push deployment and optional scheduled refresh |
 | `profile::chronicle_backup`, `profile::vllm_weekly_window` | Stable Hiera interfaces to `proxmox_workflows` |
 | `profile::proxmox_orchestration` | Stable shared-library installation path interface |
+| `profile::typst` | Official Typst CLI binary on desktops |
 | Other focused profiles | Beszel, user tools, dotfiles, PAM/Vault login, mTLS directories, GPU settings, Dropbear, VFIO |
 
 Small `common::*` classes deliberately remain separate: their Hiera keys identify
@@ -89,6 +90,14 @@ remain unchanged.
   least three days old. Release metadata is checked at most daily with an ETag;
   ordinary Puppet runs compare local plugin state and restore missing or disabled
   installations.
+- Typst bootstraps from the checksum-verified 0.15.1 GitHub release for x86-64 or
+  ARM64 into `/usr/local/bin/typst`. Existing binaries skip the download. Desktop
+  cron runs `typst update` each Sunday at 03:15 local time, outside Puppet runs;
+  it installs the latest stable release over HTTPS and retains one binary backup
+  at `/var/lib/typst/typst_backup.part`. The native updater does not verify release
+  digests. Failures are logged under `typst-update` and leave the installed binary
+  available. User package caches are retained. Automatic compiler upgrades can
+  change rendering; inspect CV PDFs again before sending them.
 - Dropbear/VFIO retain their initramfs notifications. Beszel retains its FreeIPA
   identity, credential permissions, and systemd hardening.
 - Keep historical `ensure: absent` resources until host evidence confirms cleanup.

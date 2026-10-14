@@ -45,6 +45,8 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     )
     assert "Service[alloy]" in resources(catalog)
     result = resources(catalog)
+    assert ("File[/usr/local/bin/typst]" in result) == (node_type == "desktop")
+    assert ("Cron[typst-update]" in result) == (node_type == "desktop")
     certificate_role = "puppet-docker.home.arpa" if hostname == "docker" else "puppet"
     for resource_name, parameters in result.items():
         if resource_name.startswith("Vault_cert["):
