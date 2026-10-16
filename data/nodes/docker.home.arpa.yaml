@@ -305,8 +305,8 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: true
-    active: true
+    enable: false
+    active: false
     require: Systemd::Unit_file[automation-operations-analyst.service]
   automation-podcast-statistics.service:
     content: |
