@@ -2,6 +2,18 @@
 
 A monorepo for home lab infrastructure. It combines Puppet configuration management with the supporting infrastructure that runs the Puppet server itself — plus provisioning tools and Proxmox scripts — all in one place.
 
+The agreed target is to run OpenVox 9 Server in this repository's `infra` Compose
+stack (`docker/docker-compose.yml`), first on the existing `docker.home.arpa`
+host and later on Atlas. Publish our fork image to
+`ghcr.io/enucatl/openvox-server:9.1.0-mldsa.13001` after acceptance, with moving
+`:9.1.0` and `:latest` aliases. Deploy and recover by the recorded digest.
+See the [OpenVox container migration
+plan](docs/openvox-container-migration-plan.md) for the authoritative deployment
+decision and acceptance gates. This completes containerization of the core
+infrastructure application stack; native host agents, Docker hosts, and
+hypervisors remain host components. This migration is planned, not deployed;
+the host-service description below records the current installation.
+
 ## Repository Structure
 
 ```
