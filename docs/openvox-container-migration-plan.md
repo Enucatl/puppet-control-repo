@@ -41,6 +41,22 @@ The tracked readiness, rollout and recovery work is in issues
   package archive/manifest, public archive key and any required registry access
   recoverable independently of Vault, the old Docker host and its caches.
 
+## Verified image delivery (18 October 2026)
+
+The [hosted image workflow](https://github.com/Enucatl/openvox-packages/actions/runs/39153344363)
+published `9.1.0-mldsa.13001`, `9.1.0` and `latest` from the accepted
+`resolute-13001` server/agent pair. All three tags resolve to:
+
+```text
+ghcr.io/enucatl/openvox-server@sha256:38a0923732977a0eae63305d2c53cb91b18321bf26142814ab916ff0524d300b
+```
+
+The public [server-image.json provenance](https://github.com/Enucatl/openvox-packages/releases/download/resolute-13001/server-image.json)
+records that digest, tags, image revision and contained package/source/runtime
+manifest. Anonymous GHCR token and manifest requests returned HTTP 200 for all
+three tags with the matching digest. Publication and registry access are
+verified; live Compose integration and independent state recovery remain open.
+
 ## Runtime and integration
 
 - Add the server to the existing infrastructure Compose file and reuse the
@@ -95,9 +111,9 @@ The tracked readiness, rollout and recovery work is in issues
    dependent replacement guests. In #20, observe sustained operation and retire
    old services/identities only after the existing retention gates.
 
-## Acceptance still required
+## Delivery and remaining acceptance
 
-- [ ] Publish a fork image with the selected package pair and source/runtime
+- [x] Publish a fork image with the selected package pair and source/runtime
       provenance; verify pull access and record the deployment digest.
 - [ ] Prove foreground startup, readiness, resource use, graceful stop, restart,
       container recreation and host reboot without authority/identity changes.
