@@ -21,9 +21,9 @@ The tracked readiness, rollout and recovery work is in issues
   preserve the matching server/agent dependency inside the image.
 - Publish the image as `ghcr.io/enucatl/openvox-server` after its selected
   package release passes acceptance. Use `<upstream-version>-mldsa.<build>`
-  for unique image tags: `9.1.0-mldsa.13001` for the current package baseline.
+  for unique image tags: `9.1.0-mldsa.18001` for the current package baseline.
   Move `:9.1.0` to the accepted image for that upstream version and `:latest`
-  to the newest accepted image. The APT release remains `resolute-13001`;
+  to the newest accepted image. The APT release is `resolute-18001`;
   its codename-based identity is separate from OCI tags. Record the image tag,
   package release/versions, source revisions, runtime inputs, image-build
   revision and registry digest.
@@ -35,27 +35,37 @@ The tracked readiness, rollout and recovery work is in issues
   the real autosigner and ENC. Keep private identities and tokens out of images.
 - Keep signed APT delivery for native fleet agents. A container's Ubuntu 26.04
   userland can run on the existing Docker host after container acceptance;
-  native Ubuntu 24.04 and Debian/Proxmox agent compatibility remains a separate
-  gate before the existing-host-first rollout.
+  native package acceptance now covers Ubuntu 24.04 and Debian 13 amd64 as
+  well as Ubuntu 26.04. Compatibility of real inventoried host agents and the
+  control-repo integration remains a separate gate before live rollout.
 - Verify GHCR visibility and pull authentication. Keep the deployed image,
   package archive/manifest, public archive key and any required registry access
   recoverable independently of Vault, the old Docker host and its caches.
 
 ## Verified image delivery (18 October 2026)
 
-The [hosted image workflow](https://github.com/Enucatl/openvox-packages/actions/runs/39153344363)
-published `9.1.0-mldsa.13001`, `9.1.0` and `latest` from the accepted
-`resolute-13001` server/agent pair. All three tags resolve to:
+The [complete coordinated workflow](https://github.com/Enucatl/openvox-packages/actions/runs/39154755798)
+passed source suites, package builds, anonymous signed APT installation and
+installed RSA/ML-DSA/Vault lifecycles on Ubuntu 26.04, Ubuntu 24.04 and Debian 13
+amd64. It promoted [resolute-18001](https://github.com/Enucatl/openvox-packages/releases/tag/resolute-18001)
+and completed the downstream server-image build, lifecycle smoke check and
+publication from coordinator `4f719cb678cc06a6f8c57a2e4a6a6915b84413c9`.
+The image smoke check passed default RSA and explicit ML-DSA HTTPS, graceful
+stop and recreation with unchanged CA/server identities.
+
+The current image tags `9.1.0-mldsa.18001`, `9.1.0` and `latest` resolve to:
 
 ```text
-ghcr.io/enucatl/openvox-server@sha256:38a0923732977a0eae63305d2c53cb91b18321bf26142814ab916ff0524d300b
+ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185
 ```
 
-The public [server-image.json provenance](https://github.com/Enucatl/openvox-packages/releases/download/resolute-13001/server-image.json)
+The public [server-image.json provenance](https://github.com/Enucatl/openvox-packages/releases/download/resolute-18001/server-image.json)
 records that digest, tags, image revision and contained package/source/runtime
-manifest. Anonymous GHCR token and manifest requests returned HTTP 200 for all
-three tags with the matching digest. Publication and registry access are
-verified; live Compose integration and independent state recovery remain open.
+manifest, including all three native package targets. Anonymous GHCR token and
+manifest requests returned HTTP 200 for all three current tags with the matching
+digest. This supersedes the first published `9.1.0-mldsa.13001` delivery
+baseline. Live Compose integration, the real control-repo autosigner/enrollment
+path, independent recovery and canary rollout remain open.
 
 ## Runtime and integration
 
