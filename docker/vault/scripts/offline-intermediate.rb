@@ -14,15 +14,7 @@ def api(method, path, body = nil, accepted: [200, 204])
   http = Net::HTTP.new(uri.host, uri.port, nil)
   http.use_ssl = true
   http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-  store = OpenSSL::X509::Store.new
-  store.add_file(ENV.fetch('VAULT_CACERT'))
-  crl_pem = File.read(ENV.fetch('VAULT_CRL'))
-  crls = crl_pem.scan(/-----BEGIN X509 CRL-----.*?-----END X509 CRL-----/m)
-  fail_closed('VAULT_CRL must contain PEM CRLs only') if
-    crls.empty? || !crl_pem.gsub(/-----BEGIN X509 CRL-----.*?-----END X509 CRL-----/m, '').strip.empty?
-  crls.each { |pem| store.add_crl(OpenSSL::X509::CRL.new(pem)) }
-  store.flags = OpenSSL::X509::V_FLAG_CRL_CHECK | OpenSSL::X509::V_FLAG_CRL_CHECK_ALL
-  http.cert_store = store
+  http.ca_file = ENV.fetch('VAULT_CACERT')
   http.min_version = http.max_version = OpenSSL::SSL::TLS1_3_VERSION
   http.open_timeout = http.read_timeout = 30
   request = Net::HTTPGenericRequest.new(method, !body.nil?, true, "/v1/#{path}")
@@ -66,11 +58,6 @@ def validate_chain(directory, fingerprint)
       constraints && constraints.critical? && constraints.value == "CA:TRUE, pathlen:#{length}" &&
       usage && usage.value.include?('Certificate Sign') && usage.value.include?('CRL Sign')
   end
-  crl = OpenSSL::X509::CRL.new(File.read("#{directory}/root.crl.pem"))
-  fail_closed('invalid, expired or revoking root CRL') unless
-    crl.issuer.to_der == root.subject.to_der && crl.verify(root.public_key) &&
-    crl.last_update <= now && crl.next_update && now < crl.next_update &&
-    crl.revoked.none? { |entry| entry.serial == intermediate.serial }
   [intermediate, chain_pem]
 end
 
@@ -86,7 +73,7 @@ if $PROGRAM_NAME == __FILE__
   fail_closed('explicit verified HTTPS VAULT_ADDR is required') unless
     uri.scheme == 'https' && uri.host && !uri.userinfo && ['', '/'].include?(uri.path) && !uri.query && !uri.fragment
   fail_closed('explicit administrator VAULT_TOKEN is required') if ENV.fetch('VAULT_TOKEN', '').empty?
-  %w[VAULT_CACERT VAULT_CRL OPENSSL_CONF].each do |name|
+  %w[VAULT_CACERT OPENSSL_CONF].each do |name|
     fail_closed("readable explicit #{name} is required") unless File.file?(ENV.fetch(name, '')) && File.readable?(ENV[name])
   end
   fail_closed('VAULT_SKIP_VERIFY is forbidden') unless ['', 'false', '0'].include?(ENV.fetch('VAULT_SKIP_VERIFY', '').downcase)

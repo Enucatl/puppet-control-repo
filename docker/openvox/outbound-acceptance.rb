@@ -30,10 +30,7 @@ def fixture_certificate(scenario, issuer, issuer_key)
   key = scenario == 'tls12_only' ? OpenSSL::PKey::RSA.new(2048) : OpenSSL::PKey.generate_key('ML-DSA-44')
   cert = OpenSSL::X509::Certificate.new
   cert.version = 2
-  revoked = OpenSSL::X509::CRL.new(File.read("#{CA}/ca_crl.pem")).revoked
-  raise 'Revocation lifecycle evidence required first' if scenario == 'revoked' && revoked.empty?
-
-  cert.serial = scenario == 'revoked' ? revoked.first.serial : OpenSSL::BN.rand(128).to_i
+  cert.serial = OpenSSL::BN.rand(128).to_i
   name = scenario == 'wrong_hostname' ? 'wrong.rehearsal.test' : HOST
   cert.subject = OpenSSL::X509::Name.parse("/CN=#{name}")
   cert.issuer = scenario == 'untrusted' ? cert.subject : issuer.subject
@@ -55,7 +52,7 @@ end
 
 def python_autosigner
   program = <<~PYTHON
-    import json, os, sys
+    import json, sys
     from cryptography import x509
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import mldsa
@@ -66,24 +63,23 @@ def python_autosigner
     builder = builder.add_attribute(x509.ObjectIdentifier('1.2.840.113549.1.9.7'), b'disposable-transport-fixture')
     csr = builder.sign(mldsa.MLDSA44PrivateKey.generate(), None).public_bytes(serialization.Encoding.PEM)
     try:
-        validate_csr('rehearsal.home.arpa', csr, 'https://openvox.rehearsal.test:9443', '/trust/root.pem', 'home.arpa', crl=os.environ.get('VAULT_CRL'))
+        validate_csr('rehearsal.home.arpa', csr, 'https://openvox.rehearsal.test:9443', '/trust/root.pem', 'home.arpa')
     except Exception as error:
         print(json.dumps({'accepted': False, 'exception': type(error).__name__}))
     else:
         print(json.dumps({'accepted': True}))
   PYTHON
-  output, _error, status = Open3.capture3({ 'OPENSSL_CONF' => '/rehearsal/openssl.cnf', 'VAULT_CRL' => '/trust/outbound-crls.pem' }, '/opt/puppetlabs/puppet/venv/bin/python', '-c', program)
+  output, _error, status = Open3.capture3({ 'OPENSSL_CONF' => '/rehearsal/openssl.cnf' }, '/opt/puppetlabs/puppet/venv/bin/python', '-c', program)
   raise 'Python fixture process failed' unless status.success?
 
   JSON.parse(output)
 end
 
 original = File.read(HIERA)
-File.write('/trust/outbound-crls.pem', File.read("#{CA}/ca_crl.pem") + File.read('/trust/root.crl'))
 issuer = OpenSSL::X509::Certificate.new(File.read("#{CA}/ca_crt.pem"))
 issuer_key = OpenSSL::PKey.read(File.read("#{CA}/ca_key.pem"))
 begin
-  %w[valid classical_only tls12_only wrong_hostname untrusted expired revoked].each do |scenario|
+  %w[valid classical_only tls12_only wrong_hostname untrusted expired].each do |scenario|
     cert, key = fixture_certificate(scenario, issuer, issuer_key)
     context = OpenSSL::SSL::SSLContext.new
     context.cert, context.key = cert, key
@@ -138,7 +134,6 @@ begin
     begin
       python = python_autosigner
       fixture = YAML.safe_load(original)
-      fixture.fetch('hierarchy').first.fetch('options')['crl'] = '/trust/outbound-crls.pem'
       fixture.fetch('hierarchy').first['uris'] = ["https://#{HOST}:#{PORT}/v1/kv/data/puppet"]
       File.write(HIERA, YAML.dump(fixture))
       raise 'Cache invalidation failed' unless server_request('Delete', '/puppet-admin-api/v1/environment-cache?environment=production').code == '204'

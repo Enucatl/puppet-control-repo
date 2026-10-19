@@ -88,7 +88,6 @@ def test_unsafe_admin_transport_fails_before_any_api_call(
             "VAULT_ADDR": address,
             "VAULT_TOKEN": "test-only-admin",
             "VAULT_CACERT": str(ca),
-            "VAULT_CRL": str(ca),
             "OPENSSL_CONF": str(policy),
             "VAULT_SKIP_VERIFY": skip_verify,
         },

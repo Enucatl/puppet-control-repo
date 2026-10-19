@@ -11,7 +11,6 @@ x-runtime: &runtime
     OPENSSL_CONF: /rehearsal/openssl.cnf
     VAULT_ADDR: https://vault.rehearsal.test:8200
     VAULT_CACERT: /trust/root.pem
-    VAULT_CRL: /trust/vault-crls.pem
     NO_PROXY: "*"
     no_proxy: "*"
 

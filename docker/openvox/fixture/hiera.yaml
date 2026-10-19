@@ -11,5 +11,4 @@ hierarchy:
       auth_path: cert
       auth_name: puppet-server
       ca_trust: /trust/root.pem
-      crl: /trust/vault-crls.pem
       fail_hard: true

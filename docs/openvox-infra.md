@@ -23,18 +23,14 @@ mount.
 The listener keeps the existing `docker.home.arpa` identity and publishes TCP
 8140 directly. There is no HTTP proxy or TLS termination between agents and
 OpenVox, or between OpenVox and `https://hcv.home.arpa:8200`. Vault trust is the
-explicit public `/trust/root.pem` bundle. `VAULT_CRL` selects
-`/trust/outbound-crls.pem`, containing the current signed root CRL and the CRL
-of Vault's actual issuing intermediate (the separate FreeIPA/Vault intermediate,
-not the OpenVox intermediate). OpenSSL/native clients and the JVM
+explicit public `/trust/root.pem` bundle. OpenSSL/native clients and the JVM
 require TLS 1.3 and `X25519MLKEM768`; both listener and Java outbound protocols
 are configured before startup. Vault may temporarily accept classical-only
 clients under the operator-approved exception; capable clients must negotiate
 the hybrid group. The existing infra Vault service is not upgraded or
 reinitialized by selecting OpenVox.
 
-The control repo's `hiera.yaml` uses those same `/trust/root.pem` and
-`/trust/outbound-crls.pem` files explicitly and fails catalog compilation if
+The control repo's `hiera.yaml` uses `/trust/root.pem` explicitly and fails catalog compilation if
 Vault authentication or lookup fails. These Hiera options are required in
 addition to the autosigner's environment variables. This configuration belongs
 to the new container deployment; keep it off the existing host server until
@@ -45,7 +41,7 @@ cutover. Rehearsal-only Hiera configuration does not validate this wiring.
 Do not activate this service until all of these conditions are met:
 
 1. The new hierarchy has been prepared with the root key generated internally
-   and retained inside Vault. Vault remains available for automated CRL signing. Its OpenVox intermediate is ML-DSA-44 with `CA:TRUE,pathlen:0`, its
+   and retained inside Vault. Vault retains the root signing key. Its OpenVox intermediate is ML-DSA-44 with `CA:TRUE,pathlen:0`, its
    key stays in the online OpenVox state, and root signing material is absent from OpenVox and distribution-job mounts. The online Vault
    has its separate intermediate and a verified ML-DSA/TLS 1.3 listener identity.
    Do not run the legacy default modes of `01-pki-core-setup.sh` or
@@ -88,7 +84,7 @@ Do not activate this service until all of these conditions are met:
 | `infra_openvox_gems` | `/opt/puppetlabs/server/data/puppetserver/jruby-gems` | Operator-installed JRuby gems |
 | `infra_openvox_git` | `/git` | `control.git`, executable post-receive hook and deployment status |
 | `infra_openvox_r10k_cache` | `/var/cache/r10k` | Deployment cache |
-| `infra_openvox_trust` | `/trust` (read-only) | `root.pem`, `root.crl`, `openvox-chain.pem` and Vault `outbound-crls.pem` public bundles |
+| `infra_openvox_trust` | `/trust` (read-only) | `root.pem`, `root.crl`, `openvox-chain.pem` public bundles |
 
 Persistent volumes are external, so `docker compose down -v` does not delete
 them. Keep a verified backup of all eight volumes, exact images and matching
@@ -138,9 +134,8 @@ docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml \
 
 Import validates the operator pin before changing CA state, ML-DSA algorithms,
 seed-only private keys, the signed root/intermediate chain and matching
-intermediate key, authority constraints, issuer lifetime and the signed,
-unexpired root CRL. A root CRL that revokes the intermediate is rejected. The
-helper signs only the new intermediate's own CRL, invokes the packaged CA CLI,
+intermediate key, authority constraints and issuer lifetime. The helper uses
+the packaged CA CLI's existing CRL import behavior and signs only the new intermediate's own CRL, invokes the packaged CA CLI,
 then verifies the imported server key pair/lifetime and persists the complete
 listener chain. The root private key is never an input. Restored state skips
 fresh preparation/import and retains its established authority. A partial
@@ -200,7 +195,7 @@ assertions and the missing-state startup check. The fresh-import self-check
 also ran against the accepted image with separate disposable volumes, no
 network and a read-only root filesystem. It proves actual packaged CA import,
 key preservation, seed-only output, and rejection of wrong root pins, short
-issuers, expired CRLs, revoked intermediates and replacement attempts. Its test
+issuers and replacement attempts. Its test
 root key exists only in memory in the isolated signer process. With the
 rehearsal tools image already built, repeat it locally with:
 
@@ -234,7 +229,7 @@ including the explicit protocol bounds. The raw storage endpoint stays disabled.
 Before activation, independently verify the public root pin, the signed Vault
 leaf/private-key pair, complete chain, validity and applicable CRLs. The files
 must be readable by the existing Vault UID/GID 100. The root signing key remains
-inside Vault's protected PKI storage; applications and the CRL publisher receive
+inside Vault's protected PKI storage; applications receive
 only public root material. Keep recovery inputs in separately protected custody.
 Changing listener configuration does not migrate or replace existing PKI state.
 Use verified, backed-up state prepared through the separate migration/restore
@@ -273,7 +268,7 @@ fresh CRLs or renew an expired listener certificate. `curl --insecure` is paired
 with mandatory `--pinnedpubkey` in this explicit bootstrap mode; key-possession
 verification remains mandatory. Missing/wrong pins fail before transmitting an
 unseal share. Ordinary application/PKI clients retain full chain, hostname,
-expiry and CRL checks. Any authenticated TLS key replacement must atomically
+and expiry checks. Any authenticated TLS key replacement must atomically
 publish its corresponding public pin before switching the listener. This does
 not add an automatic listener-certificate renewal workflow to the existing
 bootstrap-only certificate writer; that lifecycle remains part of #13 cutover.
@@ -294,156 +289,14 @@ ports and no production volumes; its volumes and container were removed.
 This checks listener configuration, not production identity/storage migration,
 auth policies or UID-100 file ownership.
 
-## CRL automation
+## Standard CRL behavior
 
-The root signing key stays inside Vault. Vault remains online and performs
-routine CRL signing automatically; there is no daily operator ceremony. This
-supersedes the earlier physically offline rehearsal model. Nothing in this
-checkout has enabled production jobs or changed production Vault settings.
+The deployment uses the existing OpenVox/Vault CRL behavior. It adds no strict
+outbound CRL checks, shortened lifetime, publisher, AppRole, refresh timer,
+startup dependency or expiry alert. Native enrollment retains the existing
+`certificate_revocation=leaf` setting and the normal Puppet refresh interval.
+The packaged CA continues to generate and maintain its own CRLs. Existing
+certificate-chain, hostname and validity verification remains enabled.
 
-The deployment adds **no continuously running CRL service**:
-
-| Existing component or short job | Responsibility |
-| --- | --- |
-| Vault's PKI background worker | Rebuild root and Vault-intermediate CRLs automatically |
-| OpenVox's existing CA maintenance | Maintain its issuer CRL with the configured 72-hour lifetime |
-| `openvox-crl-refresh.timer`, every five minutes | Start one temporary container to validate public lists, update local trust files, and synchronize OpenVox/Vault consumers |
-| `openvox-crl-client.timer`, per client every five minutes and before Puppet startup | Fetch the root and OpenVox lists directly from the existing CA endpoints and install a verified bundle |
-| Shared failure-mail unit | Notify through existing mail infrastructure when a job fails |
-
-There is no separate mirror container, CRL DNS name, Traefik route, incoming
-publication volume, or publisher rotation scheduler. The job only mounts the
-existing trust volume plus configuration and narrowly scoped machine credentials.
-
-### Automatic signing and public downloads
-
-Vault serves CRLs without authentication at `pki/crl/pem` and `pki_int/crl/pem`.
-The OpenVox issuer list is public at
-`/puppet-ca/v1/certificate_revocation_list/ca`. Clients fetch these existing
-endpoints; a CRL URL is not itself trusted evidence. The updater verifies the
-ML-DSA signatures against locally pinned CA keys, complete issuer/root pairing,
-expiry, issuer lifetime, and persistent CRL numbers before replacing any bundle.
-It rejects older numbers or different bytes at the same number. It never obtains
-trust keys from these downloads or sends a credential with a CRL download.
-
-Configure both Vault mounts with `expiry=72h`, `auto_rebuild=true`,
-`auto_rebuild_grace_period=71h55m`, `enable_delta=false`, and `disable=false`.
-The grace setting makes rebuilding due about five minutes after generation;
-Vault checks roughly once per minute. This maintains complete CRLs, including
-new revocations, without our job calling either rotation endpoint. Keeping
-72-hour validity allows recovery from a short service outage. The worker runs
-even if the external distribution job is stopped. Enabling automatic rebuild
-means a revocation is picked up by that worker rather than causing an immediate
-full rebuild itself.
-
-The root URL is configurable so a separately hosted Vault can also serve it.
-The supplied setup helper configures both mounts on the same Vault instance,
-matching the existing deployment. A separate root instance needs the same CRL
-settings applied by its own authenticated bootstrap; routine downloads still
-need no credentials.
-
-### One-time deployment configuration
-
-1. Build/publish/pin the CA/library changes and the reviewed Hiera transport
-   changes before activation. `ca.conf` requests `crl-ttl: "72h"`; the old
-   accepted image ignores this and produces CRLs the updater rejects. The new
-   CA bounds initial, revoked and renewed CRLs by issuer expiry and normalizes
-   imported long lists. The final infrastructure image also installs the narrow
-   root-CRL import authorization rule described below.
-2. Restore the established CA identities and the trust volume's pinned root,
-   OpenVox chain, Vault chain and initial valid CRLs. Do not initialize a new
-   authority during a restart or recovery. Protect the persisted CRL-number
-   state along with these files; it is the rollback barrier.
-3. Declare `profile::openvox_crl_refresh` on the publication host with `config`
-   matching `docker/openvox/crl-publisher.json` and the actual deployment
-   `project_dir`. It creates `/etc/openvox-crl/publisher.json` and the protected
-   credentials directory. Container UID/GID 999 maps to host 100999 on this
-   installation; the class has explicit overrides for different mappings.
-4. Run `modules/profile/files/openvox/configure-crl.rb CONFIG ADMIN_TOKEN_FILE`
-   once through the accepted Ruby runtime in the authenticated deployment
-   bootstrap. Use the strict `OPENSSL_CONF`, the same pinned root/current Vault
-   CRLs, a protected administrator-token file, and a writable credentials
-   directory. The helper configures both PKI workers, installs its sibling
-   `crl-publisher-policy.hcl`, enables/reuses AppRole, and provisions the machine
-   RoleID/SecretID as mode 0600 files. It refuses a partial credential pair and
-   preserves an established pair on reruns. Paths in CONFIG must be valid in
-   that execution environment; the example uses container paths. Run setup as
-   the mapped publisher identity so the resulting files are readable by its
-   normal read-only credentials mount. No administrator token is retained in
-   the publisher configuration or its routine mounts.
-5. Set `OPENVOX_CRL_PUBLISHER_CERTNAME` to the enrolled native host identity used
-   by this job. The infrastructure CA authorization rule adds access for that identity
-   only to the exact root-CRL PUT endpoint, while retaining existing CA
-   administrator access. The publisher unit copies its current
-   native-agent certificate/key into the protected credential directory before
-   each run, using mapped ownership and mode 0600. The native agent maintains
-   certificate renewal; there is no separate manually renewed publisher
-   certificate. Use the class's `client_cert`/`client_key` parameters if that
-   agent uses nondefault paths. Keep its ordinary agent running.
-6. On clients, declare `profile::openvox_crl_client` using
-   `docker/openvox/crl-client.json`. Check `localcacert` and `hostcrl` against
-   `puppet config print localcacert hostcrl --section agent`. The pinned CA file
-   must contain the root and OpenVox intermediate. Install authenticated initial
-   trust/CRLs before enrollment, and include the configuration/state in recovery.
-   Enrollment uses `certificate_revocation=chain` and `crl_refresh_interval=0`.
-
-The AppRole machine credential is nonexpiring and stored only in the protected
-host directory; it is revocable and must be replaced if that host is compromised.
-Each run logs in over fully verified TLS and obtains a fresh ten-minute batch
-token in memory. The token grants only the two certificate-auth CRL writes,
-`auth/cert/crls/openvox` and `auth/cert/crls/root`. It has no default policy,
-secret access, certificate issuance/revocation, CA rotation or root-key access.
-There is no periodic token-renewal job or routine credential replacement task.
-
-The authenticated writes remain necessary because Vault's certificate-auth CRL
-handling does not provide the signature/freshness/rollback validation used here.
-The distribution job validates first, then updates the two fixed CRL entries.
-OpenVox root imports use its existing authenticated API; identical root lists
-are not imported twice.
-
-### Failure behavior and monitoring
-
-The job updates `/trust/outbound-crls.pem` for Hiera/autosign and `/trust/root.crl`
-for the existing local handoff. Only the issuer evidence needed for outage
-recovery is cached under `/trust/crl-cache`. Each complete bundle is replaced
-atomically, with the rollback barrier persisted first. No private keys or tokens
-are placed in those outputs. Hiera reads updated CRLs on new backend sessions;
-autosign reads them on invocation. Routine refresh needs no JRuby restart.
-
-A client downloads the root directly from Vault even when OpenVox is unavailable.
-It can combine a new signed root revocation with its still-valid cached OpenVox
-issuer CRL, install that bundle, and report the issuer outage. A revoked OpenVox
-intermediate is therefore blocked without depending on that server to distribute
-its own revocation. The publisher likewise installs validated root revocation
-evidence before credentialed API synchronization. If the OpenVox issuer has
-been revoked, the publisher still updates the healthy Vault certificate-auth
-backend before reporting the unavailable issuer; it must not leave Vault
-trusting that issuer. If Vault itself has a revoked TLS chain, no login
-credentials are transmitted. Expired caches are rejected.
-
-Health fails on a failed refresh, last success more than 15 minutes ago, or
-expiry within 24 hours. The five-minute jobs invoke the shared failure mailer,
-throttled to once per hour. Integrate local `status.json` checks and inactive
-job/timer detection with existing monitoring, and verify the root mail alias.
-Vault certificate auth itself does not reject stale CRLs, so alert delivery
-matters. Puppet requests an initial refresh before starting, but a failed refresh does
-not leave its daemon stuck behind a failed startup dependency. The existing
-TLS checks continue to reject invalid or expired CRLs; a still-valid cache can
-be used during an outage. The independent timer retries without requiring an
-operator to restart Puppet. The job does not restart a running agent.
-
-For Vault-issued certificates, normal propagation includes about five minutes
-plus one worker tick to rebuild, five minutes to synchronize, and potentially
-another five minutes for a client refresh. OpenVox revocation rebuilds its own
-list immediately. Allow for the consumer's next request/run as well. Existing
-TLS sessions and issued Vault tokens are not forcibly terminated by a CRL update.
-
-Vault availability and its existing unseal/startup mechanism remain prerequisites.
-This work does not change those production services. After a temporary publisher
-outage, Vault continues rebuilding its lists and the publisher obtains a new
-login token on its next run. Trust compromise, lost machine credentials or an
-expired CA certificate are recovery/authority-lifecycle events, not routine CRL
-publication. Do not bypass signature or revocation checks to recover.
-
-See [Vault's automatic CRL rebuild configuration](https://developer.hashicorp.com/vault/api-docs/secret/pki#set-revocation-configuration)
-and [AppRole machine authentication](https://developer.hashicorp.com/vault/api-docs/auth/approle).
+The root key stays inside Vault. Custom CRL distribution and freshness policy
+are outside #12's requirements; they are not prerequisites for ML-DSA support.

@@ -66,7 +66,7 @@ The sanitized runtime evidence is
 SHA-256 hashes and clone cleanup confirmation. The normal root/Vault
 configuration keeps the raw storage endpoint disabled.
 
-## Certificate-auth CRLs: Vault needs a trusted validating publisher
+## Certificate-auth CRLs: observed existing behavior
 
 Vault's cert-auth CRL API explicitly ignores an uploaded CRL's expiration.
 Its upload path parses the CRL and stores revoked serial numbers without
@@ -84,30 +84,10 @@ ML-DSA key and naming another issuer, was accepted. Its colliding serial then
 caused that client's login to fail. This required privileged CRL-write access;
 it was not an unauthenticated modification of revocation state.
 
-For this deployment, the publication path must authenticate the issuer, verify
-the CRL signature and validity interval, then publish through tightly scoped
-credentials. Monitor freshness outside cert auth and replace stale lists with
-fresh authoritative lists. Do not treat uploading a CRL as evidence that Vault
-validated its provenance. Separate cert-auth mounts are an available boundary
-if independent issuers need independent serial-number namespaces. No cert-auth
-HCL/API switch in this version enables issuer-scoped matching or expiry-based
-login rejection.
-
-URL-backed CRLs use `NextUpdate` to schedule periodic fetches. On a failed
-refresh, the existing serial list remains; the login path has no CRL freshness
-check. This is source-level evidence, not a simulated network-outage test.
-Source: [fetch and periodic refresh](https://github.com/hashicorp/vault/blob/2891bfd23893ebd302307050edaf03d871ea8351/builtin/credential/cert/backend.go#L187-L219).
-
-The rehearsal publisher now validates the exact CRL bytes before uploading:
-`verify-crypto.rb --crl PATH --issuer CA_BUNDLE` checks encoded issuer identity,
-ML-DSA signature/key and current validity. Ten runtime checks passed, including
-tampered, wrong-signer, wrong-issuer and expired CRLs. This compensates at upload;
-it does not make Vault reject a CRL that becomes stale later.
-
-An additional limit belongs to the CA library rather than Vault: regenerated
-CRLs default to five years, longer than the disposable intermediate's lifetime.
-The publisher does not claim to cap `nextUpdate` by issuer expiry. Source:
-[CA CRL builder](https://github.com/Enucatl/jvm-ssl-utils/blob/bff2e9b99a1bc4280d5b5f346de29a6b33296a88/src/java/com/puppetlabs/ssl_utils/SSLUtils.java#L406-L415).
+These are observations of existing Vault behavior, not ML-DSA-specific defects.
+The custom validating publisher, short CRL lifetimes and freshness enforcement
+were removed at the user's request. This deployment keeps the pre-existing
+behavior and does not add a CRL distribution service or closure gate.
 
 ## Issuer distinguished names: textual equality is insufficient
 
@@ -130,49 +110,15 @@ CSR DN bytes. A UTF8-forcing subject name is a compatibility workaround for
 signers that reconstruct names, not a replacement for testing the actual leaf.
 Source: [CSR subject handling](https://github.com/hashicorp/vault/blob/2891bfd23893ebd302307050edaf03d871ea8351/sdk/helper/certutil/helpers.go#L1421-L1457).
 
-## Outbound client revocation: fixed locally, publication still required
+## Outbound clients and scope
 
-The first controlled-peer run exposed a separate client bug: the real Python
-autosigner and Java/JRuby Hiera transport both accepted a revoked server
-certificate. Trusting the CA did not automatically enable CRL checking.
+The existing Python autosigner and Hiera HTTPS clients verify certificate trust,
+hostname and validity. They do not gain custom CRL enforcement in this migration.
+The Hiera fork retains ML-DSA certificate authentication and a small fix copying
+the server's configured TLS protocol list into its Java HTTP client. The CRL
+option and custom validation adapters have been removed.
 
-The owning local fork `/home/user/code/openvox-server/vault-hiera` now supports
-an opt-in Hiera `crl` PEM-bundle option. Native Ruby loads CRLs into the
-certificate store and enables chain revocation flags. Java uses SSLUtils'
-CRL-aware context builders for both token and certificate authentication.
-The option requires verified HTTPS. The Python autosigner has the analogous
-explicit CRL setting described in the deployment runbook.
-
-Verification: **254 module unit examples pass**, including current/revoked/
-expired/malformed/unrelated-signer CRL cases. The restored disposable server
-uses only a backed-up overlay of the changed `vaultsession.rb` in its production
-and dev modules. A local server restart was necessary because environment-cache
-invalidation does not unload Ruby classes already required by the JRuby pool.
-All **17 actual outbound transport checks** now pass: positive hybrid TLS 1.3,
-classical/TLS 1.2 rejection, wrong hostname, untrusted issuer, expired certificate,
-and revoked certificate. A catalog through the real Vault also returned HTTP
-200 after restoring the normal Hiera configuration with its actual issuer CRLs.
-
-The test fixture uses the OpenVox issuer's CRL plus the root CRL. The normal
-Vault connection uses `/trust/vault-crls.pem`, containing the separate online
-Vault intermediate CRL and root CRL. These are different issuer chains.
-
-The Hiera fixes are now published at
-`9abf00d0ef0be71cf65fb97cf38eb9103da17fa6`, and `Puppetfile` pins that immutable
-revision. The clean r10k/release acceptance must still verify that exact published
-source rather than a runtime overlay. Earlier overlay diagnostics remain at
-`/tmp/openvox-rehearsal-175200003/vault-hiera-overlay.json`; private originals
-and transport evidence are retained there for historical comparison.
-
-## Remaining boundary
-
-The accepted classical fallback is recorded as an observation, and the internal
-PKI seed audit now passes. CRL expiry/signature/issuer handling remains a code
-limitation in Vault itself. The opt-in [publisher](openvox-infra.md#crl-automation)
-now verifies these properties before upload and alerts on stale/failed updates.
-Vault performs routine CRL rebuilding internally, with unauthenticated downloads;
-the synchronizer has no CA rotation permission.
-Vault still does not enforce CRL expiry at certificate login. Full production wiring,
-fleet compatibility, independent recovery and final released-artifact acceptance
-remain tracked in the [rehearsal report](openvox-rehearsal-report.md); this audit
-does not imply production readiness or a completed rollout.
+The accepted classical Vault TLS fallback and verified internal PKI seed storage
+remain as described above. Fleet compatibility, independent recovery and final
+released-artifact acceptance are tracked in the
+[rehearsal report](openvox-rehearsal-report.md).

@@ -132,11 +132,9 @@ jobs:
           /opt/puppetlabs/bin/puppet parser validate modules/profile/manifests modules/proxmox_workflows/manifests
           /opt/puppetlabs/bin/puppet parser validate docker/openvox/fixture/manifests
           rg --files modules/profile/templates -g '*.epp' -0 | xargs -0 /opt/puppetlabs/bin/puppet epp validate
-          for script in docker/openvox/*.rb docker/vault/scripts/offline-intermediate.rb modules/profile/files/openvox/*.rb; do /opt/puppetlabs/puppet/bin/ruby -c "$script"; done
+          for script in docker/openvox/*.rb docker/vault/scripts/offline-intermediate.rb; do /opt/puppetlabs/puppet/bin/ruby -c "$script"; done
       - name: Test catalogs and workflows with dummy secrets
         run: >-
           uv run --frozen python -m pytest -q
           tests/test_proxmox_orchestration.py tests/test_chronicle_backup_orchestrator.py
           tests/test_vllm_weekly_window.py
-      - name: Check ML-DSA CRL publication with the accepted native Ruby
-        run: uv run --frozen python -m pytest -q tests/test_openvox_crl.py tests/test_openvox_crl_refresh.py tests/test_openvox_crl_setup.py tests/test_openvox_crl_auth.py tests/test_openvox_crl_services.py

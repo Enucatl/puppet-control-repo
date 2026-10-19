@@ -16,7 +16,6 @@ hierarchy:
       auth_path: "cert"
       auth_name: "puppet-server"
       ca_trust: "/trust/root.pem"
-      crl: "/trust/outbound-crls.pem"
       fail_hard: true
 
   - name: "Authenticated certificate identity"

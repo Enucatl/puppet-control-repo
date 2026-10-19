@@ -53,8 +53,7 @@ echo "node_type=${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
 # Puppet Configuration
 /opt/puppetlabs/bin/puppet config set server "$PUPPET_SERVER" --section main
 /opt/puppetlabs/bin/puppet config set certname "$CERTNAME" --section main
-/opt/puppetlabs/bin/puppet config set certificate_revocation chain --section agent
-/opt/puppetlabs/bin/puppet config set crl_refresh_interval 0 --section agent
+/opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
 
 # Enable and run
 systemctl unmask --runtime puppet.service

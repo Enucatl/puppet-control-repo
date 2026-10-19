@@ -54,7 +54,7 @@ mod 'treydock/yum_cron',                '9.0.2'
 #  commit: '1b6f89afdde0df7f9433a163d5c4b5328eac5779'
 mod 'vault_secrets',
     git: 'https://github.com/enucatl/vault.git',
-    commit: '9abf00d0ef0be71cf65fb97cf38eb9103da17fa6'
+    commit: 'cbdbb59a424b69570f0c957689ddbf537a6866a0'
 mod 'freeipa',
     git: 'https://github.com/enucatl/puppet-freeipa.git',
     branch: 'main'

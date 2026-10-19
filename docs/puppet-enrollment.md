@@ -1,6 +1,6 @@
 # Puppet enrollment
 
-The #12 fresh-chain path uses accepted OpenVox packages and an offline ML-DSA-44
+The #12 fresh-chain path uses accepted OpenVox packages and a Vault-held ML-DSA-44
 root. Install with `proxmox/install-openvox.sh` and supply operator-authenticated
 public CA trust before enrollment. Guest/native provisioning takes its path
 from `OPENVOX_CA_CERT`; guests receive it at
@@ -27,16 +27,12 @@ or separate revocation request is involved.
 ## Rollout
 
 For the new-chain compiler, set `VAULT_ADDR` to the direct verified HTTPS Vault
-endpoint, `VAULT_CACERT` to authenticated root trust, and `VAULT_CRL` to a PEM
-bundle containing current CRLs for every issuer in the Vault server chain.
-The autosigner rejects plaintext Vault endpoints. Configuring CRLs makes
-missing, expired or revoking CRLs fail before its single-use token is sent.
-Token-only enrollment still uses server-authenticated TLS without a client
-certificate. Refresh CRLs before expiry; do not disable checking to recover.
+endpoint and `VAULT_CACERT` to authenticated root trust. The autosigner rejects
+plaintext Vault endpoints. Token-only enrollment uses server-authenticated TLS
+without a client certificate. Hiera uses its explicit `ca_trust` option.
 
-The Vault Hiera compiler path uses its separate explicit `crl` option. The local
-fork implementing that option must be published/deployed before a fresh remote
-deployment can reproduce the [outbound acceptance](openvox-rehearsal-report.md).
+Existing CRL behavior is retained. No custom outbound CRL bundle, publisher,
+refresh job or new revocation-enforcement policy is required for this migration.
 
 1. Install the new policy by running
    `docker/vault/scripts/08-vault-puppet-policy.sh` with an administrator Vault

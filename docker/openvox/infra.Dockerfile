@@ -7,7 +7,4 @@ RUN apt-get update \
     && /opt/puppetlabs/puppet/bin/gem install --no-document r10k --version 5.0.3 \
     && mkdir -p /git /var/cache/r10k /etc/puppetlabs/code /trust \
     && chown puppet:puppet /git /var/cache/r10k /etc/puppetlabs/code /trust
-COPY infra-crl-auth.rb /tmp/infra-crl-auth.rb
-RUN /opt/puppetlabs/puppet/bin/ruby /tmp/infra-crl-auth.rb /etc/puppetlabs/puppetserver/conf.d/auth.conf \
-    && rm /tmp/infra-crl-auth.rb
 USER puppet

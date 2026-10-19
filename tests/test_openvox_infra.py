@@ -41,8 +41,6 @@ def compose_model():
             str(ROOT / "docker/docker-compose.yml"),
             "--profile",
             "openvox",
-            "--profile",
-            "openvox-tools",
             "config",
             "--format",
             "json",
@@ -67,10 +65,6 @@ def test_openvox_activation_is_explicit_and_keeps_the_tls_boundary(compose_model
     assert service["ports"][0]["target"] == 8140
     assert service["environment"]["VAULT_ADDR"] == "https://hcv.home.arpa:8200"
     assert service["environment"]["VAULT_CACERT"] == "/trust/root.pem"
-    assert service["environment"]["VAULT_CRL"] == "/trust/outbound-crls.pem"
-    assert (
-        service["environment"]["OPENVOX_CRL_PUBLISHER_CERTNAME"] == "docker.home.arpa"
-    )
     assert "-Djdk.tls.namedGroups=X25519MLKEM768" in service["environment"]["JAVA_ARGS"]
 
 
@@ -99,7 +93,6 @@ def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):
     )
     environment = compose_model["services"]["openvox"]["environment"]
     assert backend["options"]["ca_trust"] == environment["VAULT_CACERT"]
-    assert backend["options"]["crl"] == environment["VAULT_CRL"]
     assert backend["options"]["fail_hard"] is True
     assert backend["uris"] == [environment["VAULT_ADDR"] + "/v1/kv/data/puppet"]
 

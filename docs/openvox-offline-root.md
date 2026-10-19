@@ -1,12 +1,9 @@
 # Root custody and historical offline-root rehearsal
 
-The production requirement is that the root signing key remains inside Vault;
-Vault stays available for automatic signing. Routine CRLs use Vault's native
-background rebuilding and public download endpoints, configured by
-[CRL automation](openvox-infra.md#crl-automation). No manual publication ceremony
-is required. The network-isolated, stop/start root procedure below records the
-earlier disposable rehearsal and remains a diagnostic tool, not a production
-routine or an automation dependency.
+The root signing key remains inside Vault. The deployment retains existing CRL
+behavior, without custom strict checks, lifetime settings or distribution jobs.
+The network-isolated procedure below records an earlier disposable experiment;
+its publication and operator-ceremony steps are not #12 closure requirements.
 
 `scripts/openvox_offline_root.py` exercises the established disposable offline
 root on the local Docker installation. It never initializes a replacement root,
@@ -95,35 +92,9 @@ them or install them into the running restored stack. Existing clients use
 explicitly supplied root certificate/CRL files. No production DNS, web server,
 root issuer URL or current trust mount was changed.
 
-Before production issuance, choose a stable public certificate/CRL mirror and
-configure the root mount's `pki/config/urls` to point to that mirror. The issuing
-certificate URL must serve `root.pem`, and the root CRL URL must serve the bytes
-of `root.crl`. This is supported
-[Vault URL configuration](https://developer.hashicorp.com/vault/api-docs/secret/pki#set-urls),
-not a missing Vault capability. Issued intermediates must contain the intended
-AIA/CDP values; changing the mount later does not rewrite an existing certificate.
-Publish the matching OpenVox and FreeIPA intermediate CRLs separately, configure
-their own issuers' URLs, and verify each consumer's actual revocation behavior.
-An AIA/CDP extension alone does not prove a client fetches or enforces it.
-
-Serve the public mirror without an authentication dependency on a certificate
-whose validity requires that same mirror. Transfer verified files atomically,
-check their bytes after publication, and monitor each published CRL's
-`nextUpdate`. Do not expose the offline Vault listener as the publication URL.
-
-The observed root CRL lifetime is 72 hours. Repeat the offline CRL publication
-ceremony before `nextUpdate`, with enough margin for distribution failures; a
-daily schedule is suitable for this test default. Vault's documented
-[CRL rotation](https://developer.hashicorp.com/vault/api-docs/secret/pki#rotate-crls)
-supports this refresh, but its automatic rebuild cannot run while the root is
-powered off. A longer production CRL lifetime is a policy choice that also delays
-expiry-based detection of missed publications; choose it explicitly rather than
-assuming an offline root needs no ongoing maintenance.
-
-Physical separation, threshold custody, independently protected off-host backups,
-the real publication host, expired-CRL alarms and a root ceremony performed by an
-operator remain outside this disposable test. These are deployment and custody
-requirements, not evidence that Vault cannot sign or revoke ML-DSA intermediates.
+The publication experiment above is historical evidence only. A dedicated CRL
+mirror, scheduled publication ceremony and CRL-expiry alarms are not deployment
+requirements. The normal CA code continues to own its existing CRL behavior.
 
 ## Explicit paths in the existing Vault setup scripts
 
@@ -148,8 +119,7 @@ dependencies or silently use a different cryptographic backend. Set
 `/opt/puppetlabs/puppet/bin/ruby`. Inject an administrator `VAULT_TOKEN` through
 the operator's protected environment; there is no fallback to the online root's
 bootstrap token file. Also supply verified HTTPS `VAULT_ADDR`, readable
-`VAULT_CACERT`, readable `VAULT_CRL` containing the Vault issuer and root PEM
-CRLs, and readable `OPENSSL_CONF` before invoking:
+`VAULT_CACERT` and readable `OPENSSL_CONF` before invoking:
 
 ```sh
 sh docker/vault/scripts/02-pki-intermediate.sh --offline-root generate-csr --initialize /protected/freeipa-request
@@ -173,14 +143,11 @@ public artifacts beside the preserved request files:
 
 - `signed.pem`: the signed intermediate followed by the pinned offline root.
 - `root.pem`: that root certificate.
-- `root.crl.pem`: its current signed PEM CRL.
 
 Import requires a mandatory root SHA-256 pin and validates both algorithms,
 signatures, key/CSR correspondence, CA path lengths/key usage, issuer lifetime
-bounds and root-CRL enforcement before changing Vault. Verified TLS 1.3 requests
-use the supplied trust file and enforce revocation through the entire chain
-before sending the administrator token. Missing, expired or revoking CRLs fail
-the request. Plaintext URLs, skip-verification and TLS-name
+bounds before changing Vault. Verified TLS 1.3 requests use the supplied trust
+file before sending the administrator token. Plaintext URLs, skip-verification and TLS-name
 overrides are rejected. The helper bypasses HTTP proxy environment settings.
 Vault must still hold the original key identifier. A repeated import of exactly
 the same certificate/key is read-only; a different current issuer fails and

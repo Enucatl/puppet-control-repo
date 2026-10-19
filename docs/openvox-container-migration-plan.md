@@ -10,8 +10,7 @@ cutover and production agent re-enrollment.
 
 1. Establish the ML-DSA-44 root with its private key generated and retained
    inside Vault, using authenticated bootstrap and protected recovery material.
-   Vault remains online for automatic CRL signing; no routine operator ceremony
-   is required.
+   No custom CRL automation is required.
 2. Prepare OpenVox's ML-DSA intermediate key/CSR on its owning host; have the
    Vault-held root sign it with path length zero. Separately generate the online
    Vault `pki_int` intermediate CSR and have the same root sign it.
@@ -21,11 +20,9 @@ cutover and production agent re-enrollment.
    authority state; it cannot initialize replacement identities. Restore uses
    exact archived identities, images and configuration, never the fresh path.
 4. Configure Vault's own ML-DSA transport identity, TLS 1.3 bounds, scoped service
-   roles, exact-name cert auth and public issuer/CRL publication. Validate CRL
-   signatures, issuer and freshness before upload: Vault cert auth does not
-   provide all those checks. Enable Vault native automatic CRL rebuilding and
-   the small distribution/client jobs described in [CRL automation](openvox-infra.md#crl-automation).
-   No separate CRL web service is needed. See [Vault limits](openvox-vault-limitations.md).
+   roles and exact-name cert auth. Keep existing CRL behavior without added
+   outbound enforcement, lifetime policy or distribution jobs. See
+   [Vault limits](openvox-vault-limitations.md).
 5. Deploy the real control repo through the container Git/r10k hook and enable
    the opt-in infra service only after trust, data, code, keys and CRLs pass
    preflight. Preserve direct agent TCP 8140 and direct Vault access.
@@ -36,7 +33,7 @@ The [disposable runbook](openvox-rehearsal.md) and
 [implementation report](openvox-rehearsal-report.md) record actual verification.
 The [historical offline-root runbook](openvox-offline-root.md) records same-key
 renewal, serial revocation and public CRL export. Its physically offline signing
-procedure is superseded for production by Vault-native automatic CRL rebuilding. The new `--offline-root` entry points
+procedure is historical; the root key remains in Vault in the intended deployment. The new `--offline-root` entry points
 in legacy scripts 01–04 prevent accidentally entering the old online-root,
 default-RSA and host-systemd flow. Legacy default behavior remains available
 for the existing production installation until its explicit retirement.
@@ -85,11 +82,10 @@ matching rollback artifacts independently.
 The isolated chain, transport, catalog, lifecycle, archive restore, rollback,
 offline-root lifecycle and internal Vault key encoding have measured evidence.
 Prepared infra and native caller changes require their final integration checks.
-The local Vault Hiera CRL/protocol fix must be published and its resolved deployed
-revision recorded before a fresh remote r10k deployment can reproduce it.
+Puppetfile pins the published ML-DSA Vault Hiera transport and its small protocol-setting fix.
 
 Remaining operational inputs include independent root custody/backups, actual
-issuer/CRL endpoints and freshness monitoring, disposable native guest/full-role
+service endpoints, disposable native guest/full-role
 catalog runs, a host reboot and cold bootstrap without the old services, and
 hosted CI. #14/#8 own actual CA-less FreeIPA consumer compatibility; #18 owns
 the later independent Atlas execution. No production rollout is implied by

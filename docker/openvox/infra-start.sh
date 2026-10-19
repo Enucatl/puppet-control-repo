@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Startup never initializes Vault, imports a CA, or replaces an absent identity.
-for path in /trust/root.pem /trust/openvox-chain.pem /trust/outbound-crls.pem \
+for path in /trust/root.pem /trust/openvox-chain.pem \
   /etc/puppetlabs/puppetserver/ca/ca_crl.pem \
   /git/control.git/HEAD \
   /git/control.git/hooks/post-receive \

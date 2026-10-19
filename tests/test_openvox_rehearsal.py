@@ -128,11 +128,11 @@ def test_failure_diagnostics_remain_private(
     assert capsys.readouterr() == ("", "")
 
 
-@pytest.mark.parametrize("revoked_denied", (False, True))
-def test_outbound_checks_preserve_evidence_and_fail_on_revoked_peer(
-    rehearsal, monkeypatch: pytest.MonkeyPatch, revoked_denied: bool
+@pytest.mark.parametrize("invalid_peer_denied", (False, True))
+def test_outbound_checks_preserve_evidence_and_fail_on_invalid_peer(
+    rehearsal, monkeypatch: pytest.MonkeyPatch, invalid_peer_denied: bool
 ) -> None:
-    """A working client cannot mask a missing revocation check or erase evidence."""
+    """A working client cannot mask an invalid-peer acceptance or erase evidence."""
     monkeypatch.setattr(rehearsal.shutil, "copyfile", lambda *_args: None)
     scenarios = (
         "valid",
@@ -141,11 +141,11 @@ def test_outbound_checks_preserve_evidence_and_fail_on_revoked_peer(
         "wrong_hostname",
         "untrusted",
         "expired",
-        "revoked",
     )
     results = {
         name: {
-            "python_autosigner_policy_passed": name != "revoked" or revoked_denied,
+            "python_autosigner_policy_passed": name != "untrusted"
+            or invalid_peer_denied,
             "jruby_hiera_policy_passed": True,
         }
         for name in scenarios
@@ -157,7 +157,7 @@ def test_outbound_checks_preserve_evidence_and_fail_on_revoked_peer(
     }
     evidence = {"results": results, "handshakes": []}
     monkeypatch.setattr(rehearsal, "inside", lambda *_args: json.dumps(evidence))
-    if revoked_denied:
+    if invalid_peer_denied:
         rehearsal.outbound_acceptance()
     else:
         with pytest.raises(RuntimeError, match="unresolved checks"):
@@ -352,7 +352,6 @@ def test_initialize_does_not_resign_restored_authorities(
         assert (service, method, path) in (
             ("root", "GET", "pki/cert/ca"),
             ("root", "GET", "pki/cert/crl"),
-            ("vault", "GET", "pki_int/cert/crl"),
         )
         return {
             "data": {
@@ -365,8 +364,6 @@ def test_initialize_does_not_resign_restored_authorities(
         commands.append(arguments)
         if arguments[0] == "sh":
             return "existing"
-        if arguments == ["cat", "/trust/root.crl"]:
-            return "restored root CRL"
         assert arguments == [rehearsal.RUBY, "/rehearsal/pki.rb", "prepare"]
         return "existing CSR"
 
@@ -378,7 +375,10 @@ def test_initialize_does_not_resign_restored_authorities(
     monkeypatch.setattr(rehearsal, "compose", lambda *args, **kwargs: "")
     monkeypatch.setattr(rehearsal, "configure_access", lambda: None)
     rehearsal.initialize()
-    assert len(requests) == 3
+    assert requests == [
+        ("root", "GET", "pki/cert/ca"),
+        ("root", "GET", "pki/cert/crl"),
+    ]
     assert not any("import" in command for command in commands)
 
 

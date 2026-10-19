@@ -120,9 +120,9 @@ requirement; OpenVox still rejects classical-only peers. No Vault fork, TLS
 proxy, or new PKI is required under this accepted policy.
 
 Additional follow-up checks now cover actual Python/JRuby outbound negotiation
-and revoked-peer denial, original internal Vault PKI seed encodings, offline-root
+and certificate/hostname rejection, original internal Vault PKI seed encodings, offline-root
 renewal/revocation/publication, and fresh production-config PKI import. Run the
-outbound test on an established disposable stack with the CRL-capable Vault Hiera
+outbound test on an established disposable stack with the pinned ML-DSA Vault Hiera
 module already deployed:
 
 ```sh
@@ -132,9 +132,9 @@ python3 scripts/openvox-rehearsal.py transports --restored
 It temporarily replaces the safe fixture's Hiera URI with controlled TLS peers,
 then restores the file and invalidates its environment cache, including on
 failure. The result is `outbound-transports.json`, separate from the original
-full lifecycle evidence. Missing revocation enforcement fails the command.
-The latest successful result uses a local, unpublished Vault Hiera transport fix; a clean
-fetch of the remote module does not reproduce that fix yet.
+full lifecycle evidence. The 15 outbound checks cover existing TLS policy;
+custom outbound CRL enforcement is no longer required. Puppetfile pins the
+published Hiera transport and protocol-setting fix.
 
 The prepared [infra profile](openvox-infra.md),
 [offline-root procedure](openvox-offline-root.md),

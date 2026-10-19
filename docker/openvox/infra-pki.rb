@@ -83,23 +83,16 @@ when 'import'
       constraints&.critical? && constraints.value == "CA:TRUE, pathlen:#{path_length}" &&
       usage&.critical? && usage.value.include?('Certificate Sign') && usage.value.include?('CRL Sign')
   end
-  root_crls = File.read('/trust/root.crl').scan(/-----BEGIN X509 CRL-----.*?-----END X509 CRL-----/m)
-  abort 'Expected exactly one offline-root CRL' unless root_crls.length == 1
-  root_crl = OpenSSL::X509::CRL.new(root_crls.first)
-  abort 'Invalid, expired or revoking offline-root CRL' unless
-    root_crl.issuer.to_der == root.subject.to_der && root_crl.verify(root.public_key) &&
-    root_crl.last_update <= now && root_crl.next_update && now < root_crl.next_update &&
-    root_crl.next_update <= root.not_after &&
-    root_crl.revoked.none? { |entry| entry.serial == intermediate.serial }
+  root_crl = File.read('/trust/root.crl')
   crl = OpenSSL::X509::CRL.new
   crl.version = 1
   crl.issuer = intermediate.subject
   crl.last_update = now - 60
-  crl.next_update = [now + 86400, intermediate.not_after].min
+  crl.next_update = now + 5 * 365 * 86400
   crl.add_extension(OpenSSL::X509::Extension.new('crlNumber', OpenSSL::ASN1::Integer(0).to_der))
   crl.sign(key, nil)
   File.write("#{bootstrap}/import.pem", chain.map(&:to_pem).join)
-  File.write("#{bootstrap}/crls.pem", crl.to_pem + root_crl.to_pem)
+  File.write("#{bootstrap}/crls.pem", crl.to_pem + root_crl)
   abort 'Packaged CA import failed; inspect state before retrying' unless system(
     '/opt/puppetlabs/bin/puppetserver', 'ca', 'import',
     '--config', '/etc/puppetlabs/puppet/puppet.conf',

@@ -33,10 +33,8 @@ services:
     stop_grace_period: 60s
     environment:
       OPENSSL_CONF: /infra/openssl.cnf
-      OPENVOX_CRL_PUBLISHER_CERTNAME: ${OPENVOX_CRL_PUBLISHER_CERTNAME:-docker.home.arpa}
       VAULT_ADDR: https://hcv.home.arpa:8200
       VAULT_CACERT: /trust/root.pem
-      VAULT_CRL: /trust/outbound-crls.pem
       NO_PROXY: hcv.home.arpa,docker.home.arpa,127.0.0.1,localhost
       no_proxy: hcv.home.arpa,docker.home.arpa,127.0.0.1,localhost
       JAVA_ARGS: >-
@@ -103,44 +101,6 @@ services:
       timeout: 10s
       retries: 12
       start_period: 90s
-
-  # The timer targets this one-shot explicitly; ordinary up never starts it.
-  openvox-crl-refresh:
-    profiles: [openvox-tools]
-    extends:
-      file: ../../compose-security-baseline/hardening.yml
-      service: hardened-small
-    image: infra-openvox:22001
-    user: "999:999"
-    restart: "no"
-    entrypoint: [/opt/puppetlabs/puppet/bin/ruby]
-    command: [/crl-code/crl-refresh.rb, publish, /config.json]
-    environment:
-      OPENSSL_CONF: /infra/openssl.cnf
-    networks:
-      - infra
-    volumes:
-      - type: bind
-        source: ./openvox
-        target: /infra
-        read_only: true
-        bind: {create_host_path: false}
-      - type: bind
-        source: ../modules/profile/files/openvox
-        target: /crl-code
-        read_only: true
-        bind: {create_host_path: false}
-      - type: bind
-        source: /etc/openvox-crl/publisher.json
-        target: /config.json
-        read_only: true
-        bind: {create_host_path: false}
-      - type: bind
-        source: /etc/openvox-crl/credentials
-        target: /credentials
-        read_only: true
-        bind: {create_host_path: false}
-      - openvox_trust:/trust
 
   goflow2:
     extends:

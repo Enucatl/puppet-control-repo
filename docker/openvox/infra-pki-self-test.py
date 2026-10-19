@@ -103,12 +103,9 @@ intermediate.add_extension(factory.create_extension('authorityKeyIdentifier','ke
 intermediate.sign(key,nil)
 crl=OpenSSL::X509::CRL.new
 crl.version=1;crl.issuer=root.subject
-crl.last_update=Time.now-120;crl.next_update=Time.now+(mode=='expired-crl' ? -60 : 86400)
-if mode=='revoked-intermediate'
-  revoked=OpenSSL::X509::Revoked.new;revoked.serial=intermediate.serial;revoked.time=Time.now-60;crl.add_revoked(revoked)
-end
+crl.last_update=Time.now-120;crl.next_update=Time.now+86400
 crl.add_extension(OpenSSL::X509::Extension.new('crlNumber',OpenSSL::ASN1::Integer(1).to_der))
-crl.sign(mode=='wrong-crl-signature' ? OpenSSL::PKey.generate_key('ML-DSA-44') : key,nil)
+crl.sign(key,nil)
 File.write('/trust/root.pem',root.to_pem*(mode=='multiple-roots' ? 2 : 1))
 File.write('/trust/openvox-chain.pem',intermediate.to_pem+root.to_pem)
 File.write('/trust/root.crl',crl.to_pem)
@@ -139,10 +136,7 @@ try:
     for mode, error in [
         ("multiple-roots", "exactly one pinned offline root"),
         ("wrong-intermediate-key", "intermediate key pair"),
-        ("wrong-crl-signature", "Invalid, expired or revoking"),
         ("short-issuer", "issuer lifetime"),
-        ("expired-crl", "Invalid, expired or revoking"),
-        ("revoked-intermediate", "Invalid, expired or revoking"),
     ]:
         pin = command(base + ["-", mode], text=signer).strip()
         output = command(

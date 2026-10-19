@@ -458,9 +458,7 @@ def initialize() -> None:
         time.sleep(2)
         start_vault("vault")
     check("separate FreeIPA intermediate held by online Vault")
-    vault_crl = api("vault", "GET", "pki_int/cert/crl")["data"]["certificate"]
-    root_crl = inside("openvox", ["cat", "/trust/root.crl"], once=True)
-    write("openvox", "/trust/vault-crls.pem", vault_crl + "\n" + root_crl, once=True)
+
     compose("stop", "root")
     check("offline authority stopped before enrollment and catalog workflows")
     configure_access()
@@ -746,8 +744,6 @@ def lifecycle() -> None:
             "/rehearsal/verify-crypto.rb",
             "--crl",
             "/dev/stdin",
-            "--issuer",
-            "/etc/puppetlabs/puppetserver/ca/ca_crt.pem",
         ],
         crl,
     )
@@ -984,14 +980,14 @@ def run() -> None:
     REPORT["runtime_state"] = state
     outbound_acceptance()
     REPORT["outbound"] = json.loads((WORK / "outbound-transports.json").read_text())
-    check("all 17 actual Python and JRuby outbound TLS checks pass")
+    check("all 15 actual Python and JRuby outbound TLS checks pass")
     REPORT["recovery"] = recover(sys.modules[__name__])
     REPORT["blockers"].extend(
         [
             "Host reboot and independent Atlas restore require their dedicated execution environments.",
             "BCJSSE conditional disabledAlgorithms restrictions need separate negative-policy evidence.",
             "Native fleet OS/architecture compatibility is not established by this disposable agent.",
-            "Fresh remote deployment requires the published Vault Hiera CRL fix and its resolved revision.",
+            "Fresh remote deployment requires the published ML-DSA Vault Hiera transport and its resolved revision.",
         ]
     )
     REPORT["ready_for_production"] = False
@@ -1032,11 +1028,11 @@ def outbound_acceptance() -> None:
         for name, passed in values.items()
         if name.endswith("_policy_passed") or scenario == "positive_handshakes"
     ]
-    if len(checks) != 17 or not all(checks):
+    if len(checks) != 15 or not all(checks):
         raise RuntimeError(
             f"Outbound TLS policy has unresolved checks; evidence: {path}"
         )
-    print(f"PASS all 17 outbound transport checks; evidence: {path}", flush=True)
+    print(f"PASS all 15 outbound transport checks; evidence: {path}", flush=True)
 
 
 def main() -> None:
