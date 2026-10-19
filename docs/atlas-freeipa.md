@@ -116,7 +116,12 @@ sudo python3 proxmox/atlas-freeipa-migrate.py dry-run \
 
 The command authenticates source LDAP with verified STARTTLS, uses production
 mode to retain numeric IDs, and skips source Directory Server configuration so
-it cannot overwrite the target's CA-less TLS settings. Private logs, proposed
+it cannot overwrite the target's CA-less TLS settings. The initial dry-run
+confirmed that ordinary online migration proposes importing the old RSA root,
+intermediate and Dogtag CA records. Account migration must exclude the complete
+`cn=certificates,cn=ipa,cn=etc,dc=home,dc=arpa` and
+`cn=ca,dc=home,dc=arpa` subtrees through supported filtered LDIF input.
+Private logs, proposed
 LDIF changes and identity/policy comparisons remain under the protected IPA
 state directory. Inspect proposed certificate/issuer entries before importing.
 The `rehearse` action permits an actual import only into the separately labelled
