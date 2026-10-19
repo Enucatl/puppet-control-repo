@@ -155,3 +155,55 @@ def test_rehearsal_requires_password_login_proof(
     with pytest.raises(RuntimeError, match="login-password-file"):
         migration.migrate("rehearse", "atlas-ipa-rehearsal", Path("source"), Path("ca"))
     migration.infra.run.assert_not_called()
+
+
+def test_database_export_filters_authorities_only(
+    migration: ModuleType, tmp_path: Path
+) -> None:
+    """Keep accounts and similarly named entries while dropping old CA subtrees."""
+    import ast
+    from types import SimpleNamespace
+
+    class DN(str):
+        """Provide DN suffix containment for the exporter unit test."""
+
+        def __new__(cls, *parts: str) -> DN:
+            return super().__new__(cls, ",".join(parts).lower())
+
+        def __contains__(self, ancestor: object) -> bool:
+            return self == ancestor or self.endswith("," + str(ancestor))
+
+    suffix = "dc=home,dc=arpa"
+    retained = [
+        suffix,
+        "uid=alice,cn=users,cn=accounts," + suffix,
+        "cn=ca-other," + suffix,
+    ]
+    omitted = [
+        "cn=ca," + suffix,
+        "cn=profile,cn=ca," + suffix,
+        "cn=certificates,cn=ipa,cn=etc," + suffix,
+        "cn=old-root,cn=certificates,cn=ipa,cn=etc," + suffix,
+    ]
+    conn = Mock()
+    conn.search_s.return_value = [(dn, {"cn": [b"entry"]}) for dn in omitted + retained]
+    writer = Mock()
+    namespace = {
+        "DN": DN,
+        "ldap": SimpleNamespace(SCOPE_SUBTREE=2),
+        "ldif": SimpleNamespace(LDIFWriter=lambda _: writer),
+    }
+    function = next(
+        node
+        for node in ast.parse(migration.WORKER).body
+        if isinstance(node, ast.FunctionDef) and node.name == "export_database"
+    )
+    exec(
+        compile(ast.Module(body=[function], type_ignores=[]), "export", "exec"),
+        namespace,
+    )
+    counts = namespace["export_database"](conn, tmp_path / "source.ldif")
+    exported = [call.args[0] for call in writer.unparse.call_args_list]
+    assert exported[0] == suffix
+    assert set(exported) == set(retained)
+    assert counts == {"exported": len(retained), "excluded_authority": len(omitted)}

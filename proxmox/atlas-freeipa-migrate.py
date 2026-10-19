@@ -32,6 +32,8 @@ import subprocess
 import sys
 import tempfile
 import ldap
+import ldif
+from ipapython.dn import DN
 
 request = json.load(sys.stdin)
 os.umask(0o077)
@@ -98,6 +100,25 @@ def snapshot(host, password, ca):
     conn.unbind_s()
     return result
 
+def export_database(conn, path):
+    suffix = DN('dc=home,dc=arpa')
+    excluded = [DN('cn=certificates,cn=ipa,cn=etc', suffix), DN('cn=ca', suffix)]
+    entries = conn.search_s(str(suffix), ldap.SCOPE_SUBTREE,
+                            '(objectClass=*)', ['*', 'nsaccountlock'])
+    entries = sorted((entry for entry in entries if entry[0]),
+                     key=lambda entry: (len(DN(entry[0])), entry[0].lower()))
+    counts = {'exported': 0, 'excluded_authority': 0}
+    with path.open('w') as stream:
+        writer = ldif.LDIFWriter(stream)
+        for dn, attrs in entries:
+            if any(tree in DN(dn) for tree in excluded):
+                counts['excluded_authority'] += 1
+                continue
+            writer.unparse(dn, attrs)
+            counts['exported'] += 1
+    assert entries and DN(entries[0][0]) == suffix, 'Export must start at domain suffix'
+    return counts
+
 with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
     work = Path(work)
     for name, value in [('source-password', request['source_password']),
@@ -111,8 +132,13 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
     if request['action'] == 'rehearse':
         assert set(before['users']) == {'uid=admin,cn=users,cn=accounts,dc=home,dc=arpa'}, \
             'Rehearsal requires a fresh bootstrap-only target'
+    conn = connection('freeipa.home.arpa', request['source_password'],
+                      str(work / 'source-ca.pem'))
+    export_counts = export_database(conn, work / 'source.ldif')
+    conn.unbind_s()
     command = ['ipa-migrate', 'prod-mode', 'freeipa.home.arpa', '--no-prompt',
-               '--skip-config', '--bind-pw-file', str(work / 'source-password'),
+               '--skip-config', '--db-ldif', str(work / 'source.ldif'),
+               '--bind-pw-file', str(work / 'source-password'),
                '--cacertfile', str(work / 'source-ca.pem'),
                '--log-file', str(work / 'migration.log')]
     if request['action'] == 'dry-run':
@@ -181,6 +207,7 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
         mismatches[kind] = sum(after[kind].get(dn) != values
                                for dn, values in entries.items())
     report = {'action': request['action'], 'returncode': process.returncode,
+              'source_export': export_counts,
               'source_counts': {kind: len(values) for kind, values in source.items()},
               'target_counts': {kind: len(values) for kind, values in after.items()},
               'mismatches': mismatches, 'unchanged': before == after,
@@ -285,6 +312,7 @@ def migrate(
                 name: report[name]
                 for name in (
                     "action",
+                    "source_export",
                     "source_counts",
                     "target_counts",
                     "mismatches",
