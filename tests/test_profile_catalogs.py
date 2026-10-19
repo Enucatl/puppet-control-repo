@@ -70,6 +70,12 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     pairs = ordered_pairs(catalog)
     for resource in (
         "Exec[add_ipa_user_user_to_groups]",
+        "File[/etc/beszel-agent]",
+        "File[/var/cache/beszel-agent]",
+        "File[/var/lib/beszel-agent]",
+        "File[/etc/beszel-agent/key]",
+        "File[/etc/beszel-agent/token]",
+        "Service[beszel-agent.service]",
         "Vault_cert[codex]",
         "File[/home/user]",
         "File[/home/user/.config/home-arpa/mtls]",
