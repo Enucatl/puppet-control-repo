@@ -31,7 +31,7 @@ github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okW
 KEY
 chown user_l:docker "$known_hosts"
 chmod 0644 "$known_hosts"
-export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known_hosts"
+export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ProxyCommand=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known_hosts"
 "${control_git[@]}" config --local core.sshCommand "$GIT_SSH_COMMAND"
 if [[ $("${control_git[@]}" rev-parse --is-shallow-repository) == true ]]; then
     "${control_git[@]}" fetch --unshallow origin

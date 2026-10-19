@@ -204,7 +204,7 @@ def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> No
         known_hosts = checkout / ".git/github-known-hosts"
         assert known_hosts.read_text().startswith("github.com ssh-ed25519 ")
         assert git(checkout, "config", "core.sshCommand") == (
-            "ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "
+            "ssh -o BatchMode=yes -o ProxyCommand=none -o StrictHostKeyChecking=yes "
             f"-o UserKnownHostsFile={known_hosts}"
         )
         assert git(checkout, "rev-parse", "--abbrev-ref", "@{upstream}") == (
