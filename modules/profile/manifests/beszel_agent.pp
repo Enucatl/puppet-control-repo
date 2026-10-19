@@ -49,6 +49,7 @@ class profile::beszel_agent (
   Exec <| title == "add_ipa_user_${user}_to_groups" |> -> Systemd::Unit_file['beszel-agent.service']
 
   if $ensure == 'present' {
+    ensure_packages(['wget'])
     file { [$config_dir, $cache_dir]:
       ensure => directory,
       owner  => 'root',
@@ -66,12 +67,14 @@ class profile::beszel_agent (
     archive { "${cache_dir}/${archive_name}":
       ensure          => present,
       source          => $source,
+      # Wget uses system GnuTLS rather than the agent's strict OpenSSL policy.
+      provider        => wget,
       extract         => true,
       extract_path    => $cache_dir,
       extract_command => "tar -xzf %s -C ${cache_dir} beszel-agent",
       creates         => $marker,
       cleanup         => false,
-      require         => File[$cache_dir],
+      require         => [File[$cache_dir], Package['wget']],
     }
     -> exec { 'install-beszel-agent-binary':
       command => "install -o root -g root -m 0755 ${cache_dir}/beszel-agent ${binary_path} && touch ${marker}",

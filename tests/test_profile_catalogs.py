@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import re
 import shlex
+import subprocess
 from typing import Any
 
 import pytest
@@ -43,6 +44,22 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         },
     )
     result = resources(catalog)
+    for title in (
+        "neovim-install",
+        "sync-user-toolchain-user",
+        "sync-codex-plugins-user",
+    ):
+        assert (
+            "OPENSSL_CONF=/etc/ssl/openssl.cnf"
+            in result[f"Exec[{title}]"]["environment"]
+        )
+    assert result["File[/etc/apt/keyrings/grafana-alloy-archive-keyring.asc]"][
+        "source"
+    ] == ("puppet:///modules/profile/grafana-signing-key.asc")
+    archive = result["Archive[/var/cache/beszel-agent/beszel-agent_linux_amd64.tar.gz]"]
+    assert archive["provider"] == "wget"
+    assert not archive.get("allow_insecure", False)
+    assert "Package[wget]" in result
     enrollment = result["Freeipa_client_enrollment[default]"]
     assert enrollment["server"] == "ipa.home.arpa"
     assert enrollment["ca_cert_file"] == (
@@ -510,3 +527,23 @@ def test_deploy_options(tmp_path: Path, refresh: bool, ensure: str) -> None:
         assert managed_resources(catalog) == managed_resources(before)
         assert ordered_pairs(catalog) == ordered_pairs(before)
         assert notifications(catalog) == notifications(before)
+
+
+def test_grafana_public_key_matches_published_primary_fingerprint(
+    tmp_path: Path,
+) -> None:
+    """Keep package authentication pinned to Grafana's published signing identity."""
+    output = subprocess.check_output(
+        [
+            "gpg",
+            "--batch",
+            "--homedir",
+            str(tmp_path),
+            "--show-keys",
+            "--with-colons",
+            str(ROOT / "modules/profile/files/grafana-signing-key.asc"),
+        ],
+        text=True,
+    )
+    primary = output.split("fpr:", 1)[1].splitlines()[0].split(":")[-2]
+    assert primary == "B53AE77BADB630A683046005963FA27710458545"

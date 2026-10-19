@@ -82,6 +82,7 @@ class profile::user_toolchain (
       "HOME=${resolved_home}",
       "USER=${username}",
       "LOGNAME=${username}",
+      'OPENSSL_CONF=/etc/ssl/openssl.cnf',
     ],
     timeout     => 1800,
     onlyif      => "id ${username}",

@@ -207,7 +207,8 @@ packages::sources:
     repos: 'main'
     key:
       name: 'grafana-alloy-archive-keyring.asc'
-      source: 'https://apt.grafana.com/gpg.key'
+      # Published fingerprint: B53AE77BADB630A683046005963FA27710458545 (apt.grafana.com).
+      source: 'puppet:///modules/profile/grafana-signing-key.asc'
 
 profile::common::acls::posix_acls: {}
 
