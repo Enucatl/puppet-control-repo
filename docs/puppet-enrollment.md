@@ -81,7 +81,7 @@ to `/root/openvox-infra/ipalib`. The bootstrap installs the patched library;
 Puppet still installs and enrolls the IPA client. An explicitly incomplete
 installation is recovered only after its configured identity matches Atlas.
 
-Manual and scheduled agent runs preload `openvox-child-policy.rb`: Puppet
+Documented helper runs and scheduled agent runs preload `openvox-child-policy.rb`: Puppet
 initializes its accepted strict TLS and key-writing policy, then gives spawned
 commands the operating system's TLS policy. This lets APT and public downloads
 work without changing Puppet's initialized TLS contexts. Atlas's managed

@@ -22,6 +22,17 @@
       "identity_files_byte_equal": 20,
       "changed_resources": 2,
       "changed_resources_reason": "Existing toolchain and plugin synchronization Exec resources run on each catalog"
+    },
+    "daemon_startup_run": {
+      "automatic": true,
+      "report_time": "2026-10-19T20:23:59.317616119+00:00",
+      "configuration_version": "openvox-production-d4086ff91e7",
+      "resources": 242,
+      "failed": 0,
+      "skipped": 0,
+      "event_failures": 0,
+      "changed_resources": 2,
+      "periodic_30_minute_run_observed": false
     }
   },
   "native_identity": {
@@ -147,14 +158,14 @@
   },
   "focused_checks": {
     "migration_tests": 21,
-    "freeipa_provider_specs": 29,
     "user_profile_catalog_tests": 30,
     "enrollment_provisioning_tests": 60,
     "curl_crypto_checks": 9,
     "ipalib_spki_algorithms": 3,
     "publisher_tests": 27,
     "backup_tests": 47,
-    "toolchain_first_install_tests": 2
+    "toolchain_first_install_tests": 2,
+    "freeipa_module_specs": 29
   },
   "private_evidence": {
     "successful_catalog_log": "/root/openvox-infra/atlas-enrollment.log",
@@ -166,5 +177,39 @@
     "Interactive human SSH GSSAPI login and website application deployment were not exercised.",
     "Website certificate renewal was not exercised.",
     "Native curl and python3-ipalib backports must be refreshed or retired as distribution packages change; packages are not held."
-  ]
+  ],
+  "recovery_coverage": {
+    "implementation_revision": "d4086ff",
+    "native_puppet_ssl_and_configuration": true,
+    "authenticated_root_trust": true,
+    "ipa_configuration_keytab_and_sysrestore": true,
+    "sssd_configuration": true,
+    "ssh_host_private_and_public_keys": true,
+    "managed_puppet_service_dropins": true,
+    "ruby_child_tls_policy_helper": true,
+    "facter_configuration_and_dhcp_shim": true,
+    "five_website_certificate_key_pairs": true,
+    "vault_certificate_provider_state": "/etc/ssl/vault-secrets",
+    "native_backport_debs_and_sha256_manifests": true,
+    "numeric_ownership_permissions_and_symlinks_preserved": true
+  },
+  "final_backup": {
+    "atlas": "/scratch/vault/atlas-enrolled-complete-20261019T202330Z",
+    "offhost_host": "proxmox.home.arpa",
+    "offhost": "/root/openvox-atlas-enrolled-complete-20261019T202330Z",
+    "control_revision": "d4086ff91e76a1194ca50387b5f60ee64720801d",
+    "manifest_sha256": "7f17f95a213ed5ab7e26fa11acb96383ea3443bfad978f5ea29b6ac65ca61d90",
+    "volumes": 13,
+    "archives": 19,
+    "all_offhost_archive_sha256_verified": true,
+    "directory_mode": "0700",
+    "file_mode": "0600",
+    "root_owned": true,
+    "protected_identity_and_runtime_files_byte_equal": 32,
+    "identity_archive_bytes_match_live": true,
+    "puppet_was_quiesced": true,
+    "original_puppet_active_state_restored": true,
+    "production_infrastructure_services_healthy_after_backup": 4,
+    "final_kit_restore_performed": false
+  }
 }

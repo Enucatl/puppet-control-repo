@@ -16,7 +16,10 @@ and [live results](atlas-bootstrap-results.json). Explicit authority
 initialization and final FreeIPA import are complete. Atlas's native OpenVox
 agent is enrolled and its Docker-role catalog passed with 242 resources, zero
 failures and zero skipped resources. OpenVox installed and enrolled the IPA
-client against `ipa.home.arpa`. See [enrollment evidence](atlas-enrollment-results.json).
+client against `ipa.home.arpa`. An automatic daemon run also passed.
+The final protected off-host kit contains 13 volumes and 19 checksum-verified
+archives, including native enrollment and website identities. See
+[enrollment evidence](atlas-enrollment-results.json) for its location and limits.
 Independent restoration, isolated host reboot and image rollback passed before
 the maintenance release at `60da9a9`. Its production push verified the host hook,
 actual deployed commit, generated types and compiler cache refresh.
