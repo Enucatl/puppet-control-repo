@@ -1,0 +1,134 @@
+{
+  "verified_at": "2026-10-19T15:40:35.576302+00:00",
+  "source_revision": "b72af4ee85df77bb8b7f04c595cd421073e0e25b",
+  "apply_command": "uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags dns,healthcheck",
+  "atlas_ipv4": "10.0.0.158",
+  "atlas_ipv6": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e",
+  "atlas_mac": "bc:24:11:4e:a4:9e",
+  "names": [
+    "atlas.home.arpa",
+    "vault.home.arpa",
+    "openvox.home.arpa"
+  ],
+  "dns_checks": [
+    {
+      "server": "10.0.0.1",
+      "name": "atlas.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "atlas.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "vault.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "vault.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "openvox.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "openvox.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "atlas.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "atlas.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "vault.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "vault.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "openvox.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "openvox.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    }
+  ],
+  "ipv4_ipv6_ptr": "atlas.home.arpa.",
+  "dhcp_reservation_verified": true,
+  "legacy_dns_unchanged": [
+    "docker.home.arpa",
+    "hcv.home.arpa",
+    "freeipa.home.arpa"
+  ],
+  "dnsmasq_config_sha256": "bb579f61d5044a6ec594ec5c549b4e6c1dd8b33129ed3a9cd71f790c82b1ed2d",
+  "router_smoke_checks_passed": true,
+  "services_activated": false,
+  "router_smoke_checks_count": 47,
+  "direct_dnsmasq_a_aaaa_checks_passed": true,
+  "ipv6_connectivity_from_workstation_and_router_passed": true,
+  "atlas_net0_mac_verified": true,
+  "vm_rebuild_performed": false,
+  "pre_apply_dnsmasq_diff": "Only three added lines: comment, combined exact host record and Atlas DHCP reservation.",
+  "local_tests_passed": {
+    "atlas_and_shared_provisioning": 109,
+    "atlas_bootstrap": 33,
+    "router_dns_regression": 1
+  },
+  "static_checks_passed": [
+    "Ansible syntax check",
+    "sh -n rendered router smoke script",
+    "bash -n",
+    "ShellCheck (warning/error level)",
+    "Ruff",
+    "git diff --check"
+  ],
+  "source_sha256": {
+    "provisioning/host_vars/router.yml": "a25b0475756da916d847bbb31dcade67bf989547e6fb4944ded0993667720d0c",
+    "provisioning/tasks/07_dns.yml": "ad4308b15cbfe8162c376c8fdc192490c8ea903751235a669f470e85c93af454",
+    "provisioning/templates/app_configs/dnsmasq.conf.j2": "959903af5667c6940d74c7932209046b8d5a66af133f621f2247652d0de78875",
+    "provisioning/templates/app_configs/router-smoke-check.sh.j2": "fdf303ae4f57055efc00a43ce347ddb64bf8c818e77d4e68c705d18210dc73e1",
+    "proxmox/atlas-server.sh": "019e255e73a020d3f566ce743a2c74df707667b0adb1ea474d42312afac17cbd",
+    "proxmox/docker-server.sh": "3882bc81afd78372a330a31b21c8d705d7185b763609c12ab92421e1994430c4"
+  },
+  "ci_observed": {
+    "source_revision": "b72af4ee85df77bb8b7f04c595cd421073e0e25b",
+    "status": "queued",
+    "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39279773891"
+  },
+  "deferred_acceptance": [
+    "Adapt opt-in Vault/OpenVox runtime configuration, policies and certificates to the agreed DNS names (#13)",
+    "Initialize new authorities explicitly, then enroll and converge Atlas (#13)",
+    "Rebuild and independent identity/state recovery (#18)"
+  ]
+}

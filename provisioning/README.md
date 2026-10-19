@@ -89,6 +89,15 @@ and direct TLS `openvox.home.arpa:8140`. Service certificates must contain the
 corresponding DNS names; Atlas's native agent identity remains `atlas.home.arpa`.
 DNS publication does not initialize or activate Vault/OpenVox.
 
+Live acceptance passed on **2026-10-19**, using revision
+`b72af4ee85df77bb8b7f04c595cd421073e0e25b`: **47 router smoke checks passed**,
+including A/AAAA answers for all three names through AdGuard over IPv4/IPv6 and
+dnsmasq directly. Separate checks verified both PTR records, the MAC reservation
+and the legacy service addresses. IPv6 connectivity to Atlas passed from the
+workstation and router. See [sanitized DNS evidence](../docs/atlas-dns-results.json).
+The fixed-MAC creation path passed mocked provisioning tests; a live VM rebuild
+was not performed for this DNS change.
+
 ## Secrets (vars/secrets.yml)
 
 `vars/secrets.yml` is an Ansible Vault-encrypted file. The vault password is stored in `vars/password` (not committed). To recreate it:
