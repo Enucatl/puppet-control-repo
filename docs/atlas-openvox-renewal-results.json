@@ -1,0 +1,92 @@
+{
+  "recorded_at": "2026-10-19T16:54:12.788709+00:00",
+  "implementation_revision": "12f04dc5009e3ad840aca50ff39c0b1e95f45f02",
+  "host": "atlas.home.arpa",
+  "passed": true,
+  "policy": {
+    "leaf_lifetime_days": 60,
+    "renewal_window_days": 30,
+    "checks_every_hours": 6,
+    "first_check_after_boot_minutes": 5,
+    "root_ca_years_unchanged": 10,
+    "openvox_intermediate_years_unchanged": 5
+  },
+  "before": {
+    "subject": "/CN=openvox.home.arpa",
+    "issuer": "/CN=OpenVox intermediate",
+    "der_sha256": "9f7db551ed50daa41bf52fe1c1dec6ee7597d4855648679b9241f474fccca1a4",
+    "algorithm": "ML-DSA-44",
+    "not_after": "2026-10-20 16:23:10 UTC",
+    "serial": "01"
+  },
+  "after": {
+    "subject": "/CN=openvox.home.arpa",
+    "issuer": "/CN=OpenVox intermediate",
+    "der_sha256": "300947006bf908b36d74c7d1c544b56955b27f44b06868674f59d230ad427196",
+    "algorithm": "ML-DSA-44",
+    "not_after": "2026-12-18 16:51:50 UTC",
+    "serial": "02"
+  },
+  "preserved": {
+    "root_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+    "private_key_sha256": {
+      "openvox_ca_key": "ac077fb1300bc6271ea4e14cf791e161639b427ae332f150ac9cd43733a9974c",
+      "openvox_server_key": "9d649ef3f7db5fe89fd88476e33ce5b68d289b4098f7cc2e3e093c52b6f6c080"
+    },
+    "openvox_ca_sha256": "9491631ff50ab25854c938ebdb1192794ac95d8874a23221f2f0b70af1c27e92",
+    "root_and_intermediate_certificates_unchanged": true,
+    "private_keys_unchanged": true,
+    "full_chain_preserved": true,
+    "vault_certificate_and_identity_unchanged": true,
+    "client_reenrollment_performed": false
+  },
+  "live_checks": {
+    "built_in_ssl_renew_cert_used": true,
+    "sixty_day_leaf_issued_with_new_serial": true,
+    "same_key_subject_and_identity_extensions_verified": true,
+    "listener_restarted_and_served_leaf_matches_disk": true,
+    "pending_reload_marker_cleared_after_tls_verification": true,
+    "second_service_run_keeps_same_certificate_and_container_start_time": true,
+    "vault_and_unsealer_not_restarted_by_leaf_renewal": true,
+    "compiler_certificate_auth_and_scoped_kv_access_still_pass": true,
+    "private_keys_still_seed_only_mldsa44": true,
+    "timer_enabled_and_active": true,
+    "oneshot_result": "success",
+    "oneshot_exit_status": 0,
+    "all_three_services_healthy_after_backup_restart": true
+  },
+  "backup": {
+    "atlas_directory": "/scratch/vault/atlas-renewal-20261019T165202Z",
+    "independent_host": "proxmox.home.arpa",
+    "independent_directory": "/root/openvox-atlas-renewal-20261019T165202Z",
+    "archive_count": 18,
+    "persistent_volumes": 12,
+    "manifest_sha256": "11ed18dd081bfbe0f9ac10d175a4a518d5245ee1780490eb837bf995f09f35d4",
+    "all_archives_sha256_verified_after_transfer": true,
+    "renewed_identity_and_systemd_units_archived": true,
+    "directory_root_owned_mode": "0700",
+    "files_have_no_group_or_other_permissions": true,
+    "restoration_tested": false
+  },
+  "validation": {
+    "focused_tests_passed": 114,
+    "isolated_renewal_checks_passed": 15,
+    "isolated_fresh_import_checks_passed": 9,
+    "ruff_bash_shellcheck_ruby_syntax": "passed",
+    "systemd_units_verified_on_atlas": true,
+    "hosted_ci": {
+      "revision": "12f04dc5009e3ad840aca50ff39c0b1e95f45f02",
+      "conclusion": "success",
+      "runs": [
+        "https://github.com/Enucatl/puppet-control-repo/actions/runs/39289103271",
+        "https://github.com/Enucatl/puppet-control-repo/actions/runs/39289095215"
+      ]
+    }
+  },
+  "remaining": [
+    "Native Atlas enrollment and full manual/scheduled catalog acceptance",
+    "Agent renewal/revocation and independent identity restoration acceptance",
+    "Vault listener renewal is outside the OpenVox timer"
+  ],
+  "issue_13_closed": false
+}

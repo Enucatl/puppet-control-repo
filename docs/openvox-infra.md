@@ -33,9 +33,12 @@ check inside OpenVox with
 `/opt/puppetlabs/puppet/bin/ruby /infra/infra-vault-check.rb`; it prints no login
 token or secret contents.
 
-The initial activation recorded a one-day OpenVox server leaf. The scripted
-startup now replaces that policy with 60-day leaves and scheduled renewal;
-the activation evidence above retains its original certificate dates.
+The initial one-day leaf has been renewed in place and now expires at
+**2026-12-18 16:51:50 UTC**. The 60-day leaf policy and 30-day renewal window
+are active, checked by the enabled systemd timer every six hours. Root and
+intermediate certificates and private keys are unchanged. The actual renewal,
+served full chain, repeat no-op and refreshed off-VM kit are recorded in
+[renewal acceptance evidence](atlas-openvox-renewal-results.json).
 
 ## Atlas endpoint requirements (#13)
 
@@ -164,6 +167,12 @@ Its logs contain certificate metadata, never tokens or private keys. A renewal
 causes one brief OpenVox restart; Vault and its unsealer keep running. This
 procedure requires an unexpired current leaf and does not renew Vault's own TLS
 certificate or the CA certificates.
+
+The updated kit at
+`root@proxmox.home.arpa:/root/openvox-atlas-renewal-20261019T165202Z`
+contains the renewed identity, unchanged authorities and installed unit files,
+with all eighteen archives verified after transfer. The older initial kit is
+retained. Independent restoration remains separate acceptance work.
 
 ## Service implementation
 
