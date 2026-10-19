@@ -15,6 +15,8 @@ import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "proxmox/atlas-infra-backup.sh"
 IMAGES = ["sha256:" + value * 64 for value in "abc"]
+IPA_IMAGE = "sha256:" + "1" * 64
+IPA_SOURCE = "ghcr.io/enucatl/freeipa-server@sha256:" + "2" * 64
 VAULT = "hashicorp/vault@sha256:" + "d" * 64
 VOLUMES = [
     "infra_openvox_" + name
@@ -132,6 +134,18 @@ case "$name" in
                 if [[ $failure == unmanaged-volume ]]; then echo other; else echo atlas; fi
                 ;;
             'inspect --format')
+                if [[ ${@: -1} == infra-ipa-1 && $3 != *State.Health* ]]; then
+                    running=true
+                    [[ ! -f $root/ipa-initially-stopped ]] || running=false
+                    printf 'sha256:%064d %s\n' 0 "$running" | tr 0 1
+                    exit
+                fi
+                if [[ $3 == *State.Health* && ${@: -1} == infra-ipa-1 ]]; then
+                    printf 'true healthy\ntrue healthy\ntrue healthy\n'
+                    if [[ $failure == ipa-unhealthy ]]; then echo 'true unhealthy'
+                    else echo 'true healthy'; fi
+                    exit
+                fi
                 if [[ $3 == *State.Health* ]]; then
                     if [[ $failure == exited ]]; then
                         printf 'false unhealthy\ntrue healthy\ntrue healthy\n'
@@ -160,9 +174,22 @@ case "$name" in
                 ;;
             'compose --env-file')
                 [[ -z ${VAULT_TOKEN:-} && -z ${COMPOSE_FILE:-} && -z ${DOCKER_CONTEXT:-} ]]
-                [[ $DOCKER_DOMAIN == home.arpa && "$*" == *'--env-file /dev/null -p infra'* ]]
-                [[ "$*" == *'docker/docker-compose.yml -f '* && "$*" == *'docker/openvox/infra-vault.override.yaml '* ]]
+                [[ "$*" == *'--env-file /dev/null -p infra'* ]]
+                if [[ "$*" == *'docker/freeipa/atlas-compose.yaml '* ]]; then
+                    [[ -z ${DOCKER_DOMAIN:-} ]]
+                else
+                    [[ $DOCKER_DOMAIN == home.arpa ]]
+                    [[ "$*" == *'docker/docker-compose.yml -f '* && "$*" == *'docker/openvox/infra-vault.override.yaml '* ]]
+                fi
                 case "$*" in
+                    *' stop ipa')
+                        touch "$root/ipa-stopped"
+                        [[ $failure != ipa-stop ]] || exit 42
+                        ;;
+                    *' start ipa')
+                        [[ ! -f $root/ipa-initially-stopped && $failure != ipa-restore ]]
+                        rm -f "$root/ipa-stopped"
+                        ;;
                     *' config --format json')
                         printf '{"services":{"vault":{"image":"hashicorp/vault@sha256:%064d"}}}\n' 0 | tr 0 d
                         ;;
@@ -178,6 +205,13 @@ case "$name" in
                 esac
                 ;;
             'run --rm')
+                if [[ "$*" == *'--entrypoint /bin/cat '* ]]; then
+                    cat "$root/volumes/infra_ipa_data/.atlas-freeipa-volume"
+                    exit
+                fi
+                if [[ "$*" == *src=infra_ipa_data,* ]]; then
+                    [[ -f $root/ipa-stopped || -f $root/ipa-initially-stopped ]]
+                fi
                 [[ -f $root/services-stopped ]]
                 [[ "$*" == *'--network none --read-only --user 0:0'* ]]
                 [[ "$*" == *'--cap-drop ALL --cap-add DAC_READ_SEARCH'* ]]
@@ -414,3 +448,110 @@ def test_backup_refuses_unprotected_git_receiver(authority: Path) -> None:
     assert result.returncode != 0
     assert "managed receive guard" in result.stderr
     assert " stop " not in (authority / "commands").read_text()
+
+
+def prepare_ipa(authority: Path, running: bool = True) -> None:
+    """Add an established IPA authority with independently identifiable state."""
+    state = authority / "root/openvox-infra/freeipa"
+    state.mkdir()
+    (state / "ready.json").write_text(
+        json.dumps({"hostname": "ipa.home.arpa", "root_sha256": "e" * 64})
+    )
+    (state / "volume.json").write_text(json.dumps({"identity": "original-ipa"}))
+    (state / "admin-password").write_text("IPA-PRIVATE-CANARY")
+    volume = authority / "volumes/infra_ipa_data"
+    volume.mkdir()
+    (volume / ".atlas-freeipa-volume").write_text("original-ipa\n")
+    (volume / "directory.db").write_text("IPA-DIRECTORY-CANARY")
+    repository = authority / "opt/docker/puppet-control-repo"
+    dockerfile = repository / "docker/freeipa/atlas.Dockerfile"
+    dockerfile.parent.mkdir()
+    dockerfile.write_text("FROM " + IPA_SOURCE + "\n")
+    git(repository, "add", ".")
+    git(
+        repository,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-qm",
+        "Established IPA",
+    )
+    if not running:
+        (authority / "ipa-initially-stopped").touch()
+
+
+@pytest.mark.parametrize("running", [True, False])
+def test_backup_preserves_established_ipa_without_starting_stopped_server(
+    authority: Path, running: bool
+) -> None:
+    """Archive original directory and private bootstrap state with exact images."""
+    prepare_ipa(authority, running)
+    result = backup(authority)
+    assert result.returncode == 0, result.stderr
+    output = authority / "scratch/vault/snapshot"
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["volume_count"] == 13
+    assert manifest["archive_count"] == 19
+    assert manifest["images"]["ipa"] == IPA_IMAGE
+    assert manifest["ipa_source_reference"] == IPA_SOURCE
+    with tarfile.open(output / "infra_ipa_data.tar.gz") as archive:
+        assert archive.extractfile("./directory.db").read() == b"IPA-DIRECTORY-CANARY"
+        assert (
+            archive.extractfile("./.atlas-freeipa-volume").read() == b"original-ipa\n"
+        )
+    with tarfile.open(output / "credentials.tar.gz") as archive:
+        assert (
+            archive.extractfile("openvox-infra/freeipa/admin-password").read()
+            == b"IPA-PRIVATE-CANARY"
+        )
+    commands = (authority / "commands").read_text()
+    assert commands.count(" stop ipa\n") == int(running)
+    assert commands.count(" start ipa\n") == int(running)
+    assert "IPA-PRIVATE-CANARY" not in result.stdout + result.stderr
+    assert "IPA-DIRECTORY-CANARY" not in result.stdout + result.stderr
+    assert "volume create" not in commands
+
+
+@pytest.mark.parametrize(
+    "failure", ["missing-volume", "wrong-identity", "missing-checkpoint"]
+)
+def test_backup_refuses_lost_ipa_identity_before_stopping(
+    authority: Path, failure: str
+) -> None:
+    """An established authority cannot be backed up as empty replacement state."""
+    prepare_ipa(authority)
+    if failure == "wrong-identity":
+        (authority / "volumes/infra_ipa_data/.atlas-freeipa-volume").write_text(
+            "replacement"
+        )
+    elif failure == "missing-checkpoint":
+        (authority / "root/openvox-infra/freeipa/volume.json").unlink()
+    else:
+        (authority / "volumes/infra_ipa_data/.atlas-freeipa-volume").unlink()
+        (authority / "volumes/infra_ipa_data/directory.db").unlink()
+        (authority / "volumes/infra_ipa_data").rmdir()
+    result = backup(authority)
+    assert result.returncode != 0
+    commands = (authority / "commands").read_text()
+    assert " stop " not in commands
+    assert "volume create" not in commands
+
+
+@pytest.mark.parametrize(
+    "failure", ["archive", "restore", "ipa-stop", "ipa-restore", "ipa-unhealthy"]
+)
+def test_failed_backup_restores_previously_running_ipa_and_checks_health(
+    authority: Path, failure: str
+) -> None:
+    """Partial stopping and archive failures retain the original IPA restart set."""
+    prepare_ipa(authority)
+    (authority / "failure").write_text(failure)
+    result = backup(authority)
+    assert result.returncode != 0
+    assert "Backup ready:" not in result.stdout
+    assert not (authority / "scratch/vault/snapshot/manifest.json").exists()
+    commands = (authority / "commands").read_text()
+    assert " start ipa\n" in commands
+    assert (authority / "ipa-stopped").exists() == (failure == "ipa-restore")

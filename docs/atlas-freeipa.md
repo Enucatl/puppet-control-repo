@@ -100,6 +100,27 @@ regenerates IDs. Fresh-realm migration does not preserve the original Kerberos
 master key or existing client keytabs, so retain original service state and
 script the agreed client re-enrollment and password-migration behavior.
 
+The migration entry point is `proxmox/atlas-freeipa-migrate.py`. Supply the old
+Directory Manager password in a root-owned, private JSON file with the single
+key `dm_password`, and a CA bundle obtained through authenticated recovery or
+SSH. Source inputs are delivered outside the repository. On Atlas the prepared
+paths are `/root/openvox-infra/ipa-migration-source/credentials.json` and `ca.pem`.
+
+```bash
+sudo python3 proxmox/atlas-freeipa-migrate.py dry-run \
+  --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json \
+  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem
+```
+
+The command authenticates source LDAP with verified STARTTLS, uses production
+mode to retain numeric IDs, and skips source Directory Server configuration so
+it cannot overwrite the target's CA-less TLS settings. Private logs, proposed
+LDIF changes and identity/policy comparisons remain under the protected IPA
+state directory. Inspect proposed certificate/issuer entries before importing.
+The `rehearse` action permits an actual import only into the separately labelled
+`atlas-ipa-rehearsal` clone without published ports or the authoritative volume.
+It is not a client cutover or an import into the live IPA data volume.
+
 Do not treat the image's successful certificate import or a healthy fresh server
 as proof of account preservation, renewal, client enrollment or recovery. #14
 also requires real HTTP/LDAP/Kerberos checks, unchanged required access, renewal

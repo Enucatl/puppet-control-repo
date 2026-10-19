@@ -33,6 +33,19 @@ compose=(env -i "PATH=$PATH" DOCKER_DOMAIN=home.arpa "${docker[@]}" compose
 volumes=(infra_openvox_{ssl,ca,code,data,gems,git,r10k_cache,trust}
     infra_vault_data infra_vault_logs infra_certificates infra_vault_unseal)
 containers=(infra-openvox-1 infra-vault-1 infra-vault-unsealer-1)
+ipa_running=false
+ipa_image=''
+ipa_source=''
+ipa_compose=(env -i "PATH=$PATH" "${docker[@]}" compose --env-file /dev/null -p infra
+    -f "$source/docker/freeipa/atlas-compose.yaml")
+if [[ -e $state/freeipa ]]; then
+    jq -e --arg root "$(jq -r .root_sha256 "$state/ready.json")" \
+        '.hostname == "ipa.home.arpa" and .root_sha256 == $root' \
+        "$state/freeipa/ready.json" >/dev/null
+    ipa_identity=$(jq -er '.identity | select(type == "string" and length > 0)' \
+        "$state/freeipa/volume.json")
+    volumes+=(infra_ipa_data)
+fi
 
 # Refuse missing state before Docker could create an empty replacement volume.
 for volume in "${volumes[@]}"; do
@@ -54,6 +67,21 @@ vault_reference=$("${compose[@]}" config --format json | jq -er '.services.vault
    $("${docker[@]}" image inspect --format '{{.Id}}' "$vault_reference") == "${images[1]}" ]] || {
     echo 'Running Vault does not match the configured immutable image.' >&2; exit 1;
 }
+if [[ -n ${ipa_identity:-} ]]; then
+    [[ $("${docker[@]}" run --rm --network none --read-only --user 0:0 \
+        --cap-drop ALL --cap-add DAC_READ_SEARCH \
+        --mount type=volume,src=infra_ipa_data,dst=/volume,readonly \
+        --entrypoint /bin/cat "${images[0]}" /volume/.atlas-freeipa-volume) == "$ipa_identity" ]] || {
+        echo 'IPA volume identity changed; restore original state.' >&2; exit 1;
+    }
+    read -r ipa_image ipa_running < <("${docker[@]}" inspect --format \
+        '{{.Image}} {{.State.Running}}' infra-ipa-1)
+    [[ $ipa_image =~ ^sha256:[0-9a-f]{64}$ && $ipa_running =~ ^(true|false)$ ]]
+    ipa_source=$(sed -n 's/^FROM //p' "$source/docker/freeipa/atlas.Dockerfile")
+    [[ $ipa_source =~ ^ghcr.io/enucatl/freeipa-server@sha256:[0-9a-f]{64}$ ]]
+    images+=("$ipa_image")
+    if [[ $ipa_running == true ]]; then containers+=(infra-ipa-1); fi
+fi
 for repository in "$source" "$baseline"; do
     [[ -z $(git -c "safe.directory=$repository" -C "$repository" status --porcelain) ]] || {
         echo "Commit or preserve checkout changes before backup: $repository" >&2; exit 1;
@@ -75,7 +103,7 @@ wait_healthy() {
     while (( SECONDS < deadline )); do
         records=$("${docker[@]}" inspect --format \
             '{{.State.Running}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "${containers[@]}") || return 1
-        if [[ $records == $'true healthy\ntrue healthy\ntrue healthy' ]]; then return 0; fi
+        if [[ $(printf '%s\n' "$records" | sort -u) == 'true healthy' ]]; then return 0; fi
         if [[ $records == *false* ]]; then
             echo 'An established Atlas service stopped during recovery.' >&2; return 1
         fi
@@ -85,7 +113,11 @@ wait_healthy() {
     return 1
 }
 start_services() {
-    "${compose[@]}" start vault vault-unsealer openvox >/dev/null && wait_healthy
+    local status=0
+    "${compose[@]}" start vault vault-unsealer openvox >/dev/null || status=1
+    if [[ $ipa_running == true ]]; then "${ipa_compose[@]}" start ipa >/dev/null || status=1; fi
+    wait_healthy || status=1
+    return "$status"
 }
 restore_services() {
     local status=$?
@@ -100,6 +132,7 @@ restore_services() {
 trap restore_services EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+if [[ $ipa_running == true ]]; then "${ipa_compose[@]}" stop ipa >/dev/null; fi
 "${compose[@]}" stop openvox vault-unsealer vault >/dev/null
 
 for volume in "${volumes[@]}"; do
@@ -127,12 +160,15 @@ stopped=false
 jq -n --arg control "$control_revision" --arg baseline "$baseline_revision" \
     --arg root "$(jq -r .root_sha256 "$state/ready.json")" \
     --arg openvox "${images[0]}" --arg vault "${images[1]}" --arg unsealer "${images[2]}" \
+    --arg ipa "$ipa_image" --arg ipa_source "$ipa_source" \
     --argjson volume_count "${#volumes[@]}" --rawfile checksums "$output/SHA256SUMS" \
     '($checksums | split("\n") | map(select(length > 0) |
         capture("^(?<sha256>[0-9a-f]{64})  (?<file>.+)$"))) as $archives |
     {host:"atlas.home.arpa", control_revision:$control, baseline_revision:$baseline,
      root_sha256:$root, images:{openvox:$openvox, vault:$vault, unsealer:$unsealer},
-     volume_count:$volume_count, archive_count:($archives|length), archives:$archives}' \
+     volume_count:$volume_count, archive_count:($archives|length), archives:$archives}
+     + if $ipa != "" then {images:{openvox:$openvox, vault:$vault, unsealer:$unsealer, ipa:$ipa},
+         ipa_source_reference:$ipa_source} else {} end' \
     > "$output/manifest.json"
 manifest_hash=$(sha256sum "$output/manifest.json")
 printf 'Backup ready: %s (%s volumes; manifest SHA256 %s)\n' \

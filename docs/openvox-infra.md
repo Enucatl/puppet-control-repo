@@ -185,10 +185,15 @@ handling is serialized and verifies the deployed environment's actual Git HEAD
 before recording a successful receipt.
 
 Use `proxmox/atlas-infra-backup.sh /scratch/vault/NEW_DIRECTORY` as root on Atlas
-to stop the three services, archive all twelve volumes, separate recovery
+to stop the established services, archive their volumes, separate recovery
 inputs, exact images, control/hardening configuration, public Git receiver and
 daemon mapping, then restart established services and wait up to five minutes
-for all three to become healthy. Failure cleanup also checks service health;
+for the running services to become healthy. Before IPA initialization this covers
+three services and twelve volumes. Prepared IPA adds its original `infra_ipa_data`
+volume, exact image and pinned base reference; its canonical credentials and
+issuer checkpoints are included in the recovery-input archive. IPA is stopped
+for a consistent copy and restarted only if it was running before backup.
+Failure cleanup also checks service health;
 failed recovery returns failure and requires explicit repair. Configuration
 archives use the commit IDs captured in the manifest. Every output is private and
 hash-listed. Copy the complete kit to a new root-only Atlas-specific directory
