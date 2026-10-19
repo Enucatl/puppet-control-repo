@@ -27,7 +27,7 @@ for path in source.iterdir():
         (stage / path.name).chmod(0o644)
 prefix = f"openvox-infra-check-{os.getuid()}-{int(time.time())}"
 volumes = {name: prefix + "-" + name for name in ("ssl", "ca", "data", "trust")}
-image = "openvox-rehearsal-tools:24001"
+image = "infra-openvox:24001"
 
 
 def command(args, text=None, expected=0):
@@ -121,7 +121,7 @@ try:
     )
     keypaths = [
         "/opt/puppetlabs/server/data/puppetserver/server_data/bootstrap/intermediate.key",
-        "/etc/puppetlabs/puppet/ssl/private_keys/docker.home.arpa.pem",
+        "/etc/puppetlabs/puppet/ssl/private_keys/openvox.home.arpa.pem",
     ]
     before = command(base + ["-e", hashes] + keypaths)
     command(base + ["/infra/infra-pki.rb", "prepare"])

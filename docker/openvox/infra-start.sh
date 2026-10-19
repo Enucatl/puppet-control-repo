@@ -13,12 +13,12 @@ for path in /trust/root.pem /trust/openvox-chain.pem \
     exit 1
   }
 done
-cmp -s /infra/infra-post-receive /git/control.git/hooks/post-receive || {
-  printf 'Install the container post-receive hook before startup\n' >&2
+cmp -s /infra/infra-host-post-receive /git/control.git/hooks/post-receive || {
+  printf 'Install the managed host post-receive hook before startup\n' >&2
   exit 1
 }
 [[ -x /git/control.git/hooks/post-receive ]] || {
-  printf 'Container post-receive hook must be executable\n' >&2
+  printf 'Host post-receive hook must be executable\n' >&2
   exit 1
 }
 exec /usr/local/bin/openvox-server-entrypoint \

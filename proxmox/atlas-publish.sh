@@ -60,11 +60,17 @@ fi
 [[ -z $("${bare_git[@]}" config --get core.hooksPath || true) ]] || {
     echo 'Publishing setup requires an unhooked Atlas bare repository.' >&2; exit 1;
 }
+managed_hook=false
 for hook in "$bare"/hooks/*; do
-    [[ ! -x $hook || $hook == *.sample ]] || {
-        echo 'Publishing setup refuses an active bare-repository hook.' >&2; exit 1;
-    }
+    if [[ -x $hook && $hook != *.sample ]]; then
+        if [[ $hook != "$bare/hooks/post-receive" ]] ||
+            ! cmp -s "$checkout/docker/openvox/infra-host-post-receive" "$hook"; then
+            echo 'Publishing setup permits only the managed host post-receive hook.' >&2; exit 1;
+        fi
+        managed_hook=true
+    fi
 done
+previous_revision=$("${bare_git[@]}" rev-parse --verify refs/heads/production 2>/dev/null || true)
 # This receiver contains public GitHub code; remapped container users may read it.
 chmod 2775 /opt/git/openvox "$bare"
 "${bare_git[@]}" config core.sharedRepository 0664
@@ -87,4 +93,10 @@ fi
    $("${bare_git[@]}" rev-parse refs/heads/production) == "$revision" ]] || {
     echo 'Production targets differ; rerun the same publication before continuing.' >&2; exit 1;
 }
+if [[ $managed_hook == true && $previous_revision != "$revision" ]]; then
+    [[ $(docker --host unix:///var/run/docker.sock exec infra-openvox-1 \
+        cat /git/deploy.status /git/deploy.commit) == $'0\n'"$revision" ]] || {
+        echo 'Git accepted the refs, but OpenVox deployment failed or reported another commit.' >&2; exit 1;
+    }
+fi
 echo "Atlas production published to GitHub and $bare: $revision"

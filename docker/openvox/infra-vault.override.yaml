@@ -5,8 +5,11 @@ services:
     image: hashicorp/vault@sha256:e0acd3c681bdf57f002d7214e5d050b876e1704678005c6b0406dd96a65be919
     command: [vault, server, -config=/vault/config/infra-vault.hcl]
     environment:
-      VAULT_ADDR: https://hcv.home.arpa:8200
+      VAULT_ADDR: https://vault.home.arpa:8200
       VAULT_CACERT: /certificates/ca.crt
+    networks:
+      infra:
+        aliases: [vault.home.arpa]
     volumes: !override
       - vault_data:/vault/file
       - vault_logs:/vault/logs
@@ -19,7 +22,7 @@ services:
 
   vault-unsealer:
     environment:
-      VAULT_ADDR: https://hcv.home.arpa:8200
+      VAULT_ADDR: https://vault.home.arpa:8200
       VAULT_PINNED_PUBKEY: /public/vault.pub.pem
     volumes:
       - type: volume
@@ -29,3 +32,9 @@ services:
         volume: {subpath: public}
     healthcheck:
       test: [CMD, /scripts/unseal.sh, --healthcheck]
+
+volumes:
+  vault_data: {external: true, name: infra_vault_data}
+  vault_logs: {external: true, name: infra_vault_logs}
+  certificates: {external: true, name: infra_certificates}
+  vault_unseal: {external: true, name: infra_vault_unseal}

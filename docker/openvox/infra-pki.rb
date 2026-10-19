@@ -9,7 +9,7 @@ File.umask(0o077)
 bootstrap = '/opt/puppetlabs/server/data/puppetserver/server_data/bootstrap'
 ssl = '/etc/puppetlabs/puppet/ssl'
 ca = '/etc/puppetlabs/puppetserver/ca'
-host = 'docker.home.arpa'
+host = 'openvox.home.arpa'
 abort 'Existing authority must be restored/renewed, never replaced by fresh import' if
   %w[ca_key.pem ca_crt.pem].any? { |name| File.exist?("#{ca}/#{name}") }
 abort 'Existing server certificate must be restored/renewed, never replaced by fresh import' if

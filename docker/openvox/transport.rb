@@ -2,7 +2,8 @@ require 'openssl'
 require 'fileutils'
 
 # Explicit bootstrap transport identity, pinned locally before any Vault request.
-abort 'Refusing to replace existing Vault state' if File.exist?('/state/tls.key') || File.exist?('/state/data')
+directory = ARGV.fetch(1, '/state')
+abort 'Refusing to replace existing Vault state' if File.exist?("#{directory}/tls.key") || File.exist?("#{directory}/data")
 File.umask(0o077)
 key = OpenSSL::PKey.generate_key('ML-DSA-44')
 name = ARGV.fetch(0)
@@ -20,6 +21,6 @@ cert.add_extension(extensions.create_extension('keyUsage', 'digitalSignature', t
 cert.add_extension(extensions.create_extension('extendedKeyUsage', 'serverAuth'))
 cert.add_extension(extensions.create_extension('subjectAltName', "DNS:#{name},DNS:localhost"))
 cert.sign(key, nil)
-File.write('/state/tls.key', key.private_to_pem)
-File.write('/state/tls.crt', cert.to_pem)
-File.write('/state/trust.pem', cert.to_pem)
+File.write("#{directory}/tls.key", key.private_to_pem)
+File.write("#{directory}/tls.crt", cert.to_pem)
+File.write("#{directory}/trust.pem", cert.to_pem)

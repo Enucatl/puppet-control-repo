@@ -34,22 +34,77 @@ the host as Atlas. Legacy `docker.home.arpa` and `hcv.home.arpa` continue to rea
 the existing Docker host; existing agents and service consumers keep their old
 endpoints until their migrations.
 
-Before #13 activation, adapt the prepared OpenVox Compose hostname, Puppet
-certname/server and certificate paths, PKI preparation, readiness and cache-flush
-helpers to `openvox.home.arpa`. Point its Vault environment, Hiera backend and
-the opt-in Vault configuration/API address at `vault.home.arpa`. Change these
-together before generating identities. OpenVox and Vault leaf certificates must
+The OpenVox Compose hostname, Puppet certname/server and certificate paths,
+PKI preparation, readiness and cache-flush helpers use `openvox.home.arpa`.
+Its Vault environment, deployed Hiera overlay and opt-in Vault configuration/API
+address use `vault.home.arpa`. OpenVox and Vault leaf certificates must
 contain their respective service DNS SANs, and Vault's scoped compiler cert-auth
 role must authorize `openvox.home.arpa`. Atlas enrollment uses
 `PUPPET_SERVER=openvox.home.arpa`, `VAULT_ADDR=https://vault.home.arpa:8200` and
 native certname `atlas.home.arpa` with authenticated new-chain trust.
 
-DNS alone does not make these services ready. The prepared service files below
-still carry legacy names and must be adapted explicitly under #13; do not
+DNS alone does not make these services ready. Do not
 globally replace legacy defaults or run the old combined Vault policy setup
 against the new authorities. Fresh authority initialization remains explicit;
 restore established identities on later rebuilds. The root private key stays
 inside Vault, and the online OpenVox intermediate retains its own protected key.
+
+## Scripted Atlas initialization (#13)
+
+`proxmox/atlas-promote.sh` runs as root on Proxmox. It verifies VM 210's name,
+MAC and ownership, replaces its disposable provisioning description with
+`openvox-authority:atlas.home.arpa`, and records the promotion in the guest.
+The development rebuild command then refuses the VM. Promotion must precede
+any authority creation.
+
+From Atlas's clean, published production checkout, as root:
+
+```sh
+python3 proxmox/atlas-infra.py initialize
+```
+
+This explicit command allocates twelve labelled external volumes, sets their
+ownership through Docker's user namespace, initializes Vault and creates its
+internal ML-DSA-44 root (`pki`, ten years) and separate service intermediate
+(`pki_int`, five years). OpenVox generates its own intermediate key/CSR and
+imports only its signed public chain. A locally generated, authenticated
+bootstrap TLS identity protects Vault initialization; Vault then receives its
+exact-name root-signed leaf (thirty days). Both authorities enforce issuer
+lifetime limits. The server's existing one-day OpenVox leaf policy is unchanged.
+
+Recovery JSON, root token, intermediate request, listener key and initialization
+checkpoints live under root-only `/root/openvox-infra` (`0700`, files `0600`).
+The unsealer receives only its key share and authenticated public TLS-key pin;
+OpenVox receives public root trust, never Vault storage or root credentials.
+Vault's compiler cert-auth role admits exactly `openvox.home.arpa`, with only
+the existing read policy for `kv/data/puppet`. Fresh Vault starts with a harmless
+Hiera marker, not copied legacy secrets or broad legacy issuance policies.
+
+An interrupted explicit initialization retains keys and repairs TLS from saved
+material. Once volume allocation completes, missing volumes require restoration.
+A missing established issuer or changed root pin fails before replacement.
+After initialization, `initialize` refuses; normal startup is:
+
+```sh
+python3 proxmox/atlas-infra.py start
+```
+
+Startup waits for health and has no initialization or signing operation.
+The script deploys production/dev, installs the scoped Hiera overlay, generates
+types and installs the host receive dispatcher before starting OpenVox.
+Subsequent receives repeat those deployment steps and invalidate compiler caches.
+An unchanged push does not replay a failed deployment: explicitly replay its
+ref-update input to the managed hook after correcting the scripted cause.
+
+Use `proxmox/atlas-infra-backup.sh /scratch/vault/NEW_DIRECTORY` as root on Atlas
+to stop the three services, archive all twelve volumes, separate recovery
+inputs, exact images, control/hardening configuration, public Git receiver and
+daemon mapping, then restart established services. Every output is private and
+hash-listed. Copy the complete kit to a new root-only Atlas-specific directory
+on Proxmox and verify its manifest. `/scratch` is temporary and its local copy
+alone does not satisfy independent recovery. Never overwrite the #12 test kit.
+A backup proves preservation only; restoration and unchanged-identity acceptance
+remain separate checks before issue closure.
 
 ## Prepared service implementation
 
@@ -65,9 +120,9 @@ PID 1 and forwards signals to the server process.
 Provider policy and packaged gems are not hidden by a broad data-directory
 mount.
 
-The listener keeps the existing `docker.home.arpa` identity and publishes TCP
+The listener uses the new `openvox.home.arpa` identity and publishes TCP
 8140 directly. There is no HTTP proxy or TLS termination between agents and
-OpenVox, or between OpenVox and `https://hcv.home.arpa:8200`. Vault trust is the
+OpenVox, or between OpenVox and `https://vault.home.arpa:8200`. Vault trust is the
 explicit public `/trust/root.pem` bundle. OpenSSL/native clients and the JVM
 require TLS 1.3 and `X25519MLKEM768`; both listener and Java outbound protocols
 are configured before startup. Vault may temporarily accept classical-only
@@ -75,7 +130,7 @@ clients under the operator-approved exception; capable clients must negotiate
 the hybrid group. The existing infra Vault service is not upgraded or
 reinitialized by selecting OpenVox.
 
-The control repo's `hiera.yaml` uses `/trust/root.pem` explicitly and fails catalog compilation if
+The deployed `infra-hiera.yaml` overlay uses `/trust/root.pem` explicitly and fails catalog compilation if
 Vault authentication or lookup fails. These Hiera options are required in
 addition to the autosigner's environment variables. This configuration belongs
 to the new container deployment; keep it off the existing host server until
@@ -91,9 +146,11 @@ The private `/opt/docker` tree retains mode `2770`. The remapped OpenVox user
 (`999:999` inside, `100999:100999` on Atlas) can read public Git data; writable
 deployment status remains on the separate `/git` volume. r10k uses the file URL
 `file:///git/control.git`, with Git trust scoped to that exact repository in the
-image. Before activation, connect host receives to the container's
-r10k/types/cache-refresh helper and update startup hook validation. The publishing
-stage creates no active receive hook and starts no service.
+image. The managed host receive hook dispatches to the container's
+r10k/types/cache-refresh helper. The initialization script installs it after
+the first deployment; startup verifies its exact content. Publisher checks the
+deployment status and requested commit after an updated production receive,
+because Git itself can accept refs even when post-receive deployment fails.
 
 ## Activation prerequisites
 
@@ -128,8 +185,8 @@ Do not activate this service until all of these conditions are met:
    host Git receive hook dispatches into the container's `infra-post-receive`
    helper; the legacy host hook uses `sudo` and different paths. Installing
    hooks from inside the container is blocked by the read-only source mount.
-   #13 must implement that dispatch and adapt the current startup hook check,
-   which still expects the container helper itself in the bare repository.
+   Startup checks the managed host dispatcher, whose reference is exposed by
+   the existing read-only `/infra` mount.
 5. Production outbound crypto/consumer compatibility, independent offline
    recovery, and migration gates are signed off separately. The complete
    disposable rehearsal is useful evidence, but does not activate this service

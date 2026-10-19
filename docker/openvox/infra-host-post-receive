@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The receiver is read-only in the container; deployment runs as its Puppet user.
+docker --host unix:///var/run/docker.sock exec -i infra-openvox-1 \
+  bash /infra/infra-post-receive || {
+  status=$?
+  printf 'OpenVox deployment failed (%s) after Git accepted the refs; check /git/deploy.status in infra-openvox-1.\n' "$status" >&2
+  exit "$status"
+}

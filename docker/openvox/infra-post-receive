@@ -4,6 +4,7 @@ trap 'printf "%s\n" "$?" > /git/deploy.status' EXIT
 
 # Git exports its own repository context; r10k must use each deployed repository.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR
+deployed_revision=""
 while read -r _old new ref; do
   case "$ref" in
     refs/heads/production|refs/heads/dev)
@@ -11,12 +12,18 @@ while read -r _old new ref; do
       environment=${ref#refs/heads/}
       /opt/puppetlabs/puppet/bin/r10k deploy environment "$environment" --modules \
         --config /infra/infra-r10k.yaml
+      install -m 0644 /infra/infra-hiera.yaml \
+        "/etc/puppetlabs/code/environments/$environment/hiera.yaml"
       /opt/puppetlabs/bin/puppet generate types --environment "$environment" \
         --config /etc/puppetlabs/puppet/puppet.conf \
         --codedir /etc/puppetlabs/code \
         --vardir /opt/puppetlabs/server/data/puppetserver/server_data
+      deployed_revision="$new"
       ;;
   esac
 done
-# Cache refresh is explicit: never report a successful deployment with stale code.
-/opt/puppetlabs/puppet/bin/ruby /infra/infra-flush.rb
+if [[ -n $deployed_revision ]]; then
+  # Never report a successful deployment with stale code.
+  /opt/puppetlabs/puppet/bin/ruby /infra/infra-flush.rb
+  printf '%s\n' "$deployed_revision" > /git/deploy.commit
+fi

@@ -27,16 +27,16 @@ services:
       context: ./openvox
       dockerfile: infra.Dockerfile
     image: infra-openvox:24001
-    hostname: docker.home.arpa
+    hostname: openvox.home.arpa
     user: "999:999"
     command: [bash, /infra/infra-start.sh]
     stop_grace_period: 60s
     environment:
       OPENSSL_CONF: /infra/openssl.cnf
-      VAULT_ADDR: https://hcv.home.arpa:8200
+      VAULT_ADDR: https://vault.home.arpa:8200
       VAULT_CACERT: /trust/root.pem
-      NO_PROXY: hcv.home.arpa,docker.home.arpa,127.0.0.1,localhost
-      no_proxy: hcv.home.arpa,docker.home.arpa,127.0.0.1,localhost
+      NO_PROXY: vault.home.arpa,openvox.home.arpa,127.0.0.1,localhost
+      no_proxy: vault.home.arpa,openvox.home.arpa,127.0.0.1,localhost
       JAVA_ARGS: >-
         -Xms256m -Xmx1024m -XX:ActiveProcessorCount=2
         -Djava.security.properties=/opt/puppetlabs/server/data/puppetserver/java.security.mldsa

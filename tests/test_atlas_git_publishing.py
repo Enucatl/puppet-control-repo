@@ -43,6 +43,12 @@ def publishing(tmp_path: Path) -> Path:
     seed = tmp_path / "seed"
     seed.mkdir()
     git(seed, "init", "-q", "--initial-branch=production")
+    reference = seed / "docker/openvox/infra-host-post-receive"
+    reference.parent.mkdir(parents=True)
+    reference.write_text(
+        (PROXMOX.parent / "docker/openvox/infra-host-post-receive").read_text()
+    )
+    git(seed, "add", str(reference))
     base = commit(seed, "production base")
     git(seed, "switch", "-qc", "dev")
     revision = commit(seed, "published dev target")
@@ -83,6 +89,28 @@ done
 exec /usr/bin/install "${arguments[@]}"
 """,
         "ssh": '[[ "$*" == "-o BatchMode=yes user_l@docker.home.arpa bash -se" ]]; exec bash -se',
+        "docker": r"""
+printf '%s\n' "$*" >> "$TEST_ROOT/docker-commands"
+case "$*" in
+    '--host unix:///var/run/docker.sock exec -i infra-openvox-1 bash /infra/infra-post-receive')
+        cat > "$TEST_ROOT/deploy-input"
+        status=$(cat "$TEST_ROOT/deploy-exit" 2>/dev/null || printf 0)
+        printf '%s\n' "$status" > "$TEST_ROOT/deploy.status"
+        if [[ $status == 0 ]]; then
+            if [[ -f $TEST_ROOT/reported-revision ]]; then
+                cat "$TEST_ROOT/reported-revision" > "$TEST_ROOT/deploy.commit"
+            else
+                awk '{print $2}' "$TEST_ROOT/deploy-input" > "$TEST_ROOT/deploy.commit"
+            fi
+        fi
+        exit "$status"
+        ;;
+    '--host unix:///var/run/docker.sock exec infra-openvox-1 cat /git/deploy.status /git/deploy.commit')
+        cat "$TEST_ROOT/deploy.status" "$TEST_ROOT/deploy.commit"
+        ;;
+    *) exit 99 ;;
+esac
+""",
     }
     for name, body in commands.items():
         command = bins / name
@@ -264,12 +292,15 @@ def test_atlas_requires_revision_published_on_dev(publishing: Path) -> None:
     assert not (publishing / "opt/git/openvox/control.git").exists()
 
 
-def test_atlas_refuses_existing_active_receiver_hook(publishing: Path) -> None:
+@pytest.mark.parametrize("name", ["pre-receive", "post-receive"])
+def test_atlas_refuses_existing_active_receiver_hook(
+    publishing: Path, name: str
+) -> None:
     """Prevent publication from executing an existing receiver deployment hook."""
     bare = publishing / "opt/git/openvox/control.git"
     bare.parent.mkdir(parents=True)
     git(publishing, "init", "-q", "--bare", "--template=", str(bare))
-    hook = bare / "hooks/pre-receive"
+    hook = bare / "hooks" / name
     hook.parent.mkdir()
     marker = publishing / "hook-executed"
     hook.write_text(f"#!/bin/bash\ntouch '{marker}'\n")
@@ -283,6 +314,61 @@ def test_atlas_refuses_existing_active_receiver_hook(publishing: Path) -> None:
         git(publishing / "github.git", "rev-parse", "production")
         == (publishing / "base").read_text()
     )
+
+
+@pytest.fixture
+def managed_receiver(publishing: Path) -> Path:
+    """Install the exact managed dispatcher in an otherwise empty bare receiver."""
+    bare = publishing / "opt/git/openvox/control.git"
+    bare.parent.mkdir(parents=True)
+    git(publishing, "init", "-q", "--bare", "--template=", str(bare))
+    hook = bare / "hooks/post-receive"
+    hook.parent.mkdir()
+    hook.write_text(
+        (PROXMOX.parent / "docker/openvox/infra-host-post-receive").read_text()
+    )
+    hook.chmod(0o755)
+    return bare
+
+
+def test_managed_hook_dispatches_updates_and_publisher_checks_commit(
+    publishing: Path, managed_receiver: Path
+) -> None:
+    """Carry real ref-update stdin into deployment and verify its success marker."""
+    revision = (publishing / "revision").read_text()
+    for _ in range(2):
+        result = run_script(publishing, "atlas-publish.sh", revision)
+        assert result.returncode == 0, result.stderr
+    assert (publishing / "deploy-input").read_text().split() == [
+        "0" * 40,
+        revision,
+        "refs/heads/production",
+    ]
+    assert git(managed_receiver, "rev-parse", "production") == revision
+    # A no-op push does not rerun the receiver hook or reuse an unrelated old status.
+    assert len((publishing / "docker-commands").read_text().splitlines()) == 2
+
+
+@pytest.mark.parametrize("failure", ["deployment", "wrong-commit"])
+def test_publisher_reports_deployment_failure_after_refs_are_accepted(
+    publishing: Path, managed_receiver: Path, failure: str
+) -> None:
+    """Do not equate Git's successful receipt with successful code deployment."""
+    if failure == "deployment":
+        (publishing / "deploy-exit").write_text("42")
+    else:
+        (publishing / "reported-revision").write_text("0" * 40)
+    revision = (publishing / "revision").read_text()
+    result = run_script(publishing, "atlas-publish.sh", revision)
+    assert result.returncode != 0
+    assert "Git accepted the refs, but OpenVox deployment failed" in result.stderr
+    if failure == "deployment":
+        assert (
+            "OpenVox deployment failed (42) after Git accepted the refs"
+            in result.stderr
+        )
+    assert git(managed_receiver, "rev-parse", "production") == revision
+    assert git(publishing / "github.git", "rev-parse", "production") == revision
 
 
 def test_legacy_rerouting_preserves_work_and_bare_refs(publishing: Path) -> None:
@@ -315,3 +401,132 @@ def test_legacy_rerouting_preserves_work_and_bare_refs(publishing: Path) -> None
         assert git(checkout, "status", "--porcelain") == old_status
         assert (checkout / "fixture").read_text() == "unsaved legacy work"
         assert (checkout / "untracked").read_text() == "legacy notes"
+
+
+def runtime_script(root: Path, name: str) -> Path:
+    """Redirect a container script's absolute state paths into a temporary tree."""
+    source = (PROXMOX.parent / "docker/openvox" / name).read_text()
+    for prefix in (
+        "/infra/",
+        "/git/",
+        "/etc/puppetlabs/",
+        "/opt/puppetlabs/",
+        "/trust/",
+        "/usr/local/bin/",
+    ):
+        source = source.replace(prefix, str(root) + prefix)
+    script = root / name
+    script.write_text(source)
+    return script
+
+
+@pytest.mark.parametrize("failure", ["", "r10k", "puppet", "ruby"])
+def test_container_handler_records_commit_only_after_deploy_types_and_flush(
+    tmp_path: Path, failure: str
+) -> None:
+    """Verify deployment order, isolated Git context and persistent failure status."""
+    for directory in ("git", "infra", "etc/puppetlabs/code/environments/production"):
+        (tmp_path / directory).mkdir(parents=True)
+    (tmp_path / "infra/infra-hiera.yaml").write_text("Atlas Hiera settings\n")
+    for command in (
+        "opt/puppetlabs/puppet/bin/r10k",
+        "opt/puppetlabs/bin/puppet",
+        "opt/puppetlabs/puppet/bin/ruby",
+    ):
+        executable = tmp_path / command
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(
+            "#!/bin/bash\nset -eu\n"
+            + r"""
+name=${0##*/}
+printf '%s\n' "$name" >> "$TEST_ROOT/steps"
+[[ -z ${GIT_DIR:-} && -z ${GIT_WORK_TREE:-} && -z ${GIT_INDEX_FILE:-} && -z ${GIT_COMMON_DIR:-} ]]
+if [[ $name == puppet ]]; then
+    cmp "$TEST_ROOT/infra/infra-hiera.yaml" "$TEST_ROOT/etc/puppetlabs/code/environments/production/hiera.yaml"
+fi
+[[ $name != "$FAILURE" ]] || exit 42
+"""
+        )
+        executable.chmod(0o755)
+    revision = "a" * 40
+    result = subprocess.run(
+        ["bash", str(runtime_script(tmp_path, "infra-post-receive"))],
+        input=(
+            f"{'0' * 40} {revision} refs/heads/production\n"
+            f"{revision} {'0' * 40} refs/heads/dev\n"
+            f"{'0' * 40} {revision} refs/heads/unrelated\n"
+        ),
+        env={
+            **os.environ,
+            "TEST_ROOT": str(tmp_path),
+            "FAILURE": failure,
+            **{
+                name: "/unrelated-git-state"
+                for name in (
+                    "GIT_DIR",
+                    "GIT_WORK_TREE",
+                    "GIT_INDEX_FILE",
+                    "GIT_COMMON_DIR",
+                )
+            },
+        },
+        text=True,
+        capture_output=True,
+        timeout=5,
+    )
+    status = 42 if failure else 0
+    assert result.returncode == status, result.stderr
+    assert (tmp_path / "git/deploy.status").read_text() == f"{status}\n"
+    steps = ["r10k", "puppet", "ruby"]
+    assert (tmp_path / "steps").read_text().splitlines() == (
+        steps[: steps.index(failure) + 1] if failure else steps
+    )
+    marker = tmp_path / "git/deploy.commit"
+    if failure:
+        assert not marker.exists()
+    else:
+        assert marker.read_text() == revision + "\n"
+
+
+@pytest.mark.parametrize("hook", ["managed", "container", "nonexecutable"])
+def test_startup_requires_the_exact_executable_host_hook(
+    tmp_path: Path, hook: str
+) -> None:
+    """Validate host dispatch wiring before launching the OpenVox server."""
+    for name in (
+        "trust/root.pem",
+        "trust/openvox-chain.pem",
+        "etc/puppetlabs/puppetserver/ca/ca_crl.pem",
+        "git/control.git/HEAD",
+        "etc/puppetlabs/code/environments/production/.r10k-deploy.json",
+        "etc/puppetlabs/code/environments/dev/.r10k-deploy.json",
+    ):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("established state\n")
+    reference = tmp_path / "infra/infra-host-post-receive"
+    reference.parent.mkdir()
+    reference.write_text(
+        (PROXMOX.parent / "docker/openvox/infra-host-post-receive").read_text()
+    )
+    installed = tmp_path / "git/control.git/hooks/post-receive"
+    installed.parent.mkdir()
+    installed.write_text(
+        (PROXMOX.parent / "docker/openvox/infra-post-receive").read_text()
+        if hook == "container"
+        else reference.read_text()
+    )
+    installed.chmod(0o644 if hook == "nonexecutable" else 0o755)
+    entrypoint = tmp_path / "usr/local/bin/openvox-server-entrypoint"
+    entrypoint.parent.mkdir(parents=True)
+    entrypoint.write_text('#!/bin/bash\ntouch "$TEST_ROOT/server-started"\n')
+    entrypoint.chmod(0o755)
+    result = subprocess.run(
+        ["bash", str(runtime_script(tmp_path, "infra-start.sh"))],
+        env={**os.environ, "TEST_ROOT": str(tmp_path)},
+        text=True,
+        capture_output=True,
+        timeout=5,
+    )
+    assert (result.returncode == 0) == (hook == "managed"), result.stderr
+    assert (tmp_path / "server-started").exists() == (hook == "managed")

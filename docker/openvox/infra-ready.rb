@@ -1,7 +1,7 @@
 require 'net/http'
 require 'openssl'
 
-http = Net::HTTP.new('docker.home.arpa', 8140, nil)
+http = Net::HTTP.new('openvox.home.arpa', 8140, nil)
 http.ipaddr = '127.0.0.1'
 http.use_ssl = true
 http.ca_file = '/trust/root.pem'

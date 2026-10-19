@@ -58,19 +58,27 @@ def test_openvox_activation_is_explicit_and_keeps_the_tls_boundary(compose_model
     service = compose_model["services"]["openvox"]
     assert service["profiles"] == ["openvox"]
     assert not service.get("depends_on")
+    assert service["hostname"] == "openvox.home.arpa"
     assert service["user"] == "999:999"
     assert service["read_only"] is True
     assert "ALL" in service["cap_drop"]
     assert set(service["networks"]) == {"infra"}
     assert not service.get("labels")
     assert service["ports"][0]["target"] == 8140
-    assert service["environment"]["VAULT_ADDR"] == "https://hcv.home.arpa:8200"
+    assert service["environment"]["VAULT_ADDR"] == "https://vault.home.arpa:8200"
     assert service["environment"]["VAULT_CACERT"] == "/trust/root.pem"
+    for option in ("NO_PROXY", "no_proxy"):
+        assert set(service["environment"][option].split(",")) == {
+            "vault.home.arpa",
+            "openvox.home.arpa",
+            "127.0.0.1",
+            "localhost",
+        }
     assert "-Djdk.tls.namedGroups=X25519MLKEM768" in service["environment"]["JAVA_ARGS"]
 
 
 def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):
-    """Keep real catalog lookups on the same verified chain as enrollment."""
+    """Keep Atlas lookups on its endpoint without redirecting the legacy compiler."""
     ruby = shutil.which("ruby")
     if ruby is None:
         pytest.skip("Ruby is required to parse the deployed Hiera configuration")
@@ -80,22 +88,32 @@ def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):
             "-ryaml",
             "-rjson",
             "-e",
-            "puts JSON.generate(YAML.safe_load(ARGF.read))",
+            "puts JSON.generate(ARGV.map { |path| YAML.safe_load_file(path) })",
+            str(ROOT / "docker/openvox/infra-hiera.yaml"),
             str(ROOT / "hiera.yaml"),
         ],
         capture_output=True,
         text=True,
         check=True,
     )
+    deployed, legacy = json.loads(result.stdout)
     backend = next(
         level
-        for level in json.loads(result.stdout)["hierarchy"]
+        for level in deployed["hierarchy"]
         if level.get("data_hash") == "vault_hiera_hash"
     )
     environment = compose_model["services"]["openvox"]["environment"]
     assert backend["options"]["ca_trust"] == environment["VAULT_CACERT"]
     assert backend["options"]["fail_hard"] is True
     assert backend["uris"] == [environment["VAULT_ADDR"] + "/v1/kv/data/puppet"]
+    legacy_backend = next(
+        level
+        for level in legacy["hierarchy"]
+        if level.get("data_hash") == "vault_hiera_hash"
+    )
+    assert legacy_backend["uris"] == ["https://hcv.home.arpa:8200/v1/kv/data/puppet"]
+    legacy_backend["uris"] = backend["uris"]
+    assert deployed == legacy
 
 
 def test_openvox_state_cannot_be_replaced_by_implicit_empty_volumes(compose_model):
@@ -189,7 +207,9 @@ def test_vault_cutover_is_a_separate_pinned_override(compose_model):
         text=True,
         check=True,
     )
-    vault = json.loads(result.stdout)["services"]["vault"]
+    model = json.loads(result.stdout)
+    services = model["services"]
+    vault = services["vault"]
     assert compose_model["services"]["vault"]["image"] == "hashicorp/vault:latest"
     assert vault["image"] == (
         "hashicorp/vault@sha256:"
@@ -200,6 +220,17 @@ def test_vault_cutover_is_a_separate_pinned_override(compose_model):
         "server",
         "-config=/vault/config/infra-vault.hcl",
     ]
+    assert vault["environment"]["VAULT_ADDR"] == "https://vault.home.arpa:8200"
+    assert set(vault["networks"]) == {"infra"}
+    assert vault["networks"]["infra"]["aliases"] == ["vault.home.arpa"]
+    assert (
+        services["vault-unsealer"]["environment"]["VAULT_ADDR"]
+        == (vault["environment"]["VAULT_ADDR"])
+    )
+    assert (
+        'api_addr = "https://vault.home.arpa:8200"'
+        in (ROOT / "docker/openvox/infra-vault.hcl").read_text()
+    )
     mounts = {mount["target"]: mount for mount in vault["volumes"]}
     assert mounts["/vault/file"]["source"] == "vault_data"
     assert mounts["/vault/logs"]["source"] == "vault_logs"
@@ -207,3 +238,11 @@ def test_vault_cutover_is_a_separate_pinned_override(compose_model):
     assert mounts["/certificates"]["read_only"] is True
     assert mounts["/vault/config/infra-vault.hcl"]["read_only"] is True
     assert "/vault/config" not in mounts
+    for name in ("vault_data", "vault_logs", "certificates", "vault_unseal"):
+        assert model["volumes"][name] == {
+            "external": True,
+            "name": f"infra_{name}",
+        }
+        assert not compose_model["volumes"][name].get("external", False)
+    assert services["vault-unsealer"]["command"] == ["/scripts/unseal.sh"]
+    assert set(services["vault-unsealer"]["networks"]) == {"infra"}
