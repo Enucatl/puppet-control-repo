@@ -123,7 +123,7 @@ address=/complex.{{ dhcp_domain }}/{{ complex_node_ip }}
 address=/freeipa.{{ dhcp_domain }}/{{ docker_node_ip }}
 address=/hcv.{{ dhcp_domain }}/{{ docker_node_ip }}
 # Exact names, with Atlas first for canonical reverse DNS.
-host-record=atlas.{{ dhcp_domain }},vault.{{ dhcp_domain }},openvox.{{ dhcp_domain }},{{ atlas_node_ip }},{{ atlas_node_ula }}
+host-record=atlas.{{ dhcp_domain }},vault.{{ dhcp_domain }},openvox.{{ dhcp_domain }},ipa.{{ dhcp_domain }},{{ atlas_node_ip }},{{ atlas_node_ula }}
 host-record=remarkable.{{ dhcp_domain }},{{ remarkable_ip }},{{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 host-record=remarkable.{{ dhcp_domain }},{{ ipv6_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 

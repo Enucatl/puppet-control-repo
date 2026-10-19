@@ -63,7 +63,7 @@ VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inven
 `bc:24:11:4e:a4:9e`. The Atlas VM creation script keeps that MAC across rebuilds;
 update both declarations together if the NIC reservation changes.
 The dnsmasq template publishes exact A and AAAA records for `atlas.home.arpa`,
-`vault.home.arpa` and `openvox.home.arpa` at this address and Atlas's verified
+`vault.home.arpa`, `openvox.home.arpa` and `ipa.home.arpa` at this address and Atlas's verified
 EUI-64 ULA `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`. The ULA is retained across
 ISP prefix changes; the pinned NIC MAC preserves its interface identifier on
 rebuild. Reverse DNS remains
@@ -81,13 +81,13 @@ backs up the prior file to `/config/containers/dnsmasq/dnsmasq.conf.previous`,
 installs the configuration and updated smoke script, then restarts dnsmasq and
 AdGuard to clear cached DNS answers. It does not apply the declarative router
 configuration or update other containers. Full `--tags apply` also includes
-these DNS declarations. Smoke checks verify all three names through AdGuard
+these DNS declarations. Smoke checks verify all four names through AdGuard
 over IPv4/IPv6 and dnsmasq directly, plus Atlas's canonical PTR record.
 
-These records prepare #13's service endpoints: `https://vault.home.arpa:8200`
-and direct TLS `openvox.home.arpa:8140`. Service certificates must contain the
+These records prepare the migration service endpoints: `https://vault.home.arpa:8200`,
+direct TLS `openvox.home.arpa:8140` and FreeIPA at `ipa.home.arpa`. Service certificates must contain the
 corresponding DNS names; Atlas's native agent identity remains `atlas.home.arpa`.
-DNS publication does not initialize or activate Vault/OpenVox.
+DNS publication does not initialize or activate Vault/OpenVox/FreeIPA.
 
 Live acceptance passed on **2026-10-19**, using revision
 `b72af4ee85df77bb8b7f04c595cd421073e0e25b`: **47 router smoke checks passed**,
@@ -97,6 +97,11 @@ and the legacy service addresses. IPv6 connectivity to Atlas passed from the
 workstation and router. See [sanitized DNS evidence](../docs/atlas-dns-results.json).
 The fixed-MAC creation path passed mocked provisioning tests; a live VM rebuild
 was not performed for this DNS change.
+The `ipa.home.arpa` addition was deployed on **2026-10-19** with **53 router
+smoke checks passed**. Separate checks confirmed all four endpoints' A/AAAA
+answers over IPv4/IPv6, Atlas's IPv4/IPv6 canonical PTR records, and unchanged
+legacy service addresses. See [FreeIPA DNS evidence](../docs/atlas-ipa-dns-results.json).
+FreeIPA service activation remains pending.
 
 ## Secrets (vars/secrets.yml)
 

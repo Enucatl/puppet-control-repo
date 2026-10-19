@@ -1,0 +1,185 @@
+{
+  "verified_at": "2026-10-19T18:47:58.276251+00:00",
+  "source_revision": "f404061b4353ab4d8f42c20393ced1006ac9bde5",
+  "source_has_uncommitted_dns_changes": true,
+  "source_sha256": {
+    "provisioning/templates/app_configs/dnsmasq.conf.j2": "accd14147edf6df615477bcb599d3bf5fd75b606e27f5e3e9bec694ad7743f1f",
+    "provisioning/templates/app_configs/router-smoke-check.sh.j2": "20f616aa0e59b48c8faa822c28a0c91e91514f1e8d16e66ed94115305b7297e7",
+    "provisioning/host_vars/router.yml": "86cbb93b61d7e7869aabf3654312b58ab0bd1f17caaf3639a9865cee357ec1d4"
+  },
+  "apply_command": "ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags dns,healthcheck",
+  "deployment_controller": "docker.home.arpa",
+  "router_recap": {
+    "ok": 9,
+    "changed": 2,
+    "unreachable": 0,
+    "failed": 0
+  },
+  "router_smoke_checks_count": 53,
+  "router_smoke_checks_passed": true,
+  "direct_dnsmasq_a_aaaa_checks_passed": true,
+  "dns_checks": [
+    {
+      "server": "10.0.0.1",
+      "name": "atlas.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "atlas.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "vault.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "vault.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "openvox.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "openvox.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "ipa.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "ipa.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "158.0.0.10.in-addr.arpa",
+      "type": "PTR",
+      "answer": "atlas.home.arpa."
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "e.9.4.a.e.4.e.f.f.f.1.1.4.2.e.b.0.0.0.0.8.3.7.1.2.2.7.d.b.6.d.f.ip6.arpa",
+      "type": "PTR",
+      "answer": "atlas.home.arpa."
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "docker.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.128"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "freeipa.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.128"
+    },
+    {
+      "server": "10.0.0.1",
+      "name": "hcv.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.128"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "atlas.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "atlas.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "vault.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "vault.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "openvox.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "openvox.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "ipa.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.158"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "ipa.home.arpa",
+      "type": "AAAA",
+      "answer": "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "158.0.0.10.in-addr.arpa",
+      "type": "PTR",
+      "answer": "atlas.home.arpa."
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "e.9.4.a.e.4.e.f.f.f.1.1.4.2.e.b.0.0.0.0.8.3.7.1.2.2.7.d.b.6.d.f.ip6.arpa",
+      "type": "PTR",
+      "answer": "atlas.home.arpa."
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "docker.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.128"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "freeipa.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.128"
+    },
+    {
+      "server": "fd6b:d722:1738::1",
+      "name": "hcv.home.arpa",
+      "type": "A",
+      "answer": "10.0.0.128"
+    }
+  ],
+  "temporary_deployment_files_removed": true,
+  "freeipa_service_activated": false,
+  "pending": [
+    "Build and initialize CA-less FreeIPA at ipa.home.arpa",
+    "Verify FreeIPA service readiness before Atlas enrollment"
+  ]
+}

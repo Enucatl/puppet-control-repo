@@ -163,7 +163,7 @@ check_dns_exact "AdGuard IPv4 router A" "$ADGUARD_V4" A router."$DHCP_DOMAIN" "1
 check_dns_exact "AdGuard IPv6 router A" "$ADGUARD_V6" A router."$DHCP_DOMAIN" "10.0.0.1" 90
 retry_line "dnsmasq router A" "10.0.0.1" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" router."$DHCP_DOMAIN" A +short
 
-for infra_name in atlas vault openvox; do
+for infra_name in atlas vault openvox ipa; do
     check_dns_exact "AdGuard IPv4 $infra_name A" "$ADGUARD_V4" A "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ip }}" 60
     check_dns_exact "AdGuard IPv6 $infra_name A" "$ADGUARD_V6" A "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ip }}" 60
     check_dns_exact "AdGuard IPv4 $infra_name AAAA" "$ADGUARD_V4" AAAA "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ula }}" 60
