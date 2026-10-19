@@ -14,8 +14,10 @@ have passed twice under #18 Stage A. See the
 [bootstrap runbook](../proxmox/README.md#independent-atlas-tooling-bootstrap-18-stage-a)
 and [live results](atlas-bootstrap-results.json). Explicit authority
 initialization is complete. Atlas's native agent is not yet enrolled, and an
-independent restore has not yet been tested. Live receive-hook execution still
-requires verification.
+independent restore has not yet been tested. A production push at `483173f`
+verified the live host hook, r10k/module deployment, generated types and compiler
+cache refresh. [Sanitized activation evidence](atlas-infra-results.json) records
+the identities, TLS checks and remaining acceptance work.
 
 The initialized Vault root certificate DER SHA-256 fingerprint is
 `9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea`.
@@ -23,6 +25,17 @@ The initial recovery kit is stored off-VM at
 `root@proxmox.home.arpa:/root/openvox-atlas-initial-20261019T162722Z`.
 All 18 archives passed SHA-256 verification, including all twelve persistent
 volumes. This establishes an initial backup, not independent restore acceptance.
+Both service names passed exact-name verification over IPv4 and IPv6 with
+TLS 1.3, ML-DSA-44 signatures and `X25519MLKEM768`; OpenVox rejected an
+`X25519`-only connection. Compiler certificate authentication can read the
+bootstrap Hiera KV marker and is denied unrelated KV access. Run that scoped
+check inside OpenVox with
+`/opt/puppetlabs/puppet/bin/ruby /infra/infra-vault-check.rb`; it prints no login
+token or secret contents.
+
+The initial OpenVox server leaf expires at **2026-10-20 16:23:10 UTC**.
+Automatic leaf renewal is not installed; renewal acceptance must precede that
+deadline. Authority recreation is not a renewal procedure.
 
 ## Atlas endpoint requirements (#13)
 

@@ -1,0 +1,151 @@
+{
+  "recorded_at": "2026-10-19T16:34:47.414470+00:00",
+  "issue": 13,
+  "activation_revision": "145302cd640391306057af508d60f2bdbb27d84b",
+  "verified_deployment_revision": "483173fdb5588d2e3a6daaf296bdb7fe19dfff36",
+  "host": "atlas.home.arpa",
+  "vm_id": 210,
+  "vm_ownership": "openvox-authority:atlas.home.arpa",
+  "services": {
+    "openvox": "healthy",
+    "vault": "healthy",
+    "vault-unsealer": "healthy"
+  },
+  "identities": {
+    "root_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+    "key_sha256": {
+      "openvox_ca_key": "ac077fb1300bc6271ea4e14cf791e161639b427ae332f150ac9cd43733a9974c",
+      "openvox_server_key": "9d649ef3f7db5fe89fd88476e33ce5b68d289b4098f7cc2e3e093c52b6f6c080"
+    },
+    "certificates": {
+      "openvox": [
+        {
+          "subject": "/CN=openvox.home.arpa",
+          "issuer": "/CN=OpenVox intermediate",
+          "der_sha256": "9f7db551ed50daa41bf52fe1c1dec6ee7597d4855648679b9241f474fccca1a4",
+          "algorithm": "ML-DSA-44",
+          "not_after": "2026-10-20 16:23:10 UTC",
+          "serial": "01"
+        },
+        {
+          "subject": "/CN=OpenVox intermediate",
+          "issuer": "/CN=Atlas infrastructure root",
+          "der_sha256": "9491631ff50ab25854c938ebdb1192794ac95d8874a23221f2f0b70af1c27e92",
+          "algorithm": "ML-DSA-44",
+          "not_after": "2031-10-18 16:23:09 UTC",
+          "serial": "76E137D04FC0E1DAE7E93D3B991DE56E6191B05F"
+        },
+        {
+          "subject": "/CN=Atlas infrastructure root",
+          "issuer": "/CN=Atlas infrastructure root",
+          "der_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+          "algorithm": "ML-DSA-44",
+          "not_after": "2036-10-16 16:23:08 UTC",
+          "serial": "77B1DB9AD40DF8B37C06BD8B5A4D753F282FDF49"
+        }
+      ],
+      "vault": [
+        {
+          "subject": "/CN=vault.home.arpa",
+          "issuer": "/CN=Atlas services intermediate",
+          "der_sha256": "604e85cc4b5a5097d8c695d31e0b300889272a4e9bfac905e7d98c079611c99f",
+          "algorithm": "ML-DSA-44",
+          "not_after": "2026-11-18 16:23:11 UTC",
+          "serial": "03E083DF45D10265AE646ABB48BD4C3B96F8CCBB"
+        },
+        {
+          "subject": "/CN=Atlas services intermediate",
+          "issuer": "/CN=Atlas infrastructure root",
+          "der_sha256": "afc513f45a296ed7f02e2977fc28f676eccf0c87a66fae397fe26433148adbd0",
+          "algorithm": "ML-DSA-44",
+          "not_after": "2031-10-18 16:23:10 UTC",
+          "serial": "64B7A4F8F314B60633A078A160637A9E9AD97CCC"
+        },
+        {
+          "subject": "/CN=Atlas infrastructure root",
+          "issuer": "/CN=Atlas infrastructure root",
+          "der_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+          "algorithm": "ML-DSA-44",
+          "not_after": "2036-10-16 16:23:08 UTC",
+          "serial": "77B1DB9AD40DF8B37C06BD8B5A4D753F282FDF49"
+        }
+      ]
+    }
+  },
+  "identity_preservation": {
+    "root_unchanged_across_retries": true,
+    "openvox_ca_key_and_certificate_unchanged": true,
+    "openvox_server_key_and_certificate_unchanged": true,
+    "openvox_private_keys_seed_only": true,
+    "chain_signatures_exact_issuer_names_and_lifetime_bounds_verified": true
+  },
+  "transport": {
+    "endpoints": [
+      "openvox.home.arpa:8140",
+      "vault.home.arpa:8200"
+    ],
+    "addresses_tested": [
+      "10.0.0.158",
+      "fd6b:d722:1738:0:be24:11ff:fe4e:a49e"
+    ],
+    "verified_exact_service_names": true,
+    "protocol": "TLSv1.3",
+    "handshake_signatures": "ML-DSA-44",
+    "key_exchange": "X25519MLKEM768",
+    "openvox_classical_only_group_rejected": true,
+    "vault_classical_fallback": "existing accepted exception retained"
+  },
+  "deployment": {
+    "initial_environments": [
+      "production",
+      "dev"
+    ],
+    "live_production_push_test": "483173fdb5588d2e3a6daaf296bdb7fe19dfff36",
+    "r10k_modules_types_and_cache_flush_passed": true,
+    "deploy_status": 0,
+    "compiler_certificate_auth": true,
+    "compiler_hiera_kv_marker_read": true,
+    "compiler_unrelated_kv_access_denied": true,
+    "full_hiera_catalog_convergence_tested": false
+  },
+  "backup": {
+    "atlas_directory": "/scratch/vault/atlas-initial-20261019T162722Z",
+    "independent_host": "proxmox.home.arpa",
+    "independent_directory": "/root/openvox-atlas-initial-20261019T162722Z",
+    "control_revision": "145302cd640391306057af508d60f2bdbb27d84b",
+    "manifest_sha256": "7afb5654fd2771ccf940ea617feb610498aae7bee8beebb251f01b6fb8990f07",
+    "volumes": 12,
+    "archives": 18,
+    "all_archives_sha256_verified_after_transfer": true,
+    "root_owned_directory_mode": "0700",
+    "files_have_no_group_or_other_access": true,
+    "separate_credentials_configuration_receiver_and_exact_images_included": true,
+    "services_healthy_after_stop_and_restart": true,
+    "restoration_tested": false,
+    "physical_disk_independence_claimed": false,
+    "images": {
+      "openvox": "sha256:107d625d180a71dd0f7b5f0d5038685660d5aa5b78e3bbb775ab7d9d0c6bd3a4",
+      "vault": "sha256:da136525129b45de85e7e5affdf4342416e96632cc3488621f160eae6ac7c95d",
+      "unsealer": "sha256:a67e3128a302d2f173a09252bfde6c124b57673073925e7b30c0b1ff4709eed3"
+    }
+  },
+  "accepted_artifacts": {
+    "base_image": "ghcr.io/enucatl/openvox-server@sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97",
+    "openvox_agent_and_server_package_version": "9.1.0+homelab.24001-1+ubuntu26.04",
+    "vault_image": "hashicorp/vault@sha256:e0acd3c681bdf57f002d7214e5d050b876e1704678005c6b0406dd96a65be919"
+  },
+  "checks": {
+    "disposable_pki_checks_passed": 8,
+    "focused_tests_passed": 96,
+    "ruff_bash_shellcheck_and_ruby_syntax": "passed",
+    "hosted_ci": "queued when recorded"
+  },
+  "remaining": [
+    "Native Atlas enrollment and manual/scheduled full Hiera catalogs, facts and reports",
+    "Renewal, revocation/replacement and invalid/legacy identity rejection acceptance",
+    "OpenVox server leaf renewal before 2026-10-20 16:23:10 UTC; automatic renewal is not installed",
+    "Reboot/image rollback and independently restored established identities",
+    "Atlas-specific Vault internal key storage audit; accepted Vault 2.2.0 audit remains prior evidence"
+  ],
+  "issue_closed": false
+}
