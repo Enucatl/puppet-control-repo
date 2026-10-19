@@ -420,7 +420,7 @@ def test_compose_model_keeps_runtime_isolated(monkeypatch: pytest.MonkeyPatch) -
     assert not any(network.get("external") for network in model["networks"].values())
     for name, service in model["services"].items():
         assert service["user"] == "999:999"
-        assert service["image"] == "openvox-rehearsal-tools:22001"
+        assert service["image"] == "openvox-rehearsal-tools:24001"
         assert not service.get("env_file")
         if name not in ("root", "deploy"):
             assert set(service["networks"]) == {"default"}

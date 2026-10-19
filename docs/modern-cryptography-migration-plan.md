@@ -4,7 +4,7 @@
 superseded for #12–#14 by the fresh ML-DSA-44 Vault-held root decision in the
 [current container plan](openvox-container-migration-plan.md). They are retained
 as design history, not installation commands or prerequisites. The current
-rehearsal uses the accepted OpenVox 22001 packages, a Vault-held ML-DSA root and
+rehearsal uses the accepted OpenVox 24001 packages, a Vault-held ML-DSA root and
 separate OpenVox/FreeIPA intermediates. Follow the [infra runbook](openvox-infra.md),
 [offline-root runbook](openvox-offline-root.md) and
 [measured Vault limits](openvox-vault-limitations.md) instead of the legacy

@@ -26,7 +26,7 @@ services:
     build:
       context: ./openvox
       dockerfile: infra.Dockerfile
-    image: infra-openvox:22001
+    image: infra-openvox:24001
     hostname: docker.home.arpa
     user: "999:999"
     command: [bash, /infra/infra-start.sh]

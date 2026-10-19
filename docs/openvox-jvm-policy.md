@@ -93,7 +93,7 @@ docker --host unix:///var/run/docker.sock run --rm --network none --read-only \
   --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=999,gid=999 \
   -e OPENSSL_CONF=/infra/openssl.cnf -v "$infra_policy_stage:/infra:ro" \
   --entrypoint /opt/puppetlabs/puppet/bin/ruby \
-  ghcr.io/enucatl/openvox-server@sha256:7b28e8e6937c5e5d1550f86fa540d711adcd0e31e393ac1b2c50821fd598b12a \
+  ghcr.io/enucatl/openvox-server@sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97 \
   /infra/infra-jvm-policy-check.rb
 rm -r "$infra_policy_stage"
 ```

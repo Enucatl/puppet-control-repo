@@ -255,7 +255,7 @@ def stage() -> None:
         ["git", "-C", str(STAGE), "rev-parse", "HEAD"]
     ).strip()
     REPORT["image"] = (
-        "ghcr.io/enucatl/openvox-server@sha256:7b28e8e6937c5e5d1550f86fa540d711adcd0e31e393ac1b2c50821fd598b12a"
+        "ghcr.io/enucatl/openvox-server@sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97"
     )
     REPORT["docker_host"] = daemon
     model = json.loads(compose("--profile", "*", "config", "--format", "json"))
@@ -826,7 +826,7 @@ def run() -> None:
     """Exercise disposable initialization, real workflows and lifecycle persistence."""
     stage()
     absent = subprocess.run(
-        DOCKER + ["run", "--rm", "--network", "none", "openvox-rehearsal-tools:22001"],
+        DOCKER + ["run", "--rm", "--network", "none", "openvox-rehearsal-tools:24001"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         timeout=20,
@@ -854,7 +854,7 @@ def run() -> None:
     compose("up", "-d", "--no-deps", "agent")
     REPORT["tools_image_id"] = execute(
         DOCKER
-        + ["image", "inspect", "openvox-rehearsal-tools:22001", "--format", "{{.Id}}"]
+        + ["image", "inspect", "openvox-rehearsal-tools:24001", "--format", "{{.Id}}"]
     ).strip()
     REPORT["build_manifest"] = json.loads(
         inside("openvox", ["cat", "/usr/share/openvox/build-manifest.json"])

@@ -8,7 +8,7 @@ Compose also permits explicit service selection to bypass a profile, so the
 profile prevents accidental inclusion in a whole-stack start, not deliberate
 activation by an operator.
 
-The accepted `22001` OpenVox image is pinned by digest in
+The accepted `24001` OpenVox image is pinned by digest in
 `docker/openvox/infra.Dockerfile`; the derived image adds Git and r10k 5.0.3.
 Provider/JDK/package policy remains owned by the accepted image. The service
 runs as UID/GID 999, with a read-only image, dropped capabilities, bounded JVM

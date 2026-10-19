@@ -48,7 +48,7 @@ Vault must allow `auth/token/create-orphan` for a single-use, two-hour service
 token with only the `puppet-enrollment` policy and the guest certname as metadata.
 Keep credentials in local files or secret storage, outside version control.
 
-Native installation now uses the signed OpenVox 22001 archive on Ubuntu
+Native installation now uses the signed OpenVox 24001 archive on Ubuntu
 24.04/26.04 or Debian 13 amd64, with authenticated archive key and OS-specific
 preferences. Puppet Core/Forge credentials are no longer installation inputs.
 The shared installer leaves the service masked until `mldsa44`, native TLS policy

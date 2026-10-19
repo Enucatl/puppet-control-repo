@@ -1,8 +1,8 @@
 # OpenVox container and fresh-chain deployment (#12)
 
 Use the accepted image digest
-`sha256:7b28e8e6937c5e5d1550f86fa540d711adcd0e31e393ac1b2c50821fd598b12a`
-from `ghcr.io/enucatl/openvox-server`, build 22001. The new infra profile is
+`sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97`
+from `ghcr.io/enucatl/openvox-server`, build 24001. The new infra profile is
 prepared, but production remains on the original host service. #13 owns its
 cutover and production agent re-enrollment.
 
@@ -72,7 +72,7 @@ through the cutover procedure.
 
 The installer verifies fingerprint
 `775661C709ACE6F7C1CF0FF6C4B7528F03E0BB94`, scopes `Signed-By`, installs the
-matching OS preferences and selects an exact 22001 package version. Unsupported
+matching OS preferences and selects an exact 24001 package version. Unsupported
 OS/architecture combinations fail before package/service changes. Repeat
 platform acceptance and replace preferences when changing OS; retain the
 matching rollback artifacts independently.
