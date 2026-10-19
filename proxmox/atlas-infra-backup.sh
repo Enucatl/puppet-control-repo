@@ -83,7 +83,7 @@ if [[ -n ${ipa_identity:-} ]]; then
     if [[ $ipa_running == true ]]; then containers+=(infra-ipa-1); fi
 fi
 for repository in "$source" "$baseline"; do
-    [[ -z $(git -c "safe.directory=$repository" -C "$repository" status --porcelain) ]] || {
+    [[ -z $(git --no-optional-locks -c "safe.directory=$repository" -C "$repository" status --porcelain) ]] || {
         echo "Commit or preserve checkout changes before backup: $repository" >&2; exit 1;
     }
 done

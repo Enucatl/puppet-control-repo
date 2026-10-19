@@ -86,8 +86,22 @@ def publishing(tmp_path: Path) -> Path:
     commands = {
         "id": 'cat "$TEST_ROOT/uid"',
         "hostname": 'cat "$TEST_ROOT/hostname"',
-        "runuser": '[[ $1 == -u && $2 == user_l && $3 == -- ]]; shift 3; exec "$@"',
-        "chown": ":",
+        "runuser": r"""
+[[ $1 == -u && $2 == user_l && $3 == -- ]]
+if [[ -f $TEST_ROOT/root-index && ! -f $TEST_ROOT/index-repaired ]]; then exit 42; fi
+shift 3
+exec "$@"
+""",
+        "stat": r"""
+if [[ -f $TEST_ROOT/root-index && $* == *'.git/index' ]]; then echo 0
+else exec /usr/bin/stat "$@"; fi
+""",
+        "chown": r"""
+if [[ ${@: -1} == "$TEST_ROOT/opt/docker/puppet-control-repo/.git/index" ]]; then
+    [[ $1 == --no-dereference && $2 == user_l:docker ]]
+    touch "$TEST_ROOT/index-repaired"
+fi
+""",
         "install": r"""
 arguments=()
 while (( $# )); do
@@ -582,3 +596,42 @@ def test_publishing_waits_for_backup_before_checkout_or_ref_changes(
         result = pending.result(timeout=10)
     assert result.returncode == 0, result.stderr
     assert git(checkout, "rev-parse", "production") == revision
+
+
+@pytest.mark.parametrize("dirty", [False, True])
+def test_publisher_repairs_root_private_index_without_discarding_edits(
+    publishing: Path, dirty: bool
+) -> None:
+    """Recover the earlier backup's ownership change before enforcing cleanliness."""
+    (publishing / "root-index").touch()
+    checkout = publishing / "opt/docker/puppet-control-repo"
+    (checkout / ".git/index").chmod(0o600)
+    if dirty:
+        (checkout / "fixture").write_text("operator edits")
+    result = run_script(
+        publishing, "atlas-publish.sh", (publishing / "revision").read_text()
+    )
+    assert (publishing / "index-repaired").exists()
+    assert (result.returncode == 0) == (not dirty), result.stderr
+    if dirty:
+        assert (checkout / "fixture").read_text() == "operator edits"
+        assert (
+            git(publishing / "github.git", "rev-parse", "production")
+            == (publishing / "base").read_text()
+        )
+
+
+def test_publisher_does_not_repair_symlink_index(publishing: Path) -> None:
+    """Ownership recovery must never follow an index pointing outside the checkout."""
+    (publishing / "root-index").touch()
+    index = publishing / "opt/docker/puppet-control-repo/.git/index"
+    outside = publishing / "external-index"
+    index.rename(outside)
+    index.symlink_to(outside)
+    before = outside.read_bytes()
+    result = run_script(
+        publishing, "atlas-publish.sh", (publishing / "revision").read_text()
+    )
+    assert result.returncode != 0
+    assert not (publishing / "index-repaired").exists()
+    assert outside.read_bytes() == before

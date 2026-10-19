@@ -15,6 +15,11 @@ checkout=/opt/docker/puppet-control-repo
 bare=/opt/git/openvox/control.git
 control_git=(runuser -u user_l -- git -C "$checkout")
 bare_git=(runuser -u user_l -- git --git-dir="$bare")
+# Earlier root backup checks could replace this public index with a private one.
+index="$checkout/.git/index"
+if [[ -f $index && ! -L $index && $(stat -c %u "$index") == 0 ]]; then
+    chown --no-dereference user_l:docker "$index"
+fi
 [[ $("${control_git[@]}" remote get-url origin) == "$github" &&
    -z $("${control_git[@]}" status --porcelain) ]] || {
     echo 'Atlas requires a clean control checkout with its expected GitHub origin.' >&2; exit 1;

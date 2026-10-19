@@ -555,3 +555,19 @@ def test_failed_backup_restores_previously_running_ipa_and_checks_health(
     commands = (authority / "commands").read_text()
     assert " start ipa\n" in commands
     assert (authority / "ipa-stopped").exists() == (failure == "ipa-restore")
+
+
+def test_backup_does_not_rewrite_checkout_indexes(authority: Path) -> None:
+    """A read-only cleanliness check must not leave Git's index owned by root."""
+    indexes = {}
+    for repository in ("puppet-control-repo", "compose-security-baseline"):
+        checkout = authority / "opt/docker" / repository
+        index = checkout / ".git/index"
+        indexes[index] = (index.stat().st_ino, index.read_bytes())
+        tracked = checkout / "configuration"
+        previous = tracked.stat().st_mtime_ns
+        os.utime(tracked, ns=(previous + 2_000_000_000, previous + 2_000_000_000))
+    result = backup(authority)
+    assert result.returncode == 0, result.stderr
+    for index, before in indexes.items():
+        assert (index.stat().st_ino, index.read_bytes()) == before
