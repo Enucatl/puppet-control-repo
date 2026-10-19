@@ -1,0 +1,54 @@
+{
+  "verified_at": "2026-10-19T16:06:34+00:00",
+  "production_revision": "c96c722290cf289ada386e4de76b8947dc6c8c9d",
+  "image_id": "sha256:86f139f6d39a25ae793ec8cafbcecbe29867579e3819ce2122c5d946a12a1129",
+  "container_uid_gid": "999:999",
+  "host_uid_gid": "100999:100999",
+  "userns_remap_verified": true,
+  "source_read_only": true,
+  "source_write_denied": true,
+  "deployment_status_writable": true,
+  "r10k_checkout_passed": true,
+  "module_installation_tested": false,
+  "service_started": false,
+  "authority_initialized": false,
+  "bare_repository": "/opt/git/openvox/control.git",
+  "bare_owner_mode": "user_l:docker 2775",
+  "bare_core_shared_repository": "0664",
+  "private_working_tree_owner_mode": "user_l:docker 2770",
+  "container_bind_target": "/git/control.git",
+  "git_transport": "file:///git/control.git",
+  "git_safe_directory": "/git/control.git",
+  "base_image": "ghcr.io/enucatl/openvox-server@sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97",
+  "r10k_version": "5.0.3",
+  "network": "none",
+  "writable_test_storage": "Disposable tmpfs for /git, /var/cache/r10k and /etc/puppetlabs/code; no persistent volumes created",
+  "infrastructure_containers": 0,
+  "authority_volumes": 0,
+  "focused_tests_passed": 19,
+  "checks_passed": [
+    "Real-Git integration tests",
+    "Compose model checks",
+    "Ruff",
+    "Bash syntax",
+    "ShellCheck",
+    "git diff --check"
+  ],
+  "source_sha256": {
+    "proxmox/atlas-publish.sh": "06b65e0df63817db8e45b7f15fda1a2b73cb8bf6fc97658c0b0c7446bfea4437",
+    "proxmox/atlas-git-access-check.sh": "9450eb64951bc724ca90daafbed5c20a408d9a60a419265e6cdb618924ec3654",
+    "docker/openvox/infra.Dockerfile": "b8dee572b767b291834c82f279bf77302535812d39827000dd8434a5bae115cb",
+    "docker/openvox/infra-r10k.yaml": "f1c003c61e41df5afc98d899ac44dd10da04e1f287322214bd90fca7650089c5",
+    "docker/docker-compose.yml": "d1b1404ea6e3d93a4337a372d720d502c786e5eb4702f2d62f181adc599e8398"
+  },
+  "ci_observed": {
+    "status": "queued",
+    "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39282865045"
+  },
+  "deferred_acceptance": [
+    "Persistent runtime volume preparation, host receive dispatch and startup hook validation (#13)",
+    "Full module installation, Puppet type generation and authenticated cache refresh (#13)",
+    "New authority initialization, service activation and Atlas enrollment (#13)",
+    "Established identity and independent state recovery (#18)"
+  ]
+}

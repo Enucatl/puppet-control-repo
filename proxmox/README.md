@@ -304,7 +304,19 @@ it uses container paths and cannot run directly as the host's Git hook. Its
 startup hook check must match the dispatch arrangement. Initial code deployment
 must precede normal startup; root/CA initialization remains separate and explicit.
 
-Live publishing acceptance passed on **2026-10-19**, using script revision
+Public read-only access acceptance passed on **2026-10-19**, using revision
+`c96c722290cf289ada386e4de76b8947dc6c8c9d`. The actual `24001` derived image,
+with container UID/GID `999:999` mapped to host `100999:100999`, read the host
+bare repository and deployed its exact `production` commit with r10k. The test
+verified read-only mount flags, rejected source writes and writable deployment
+status, with networking disabled and all writable test state on tmpfs.
+The bare roots were `2775`, future Git permissions `0664`, and `/opt/docker`
+remained `2770`. **19 focused tests passed**. See the
+[access-check evidence](../docs/atlas-git-access-results.json).
+The offline check skips module installation; service activation and full
+deployment acceptance remain #13 work.
+
+Initial publishing acceptance passed on **2026-10-19**, using script revision
 `9586b9c5cacf9906cbf1b73a8da997fa4e03e272`. Two setup/publication runs completed;
 an ordinary `git push` from a separate Atlas SSH session then reached both
 production targets using the stored configuration. Both refs matched the
