@@ -20,6 +20,16 @@ write_files:
     content: |
 ${CONFIGURE_PUPPET_SCRIPT}
 
+  - path: /usr/local/bin/install-openvox.sh
+    permissions: '0755'
+    content: |
+${INSTALL_OPENVOX_SCRIPT}
+
+  - path: /etc/puppetlabs/puppet/ssl/certs/ca.pem
+    permissions: '0644'
+    content: |
+${OPENVOX_CA_BUNDLE}
+
   - path: /etc/docker/daemon.json
     content: |
       {
@@ -65,10 +75,11 @@ runcmd:
   - echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
 
   - apt update
-  - apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin puppet-agent vault
+  - apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin vault
+  - bash /usr/local/bin/install-openvox.sh
 
   - mkdir -p /home/user/docker
-  - /usr/local/bin/configure-puppet.sh '${NODE_TYPE}' '${VM_TOKEN}' '${VM_FQDN}' '${PUPPET_SERVER}'
+  - ${PUPPET_ENROLLMENT_COMMAND}
 
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent

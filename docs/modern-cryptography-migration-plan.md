@@ -1,33 +1,24 @@
 # Development Infrastructure And Cryptography Migration Plan
 
-## Updated deployment decision (18 October 2026)
+**Historical design:** the mirror-first Ed25519/ECDSA proposals below are
+superseded for #12–#14 by the fresh ML-DSA-44 Vault-held root decision in the
+[current container plan](openvox-container-migration-plan.md). They are retained
+as design history, not installation commands or prerequisites. The current
+rehearsal uses the accepted OpenVox 18001 packages, a Vault-held ML-DSA root and
+separate OpenVox/FreeIPA intermediates. Follow the [infra runbook](openvox-infra.md),
+[offline-root runbook](openvox-offline-root.md) and
+[measured Vault limits](openvox-vault-limitations.md) instead of the legacy
+online-root/default-RSA paths below. Atlas subsequently restores the established
+new hierarchy; production enrollment remains #13.
 
-This document records the original development-mirror and classical-cryptography
-proposal. The [OpenVox container migration
-plan](openvox-container-migration-plan.md) now governs server deployment and
-supersedes the host-installed server steps below. Target OpenVox 9 Server in
-`puppet-control-repo`'s `infra` Compose stack, first on existing
-`docker.home.arpa`, then on Atlas. Build a custom Ubuntu 26.04 image from the
-signed, promoted, exact fork server/agent package pair in
-`Enucatl/openvox-packages`; carry the explicit Java 25 and BCJSSE/security
-configuration into its launcher. Stock upstream container compatibility with
-the custom forks has not been established. Publish the accepted fork image to
-`ghcr.io/enucatl/openvox-server:9.1.0-mldsa.13001`, with moving `:9.1.0` and
-`:latest` aliases, and deploy/recover by recorded digest. The APT release
-remains `resolute-13001`; it is not the image tag.
-
-Preserve isolated development PKI, branch/domain separation, r10k, autosign,
-ENC, and Vault acceptance. Add persistent identity/configuration/runtime/code
-state, container recreation and restore checks, and independent Compose
-bootstrap/recovery without requiring the server's own live agent or circular
-Vault access. Expose mTLS directly on 8140 initially; Traefik TCP TLS passthrough
-is optional. The container supplies 26.04 userland on the existing host after
-acceptance; native Ubuntu 24.04 and Debian agents remain separate compatibility
-gates. The completed target covers the core infrastructure application stack;
-host agents, Docker hosts, and hypervisors remain host components.
-
-The current-state inventory and historical crypto experiments below are not
-evidence that the new container is deployed or that live PKI has migrated.
+Scope: this document describes a separate development mirror and later
+cryptography experiments. The active OpenVox/Ubuntu migration sequence is in
+[the migration plan](26.04-migration-plan.md) and
+[roadmap #9](https://github.com/Enucatl/puppet-control-repo/issues/9).
+An isolated Atlas restore preserves existing authorities; it is not this
+fresh-identity dev mirror. The instructions below are a design plan, not a
+verified bootstrap runbook; reconcile older environment/credential assumptions
+with the current Vault bootstrap documentation before implementing them.
 
 The first goal is to build a faithful development mirror of the infrastructure
 bootstrap path. Modern cryptography experiments should run only after that dev
@@ -104,8 +95,8 @@ Provision `docker.dev.home.arpa` as the development equivalent of
   - Build command: `docker compose -f docker/docker-compose.yml build`
   - Deploy command: `docker compose -f docker/docker-compose.yml up -d --force-recreate`
   - Compose environment files: `COMPOSE_ENV_FILES=../.env,./.env`
-- Build and run the custom OpenVox Server container in the dev `infra` stack,
-  using the same image and launcher model intended for production.
+- Install Puppet Server on the dev VM with the same host-installed Puppet Server
+  model used in production.
 - Run the same repo bootstrap path on the dev VM:
   - `05-clone-puppet-repo.sh` creates `/opt/git/puppet-control-repo.git`,
     installs `r10k`, installs the post-receive hook, and creates Puppet
@@ -191,9 +182,7 @@ the domain and branch.
 Before changing cryptography, prove the dev mirror can reproduce production
 behavior.
 
-- Verify the dev OpenVox Server runs in the `infra` Compose stack, survives
-  recreation with its identity intact, and can be restored independently of its
-  own agent and Vault-backed catalog access.
+- Verify the dev Puppet Server runs via systemd.
 - Verify SSH access works as `user_l@docker.dev.home.arpa` with the injected
   Ed25519 key.
 - Verify `user_l` can run `sudo -n true` without an interactive password
@@ -267,10 +256,6 @@ After the dev mirror is proven, use it to test modern cryptography changes.
   ```
 
 - Verify Puppet Server state:
-
-  The following host-systemd command is retained only as a reference for the
-  original deployment. Container state and CA commands must use the accepted
-  Compose service once that service is implemented.
 
   ```sh
   ssh user_l@docker.dev.home.arpa

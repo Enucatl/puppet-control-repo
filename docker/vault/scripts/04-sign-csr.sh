@@ -2,6 +2,17 @@
 
 set -eu
 
+if [ "${1:-}" = --offline-root ]; then
+    cat >&2 <<'EOF'
+Offline-root mode rejects FreeIPA CA-full/subordinate-CA CSR signing.
+Use the separate offline-root-signed online FreeIPA ML-DSA intermediate from
+02-pki-intermediate.sh --offline-root. FreeIPA must use CA-less leaf issuance;
+the real consumer compatibility and issuance workflow belong to #14.
+No CSR was signed and no files were written. See docs/openvox-offline-root.md.
+EOF
+    exit 2
+fi
+
 . /scripts/config.sh
 
 # 2. Define paths

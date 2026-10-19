@@ -2,6 +2,16 @@
 
 set -eu
 
+if [ "${1:-}" = --offline-root ]; then
+    shift
+    ruby=${OPENVOX_RUBY:-/opt/puppetlabs/puppet/bin/ruby}
+    if [ ! -x "$ruby" ]; then
+        echo 'Offline-root mode requires accepted OpenVox native Ruby/OpenSSL; set OPENVOX_RUBY and OPENSSL_CONF, or run inside the accepted image.' >&2
+        exit 2
+    fi
+    exec "$ruby" "$(dirname "$0")/offline-intermediate.rb" "$@"
+fi
+
 . /scripts/config.sh
 
 echo "--- Starting Intermediate CA Setup ---"

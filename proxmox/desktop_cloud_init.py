@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def build_cloud_config(
-    token: str, certname: str, puppet_server: str, domain_suffix: str
+    token: str, certname: str, puppet_server: str, domain_suffix: str, ca_bundle: str
 ) -> dict[str, object]:
     """Return cloud-init data with literal enrollment arguments and script content."""
     hostname = certname.split(".", 1)[0]
@@ -32,7 +32,17 @@ def build_cloud_config(
                 "path": "/usr/local/bin/configure-puppet.sh",
                 "permissions": "0755",
                 "content": Path(__file__).with_name("configure-puppet.sh").read_text(),
-            }
+            },
+            {
+                "path": "/usr/local/bin/install-openvox.sh",
+                "permissions": "0755",
+                "content": Path(__file__).with_name("install-openvox.sh").read_text(),
+            },
+            {
+                "path": "/etc/puppetlabs/puppet/ssl/certs/ca.pem",
+                "permissions": "0644",
+                "content": ca_bundle,
+            },
         ],
         "runcmd": [
             "set -e",
@@ -58,9 +68,9 @@ def build_cloud_config(
                 "libnss-resolve",
                 "linux-firmware",
                 "linux-image-generic",
-                "puppet-agent",
                 "vault",
             ],
+            ["bash", "/usr/local/bin/install-openvox.sh"],
             ["apt-get", "install", "-y", "--install-recommends", "ubuntu-desktop"],
             ["systemctl", "mask", "systemd-networkd-wait-online.service"],
             [

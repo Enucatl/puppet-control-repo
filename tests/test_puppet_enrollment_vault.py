@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import socket
+import ssl
 import subprocess
 import threading
 import time
@@ -56,7 +57,8 @@ def vault(
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
-    address = f"http://127.0.0.1:{port}"
+    address = f"https://127.0.0.1:{port}"
+    ca = directory / "vault-ca.pem"
     environment = {"PATH": os.environ["PATH"], "HOME": str(directory)}
     with (directory / "server.log").open("w") as log:
         process = subprocess.Popen(
@@ -64,6 +66,8 @@ def vault(
                 binary,
                 "server",
                 "-dev",
+                "-dev-tls",
+                f"-dev-tls-cert-dir={directory}",
                 "-dev-root-token-id=disposable-enrollment-root",
                 f"-dev-listen-address=127.0.0.1:{port}",
             ],
@@ -76,14 +80,20 @@ def vault(
             deadline = time.monotonic() + 15
             while True:
                 try:
-                    with urlopen(f"{address}/v1/sys/health", timeout=1) as response:
+                    with urlopen(
+                        f"{address}/v1/sys/health",
+                        context=ssl.create_default_context(cafile=str(ca)),
+                        timeout=1,
+                    ) as response:
                         assert response.status == 200
                     break
-                except URLError:
+                except URLError, FileNotFoundError:
                     if process.poll() is not None or time.monotonic() >= deadline:
                         pytest.fail("Disposable Vault failed to start")
                     time.sleep(0.05)
-            root = hvac.Client(url=address, token="disposable-enrollment-root")
+            root = hvac.Client(
+                url=address, token="disposable-enrollment-root", verify=str(ca)
+            )
             policy_script = (
                 ROOT / "docker/vault/scripts/08-vault-puppet-policy.sh"
             ).read_text()
@@ -118,7 +128,7 @@ def vault(
                 canonical_id=entity["data"]["id"],
                 mount_accessor=root.sys.list_auth_methods()["userpass/"]["accessor"],
             )
-            issuer = hvac.Client(url=address)
+            issuer = hvac.Client(url=address, verify=str(ca))
             issuer.auth.userpass.login("provisioner", "disposable-password")
             assert issuer.auth.token.lookup_self()["data"]["identity_policies"] == [
                 "administrator-identity"
@@ -173,6 +183,7 @@ def enrollment_token(vault: tuple[hvac.Client, str], certname: str = CERTNAME) -
             "PATH": os.environ["PATH"],
             "VAULT_ADDR": root.url,
             "VAULT_TOKEN": issuer_token,
+            "VAULT_CACERT": root.adapter.session.verify,
         },
         capture_output=True,
         text=True,
@@ -199,7 +210,11 @@ def approve(
 ) -> None:
     """Run the actual autosign validation with a freshly signed CSR."""
     autosign.validate_csr(
-        certname, make_csr(token, certname), vault[0].url, True, "home.arpa"
+        certname,
+        make_csr(token, certname),
+        vault[0].url,
+        vault[0].adapter.session.verify,
+        "home.arpa",
     )
 
 
@@ -279,6 +294,6 @@ def test_enrollment_has_no_runtime_or_admin_access(
     """Even a powerful issuer's identity must not grant enrollment extra access."""
     root, _ = vault
     token = enrollment_token(vault)
-    client = hvac.Client(url=root.url, token=token)
+    client = hvac.Client(url=root.url, token=token, verify=root.adapter.session.verify)
     with pytest.raises(hvac.exceptions.Forbidden):
         client.adapter.request(method, f"/v1/{path}", json=body)

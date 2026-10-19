@@ -1,0 +1,133 @@
+name: openvox-rehearsal
+
+x-runtime: &runtime
+  image: openvox-rehearsal-tools:18001
+  build:
+    context: .
+  user: "999:999"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  environment: &environment
+    OPENSSL_CONF: /rehearsal/openssl.cnf
+    VAULT_ADDR: https://vault.rehearsal.test:8200
+    VAULT_CACERT: /trust/root.pem
+    VAULT_CRL: /trust/vault-crls.pem
+    NO_PROXY: "*"
+    no_proxy: "*"
+
+services:
+  root:
+    <<: *runtime
+    profiles: [ceremony]
+    network_mode: none
+    command: [vault, server, -config=/rehearsal/root.hcl]
+    volumes:
+      - .:/rehearsal:ro
+      - root-state:/state
+    mem_limit: 384m
+    pids_limit: 128
+
+  vault:
+    <<: *runtime
+    hostname: vault.rehearsal.test
+    command: [vault, server, -config=/rehearsal/vault.hcl]
+    volumes:
+      - .:/rehearsal:ro
+      - vault-state:/state
+      - trust:/trust:ro
+    networks:
+      default:
+        aliases: [vault.rehearsal.test]
+    mem_limit: 512m
+    pids_limit: 128
+
+  openvox:
+    <<: *runtime
+    hostname: openvox.rehearsal.test
+    environment:
+      <<: *environment
+      JAVA_ARGS: >-
+        -Xms128m -Xmx768m -XX:ActiveProcessorCount=2
+        -Djava.security.properties=/opt/puppetlabs/server/data/puppetserver/java.security.mldsa
+        -Djdk.tls.namedGroups=X25519MLKEM768
+        -Djdk.tls.client.protocols=TLSv1.3
+        -Djdk.tls.server.protocols=TLSv1.3
+        -Djdk.tls.client.SignatureSchemes=mldsa44
+        -Djdk.tls.server.SignatureSchemes=mldsa44
+        -Dorg.bouncycastle.jsse.client.SignatureSchemesCert=mldsa44
+        -Dorg.bouncycastle.jsse.server.SignatureSchemesCert=mldsa44
+    command: [/opt/puppetlabs/server/apps/puppetserver/cli/apps/foreground]
+    restart: "no"
+    stop_grace_period: 45s
+    mem_limit: 1536m
+    pids_limit: 256
+    healthcheck:
+      test: [CMD, /opt/puppetlabs/puppet/bin/ruby, /rehearsal/ready.rb]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    volumes: &server-volumes
+      - .:/rehearsal:ro
+      - ../../scripts:/helpers:ro
+      - ./puppet.conf:/etc/puppetlabs/puppet/puppet.conf:ro
+      - ./webserver.conf:/etc/puppetlabs/puppetserver/conf.d/webserver.conf:ro
+      - ./ca.conf:/etc/puppetlabs/puppetserver/conf.d/ca.conf:ro
+      - ./rehearsal.conf:/etc/puppetlabs/puppetserver/conf.d/rehearsal.conf:ro
+      - server-ssl:/etc/puppetlabs/puppet/ssl
+      - server-ca:/etc/puppetlabs/puppetserver/ca
+      - server-data:/opt/puppetlabs/server/data/puppetserver/server_data
+      - server-gems:/opt/puppetlabs/server/data/puppetserver/jruby-gems
+      - code:/etc/puppetlabs/code
+      - git:/git
+      - r10k-cache:/var/cache/r10k
+      - trust:/trust
+
+  deploy:
+    <<: *runtime
+    profiles: [tools]
+    command: [bash, /rehearsal/deploy.sh]
+    volumes:
+      - .:/rehearsal:ro
+      - ../..:/source:ro
+      - code:/etc/puppetlabs/code
+      - git:/git
+      - r10k-cache:/var/cache/r10k
+      - server-ssl:/etc/puppetlabs/puppet/ssl
+      - server-data:/opt/puppetlabs/server/data/puppetserver/server_data
+      - ./puppet.conf:/etc/puppetlabs/puppet/puppet.conf:ro
+      - trust:/trust:ro
+    networks: [default, download]
+    mem_limit: 512m
+
+  agent:
+    <<: *runtime
+    profiles: [tools]
+    hostname: rehearsal.home.arpa
+    command: [sleep, infinity]
+    volumes:
+      - .:/rehearsal:ro
+      - ../../scripts:/helpers:ro
+      - ./agent.conf:/etc/puppetlabs/puppet/puppet.conf:ro
+      - agent-state:/agent
+      - trust:/trust:ro
+    mem_limit: 384m
+    pids_limit: 128
+
+networks:
+  default:
+    internal: true
+  download: {}
+
+volumes:
+  root-state: {}
+  vault-state: {}
+  trust: {}
+  server-ssl: {}
+  server-ca: {}
+  server-data: {}
+  server-gems: {}
+  code: {}
+  git: {}
+  r10k-cache: {}
+  agent-state: {}

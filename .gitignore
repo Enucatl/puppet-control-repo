@@ -11,3 +11,4 @@ node_modules
 __pycache__/
 repomix*xml
 provisioning/backup/
+.migration-inventory/

@@ -2,6 +2,23 @@
 
 set -euo pipefail
 
+if [ "${1:-}" = --offline-root ]; then
+  cat >&2 <<'EOF'
+Offline-root mode refuses host SSL deletion, RSA generation and systemd restart.
+After restoring/provisioning the OpenVox external volumes, prepare its CSR:
+docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml --profile openvox run --rm --no-deps --entrypoint /opt/puppetlabs/puppet/bin/ruby openvox /infra/infra-pki.rb prepare
+Have the offline root sign that CSR directly (path length zero), then populate
+the public trust volume with root.pem, root.crl and openvox-chain.pem.
+Copy the exported PEM root.crl.pem as /trust/root.crl; root.crl is the DER
+publication artifact and must not be used as this PEM import input.
+Import the pinned chain with:
+docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml --profile openvox run --rm --no-deps --entrypoint /opt/puppetlabs/puppet/bin/ruby openvox /infra/infra-pki.rb import --root-sha256 ROOT_SHA256
+See docs/openvox-infra.md and docs/openvox-offline-root.md; do not run these
+commands against production volumes until the #13 rollout is authorized.
+EOF
+  exit 2
+fi
+
 . "$(dirname "$0")/config.sh"
 
 if [ -f .env ]; then

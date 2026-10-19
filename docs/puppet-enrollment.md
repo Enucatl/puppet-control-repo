@@ -1,5 +1,15 @@
 # Puppet enrollment
 
+The #12 fresh-chain path uses accepted OpenVox packages and an offline ML-DSA-44
+root. Install with `proxmox/install-openvox.sh` and supply operator-authenticated
+public CA trust before enrollment. Guest/native provisioning takes its path
+from `OPENVOX_CA_CERT`; guests receive it at
+`/etc/puppetlabs/puppet/ssl/certs/ca.pem`. The shared helper sets and verifies
+`key_type=mldsa44`, loads native TLS/seed policy, and refuses an existing
+non-ML-DSA key. Existing identity replacement belongs to #13's explicit migration;
+changing the setting does not rotate an old key. See the
+[container plan](openvox-container-migration-plan.md).
+
 Provisioning creates a two-hour Vault service token for one exact Puppet
 certname. It has only `puppet-enrollment`, which permits
 `auth/token/lookup-self`. It is nonrenewable, has one use, excludes the default
@@ -15,6 +25,18 @@ Vault enforces consumption and concurrent-use protection. No local token state
 or separate revocation request is involved.
 
 ## Rollout
+
+For the new-chain compiler, set `VAULT_ADDR` to the direct verified HTTPS Vault
+endpoint, `VAULT_CACERT` to authenticated root trust, and `VAULT_CRL` to a PEM
+bundle containing current CRLs for every issuer in the Vault server chain.
+The autosigner rejects plaintext Vault endpoints. Configuring CRLs makes
+missing, expired or revoking CRLs fail before its single-use token is sent.
+Token-only enrollment still uses server-authenticated TLS without a client
+certificate. Refresh CRLs before expiry; do not disable checking to recover.
+
+The Vault Hiera compiler path uses its separate explicit `crl` option. The local
+fork implementing that option must be published/deployed before a fresh remote
+deployment can reproduce the [outbound acceptance](openvox-rehearsal-report.md).
 
 1. Install the new policy by running
    `docker/vault/scripts/08-vault-puppet-policy.sh` with an administrator Vault

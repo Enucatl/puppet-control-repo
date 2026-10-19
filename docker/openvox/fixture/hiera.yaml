@@ -1,0 +1,15 @@
+---
+version: 5
+hierarchy:
+  - name: Disposable rehearsal secrets from Vault
+    data_hash: vault_hiera_hash
+    uris:
+      - https://vault.rehearsal.test:8200/v1/kv/data/puppet
+    options:
+      timeout: 10
+      version: v2
+      auth_path: cert
+      auth_name: puppet-server
+      ca_trust: /trust/root.pem
+      crl: /trust/vault-crls.pem
+      fail_hard: true

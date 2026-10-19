@@ -15,7 +15,9 @@ hierarchy:
       version: "v2"
       auth_path: "cert"
       auth_name: "puppet-server"
-      ca_trust: "/usr/local/share/ca-certificates/ipa-ca/CN=Docker Home Arpa Root CA 634702368810934143245700742467692493878270055232.crt"
+      ca_trust: "/trust/root.pem"
+      crl: "/trust/outbound-crls.pem"
+      fail_hard: true
 
   - name: "Authenticated certificate identity"
     path: "nodes/%{trusted.certname}.yaml"

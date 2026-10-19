@@ -1,0 +1,1582 @@
+{
+  "checks": [
+    {
+      "name": "no host ports or external networks",
+      "passed": true
+    },
+    {
+      "name": "normal startup refuses missing CA and server identity",
+      "passed": true
+    },
+    {
+      "name": "offline-root-signed OpenVox CA imported with fresh server keys",
+      "passed": true
+    },
+    {
+      "name": "separate FreeIPA intermediate held by online Vault",
+      "passed": true
+    },
+    {
+      "name": "offline authority stopped before enrollment and catalog workflows",
+      "passed": true
+    },
+    {
+      "name": "r10k deploys real modules and safe production/dev catalogs",
+      "passed": true
+    },
+    {
+      "name": "openvox effective server key_type=mldsa44",
+      "passed": true
+    },
+    {
+      "name": "openvox effective agent key_type=mldsa44",
+      "passed": true
+    },
+    {
+      "name": "agent effective agent key_type=mldsa44",
+      "passed": true
+    },
+    {
+      "name": "established agent identity resumes catalog application",
+      "passed": true
+    },
+    {
+      "name": "agent_seed_only_key_and_mldsa44_certificate",
+      "passed": true
+    },
+    {
+      "name": "agent_key_matches_verified_leaf",
+      "passed": true
+    },
+    {
+      "name": "actual_native_agent_mtls13_hybrid_mldsa44",
+      "passed": true
+    },
+    {
+      "name": "openvox.rehearsal.test_full_mtls13_hybrid_mldsa44",
+      "passed": true
+    },
+    {
+      "name": "openvox.rehearsal.test_wrong_hostname_denied",
+      "passed": true
+    },
+    {
+      "name": "openvox.rehearsal.test_wrong_ca_denied",
+      "passed": true
+    },
+    {
+      "name": "vault.rehearsal.test_full_mtls13_hybrid_mldsa44",
+      "passed": true
+    },
+    {
+      "name": "vault.rehearsal.test_wrong_hostname_denied",
+      "passed": true
+    },
+    {
+      "name": "vault.rehearsal.test_wrong_ca_denied",
+      "passed": true
+    },
+    {
+      "name": "server_tls12_denied",
+      "passed": true
+    },
+    {
+      "name": "server_classical_key_exchange_denied",
+      "passed": true
+    },
+    {
+      "name": "vault_agent_certificate_login",
+      "passed": true
+    },
+    {
+      "name": "vault_agent_kv_read_denied",
+      "passed": true
+    },
+    {
+      "name": "vault_agent_bound_service_issuance",
+      "passed": true
+    },
+    {
+      "name": "vault_other_common_name_denied",
+      "passed": true
+    },
+    {
+      "name": "vault_other_dns_san_denied",
+      "passed": true
+    },
+    {
+      "name": "vault_ip_san_denied",
+      "passed": true
+    },
+    {
+      "name": "vault_other_role_denied",
+      "passed": true
+    },
+    {
+      "name": "recreation preserves CA and server identities",
+      "passed": true
+    },
+    {
+      "name": "agent converges after server recreation",
+      "passed": true
+    },
+    {
+      "name": "Git push and environment-cache invalidation expose updated Hiera data",
+      "passed": true
+    },
+    {
+      "name": "updated catalog converges",
+      "passed": true
+    },
+    {
+      "name": "catalog returns to the initial rehearsal value",
+      "passed": true
+    },
+    {
+      "name": "scheduled agent completes at least two convergent runs",
+      "passed": true
+    },
+    {
+      "name": "enrolled identity renews through the CA API",
+      "passed": true
+    },
+    {
+      "name": "renewal changes serial, preserves key and remains functional",
+      "passed": true
+    },
+    {
+      "name": "authorized CA revocation succeeds",
+      "passed": true
+    },
+    {
+      "name": "ML-DSA CRL published to Vault",
+      "passed": true
+    },
+    {
+      "name": "OpenVox reloads CRL and denies revoked identity",
+      "passed": true
+    },
+    {
+      "name": "authorized cleanup permits replacement enrollment",
+      "passed": true
+    },
+    {
+      "name": "real autosigner enrollment and first catalog apply",
+      "passed": true
+    },
+    {
+      "name": "single-use enrollment token replay denied",
+      "passed": true
+    },
+    {
+      "name": "subsequent catalog converges",
+      "passed": true
+    },
+    {
+      "name": "catalog obtained real Vault Hiera value",
+      "passed": true
+    },
+    {
+      "name": "replacement identity has a fresh certificate and key",
+      "passed": true
+    },
+    {
+      "name": "online Vault restart preserves hierarchy and Hiera",
+      "passed": true
+    },
+    {
+      "name": "runtime keys, certificate chain, issuer constraints and CRLs verified",
+      "passed": true
+    },
+    {
+      "name": "all disposable volumes, configuration and exact images archived with private permissions",
+      "passed": true
+    },
+    {
+      "name": "independent restore preserves offline root identity",
+      "passed": true
+    },
+    {
+      "name": "independent restore preserves OpenVox CA and server identities",
+      "passed": true
+    },
+    {
+      "name": "restored native agent applies a catalog",
+      "passed": true
+    },
+    {
+      "name": "restored Vault Hiera value matches original",
+      "passed": true
+    },
+    {
+      "name": "restored native agent converges",
+      "passed": true
+    },
+    {
+      "name": "restored runtime seed encodings, chain and CRLs verified",
+      "passed": true
+    },
+    {
+      "name": "restored TLS and authorization acceptance repeated",
+      "passed": true
+    },
+    {
+      "name": "documented restored stop/up preserves authority and server identities",
+      "passed": true
+    },
+    {
+      "name": "native agent converges after documented restored stop/up",
+      "passed": true
+    },
+    {
+      "name": "original rehearsal project remains stopped during restored management",
+      "passed": true
+    },
+    {
+      "name": "previous accepted 13001 image rollback preserves authority and agent convergence",
+      "passed": true
+    },
+    {
+      "name": "return to current 18001 image preserves authority and agent convergence",
+      "passed": true
+    },
+    {
+      "name": "vault_prefers_hybrid_key_exchange",
+      "passed": true
+    },
+    {
+      "name": "vault_classical_fallback_recorded",
+      "passed": true
+    }
+  ],
+  "blockers": [
+    "Publish and deploy the local Vault Hiera CRL/protocol fix, recording its resolved revision.",
+    "BCJSSE conditional disabledAlgorithms semantics remain unsupported beyond the controlled-profile compensating tests.",
+    "Native disposable guests/full-role catalogs, cold bootstrap and host reboot remain unverified.",
+    "Real issuer/CRL routes, freshness monitoring and independent protected root/recovery custody remain operational work.",
+    "Full infra activation and existing Vault unsealer/helper ML-DSA compatibility remain unverified; production cutover and later Atlas execution are separate."
+  ],
+  "source_revision": "226eed630f3ffd67f3d16b8acefedf7d01d89f3c",
+  "rehearsal_inputs_revision": "29473eba28444610e47e8f5c4977622acefd5830",
+  "image": "ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185",
+  "docker_host": "forbearance",
+  "root_sha256": "2c55102ebf4087dd1b3051c276bbabb498e3b0d42552ec21059b24abec3f9c28",
+  "tools_image_id": "sha256:61ec01b380dbe7e7fb9e7803a2fb04efdb1dc5045bbe9d7b5b2f35de47fb547c",
+  "build_manifest": {
+    "build": "18001",
+    "run": "39154755798",
+    "attempt": "1",
+    "sources": {
+      "openvox": {
+        "sha": "36ac8cc8e70e556da60c5cdd0c1b7b59d57ace7b",
+        "base": "9.1.0",
+        "commits_since_tag": 12,
+        "package_version": "9.1.0+homelab.18001-1+ubuntu26.04"
+      },
+      "jvm-ssl-utils": {
+        "sha": "bff2e9b99a1bc4280d5b5f346de29a6b33296a88"
+      },
+      "openvox-server": {
+        "sha": "54400ff7818c4ef5e3e24b281e5d5801488bbfb6",
+        "base": "9.1.0",
+        "commits_since_tag": 9,
+        "package_version": "9.1.0+homelab.18001-1+ubuntu26.04"
+      },
+      "openvoxserver-ca": {
+        "sha": "98c2cda96d042495324b148205f0c0bfed06b14b"
+      },
+      "vault": {
+        "sha": "1690516e1e0a4d575ee532ef10af2e585a85baa3"
+      }
+    },
+    "targets": {
+      "ubuntu26.04": {
+        "build": "18001",
+        "run": "39154755798",
+        "attempt": "1",
+        "sources": {
+          "openvox": {
+            "sha": "36ac8cc8e70e556da60c5cdd0c1b7b59d57ace7b",
+            "base": "9.1.0",
+            "commits_since_tag": 12,
+            "package_version": "9.1.0+homelab.18001-1+ubuntu26.04"
+          },
+          "jvm-ssl-utils": {
+            "sha": "bff2e9b99a1bc4280d5b5f346de29a6b33296a88"
+          },
+          "openvox-server": {
+            "sha": "54400ff7818c4ef5e3e24b281e5d5801488bbfb6",
+            "base": "9.1.0",
+            "commits_since_tag": 9,
+            "package_version": "9.1.0+homelab.18001-1+ubuntu26.04"
+          },
+          "openvoxserver-ca": {
+            "sha": "98c2cda96d042495324b148205f0c0bfed06b14b"
+          },
+          "vault": {
+            "sha": "1690516e1e0a4d575ee532ef10af2e585a85baa3"
+          }
+        },
+        "target": "ubuntu26.04",
+        "checks": {
+          "agent_package_tests": "passed",
+          "source_tests": "passed",
+          "vault_source_tests": "passed",
+          "server_recipe": "passed",
+          "server_package_tests": "passed"
+        },
+        "runtime_inputs": {
+          "agent_runtime": {
+            "location": "https://s3.osuosl.org/openvox-artifacts/puppet-runtime/2026.10.12.2/",
+            "version": "2026.10.12.2"
+          },
+          "agent_crypto": "Ruby 4.0.7; Ruby OpenSSL 4.0.2; OpenSSL 3.5.9 29 Sep 2026",
+          "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)"
+        },
+        "sha256": {
+          "openvox-agent_9.1.0+homelab.18001-1+ubuntu26.04_amd64.deb": "9f5d6dc78e97114b544423c29384c94a1837c0f7d6a63ad4d671c505d19503e8",
+          "openvox-server_9.1.0+homelab.18001-1+ubuntu26.04_all.deb": "48fcf81869f6316bf1d4c896d72290bf204bf32a5e21291be2990f2c4b2e17cd"
+        }
+      },
+      "ubuntu24.04": {
+        "build": "18001",
+        "run": "39154755798",
+        "attempt": "1",
+        "sources": {
+          "openvox": {
+            "sha": "36ac8cc8e70e556da60c5cdd0c1b7b59d57ace7b",
+            "base": "9.1.0",
+            "commits_since_tag": 12,
+            "package_version": "9.1.0+homelab.18001-1+ubuntu24.04"
+          },
+          "jvm-ssl-utils": {
+            "sha": "bff2e9b99a1bc4280d5b5f346de29a6b33296a88"
+          },
+          "openvox-server": {
+            "sha": "54400ff7818c4ef5e3e24b281e5d5801488bbfb6",
+            "base": "9.1.0",
+            "commits_since_tag": 9,
+            "package_version": "9.1.0+homelab.18001-1+ubuntu24.04"
+          },
+          "openvoxserver-ca": {
+            "sha": "98c2cda96d042495324b148205f0c0bfed06b14b"
+          },
+          "vault": {
+            "sha": "1690516e1e0a4d575ee532ef10af2e585a85baa3"
+          }
+        },
+        "target": "ubuntu24.04",
+        "checks": {
+          "agent_package_tests": "passed",
+          "source_tests": "passed",
+          "vault_source_tests": "passed",
+          "server_recipe": "passed",
+          "server_package_tests": "passed"
+        },
+        "runtime_inputs": {
+          "agent_runtime": {
+            "location": "https://s3.osuosl.org/openvox-artifacts/puppet-runtime/2026.10.12.2/",
+            "version": "2026.10.12.2"
+          },
+          "agent_crypto": "Ruby 4.0.7; Ruby OpenSSL 4.0.2; OpenSSL 3.5.9 29 Sep 2026",
+          "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)"
+        },
+        "sha256": {
+          "openvox-agent_9.1.0+homelab.18001-1+ubuntu24.04_amd64.deb": "1bf1fad4c56e9cbe65f8998588abc9597b573f3d0f1b81f5500d5ad8d3bc6a6a",
+          "openvox-server_9.1.0+homelab.18001-1+ubuntu24.04_all.deb": "895e1acf2198e60305677e0cd38af8f3374da8b547bb19d42fe751b643b817ed"
+        }
+      },
+      "debian13": {
+        "build": "18001",
+        "run": "39154755798",
+        "attempt": "1",
+        "sources": {
+          "openvox": {
+            "sha": "36ac8cc8e70e556da60c5cdd0c1b7b59d57ace7b",
+            "base": "9.1.0",
+            "commits_since_tag": 12,
+            "package_version": "9.1.0+homelab.18001-1+debian13"
+          },
+          "jvm-ssl-utils": {
+            "sha": "bff2e9b99a1bc4280d5b5f346de29a6b33296a88"
+          },
+          "openvox-server": {
+            "sha": "54400ff7818c4ef5e3e24b281e5d5801488bbfb6",
+            "base": "9.1.0",
+            "commits_since_tag": 9,
+            "package_version": "9.1.0+homelab.18001-1+debian13"
+          },
+          "openvoxserver-ca": {
+            "sha": "98c2cda96d042495324b148205f0c0bfed06b14b"
+          },
+          "vault": {
+            "sha": "1690516e1e0a4d575ee532ef10af2e585a85baa3"
+          }
+        },
+        "target": "debian13",
+        "checks": {
+          "agent_package_tests": "passed",
+          "source_tests": "passed",
+          "vault_source_tests": "passed",
+          "server_recipe": "passed",
+          "server_package_tests": "passed"
+        },
+        "runtime_inputs": {
+          "agent_runtime": {
+            "location": "https://s3.osuosl.org/openvox-artifacts/puppet-runtime/2026.10.12.2/",
+            "version": "2026.10.12.2"
+          },
+          "agent_crypto": "Ruby 4.0.7; Ruby OpenSSL 4.0.2; OpenSSL 3.5.9 29 Sep 2026",
+          "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)"
+        },
+        "sha256": {
+          "openvox-agent_9.1.0+homelab.18001-1+debian13_amd64.deb": "7852f2093dec8fbdf07ee94a34c98b2848ee3e402de0a461d2ef39eef08b8b2e",
+          "openvox-server_9.1.0+homelab.18001-1+debian13_all.deb": "7fab716da24457d4d6d1b80c9dc6991484c79e8863788c236e9596ac8f6d4960"
+        }
+      }
+    },
+    "checks": {
+      "agent_package_tests": "passed",
+      "source_tests": "passed",
+      "vault_source_tests": "passed",
+      "server_recipe": "passed",
+      "server_package_tests": "passed"
+    },
+    "runtime_inputs": {
+      "agent_runtime": {
+        "location": "https://s3.osuosl.org/openvox-artifacts/puppet-runtime/2026.10.12.2/",
+        "version": "2026.10.12.2"
+      },
+      "agent_crypto": "Ruby 4.0.7; Ruby OpenSSL 4.0.2; OpenSSL 3.5.9 29 Sep 2026",
+      "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)"
+    },
+    "sha256": {
+      "openvox-agent_9.1.0+homelab.18001-1+ubuntu26.04_amd64.deb": "9f5d6dc78e97114b544423c29384c94a1837c0f7d6a63ad4d671c505d19503e8",
+      "openvox-server_9.1.0+homelab.18001-1+ubuntu26.04_all.deb": "48fcf81869f6316bf1d4c896d72290bf204bf32a5e21291be2990f2c4b2e17cd"
+    },
+    "previous": {
+      "ubuntu26.04": {
+        "agent": "9.1.0+homelab.13001-1+ubuntu26.04",
+        "server": "9.1.0+homelab.13001-1+ubuntu26.04"
+      }
+    }
+  },
+  "runtimes": {
+    "native": "ruby 4.0.7 (2026-09-15 revision 229531a6cf) +PRISM [x86_64-linux]\n4.0.2\nOpenSSL 3.5.9 29 Sep 2026",
+    "python": {
+      "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+      "ssl": "OpenSSL 3.5.5 27 Jan 2026",
+      "cryptography": "50.0.2"
+    },
+    "java": "openjdk version \"25.0.4.1\" 2026-08-18\nOpenJDK Runtime Environment (build 25.0.4.1+1-1-26.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 25.0.4.1+1-1-26.04.4-Ubuntu, mixed mode, sharing)",
+    "vault": "Vault v2.2.0 (2891bfd23893ebd302307050edaf03d871ea8351), built 2026-10-14T15:24:08Z",
+    "vault_module_revision": "1690516e1e0a4d575ee532ef10af2e585a85baa3"
+  },
+  "resources": [
+    {
+      "BlockIO": "54.5MB / 422kB",
+      "CPUPerc": "0.16%",
+      "Container": "openvox-rehearsal-openvox-1",
+      "ID": "6569e46a8c7d",
+      "MemPerc": "31.49%",
+      "MemUsage": "483.7MiB / 1.5GiB",
+      "Name": "openvox-rehearsal-openvox-1",
+      "NetIO": "3.55kB / 126B",
+      "PIDs": "46"
+    },
+    {
+      "BlockIO": "3.86MB / 61.4kB",
+      "CPUPerc": "1.00%",
+      "Container": "openvox-rehearsal-vault-1",
+      "ID": "1a6297d9d1ba",
+      "MemPerc": "6.54%",
+      "MemUsage": "33.49MiB / 512MiB",
+      "Name": "openvox-rehearsal-vault-1",
+      "NetIO": "4.21kB / 126B",
+      "PIDs": "14"
+    },
+    {
+      "BlockIO": "4.1kB / 0B",
+      "CPUPerc": "0.00%",
+      "Container": "openvox-rehearsal-agent-1",
+      "ID": "358bf37b845c",
+      "MemPerc": "0.47%",
+      "MemUsage": "1.809MiB / 384MiB",
+      "Name": "openvox-rehearsal-agent-1",
+      "NetIO": "2.26kB / 126B",
+      "PIDs": "2"
+    }
+  ],
+  "transports": [
+    {
+      "program": "puppet",
+      "hostname": "openvox.rehearsal.test",
+      "port": 8140,
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_128_GCM_SHA256",
+      "group": "X25519MLKEM768",
+      "client_signature": "mldsa44",
+      "server_signature": "mldsa44",
+      "resumed": false,
+      "client_certificate": "/CN=rehearsal.home.arpa",
+      "server_certificate": "/CN=openvox.rehearsal.test"
+    },
+    {
+      "hostname": "openvox.rehearsal.test",
+      "port": 8140,
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_128_GCM_SHA256",
+      "group": "X25519MLKEM768",
+      "client_signature": "mldsa44",
+      "server_signature": "mldsa44",
+      "resumed": false
+    },
+    {
+      "hostname": "vault.rehearsal.test",
+      "port": 8200,
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_128_GCM_SHA256",
+      "group": "X25519MLKEM768",
+      "client_signature": "mldsa44",
+      "server_signature": "mldsa44",
+      "resumed": false
+    },
+    {
+      "hostname": "vault.rehearsal.test",
+      "port": 8200,
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_128_GCM_SHA256",
+      "group": "x25519",
+      "client_signature": "mldsa44",
+      "server_signature": "mldsa44",
+      "resumed": false
+    }
+  ],
+  "transports_sample_count": 46,
+  "runtime_state": {
+    "ok": true,
+    "scope": "OpenVox runtime files; excludes Vault storage",
+    "root_sha256": "2c55102ebf4087dd1b3051c276bbabb498e3b0d42552ec21059b24abec3f9c28",
+    "intermediate_sha256": "e819f1119f8553ec02d4047f0361d3e571424aa108d142afd58b35e75d7cfc24",
+    "server_sha256": "160284fe09a382b3af78af21723d74d79aed59576f6e63d31331cbbf5db5b434",
+    "server_public_key_sha256": "60f93eb276929784de2efbee82fb70ccd266c84597d877bc342f9f7a1159f819",
+    "intermediate_public_key_sha256": "d83a91ed23942a7d053fda7b932c37580afd8f82918ed61ab016173823a7456d",
+    "root_expires": "2027-10-18T20:23:53Z",
+    "intermediate_expires": "2026-11-17T20:23:55Z",
+    "server_expires": "2026-10-19T20:38:30Z",
+    "crls": [
+      {
+        "issuer": "/CN=OpenVox rehearsal intermediate",
+        "next_update": "2031-10-17T20:47:11Z"
+      },
+      {
+        "issuer": "/CN=Offline OpenVox rehearsal root",
+        "next_update": "2026-10-21T20:23:53Z"
+      }
+    ],
+    "root_key_check": "Parsed PEM keys compared against root public key; encrypted/unparseable blocks excluded",
+    "private_key_files": [
+      "/etc/puppetlabs/puppet/ssl/private_keys/openvox.rehearsal.test.pem",
+      "/etc/puppetlabs/puppetserver/ca/ca_key.pem",
+      "/opt/puppetlabs/server/data/puppetserver/server_data/bootstrap/intermediate.key"
+    ],
+    "unparsed_private_key_files": []
+  },
+  "recovery": {
+    "source_project": "openvox-rehearsal",
+    "restore_project": "openvox-rehearsal-restore",
+    "volumes": {
+      "root-state": {
+        "file": "root-state.tar.gz",
+        "bytes": 51358,
+        "sha256": "f28bfbcecaa4f79414d781bd3bfcd6098e1b2c7fd89e2b6593d83880ff5bc9d6"
+      },
+      "vault-state": {
+        "file": "vault-state.tar.gz",
+        "bytes": 238373,
+        "sha256": "0c49f8b71d3ba4c9edab789be79d986270bf8067514786279d50116fe3934a70"
+      },
+      "trust": {
+        "file": "trust.tar.gz",
+        "bytes": 11038,
+        "sha256": "21b9e21820be1abfff114f991504ee38732ab1c13466a1f5d0423f27d826443d"
+      },
+      "server-ssl": {
+        "file": "server-ssl.tar.gz",
+        "bytes": 20035,
+        "sha256": "672033e6d1bb048d69b77f78dcda3516f01269d28eef890666192b72829c0141"
+      },
+      "server-ca": {
+        "file": "server-ca.tar.gz",
+        "bytes": 29886,
+        "sha256": "215afae147e8632ba878201a53755e1e4971377cf2097d6623b3b4877cc6a981"
+      },
+      "server-data": {
+        "file": "server-data.tar.gz",
+        "bytes": 31123,
+        "sha256": "d81a15e09891a089957a586a3894d4f2e833cbeb20e7513a06985b3eb406f845"
+      },
+      "server-gems": {
+        "file": "server-gems.tar.gz",
+        "bytes": 101,
+        "sha256": "2595f10b67df9da5bd256e34e29cf7f47ba40df209f70cc4537a9a67ff39f443"
+      },
+      "code": {
+        "file": "code.tar.gz",
+        "bytes": 6034227,
+        "sha256": "d7e3c0ea82e7fb02b0d7d9c51c110887f5f32685e5da8c0a57fae43a73dec31f"
+      },
+      "git": {
+        "file": "git.tar.gz",
+        "bytes": 3338930,
+        "sha256": "8bff182909020964578347b24a329ac3e6cd2863e01aac3986a328cdea8f9128"
+      },
+      "r10k-cache": {
+        "file": "r10k-cache.tar.gz",
+        "bytes": 5411946,
+        "sha256": "d3b4bf923d816fc70f1c47d11995c031b6972d2578031f7ecba9c6adf1c1d2a8"
+      },
+      "agent-state": {
+        "file": "agent-state.tar.gz",
+        "bytes": 433696,
+        "sha256": "397c2c452a6414b33fcfea4f95e9a2839182f99a11859e6b5070062c0d56be5f"
+      }
+    },
+    "configuration": {
+      "file": "configuration.tar.gz",
+      "bytes": 886331,
+      "sha256": "5d47de9e631f5618c5cad73fc554ac34ff50be98d7de5f5cfbbf64eacab2eba1"
+    },
+    "images": {
+      "file": "images.tar.gz",
+      "bytes": 508596277,
+      "sha256": "9f929f22adafc20c0dd6dbfe931e791d537f6ecb5a1df86477a691eb4b9093bd"
+    },
+    "archive_directory": "/tmp/openvox-rehearsal-175200003/private/recovery",
+    "restored_runtime_state": {
+      "ok": true,
+      "scope": "OpenVox runtime files; excludes Vault storage",
+      "root_sha256": "2c55102ebf4087dd1b3051c276bbabb498e3b0d42552ec21059b24abec3f9c28",
+      "intermediate_sha256": "e819f1119f8553ec02d4047f0361d3e571424aa108d142afd58b35e75d7cfc24",
+      "server_sha256": "160284fe09a382b3af78af21723d74d79aed59576f6e63d31331cbbf5db5b434",
+      "server_public_key_sha256": "60f93eb276929784de2efbee82fb70ccd266c84597d877bc342f9f7a1159f819",
+      "intermediate_public_key_sha256": "d83a91ed23942a7d053fda7b932c37580afd8f82918ed61ab016173823a7456d",
+      "root_expires": "2027-10-18T20:23:53Z",
+      "intermediate_expires": "2026-11-17T20:23:55Z",
+      "server_expires": "2026-10-19T20:38:30Z",
+      "crls": [
+        {
+          "issuer": "/CN=OpenVox rehearsal intermediate",
+          "next_update": "2031-10-17T20:47:11Z"
+        },
+        {
+          "issuer": "/CN=Offline OpenVox rehearsal root",
+          "next_update": "2026-10-21T20:23:53Z"
+        }
+      ],
+      "root_key_check": "Parsed PEM keys compared against root public key; encrypted/unparseable blocks excluded",
+      "private_key_files": [
+        "/etc/puppetlabs/puppet/ssl/private_keys/openvox.rehearsal.test.pem",
+        "/etc/puppetlabs/puppetserver/ca/ca_key.pem",
+        "/opt/puppetlabs/server/data/puppetserver/server_data/bootstrap/intermediate.key"
+      ],
+      "unparsed_private_key_files": []
+    },
+    "restored_acceptance": {
+      "checks": {
+        "agent_seed_only_key_and_mldsa44_certificate": true,
+        "agent_key_matches_verified_leaf": true,
+        "actual_native_agent_mtls13_hybrid_mldsa44": true,
+        "openvox.rehearsal.test_full_mtls13_hybrid_mldsa44": true,
+        "openvox.rehearsal.test_wrong_hostname_denied": true,
+        "openvox.rehearsal.test_wrong_ca_denied": true,
+        "vault.rehearsal.test_full_mtls13_hybrid_mldsa44": true,
+        "vault.rehearsal.test_wrong_hostname_denied": true,
+        "vault.rehearsal.test_wrong_ca_denied": true,
+        "server_tls12_denied": true,
+        "server_classical_key_exchange_denied": true,
+        "vault_prefers_hybrid_key_exchange": true,
+        "vault_classical_fallback_recorded": true,
+        "vault_agent_certificate_login": true,
+        "vault_agent_kv_read_denied": true,
+        "vault_agent_bound_service_issuance": true,
+        "vault_other_common_name_denied": true,
+        "vault_other_dns_san_denied": true,
+        "vault_ip_san_denied": true,
+        "vault_other_role_denied": true
+      },
+      "errors": {},
+      "observations": {
+        "vault_classical_fallback": {
+          "accepted": true,
+          "policy": "temporary operator-approved exception"
+        }
+      },
+      "handshakes": [
+        {
+          "program": "puppet",
+          "hostname": "openvox.rehearsal.test",
+          "port": 8140,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=rehearsal.home.arpa",
+          "server_certificate": "/CN=openvox.rehearsal.test"
+        },
+        {
+          "hostname": "openvox.rehearsal.test",
+          "port": 8140,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false
+        },
+        {
+          "hostname": "vault.rehearsal.test",
+          "port": 8200,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false
+        },
+        {
+          "hostname": "vault.rehearsal.test",
+          "port": 8200,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "x25519",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false
+        }
+      ],
+      "handshakes_sample_count": 76
+    }
+  },
+  "ready_for_production": false,
+  "restored_management": {
+    "commands": [
+      "stop --restored",
+      "up --restored"
+    ],
+    "first_agent_exit": 0,
+    "converged_agent_exit": 0,
+    "root_sha256": "2c55102ebf4087dd1b3051c276bbabb498e3b0d42552ec21059b24abec3f9c28",
+    "intermediate_sha256": "e819f1119f8553ec02d4047f0361d3e571424aa108d142afd58b35e75d7cfc24",
+    "server_sha256": "160284fe09a382b3af78af21723d74d79aed59576f6e63d31331cbbf5db5b434",
+    "runtime_state_verified": true,
+    "original_project_stopped": true
+  },
+  "image_rollback": {
+    "previous_accepted_image": "ghcr.io/enucatl/openvox-server@sha256:38a0923732977a0eae63305d2c53cb91b18321bf26142814ab916ff0524d300b",
+    "current_accepted_image": "ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185",
+    "runtime_image": "openvox-rehearsal-tools:18001",
+    "provenance": "https://github.com/Enucatl/openvox-packages/releases/download/resolute-13001/server-image.json",
+    "checks": [
+      {
+        "name": "18001 seed-only keys and full authority state valid before rollback",
+        "passed": true
+      },
+      {
+        "name": "previous accepted 13001 image starts with existing authority and server identity",
+        "passed": true
+      },
+      {
+        "name": "previous accepted image effective server and agent key_type remains mldsa44",
+        "passed": true
+      },
+      {
+        "name": "previous accepted image preserves seed-only keys and full authority state",
+        "passed": true
+      },
+      {
+        "name": "current native agent converges against previous accepted 13001 server",
+        "passed": true
+      },
+      {
+        "name": "current accepted image returns with unchanged authority and server identity",
+        "passed": true
+      },
+      {
+        "name": "returned current image effective server and agent key_type remains mldsa44",
+        "passed": true
+      },
+      {
+        "name": "returned current image preserves seed-only keys and full authority state",
+        "passed": true
+      },
+      {
+        "name": "current native agent converges after return to 18001 server",
+        "passed": true
+      }
+    ],
+    "current_packages_before": [
+      "openvox-agent 9.1.0+homelab.18001-1+ubuntu26.04",
+      "openvox-server 9.1.0+homelab.18001-1+ubuntu26.04"
+    ],
+    "rollback_packages": [
+      "openvox-agent 9.1.0+homelab.13001-1+ubuntu26.04",
+      "openvox-server 9.1.0+homelab.13001-1+ubuntu26.04"
+    ],
+    "current_packages_after": [
+      "openvox-agent 9.1.0+homelab.18001-1+ubuntu26.04",
+      "openvox-server 9.1.0+homelab.18001-1+ubuntu26.04"
+    ],
+    "current_image_restored": true
+  },
+  "observations": {
+    "vault_classical_fallback": {
+      "accepted": true,
+      "policy": "temporary operator-approved exception"
+    }
+  },
+  "vault_policy": {
+    "decision": "Operator accepts classical-only Vault peers temporarily; capable clients must prefer and negotiate X25519MLKEM768.",
+    "client_configuration": "Native and Java clients continue to require X25519MLKEM768.",
+    "historical_strict_gate": [
+      {
+        "name": "vault_classical_key_exchange_denied",
+        "passed": false,
+        "gate": true
+      }
+    ]
+  },
+  "followup": {
+    "final_runtime": {
+      "verified_at": "2026-10-18T22:13:41.747784+00:00",
+      "identity_preserved": true,
+      "deployed_vault_crl_env": "/trust/vault-crls.pem",
+      "catalog_converged": true,
+      "acceptance": {
+        "checks": {
+          "agent_seed_only_key_and_mldsa44_certificate": true,
+          "agent_key_matches_verified_leaf": true,
+          "actual_native_agent_mtls13_hybrid_mldsa44": true,
+          "openvox.rehearsal.test_full_mtls13_hybrid_mldsa44": true,
+          "openvox.rehearsal.test_wrong_hostname_denied": true,
+          "openvox.rehearsal.test_wrong_ca_denied": true,
+          "vault.rehearsal.test_full_mtls13_hybrid_mldsa44": true,
+          "vault.rehearsal.test_wrong_hostname_denied": true,
+          "vault.rehearsal.test_wrong_ca_denied": true,
+          "server_tls12_denied": true,
+          "server_classical_key_exchange_denied": true,
+          "vault_prefers_hybrid_key_exchange": true,
+          "vault_classical_fallback_recorded": true,
+          "vault_agent_certificate_login": true,
+          "vault_agent_kv_read_denied": true,
+          "vault_agent_bound_service_issuance": true,
+          "vault_other_common_name_denied": true,
+          "vault_other_dns_san_denied": true,
+          "vault_ip_san_denied": true,
+          "vault_other_role_denied": true
+        },
+        "errors": {},
+        "observations": {
+          "vault_classical_fallback": {
+            "accepted": true,
+            "policy": "temporary operator-approved exception"
+          }
+        },
+        "handshakes": [
+          {
+            "program": "puppet",
+            "hostname": "openvox.rehearsal.test",
+            "port": 8140,
+            "protocol": "TLSv1.3",
+            "cipher": "TLS_AES_128_GCM_SHA256",
+            "group": "X25519MLKEM768",
+            "client_signature": "mldsa44",
+            "server_signature": "mldsa44",
+            "resumed": false,
+            "client_certificate": "/CN=rehearsal.home.arpa",
+            "server_certificate": "/CN=openvox.rehearsal.test"
+          },
+          {
+            "hostname": "openvox.rehearsal.test",
+            "port": 8140,
+            "protocol": "TLSv1.3",
+            "cipher": "TLS_AES_128_GCM_SHA256",
+            "group": "X25519MLKEM768",
+            "client_signature": "mldsa44",
+            "server_signature": "mldsa44",
+            "resumed": false
+          },
+          {
+            "hostname": "vault.rehearsal.test",
+            "port": 8200,
+            "protocol": "TLSv1.3",
+            "cipher": "TLS_AES_128_GCM_SHA256",
+            "group": "X25519MLKEM768",
+            "client_signature": "mldsa44",
+            "server_signature": "mldsa44",
+            "resumed": false
+          },
+          {
+            "hostname": "vault.rehearsal.test",
+            "port": 8200,
+            "protocol": "TLSv1.3",
+            "cipher": "TLS_AES_128_GCM_SHA256",
+            "group": "x25519",
+            "client_signature": "mldsa44",
+            "server_signature": "mldsa44",
+            "resumed": false
+          }
+        ],
+        "handshakes_sample_count": 88
+      },
+      "outbound_checks_passed": 17,
+      "runtime_state": {
+        "ok": true,
+        "scope": "OpenVox runtime files; excludes Vault storage",
+        "root_sha256": "2c55102ebf4087dd1b3051c276bbabb498e3b0d42552ec21059b24abec3f9c28",
+        "intermediate_sha256": "e819f1119f8553ec02d4047f0361d3e571424aa108d142afd58b35e75d7cfc24",
+        "server_sha256": "160284fe09a382b3af78af21723d74d79aed59576f6e63d31331cbbf5db5b434",
+        "server_public_key_sha256": "60f93eb276929784de2efbee82fb70ccd266c84597d877bc342f9f7a1159f819",
+        "intermediate_public_key_sha256": "d83a91ed23942a7d053fda7b932c37580afd8f82918ed61ab016173823a7456d",
+        "root_expires": "2027-10-18T20:23:53Z",
+        "intermediate_expires": "2026-11-17T20:23:55Z",
+        "server_expires": "2026-10-19T20:38:30Z",
+        "crls": [
+          {
+            "issuer": "/CN=OpenVox rehearsal intermediate",
+            "next_update": "2031-10-17T20:47:11Z"
+          },
+          {
+            "issuer": "/CN=Offline OpenVox rehearsal root",
+            "next_update": "2026-10-21T20:23:53Z"
+          }
+        ],
+        "root_key_check": "Parsed PEM keys compared against root public key; encrypted/unparseable blocks excluded",
+        "private_key_files": [
+          "/etc/puppetlabs/puppet/ssl/private_keys/openvox.rehearsal.test.pem",
+          "/etc/puppetlabs/puppetserver/ca/ca_key.pem",
+          "/opt/puppetlabs/server/data/puppetserver/server_data/bootstrap/intermediate.key"
+        ],
+        "unparsed_private_key_files": []
+      },
+      "production_changed": false,
+      "module_source": "published base plus explicitly documented local CRL fix"
+    },
+    "outbound_transports": {
+      "results": {
+        "valid": {
+          "python_autosigner": {
+            "accepted": true
+          },
+          "jruby_hiera": {
+            "accepted": true,
+            "catalog_status": 200
+          },
+          "server_tls_errors": [],
+          "python_autosigner_policy_passed": true,
+          "jruby_hiera_policy_passed": true
+        },
+        "classical_only": {
+          "python_autosigner": {
+            "accepted": false,
+            "exception": "SSLError"
+          },
+          "jruby_hiera": {
+            "accepted": false,
+            "catalog_status": 500
+          },
+          "server_tls_errors": [
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57052 state=error: no suitable key share",
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57060 state=error: no suitable key share"
+          ],
+          "python_autosigner_policy_passed": true,
+          "jruby_hiera_policy_passed": true
+        },
+        "tls12_only": {
+          "python_autosigner": {
+            "accepted": false,
+            "exception": "SSLError"
+          },
+          "jruby_hiera": {
+            "accepted": false,
+            "catalog_status": 500
+          },
+          "server_tls_errors": [
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57072 state=error: unsupported protocol",
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57076 state=error: unsupported protocol"
+          ],
+          "python_autosigner_policy_passed": true,
+          "jruby_hiera_policy_passed": true
+        },
+        "wrong_hostname": {
+          "python_autosigner": {
+            "accepted": false,
+            "exception": "SSLError"
+          },
+          "jruby_hiera": {
+            "accepted": false,
+            "catalog_status": 500
+          },
+          "server_tls_errors": [
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57084 state=error: ssl/tls alert bad certificate (SSL alert number 42)",
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57098 state=error: unexpected eof while reading"
+          ],
+          "python_autosigner_policy_passed": true,
+          "jruby_hiera_policy_passed": true
+        },
+        "untrusted": {
+          "python_autosigner": {
+            "accepted": false,
+            "exception": "SSLError"
+          },
+          "jruby_hiera": {
+            "accepted": false,
+            "catalog_status": 500
+          },
+          "server_tls_errors": [
+            "SSL_accept returned=1 errno=0 peeraddr=(null) state=error: tlsv1 alert unknown ca (SSL alert number 48)",
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57122 state=error: unexpected eof while reading"
+          ],
+          "python_autosigner_policy_passed": true,
+          "jruby_hiera_policy_passed": true
+        },
+        "expired": {
+          "python_autosigner": {
+            "accepted": false,
+            "exception": "SSLError"
+          },
+          "jruby_hiera": {
+            "accepted": false,
+            "catalog_status": 500
+          },
+          "server_tls_errors": [
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57134 state=error: ssl/tls alert certificate expired (SSL alert number 45)",
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57150 state=error: unexpected eof while reading"
+          ],
+          "python_autosigner_policy_passed": true,
+          "jruby_hiera_policy_passed": true
+        },
+        "revoked": {
+          "python_autosigner": {
+            "accepted": false,
+            "exception": "SSLError"
+          },
+          "jruby_hiera": {
+            "accepted": false,
+            "catalog_status": 500
+          },
+          "server_tls_errors": [
+            "SSL_accept returned=1 errno=0 peeraddr=(null) state=error: ssl/tls alert certificate revoked (SSL alert number 44)",
+            "SSL_accept returned=1 errno=0 peeraddr=172.16.48.3:57174 state=error: unexpected eof while reading"
+          ],
+          "python_autosigner_policy_passed": true,
+          "jruby_hiera_policy_passed": true
+        },
+        "positive_handshakes": {
+          "python_token_only": true,
+          "jruby_mtls": true,
+          "tls13_hybrid_mldsa": true
+        }
+      },
+      "handshakes": [
+        {
+          "scenario": "valid",
+          "path": "/v1/auth/token/lookup-self",
+          "protocol": "TLSv1.3",
+          "group": "X25519MLKEM768",
+          "cipher": "TLS_AES_256_GCM_SHA384",
+          "resumed": false,
+          "client_signature": null,
+          "server_signature": "mldsa44",
+          "client_certificate": null
+        },
+        {
+          "scenario": "valid",
+          "path": "/v1/auth/cert/login",
+          "protocol": "TLSv1.3",
+          "group": "X25519MLKEM768",
+          "cipher": "TLS_CHACHA20_POLY1305_SHA256",
+          "resumed": false,
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "client_certificate": "/CN=openvox.rehearsal.test"
+        },
+        {
+          "scenario": "valid",
+          "path": "/v1/kv/data/puppet",
+          "protocol": "TLSv1.3",
+          "group": "X25519MLKEM768",
+          "cipher": "TLS_CHACHA20_POLY1305_SHA256",
+          "resumed": false,
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "client_certificate": "/CN=openvox.rehearsal.test"
+        }
+      ],
+      "handshakes_sample_count": 3
+    },
+    "vault_internal_storage": {
+      "vault_version": "2.2.0",
+      "vault_commit": "2891bfd23893ebd302307050edaf03d871ea8351",
+      "method": "read original decrypted barrier logical PKI records through sys/raw on isolated protected archive clones; parse original PKCS8 bytes without rewriting",
+      "source": "private/recovery/root-state.tar.gz and vault-state.tar.gz",
+      "isolation": {
+        "network": "none",
+        "published_ports": false,
+        "production_changed": false
+      },
+      "authorities": {
+        "root": {
+          "internal_keys": [
+            {
+              "mount": "pki/",
+              "key_id": "19ac3692-869b-7601-31d8-89c66767aceb",
+              "algorithm": "ML-DSA-44",
+              "encoding": "original stored PKCS8 seed-only",
+              "payload_bytes": 34,
+              "seed_bytes": 32,
+              "passed": true
+            }
+          ],
+          "all_passed": true,
+          "cert_auth_crl_limitations": null
+        },
+        "vault": {
+          "internal_keys": [
+            {
+              "mount": "pki_int/",
+              "key_id": "248af8af-5f31-fb2a-ea08-7cd8ca045980",
+              "algorithm": "ML-DSA-44",
+              "encoding": "original stored PKCS8 seed-only",
+              "payload_bytes": 34,
+              "seed_bytes": 32,
+              "passed": true
+            }
+          ],
+          "all_passed": true,
+          "cert_auth_crl_limitations": {
+            "baseline_login_succeeded": true,
+            "uploaded_expired_crl": true,
+            "uploaded_crl_issuer_matches_leaf": false,
+            "uploaded_crl_signature_valid_for_leaf_issuer": false,
+            "expired_unrelated_crl_accepted": true,
+            "login_denied_by_colliding_serial": true
+          }
+        }
+      },
+      "all_passed": true,
+      "source_archives": [
+        {
+          "file": "root-state.tar.gz",
+          "sha256": "f28bfbcecaa4f79414d781bd3bfcd6098e1b2c7fd89e2b6593d83880ff5bc9d6"
+        },
+        {
+          "file": "vault-state.tar.gz",
+          "sha256": "0c49f8b71d3ba4c9edab789be79d986270bf8067514786279d50116fe3934a70"
+        }
+      ],
+      "clone_cleanup_verified": true
+    },
+    "offline_root_lifecycle": {
+      "action": "rehearse",
+      "root_sha256": "2c55102ebf4087dd1b3051c276bbabb498e3b0d42552ec21059b24abec3f9c28",
+      "public_artifacts": "/tmp/openvox-rehearsal-175200003/public/offline-root/8e405d8197b1434885b2932c3ab87752",
+      "checks": {
+        "root_signature": true,
+        "root_crl_signature": true,
+        "root_crl_valid": true,
+        "intermediate_signatures": true,
+        "same_key_renewal": true,
+        "renewal_validity_extended": true,
+        "revoked_intermediate_denied": true,
+        "renewed_intermediate_accepted": true,
+        "offline_root_stopped": true
+      },
+      "crl_next_update": "2026-10-21T21:52:34Z",
+      "issuer_urls": {
+        "crl_distribution_points": [],
+        "delta_crl_distribution_points": [],
+        "enable_templating": false,
+        "issuing_certificates": [],
+        "ocsp_servers": []
+      },
+      "publication_probe": {
+        "anonymous_loopback_http_fetch": true,
+        "published_der_crl_signature": true,
+        "tampered_crl_denied": true
+      }
+    },
+    "online_intermediate_import": {
+      "checks": {
+        "generate_separate_mldsa_csr": true,
+        "wrong_root_pin_denied": true,
+        "externally_signed_chain_imported": true,
+        "repeat_import_preserves_authority": true,
+        "existing_authority_regeneration_denied": true
+      },
+      "isolation": {
+        "docker_network": "none",
+        "host_ports": false,
+        "production_changed": false
+      },
+      "root_sha256": "2c55102ebf4087dd1b3051c276bbabb498e3b0d42552ec21059b24abec3f9c28"
+    },
+    "infra_pki_import": {
+      "passed": 11,
+      "checks": [
+        "prepare retry retains both seed-only key identities",
+        "wrong operator root pin rejected before CA import",
+        "multiple-roots rejected before CA import",
+        "wrong-intermediate-key rejected before CA import",
+        "wrong-crl-signature rejected before CA import",
+        "short-issuer rejected before CA import",
+        "expired-crl rejected before CA import",
+        "revoked-intermediate rejected before CA import",
+        "actual packaged CA import and seed-only chain verification passed",
+        "prepare and import refuse to replace established authority",
+        "import retained original host and intermediate key identities"
+      ],
+      "base": "ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185",
+      "execution_image": "openvox-rehearsal-tools:18001",
+      "execution_image_id": "sha256:61ec01b380dbe7e7fb9e7803a2fb04efdb1dc5045bbe9d7b5b2f35de47fb547c",
+      "scope": "Actual packaged CA import on separate disposable state; fresh import negatives and key preservation. Excludes production runtime start and operator custody.",
+      "flags": {
+        "network": "none",
+        "rootfs": "read-only",
+        "user": "999:999",
+        "cap_drop": [
+          "ALL"
+        ],
+        "no_new_privileges": true,
+        "temporary_volumes_removed": true,
+        "root_signer": "ephemeral in-memory test root only"
+      },
+      "script": "docker/openvox/infra-pki-self-test.py",
+      "evidence_source": "Sanitized results retained from completed live checks in this session; not a new execution"
+    },
+    "infra_image": {
+      "timestamp_utc": "2026-10-18T22:03:48.106364+00:00",
+      "docker_host": "forbearance",
+      "image": "infra-openvox:18001",
+      "image_id": "sha256:33ad9ddf155030a199e4b710b26f3a95116ea106ad2eb050ac10c20ea45fa900",
+      "image_size_bytes": 763485311,
+      "base": "ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185",
+      "base_image_id": "sha256:32a7ed70e089330efe84a4d3a82df5db235086300299b6e35a8424df224b089e",
+      "user": "puppet",
+      "entrypoint": [
+        "/usr/bin/tini",
+        "-g",
+        "--",
+        "/usr/local/bin/openvox-server-entrypoint"
+      ],
+      "command": [
+        "/opt/puppetlabs/server/apps/puppetserver/cli/apps/foreground"
+      ],
+      "versions": {
+        "uid": "999",
+        "gid": "999",
+        "git": "git version 2.53.0",
+        "r10k": "r10k 5.0.3",
+        "openvox": "9.1.0",
+        "ruby": "ruby 4.0.7 (2026-09-15 revision 229531a6cf) +PRISM [x86_64-linux]",
+        "java": "openjdk version \"25.0.4.1\" 2026-08-18"
+      },
+      "checks": {
+        "default_nonroot": true,
+        "accepted_base_layers_preserved": true,
+        "accepted_tini_and_fail_closed_entrypoint_preserved": true,
+        "accepted_foreground_command_preserved": true,
+        "runtime_uid_gid_999": true,
+        "git_installed": true,
+        "r10k_5_0_3_installed": true,
+        "default_missing_identity_fails_closed": true,
+        "infra_missing_state_fails_closed": true
+      },
+      "passed": 9,
+      "preflight_passed": true,
+      "existing_compose_services_started": false,
+      "production_touched": false,
+      "disk_free_after_bytes": 2598727680,
+      "scope": "actual built infra image metadata, runtime tools, missing-identity and missing-state refusal; no production runtime startup",
+      "harness_notes": [
+        "Read-only rootfs requires writable server_data, supplied as disposable tmpfs matching the production persistent mount.",
+        "r10k exposes its version through the version subcommand."
+      ]
+    },
+    "infra_vault_listener": {
+      "passed": 7,
+      "checks": {
+        "missing_identity_refused": true,
+        "native_configuration_parsed_and_tls_listener_started": true,
+        "uninitialized_storage_remains_uninitialized": true,
+        "hybrid_preferred_when_both_groups_offered": true,
+        "mldsa_server_certificate_verify": true,
+        "tls12_denied": true,
+        "no_client_certificate_required": true
+      },
+      "transports": [
+        {
+          "mode": "hybrid",
+          "protocol": "TLSv1.3",
+          "group": "X25519MLKEM768",
+          "server_signature": "mldsa44",
+          "client_certificate": false
+        },
+        {
+          "mode": "classical",
+          "protocol": "TLSv1.3",
+          "group": "x25519",
+          "server_signature": "mldsa44",
+          "client_certificate": false
+        },
+        {
+          "mode": "tls12",
+          "rejected": true
+        }
+      ],
+      "transports_sample_count": 3,
+      "vault_image": "hashicorp/vault@sha256:e0acd3c681bdf57f002d7214e5d050b876e1704678005c6b0406dd96a65be919",
+      "scope": "Exact opt-in HCL starts on separate uninitialized file storage and a disposable MLDSA test chain; excludes production state/identity migration, Vault auth roles and production UID100 ownership. No init/unseal issued.",
+      "flags": {
+        "network": "none",
+        "ports_published": false,
+        "rootfs": "read-only",
+        "user": "999:999",
+        "cap_drop": [
+          "ALL"
+        ],
+        "no_new_privileges": true
+      },
+      "operator_exception": "Classical-only Vault clients remain accepted",
+      "online_root_created": false,
+      "production_touched": false
+    },
+    "jvm_policy": {
+      "passed": 10,
+      "checks": [
+        "maintained stock TLS restrictions remain loaded",
+        "maintained stock certpath restrictions remain loaded",
+        "stock unconditional MD5 certificate signature restriction rejects MD5",
+        "conditional SHA1 expression is not interpreted by BC parser",
+        "supported unconditional SHA1 restriction rejects SHA1",
+        "supported keySize restriction rejects RSA 1024",
+        "deployment MLDSA certificate whitelist permits valid MLDSA chain",
+        "stock BC chain checker accepts test private-root SHA1 chain",
+        "deployment MLDSA certificate whitelist rejects valid RSA-SHA1-signed chain",
+        "self-check did not replace maintained security restrictions"
+      ],
+      "base": "ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185",
+      "execution_image": "ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185",
+      "scope": "Actual BC parser and certificate-chain checker. Constraint object constructed explicitly; excludes full TLS handshake and per-consumer parameter application. Conditional JDK policy parser gap remains.",
+      "provider": "BCJSSE version 1.0025",
+      "flags": {
+        "network": "none",
+        "rootfs": "read-only",
+        "user": "999:999",
+        "cap_drop": [
+          "ALL"
+        ],
+        "no_new_privileges": true,
+        "temporary_storage": "tmpfs",
+        "maintained_security_properties_replaced": false,
+        "root_signer": "ephemeral in-memory test root only"
+      },
+      "script": "docker/openvox/infra-jvm-policy-check.rb",
+      "evidence_source": "Sanitized results retained from completed live checks in this session; not a new execution"
+    },
+    "crl_publisher": {
+      "checks": {
+        "current_signed_crl": {
+          "accepted": true,
+          "expected": true,
+          "passed": true
+        },
+        "current_issuer_bundle": {
+          "accepted": true,
+          "expected": true,
+          "passed": true
+        },
+        "tampered_signature": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        },
+        "wrong_signer_same_issuer": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        },
+        "wrong_issuer_valid_signature": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        },
+        "expired_valid_signature": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        },
+        "future_last_update": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        },
+        "missing_next_update": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        },
+        "classical_signature": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        },
+        "empty_input": {
+          "accepted": false,
+          "expected": false,
+          "passed": true
+        }
+      },
+      "all_passed": true,
+      "actual_ca_changed": false,
+      "fixture_material_written": false,
+      "verified_at": "2026-10-18T22:05:50.785480+00:00",
+      "ca_public_state_unchanged": true,
+      "ca_public_state_sha256": [
+        "6ed8388f91ffe6bc7dd0c10455527f75e621856f08fe8cf8bccb6045ea5097c6  /etc/puppetlabs/puppetserver/ca/ca_crl.pem",
+        "cfed374b9981f8c28213c64169f8a14cdde799c1f77ce6a631615c672dbaa601  /etc/puppetlabs/puppetserver/ca/ca_crt.pem"
+      ],
+      "scope": "publisher validates original uploaded CRL bytes before Vault API; no CRL upload or CA state mutation in this test",
+      "ci_regression_file": "tests/test_openvox_crl.py",
+      "synthetic_mldsa_pytest_passed": 10,
+      "verification_runtime": "restored OpenVox native Ruby/OpenSSL 3.5.9",
+      "syntax_and_ruff": "passed"
+    },
+    "hiera_overlay": {
+      "local_source": "/home/user/code/openvox-server/vault-hiera",
+      "revision": "1690516 + unpublished CRL and inherited TLS protocol policy changes",
+      "unpublished": true,
+      "files": [
+        {
+          "environment": "production",
+          "path": "/etc/puppetlabs/code/rehearsal-environments/production/modules/vault_secrets/lib/puppet_x/vault_secrets/vaultsession.rb",
+          "original_sha256": "dd477515b383bb0592f6b3f6b568a71c5b4e6fc693b2d40402811aa7927b78cb",
+          "overlay_sha256": "ab248e0620db46307520c4ecc544852cadddc16d2cb0c502e4527c3ec6309cb4"
+        },
+        {
+          "environment": "dev",
+          "path": "/etc/puppetlabs/code/rehearsal-environments/dev/modules/vault_secrets/lib/puppet_x/vault_secrets/vaultsession.rb",
+          "original_sha256": "dd477515b383bb0592f6b3f6b568a71c5b4e6fc693b2d40402811aa7927b78cb",
+          "overlay_sha256": "ab248e0620db46307520c4ecc544852cadddc16d2cb0c502e4527c3ec6309cb4"
+        }
+      ]
+    },
+    "verified_at": "2026-10-18T22:14:14.471514+00:00",
+    "hiera_source": {
+      "base_revision": "1690516e1e0a4d575ee532ef10af2e585a85baa3",
+      "unpublished_diff_sha256": "23fa0ae70eedc792d6587851efd592e43035085e48d6e2c3c262e5c2240149c8",
+      "published": false,
+      "fixes": [
+        "CRL verification for native and Java contexts",
+        "Apply server-configured TLS protocols to independently created Java HTTP clients"
+      ]
+    },
+    "tls12_protocol_floor_proven": true
+  },
+  "limitations": [
+    "Vault classical-only fallback is temporarily accepted; capable clients must negotiate X25519MLKEM768.",
+    "Vault cert-auth CRLs ignore expiry and do not validate issuer/signature; publisher-side validation is implemented, continuous monitoring remains operational work.",
+    "CA-library generated CRL nextUpdate defaults to five years and is not bounded by intermediate expiry.",
+    "Vault internal root/intermediate seed encodings now passed direct original-storage audits.",
+    "The final runtime uses an explicit unpublished local Hiera overlay; fresh remote deployment must resolve this dependency.",
+    "JVM parser/checker tests construct constraints explicitly and do not prove all HTTP consumers apply every conditional restriction.",
+    "Local archive restore and root publication probes do not establish independent off-host custody or host reboot.",
+    "Actual CA-less FreeIPA compatibility, native full-role catalogs and production migration were not executed."
+  ],
+  "verification": {
+    "focused_pytest_passed": 294,
+    "focused_pytest_skipped": 10,
+    "skip_reason": "Host native Ruby/OpenSSL3.0 lacks ML-DSA; the same 10 CRL regressions passed with the accepted container Ruby.",
+    "hiera_fork_unit_examples_passed": 254,
+    "ruff": "passed",
+    "shell_syntax": "passed",
+    "ruby_syntax": "passed",
+    "recovery_self_check": "passed",
+    "git_diff_check": "passed",
+    "hosted_ci_run": false,
+    "production_services_changed": false,
+    "full_lifecycle_rerun_after_followup": false,
+    "followup_runtime": "Recreation, identity retention, real catalog convergence, 20 acceptance and 17 outbound checks passed after follow-up changes.",
+    "compose_version": "5.6.0"
+  },
+  "followup_input_sha256": {
+    ".github/workflows/puppet.yaml": "49f585b29487dad7098b589559392568cd839f3b26caf806fe82303ad61afd97",
+    "Puppetfile": "1fc91477bde778e41df06fd6bf344a3781c6609a56f43c462f46cac17bfa63d2",
+    "docker/docker-compose.yml": "3c87ac0938a568225ff1f9bbff44640cd8430db56e6bbad5fd813d6b2c4ccd44",
+    "docker/openvox/Dockerfile": "1ba2e19dda9a96da122ee58898a926df2e61d44d6d3b88ea2d540a841024da8a",
+    "docker/openvox/acceptance.rb": "a4bf23491fab5d001b06229b9e56933039716746af608fc518863438c02b1643",
+    "docker/openvox/agent.conf": "6a9602375234b87f1accc2062a0b1add36236a610fe3a0a3917f9fe5348aa1d8",
+    "docker/openvox/ca.conf": "177b5aeb2bf274316aff7ecf2b884704bfe31f9b59d4e91c75c22b4f50e6f167",
+    "docker/openvox/check.rb": "08f23a1103e26301afe1415f7f083cf4acabb5764e1363645a05a81bccd8a1b3",
+    "docker/openvox/compose.yaml": "a39b7ec69159cfdd21575c186d98a32ec0e29ea96129e2d21ddf815d18db0098",
+    "docker/openvox/deploy.sh": "0e24ca5d90a536a9ff516d50da7527d7131ccf012c12e31034f1413a08b3535a",
+    "docker/openvox/infra-flush.rb": "4459f8124d0bf33de814e0d4b571767a64c4b6d9bb93fc09db020a2acbe3c622",
+    "docker/openvox/infra-jvm-policy-check.rb": "d59a565be799c8dcc3132fd50019cd0d0314484f230b815d68f95653329a068b",
+    "docker/openvox/infra-pki-self-test.py": "2766e721c2353e181a0204f45217999f011344984ec87ff54c89101970645955",
+    "docker/openvox/infra-pki.rb": "ccff3c69ebac21d46c6f46d481059ef532e450782a7afcae656a961244cbfb26",
+    "docker/openvox/infra-post-receive": "34b00285cd9172fd6ed9a0c016376e4f5b64343afd74dfaffe0105a47bfc1e23",
+    "docker/openvox/infra-puppet.conf": "89df4e51b1c255f049f26eb7ba34d3622736030bc50a9a60f725d7c6f88e2c44",
+    "docker/openvox/infra-r10k.yaml": "2f6ff7a5bd67c4315f7b3de81a2a84b9ef705c331c838cec9042cc6d925fe8d2",
+    "docker/openvox/infra-ready.rb": "9d8221bfaabe38bb2bfb885668a90b35571ad1f23a95d7567126258f79a9e9bf",
+    "docker/openvox/infra-runtime.conf": "f4d471e45fcac872ded588cd8b87c1ab9b5c6924763d980eb0bdd164aee8bf81",
+    "docker/openvox/infra-start.sh": "94768c7b14b683bc80a3f2c862bd2047c2dfe51e8e61e8e14171be899960b19f",
+    "docker/openvox/infra-vault.hcl": "b4a87c183bf1e379069d4673fd434edc115df97a8e67b04b86e0e67eb7d83aec",
+    "docker/openvox/infra-vault.override.yaml": "5b759ceb10184eb2d228d9a62a626ad2c93707d4b90ff734aec2338bba0b9ca2",
+    "docker/openvox/infra-webserver.conf": "4d82608af9d5803f9e5fae15962b4d04a238090e0ad24b20d02556db49bab7ea",
+    "docker/openvox/infra.Dockerfile": "85f8f4d0fb5efd8873ff16e101c49af6dbc5a65031ec60f05ba8e187a88aa96f",
+    "docker/openvox/openssl.cnf": "c668e92d2cecbd088e92deea641802f19c88a475951725494330e0b2a37b2f75",
+    "docker/openvox/outbound-acceptance.rb": "bdda0c660f4fbd85f6e9602ccc7c1fe8909a3a45a3f66f4a14067aa8b29c429a",
+    "docker/openvox/pki.rb": "28c42918c519cbe1cb0043965cd0c7b1d62ee5b7d89f3d9cb84fb6f83e5df789",
+    "docker/openvox/puppet.conf": "00321e694a91b88a6ce65d04dbe93abb90e99ac44eddde1509190e71250bfec5",
+    "docker/openvox/ready.rb": "20bad47a857f4db9f8291cf6910467c8d62c47b46dd99f3268bad4f5d2ac5882",
+    "docker/openvox/rehearsal.conf": "f4d471e45fcac872ded588cd8b87c1ab9b5c6924763d980eb0bdd164aee8bf81",
+    "docker/openvox/root.hcl": "dbd236bce0c4ca519df6118ad8579aaa1bdf10adb3a42ceeebad481930a69c1c",
+    "docker/openvox/test-crl-publisher.rb": "3b687585c88017f40e512130e542b66eba45f0efcbd4e60080f149d4c4ebebc2",
+    "docker/openvox/tls-evidence.rb": "1b54d66dfea8ad6a7a7f615ac0125d6d827d6778fa371ff38433f517ac603444",
+    "docker/openvox/transport.rb": "708fadaee38ffa679e62688a119b46e7180f0073275aaaa45617c3b51befc30f",
+    "docker/openvox/vault-api.py": "0eedf1d97d81bcd6b3e22b164ff2f4fdb9561e8ddefbc87565da14326d11b491",
+    "docker/openvox/vault.hcl": "dfe0422cdfb002a91b82fbc40b6e1a0625e715ab518672819283fa548e022d6c",
+    "docker/openvox/verify-crypto.rb": "4d83557075b180d981136fa0f7f145ccb71b0258563329d3ab00f45df60665b2",
+    "docker/openvox/verify-state.rb": "4aa1ef0f38d7f65744215cadaef984fa9f7bee8a199b801642811f76ec71e6c4",
+    "docker/openvox/webserver.conf": "e69ee331e2fc4c29412fa0da9bc85321f8f0b4471cad4335d5f4ef5d48527b6f",
+    "docker/vault/scripts/01-pki-core-setup.sh": "35910534269045f9696f52348fea340caf41efeba7851f82c89bc2a3df50ebd1",
+    "docker/vault/scripts/02-pki-intermediate.sh": "2f4ce9254bc4aa82851a7045cb7e8fb81beb76b45aca750897cda084d8945f3a",
+    "docker/vault/scripts/03-puppet-external-ca.sh": "4c925bfc09eead8a5171786cfd6ada73e12fe7973b5a040471cfc019fdcb6a59",
+    "docker/vault/scripts/04-sign-csr.sh": "0e96f87994edf9c25a0f19c55e1bc1faa37266eabe6ca5a0fd6857cd7fe4a58f",
+    "docker/vault/scripts/offline-intermediate.rb": "46c858bf21ccb37d6aa026674bf503a6abd0d4a6f4213868e7213e2a1f86ab3a",
+    "proxmox/config.sh": "837c2b98e616d68a13c34533525e5c3c8902c878016a28ff37bf2da250dd6d01",
+    "proxmox/configure-pbs.sh": "bf1be443f2f231763bfc98dc8584597ecece424b4489e0a170fb77692dcd22e5",
+    "proxmox/configure-puppet.sh": "47db7511f18c079c61a2b2db6f52c8268a2776546a928d408c6d54a1c0623830",
+    "proxmox/configure-pve-backups.sh": "3b5f04e8870daa2167896974c9df4d1ed1ce059f274fc7a93896c793a05767b9",
+    "proxmox/create-pbs-lxc.sh": "89399d75eec7702b4adb7afbd5e5e66b7caffde896aa3a85d775d4b5a8dad948",
+    "proxmox/desktop.py": "1d08827b87543ae6edfe1824466e1f390ca6f00ef3be122b339755767a16bfee",
+    "proxmox/desktop.sh": "814839813bca65be83fc408e6187aaff4c3773cf1c442dc3d707d7e21cd91878",
+    "proxmox/desktop_cloud_init.py": "186b39345cdf81ca44006667802f834a6034f043aa38704f65558ecc2174c036",
+    "proxmox/docker-cloud-init.yml.tmpl": "3e5b9500d80dbd450880d3a798f723b6fb7710f1562556bb5d0594efcfa500a9",
+    "proxmox/docker-server.sh": "cd404cb5656e2068318712ac5ebe0ac39402aebe4751aa169816da5f19e79277",
+    "proxmox/enroll-proxmox.sh": "e16754955fdae6a5b2c606818e734a522f652d2048214afcc58f8e02ecb10556",
+    "proxmox/freeipa-client-acceptance-cloud-init.yml.tmpl": "d32ef692dbadd4da7cf608474548245b261239886f1fa8f42efd9d381125502e",
+    "proxmox/freeipa-client-acceptance.sh": "60b1a7ab5457b12df748b74a689821cebdee257ce483c33090b79812dc03d9a5",
+    "proxmox/install-openvox.sh": "1d6f864e64b7972099e8efe3fcee17007fdb6123e9b24d563a167b86e913f6a2",
+    "proxmox/lib.sh": "b3d94c260d5302b1fd11e9a934694dbcfea9b80a35274bff3a0c22786aa95aff",
+    "proxmox/ubuntu-cloud-init.yml.tmpl": "04f184c0abf43916d55d8e72ac76ecf3487dbe3c108c36e7b559e53a069aa2f4",
+    "proxmox/ubuntu-server-template.sh": "a9b0a70b7c201033f15e92504dea6d8d57f511efbb4be0d77a60799d87228567",
+    "scripts/autosign.py": "1b1b5fcb38b75ea0bd4698d9058549aee475a9a9f780b8bd0781c174837cb76a",
+    "scripts/openvox-rehearsal.py": "df2939da6990490bf3acd7de24f6e510c53eb98d20be6b10fd1be7390e25d7ab",
+    "scripts/openvox_offline_root.py": "d39d88b867c691fa4cb1b597582be474a4083ef0aab1941350b1a5e9c36f975b",
+    "scripts/openvox_rehearsal_recovery.py": "e54a7f3f98e79ad0047d07383846eac1315a180a25b514d81a6931bfa2776657",
+    ".env.example": "5c47210efa3f80513f90850dd87007efb0fde6199edaf5a7e8a2ed6860004953"
+  }
+}

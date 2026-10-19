@@ -1,0 +1,201 @@
+# Root custody and historical offline-root rehearsal
+
+The production requirement is that the root signing key remains inside Vault;
+Vault stays available for automatic signing. Routine CRLs use Vault's native
+background rebuilding and public download endpoints, configured by
+[CRL automation](openvox-infra.md#crl-automation). No manual publication ceremony
+is required. The network-isolated, stop/start root procedure below records the
+earlier disposable rehearsal and remains a diagnostic tool, not a production
+routine or an automation dependency.
+
+`scripts/openvox_offline_root.py` exercises the established disposable offline
+root on the local Docker installation. It never initializes a replacement root,
+uses the explicit local socket and fixed `openvox-rehearsal` project, requires the
+recorded root SHA-256 fingerprint, and refuses a root with Docker networking.
+It stops the root in a `finally` block, including after a failed signing or
+verification step. A stop failure is reported as a failed ceremony.
+
+Run from the repository after the main rehearsal initialized the offline root:
+
+```sh
+python3 scripts/openvox_offline_root.py rehearse --expected-root-sha256 <recorded-root-certificate-sha256>
+python3 scripts/openvox_offline_root.py publish --expected-root-sha256 <recorded-root-certificate-sha256>
+```
+
+Take the fingerprint from the recorded ceremony evidence, not from a new root
+discovered during the operation. Existing protected Vault recovery inputs stay
+inside the root volume and travel through private control requests; command
+arguments and public output contain no tokens, unseal material or private keys.
+This one-share test recovery arrangement is not an operator key-custody design.
+
+`rehearse` performs these explicit ceremony steps:
+
+1. Start and unseal the established network-isolated root and check its identity.
+2. Generate a fresh ML-DSA-44 intermediate key and signed CSR in a new private
+   directory within its offline volume. This disposable probe is separate from
+   both current OpenVox and FreeIPA intermediates.
+3. Sign that CSR for 48 hours with CA path length zero, then sign the same CSR for
+   72 hours. Verify the renewal retains the public key, changes the serial and
+   extends validity without exceeding the root's lifetime.
+4. Revoke only the first certificate created by this invocation. Rotate the root
+   CRL and verify its issuer, signature and validity. OpenSSL's certificate-store
+   revocation check must reject the revoked certificate and accept its renewal.
+5. Export public artifacts, stop the root and confirm it is stopped.
+
+This tests serial revocation after routine renewal. A compromised intermediate
+key requires revoking **every unexpired certificate for that key** and creating a
+replacement key; retaining the key is appropriate only for an uncompromised
+renewal. For a real ceremony, generate the intermediate key at its owning issuer
+and transfer only its CSR to the offline root. The main rehearsal already uses
+that separation for the actual OpenVox and FreeIPA intermediates.
+
+`publish` rotates and verifies the root CRL, then exports it without issuing or
+revoking any certificate. It does not merely recopy an aging CRL. Each operation
+creates a new publication directory under
+`/tmp/openvox-rehearsal-<uid>/public/offline-root/<operation-id>/`:
+
+| Artifact | Purpose |
+| --- | --- |
+| `root.pem` | Pinned public root certificate |
+| `root.crl` | Signed DER root CRL for a CRL distribution endpoint |
+| `root.crl.pem` | The same signed root CRL in PEM form for local trust stores |
+| `intermediate-initial.pem` | Disposable revoked intermediate (`rehearse` only) |
+| `intermediate-renewed.pem` | Same-key renewed intermediate (`rehearse` only) |
+| `evidence.json` | Sanitized verification results, issuer URLs and CRL expiry |
+
+For the OpenVox trust volume, copy the exported **`root.crl.pem`** to
+**`/trust/root.crl`**. That local import filename expects PEM; the exported
+`root.crl` is DER and belongs on the public distribution endpoint.
+
+Only these public files may cross from offline custody to a publication host.
+Keep the root volume, private probe directories, unseal material and protected
+backups out of any web-server document root. Back up the changed root storage
+after signing or revocation, so recovery retains its issuance and revocation
+history. Retain the older backup until the new protected copy is verified.
+
+The live rehearsal proved nine cryptographic/lifecycle checks, including actual
+ML-DSA-44 CRL verification and certificate-store denial of the revoked serial.
+The latest sanitized result is
+`/tmp/openvox-rehearsal-175200003/offline-root-lifecycle.json`.
+Both `publish` and `rehearse` were run successfully; the current root certificate
+fingerprint remained unchanged and the root is stopped.
+An additional temporary HTTP server bound only to host loopback served the public
+root certificate and DER CRL without credentials. A separate network-isolated
+container verified the fetched CRL signature and rejected a bit-flipped CRL.
+Those three checks are recorded as `publication_probe`; this proves the exported
+bytes are usable through a static mirror, while the real publication route
+remains a deployment requirement.
+
+## Historical publication probe and remaining custody work
+
+The current disposable root's `issuing_certificates`,
+`crl_distribution_points` and `ocsp_servers` lists are empty. The command exports
+verified publication files; it does not claim that fleet clients can discover
+them or install them into the running restored stack. Existing clients use
+explicitly supplied root certificate/CRL files. No production DNS, web server,
+root issuer URL or current trust mount was changed.
+
+Before production issuance, choose a stable public certificate/CRL mirror and
+configure the root mount's `pki/config/urls` to point to that mirror. The issuing
+certificate URL must serve `root.pem`, and the root CRL URL must serve the bytes
+of `root.crl`. This is supported
+[Vault URL configuration](https://developer.hashicorp.com/vault/api-docs/secret/pki#set-urls),
+not a missing Vault capability. Issued intermediates must contain the intended
+AIA/CDP values; changing the mount later does not rewrite an existing certificate.
+Publish the matching OpenVox and FreeIPA intermediate CRLs separately, configure
+their own issuers' URLs, and verify each consumer's actual revocation behavior.
+An AIA/CDP extension alone does not prove a client fetches or enforces it.
+
+Serve the public mirror without an authentication dependency on a certificate
+whose validity requires that same mirror. Transfer verified files atomically,
+check their bytes after publication, and monitor each published CRL's
+`nextUpdate`. Do not expose the offline Vault listener as the publication URL.
+
+The observed root CRL lifetime is 72 hours. Repeat the offline CRL publication
+ceremony before `nextUpdate`, with enough margin for distribution failures; a
+daily schedule is suitable for this test default. Vault's documented
+[CRL rotation](https://developer.hashicorp.com/vault/api-docs/secret/pki#rotate-crls)
+supports this refresh, but its automatic rebuild cannot run while the root is
+powered off. A longer production CRL lifetime is a policy choice that also delays
+expiry-based detection of missed publications; choose it explicitly rather than
+assuming an offline root needs no ongoing maintenance.
+
+Physical separation, threshold custody, independently protected off-host backups,
+the real publication host, expired-CRL alarms and a root ceremony performed by an
+operator remain outside this disposable test. These are deployment and custody
+requirements, not evidence that Vault cannot sign or revoke ML-DSA intermediates.
+
+## Explicit paths in the existing Vault setup scripts
+
+The four existing `docker/vault/scripts/01` through `04` entry points now accept
+`--offline-root` as their **first** argument. Their legacy defaults are preserved
+for the existing deployment until the explicit #13 cutover. The opt-in branch
+runs before legacy configuration, `.env` loading, token-file fallbacks, RSA
+generation, online-root signing, SSL-directory removal or systemd operations.
+
+| Entry point | Explicit offline-root behavior |
+| --- | --- |
+| `01-pki-core-setup.sh --offline-root` | Refuses the online-root bootstrap and prints the offline ceremony/publication commands; exits 2 |
+| `02-pki-intermediate.sh --offline-root ...` | Generates a separate online FreeIPA ML-DSA CSR or imports its externally signed chain |
+| `03-puppet-external-ca.sh --offline-root` | Prints the explicit container `infra-pki.rb prepare` / pinned `import` commands; exits 2 without touching the host |
+| `04-sign-csr.sh --offline-root` | Refuses the old FreeIPA CA-full subordinate-CA signing path; exits 2 with the CA-less #14 handoff |
+
+For `02`, use the accepted OpenVox native Ruby/OpenSSL runtime with the explicit
+strict `OPENSSL_CONF` policy. The legacy Vault setup image has no such Ruby
+runtime; this mode fails with an actionable message there. It does not install
+dependencies or silently use a different cryptographic backend. Set
+`OPENVOX_RUBY` if the accepted native Ruby lives somewhere other than
+`/opt/puppetlabs/puppet/bin/ruby`. Inject an administrator `VAULT_TOKEN` through
+the operator's protected environment; there is no fallback to the online root's
+bootstrap token file. Also supply verified HTTPS `VAULT_ADDR`, readable
+`VAULT_CACERT`, readable `VAULT_CRL` containing the Vault issuer and root PEM
+CRLs, and readable `OPENSSL_CONF` before invoking:
+
+```sh
+sh docker/vault/scripts/02-pki-intermediate.sh --offline-root generate-csr --initialize /protected/freeipa-request
+# Transfer intermediate.csr to the offline signer; transfer public signed files back.
+sh docker/vault/scripts/02-pki-intermediate.sh --offline-root import /protected/freeipa-request ROOT_SHA256
+```
+
+Generation requires the explicit `--initialize` flag, creates `pki_int` only if
+absent, and refuses existing issuers, keys or local request directories. It never
+calls a root-generation/signing endpoint. The private intermediate key remains
+inside Vault; `intermediate.csr` and `request.json` preserve the request hash and
+Vault key identifier. Protect and back up that request directory and the online
+Vault state together. Missing state fails instead of creating a new authority.
+Vault's internal key-encoding limitations are tracked separately in
+[the Vault limitations report](openvox-vault-limitations.md).
+
+Have the offline root sign that exact CSR for an uncompromised ML-DSA-44
+intermediate with path length zero, a lifetime of at most the configured
+720-hour mount cap, and more than 24 hours remaining at import. Place these
+public artifacts beside the preserved request files:
+
+- `signed.pem`: the signed intermediate followed by the pinned offline root.
+- `root.pem`: that root certificate.
+- `root.crl.pem`: its current signed PEM CRL.
+
+Import requires a mandatory root SHA-256 pin and validates both algorithms,
+signatures, key/CSR correspondence, CA path lengths/key usage, issuer lifetime
+bounds and root-CRL enforcement before changing Vault. Verified TLS 1.3 requests
+use the supplied trust file and enforce revocation through the entire chain
+before sending the administrator token. Missing, expired or revoking CRLs fail
+the request. Plaintext URLs, skip-verification and TLS-name
+overrides are rejected. The helper bypasses HTTP proxy environment settings.
+Vault must still hold the original key identifier. A repeated import of exactly
+the same certificate/key is read-only; a different current issuer fails and
+requires an explicit renewal/recovery procedure. No key is deleted or replaced.
+
+After import, configure the intermediate's publication URLs and scoped ML-DSA
+leaf-issuance roles before use. This helper intentionally does not grant a broad
+legacy `general` role or perform FreeIPA installation. Real CA-less consumer
+compatibility and rollout remain #14 work.
+
+A separate disposable, network-isolated TLS Vault demonstrated CSR creation,
+offline signing, wrong-root-pin denial, successful import, unchanged repeated
+import and refusal to regenerate an existing authority. It was removed after
+the test; the running restored Vault's intermediate was not altered. Sanitized
+evidence is `/tmp/openvox-rehearsal-175200003/legacy-offline-intermediate.json`.
+During that test, an empty PKI mount returned HTTP 500 for `issuer/default`;
+the helper now lists issuers first and queries the default only when one exists,
+so it does not mask genuine HTTP 500 errors as a missing authority.

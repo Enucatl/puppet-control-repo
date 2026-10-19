@@ -17,6 +17,131 @@ x-vault-setup: &vault-setup
 
 services:
 
+  # Explicit opt-in only; identity volumes must already have been restored/imported.
+  openvox:
+    profiles: [openvox]
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: hardened-xlarge
+    build:
+      context: ./openvox
+      dockerfile: infra.Dockerfile
+    image: infra-openvox:18001
+    hostname: docker.home.arpa
+    user: "999:999"
+    command: [bash, /infra/infra-start.sh]
+    stop_grace_period: 60s
+    environment:
+      OPENSSL_CONF: /infra/openssl.cnf
+      OPENVOX_CRL_PUBLISHER_CERTNAME: ${OPENVOX_CRL_PUBLISHER_CERTNAME:-docker.home.arpa}
+      VAULT_ADDR: https://hcv.home.arpa:8200
+      VAULT_CACERT: /trust/root.pem
+      VAULT_CRL: /trust/outbound-crls.pem
+      NO_PROXY: hcv.home.arpa,docker.home.arpa,127.0.0.1,localhost
+      no_proxy: hcv.home.arpa,docker.home.arpa,127.0.0.1,localhost
+      JAVA_ARGS: >-
+        -Xms256m -Xmx1024m -XX:ActiveProcessorCount=2
+        -Djava.security.properties=/opt/puppetlabs/server/data/puppetserver/java.security.mldsa
+        -Djdk.tls.namedGroups=X25519MLKEM768
+        -Djdk.tls.client.protocols=TLSv1.3
+        -Djdk.tls.server.protocols=TLSv1.3
+        -Djdk.tls.client.SignatureSchemes=mldsa44
+        -Djdk.tls.server.SignatureSchemes=mldsa44
+        -Dorg.bouncycastle.jsse.client.SignatureSchemesCert=mldsa44
+        -Dorg.bouncycastle.jsse.server.SignatureSchemesCert=mldsa44
+    ports:
+      - "8140:8140"
+    networks:
+      - infra
+    tmpfs:
+      # JRuby extracts its native POSIX library here; dlopen needs executable mappings.
+      - /tmp:rw,exec,nosuid,nodev,size=256m,uid=999,gid=999
+      - /run/puppetlabs/puppetserver:rw,noexec,nosuid,size=16m,uid=999,gid=999
+      - /var/log/puppetlabs/puppetserver:rw,noexec,nosuid,size=64m,uid=999,gid=999
+    volumes:
+      - type: bind
+        source: ./openvox
+        target: /infra
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ../scripts
+        target: /helpers
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./openvox/infra-puppet.conf
+        target: /etc/puppetlabs/puppet/puppet.conf
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./openvox/infra-webserver.conf
+        target: /etc/puppetlabs/puppetserver/conf.d/webserver.conf
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./openvox/ca.conf
+        target: /etc/puppetlabs/puppetserver/conf.d/ca.conf
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./openvox/infra-runtime.conf
+        target: /etc/puppetlabs/puppetserver/conf.d/infra-runtime.conf
+        read_only: true
+        bind: {create_host_path: false}
+      - openvox_ssl:/etc/puppetlabs/puppet/ssl
+      - openvox_ca:/etc/puppetlabs/puppetserver/ca
+      - openvox_code:/etc/puppetlabs/code
+      - openvox_data:/opt/puppetlabs/server/data/puppetserver/server_data
+      - openvox_gems:/opt/puppetlabs/server/data/puppetserver/jruby-gems
+      - openvox_git:/git
+      - openvox_r10k_cache:/var/cache/r10k
+      - openvox_trust:/trust:ro
+    healthcheck:
+      test: [CMD, /opt/puppetlabs/puppet/bin/ruby, /infra/infra-ready.rb]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+
+  # The timer targets this one-shot explicitly; ordinary up never starts it.
+  openvox-crl-refresh:
+    profiles: [openvox-tools]
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: hardened-small
+    image: infra-openvox:18001
+    user: "999:999"
+    restart: "no"
+    entrypoint: [/opt/puppetlabs/puppet/bin/ruby]
+    command: [/crl-code/crl-refresh.rb, publish, /config.json]
+    environment:
+      OPENSSL_CONF: /infra/openssl.cnf
+    networks:
+      - infra
+    volumes:
+      - type: bind
+        source: ./openvox
+        target: /infra
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ../modules/profile/files/openvox
+        target: /crl-code
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /etc/openvox-crl/publisher.json
+        target: /config.json
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /etc/openvox-crl/credentials
+        target: /credentials
+        read_only: true
+        bind: {create_host_path: false}
+      - openvox_trust:/trust
+
   goflow2:
     extends:
       file: ../../compose-security-baseline/hardening.yml
@@ -325,6 +450,15 @@ networks:
       driver: default
 
 volumes:
+  # External names prevent ordinary startup from creating an empty replacement.
+  openvox_ssl: {external: true, name: infra_openvox_ssl}
+  openvox_ca: {external: true, name: infra_openvox_ca}
+  openvox_code: {external: true, name: infra_openvox_code}
+  openvox_data: {external: true, name: infra_openvox_data}
+  openvox_gems: {external: true, name: infra_openvox_gems}
+  openvox_git: {external: true, name: infra_openvox_git}
+  openvox_r10k_cache: {external: true, name: infra_openvox_r10k_cache}
+  openvox_trust: {external: true, name: infra_openvox_trust}
   # config/state files are kept in the repo checkout via bind mounts
   certificates:
   freeipa_data:

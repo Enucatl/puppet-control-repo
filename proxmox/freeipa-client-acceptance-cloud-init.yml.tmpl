@@ -12,17 +12,34 @@ write_files:
       #!/bin/bash
       set -euo pipefail
       CERTNAME="${1:?certname required}"
+      VAULT_TOKEN="${2:?enrollment token required}"
+      NODE_TYPE="${3:?node type required}"
+      PUPPET_SERVER="${4:?server required}"
       systemctl stop puppet
+      export OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
+      test -s "$OPENSSL_CONF"
+      test -s /etc/puppetlabs/puppet/ssl/certs/ca.pem || { echo 'Install authenticated OpenVox CA trust before enrollment.' >&2; exit 1; }
+      /opt/puppetlabs/bin/puppet config set key_type mldsa44 --section main
+      /opt/puppetlabs/bin/puppet config set key_type mldsa44 --section agent
+      test "$(/opt/puppetlabs/bin/puppet config print key_type --section agent)" = mldsa44
       mkdir -p /etc/puppetlabs/puppet /etc/facter/facts.d
-      cat > /etc/puppetlabs/puppet/csr_attributes.yaml <<EOF
-      custom_attributes:
-        1.2.840.113549.1.9.7: "${VM_TOKEN}"
-      EOF
-      chmod 0640 /etc/puppetlabs/puppet/csr_attributes.yaml
-      echo 'node_type=${NODE_TYPE}' > /etc/facter/facts.d/node_type.txt
-      /opt/puppetlabs/bin/puppet config set server '${PUPPET_SERVER}' --section main
+      install -m 0640 /dev/null /etc/puppetlabs/puppet/csr_attributes.yaml
+      printf '%s' "$VAULT_TOKEN" | /opt/puppetlabs/puppet/bin/ruby -rjson -e '
+        puts JSON.generate({"custom_attributes" => {"1.2.840.113549.1.9.7" => STDIN.read}})
+      ' > /etc/puppetlabs/puppet/csr_attributes.yaml
+      printf 'node_type=%s\n' "$NODE_TYPE" > /etc/facter/facts.d/node_type.txt
+      /opt/puppetlabs/bin/puppet config set server "$PUPPET_SERVER" --section main
       /opt/puppetlabs/bin/puppet config set certname "$CERTNAME" --section main
-      /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
+      /opt/puppetlabs/bin/puppet config set certificate_revocation chain --section agent
+      /opt/puppetlabs/bin/puppet config set crl_refresh_interval 0 --section agent
+      HOST_KEY=$(/opt/puppetlabs/bin/puppet config print hostprivkey --section agent)
+      if [[ -s $HOST_KEY ]]; then
+        /opt/puppetlabs/puppet/bin/ruby -ropenssl -e '
+          key = OpenSSL::PKey.read(File.read(ARGV.fetch(0)))
+          oid = OpenSSL::ASN1.decode(key.public_to_der).value[0].value[0].oid
+          abort "Existing identity is not ML-DSA-44; use the explicit identity migration procedure" unless oid == "2.16.840.1.101.3.4.3.17"
+        ' "$HOST_KEY"
+      fi
       systemctl unmask --runtime puppet.service
       systemctl enable puppet
       # The acceptance runner performs the authoritative Puppet run after
@@ -30,10 +47,16 @@ write_files:
       # catalog is temporarily unavailable.
       /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
 
+  - path: /usr/local/bin/install-openvox.sh
+    permissions: '0755'
+    content: |
+${INSTALL_OPENVOX_SCRIPT}
+
+  - path: /etc/puppetlabs/puppet/ssl/certs/ca.pem
+    permissions: '0644'
+    content: |
+${OPENVOX_CA_BUNDLE}
+
 runcmd:
-  - wget -q -O /tmp/puppet.deb https://apt-puppetcore.puppet.com/public/puppet8-release-noble.deb
-  - dpkg -i /tmp/puppet.deb
-  - rm /tmp/puppet.deb
-  - apt-get update
-  - apt-get install -y puppet-agent
-  - /usr/local/sbin/configure-puppet-acceptance '${VM_FQDN}'
+  - bash /usr/local/bin/install-openvox.sh
+  - ${PUPPET_ENROLLMENT_COMMAND}

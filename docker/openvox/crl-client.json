@@ -1,0 +1,9 @@
+{
+  "root": "/etc/puppetlabs/puppet/ssl/certs/ca.pem",
+  "issuer": "/etc/puppetlabs/puppet/ssl/certs/ca.pem",
+  "source_url": "https://docker.home.arpa:8140/puppet-ca/v1/certificate_revocation_list/ca",
+  "output_file": "/etc/puppetlabs/puppet/ssl/crl.pem",
+  "state_file": "/var/lib/openvox-crl/state.json",
+  "status_file": "/var/lib/openvox-crl/status.json",
+  "root_crl_url": "https://hcv.home.arpa:8200/v1/pki/crl/pem"
+}

@@ -6,8 +6,8 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import re
 import shlex
+import shutil
 import subprocess
 
 import pytest
@@ -34,6 +34,80 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC is not None and SPEC.loader is not None
 DESKTOP_CLOUD_INIT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(DESKTOP_CLOUD_INIT)
+
+
+def render_cloud_template(
+    tmp_path: Path, kind: str, token: str = TOKEN, server: str = "puppet.example"
+) -> str:
+    """Run the callers' real template preparation without any VM commands."""
+    caller = {
+        "docker": "docker-server.sh",
+        "freeipa-client-acceptance": "freeipa-client-acceptance.sh",
+        "ubuntu": "ubuntu-server-template.sh",
+    }[kind]
+    source = (PROXMOX / caller).read_text()
+    first = (
+        "SSH_PUBLIC_KEY_JSON=" if kind == "ubuntu" else 'create_vault_token "$VM_FQDN"'
+    )
+    start = source.index(first)
+    end = source.index(
+        "\nqm clone" if kind == "freeipa-client-acceptance" else "\n# 2.", start
+    )
+    preparation = source[start:end]
+    output = tmp_path / "rendered.yml"
+    ca = tmp_path / "public-ca.pem"
+    ca.write_text(
+        "-----BEGIN CERTIFICATE-----\npublic $TOKEN ' : fixture\n-----END CERTIFICATE-----\n"
+    )
+    ssh = tmp_path / ".ssh"
+    ssh.mkdir(exist_ok=True)
+    (ssh / "id_ed25519.pub").write_text('ssh-ed25519 AAAA comment: "$()" \' user\n')
+    subprocess.run(
+        ["bash", "-euc", "create_vault_token() { :; }\n" + preparation],
+        env={
+            **os.environ,
+            "HOME": str(tmp_path),
+            "SCRIPT_DIR": str(PROXMOX),
+            "TEMPLATE_SRC": str(PROXMOX / f"{kind}-cloud-init.yml.tmpl"),
+            "GENERATED_YAML": str(output),
+            "SNIPPET": str(output),
+            "SNIPPET_PATH": str(output),
+            "OPENVOX_CA_CERT": str(ca),
+            "VM_TOKEN": token,
+            "VM_FQDN": CERTNAME,
+            "NODE_TYPE": "docker" if kind == "docker" else "freeipa_acceptance",
+            "PUPPET_SERVER": server,
+            "DOMAIN_SUFFIX": "home.arpa",
+            "IPV6_POOL": "fd00:1234:5678:a000::/56",
+            "IPV6_FIXED": "fd00:1234:5678:a100::/64",
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return output.read_text()
+
+
+def parse_cloud_template(rendered: str) -> dict:
+    """Parse full YAML using the existing Ruby runtime without new dependencies."""
+    ruby = shutil.which("ruby")
+    if ruby is None:
+        pytest.skip("Ruby is required to parse cloud-init YAML")
+    return json.loads(
+        subprocess.run(
+            [
+                ruby,
+                "-ryaml",
+                "-rjson",
+                "-e",
+                "puts JSON.generate(YAML.safe_load(STDIN.read))",
+            ],
+            input=rendered,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
 
 
 def issue_token(
@@ -160,10 +234,10 @@ def test_rendered_enrollment_configures_exact_identity(
         caller = (PROXMOX / "enroll-proxmox.sh").read_text()
         assert caller.index(
             "systemctl mask --runtime --now puppet.service"
-        ) < caller.index("apt-get install -y puppet-agent")
+        ) < caller.index('bash "$SCRIPT_DIR/install-openvox.sh"')
     elif kind == "desktop":
         config = DESKTOP_CLOUD_INIT.build_cloud_config(
-            TOKEN, CERTNAME, "puppet.example", "home.arpa"
+            TOKEN, CERTNAME, "puppet.example", "home.arpa", "authenticated public CA"
         )
         assert config["bootcmd"] == [
             [
@@ -187,65 +261,29 @@ def test_rendered_enrollment_configures_exact_identity(
         )
         args = invocation[1:]
     else:
-        caller = {
-            "docker": "docker-server.sh",
-            "freeipa-client-acceptance": "freeipa-client-acceptance.sh",
-        }[kind]
-        caller_script = (PROXMOX / caller).read_text()
-        substitutions = re.search(r"envsubst '([^']+)'", caller_script)
-        assert substitutions is not None
-        preparation = ""
-        if kind == "docker":
-            embedding = re.search(
-                r"^CONFIGURE_PUPPET_SCRIPT=.*\nexport .*\n", caller_script, re.M
-            )
-            assert embedding is not None
-            preparation = embedding[0]
-        rendered = subprocess.run(
-            [
-                "bash",
-                "-c",
-                preparation + 'exec envsubst "$1"',
-                "render",
-                substitutions[1],
-            ],
-            input=(PROXMOX / f"{kind}-cloud-init.yml.tmpl").read_text(),
-            env={
-                **os.environ,
-                "SCRIPT_DIR": str(PROXMOX),
-                "VM_TOKEN": TOKEN,
-                "VM_FQDN": CERTNAME,
-                "NODE_TYPE": node_type,
-                "PUPPET_SERVER": "puppet.example",
-                "DOMAIN_SUFFIX": "home.arpa",
-                "IPV6_POOL": "fd00:1234:5678:a000::/56",
-                "IPV6_FIXED": "fd00:1234:5678:a100::/64",
-            },
-            text=True,
-            capture_output=True,
-            check=True,
-        ).stdout
+        rendered = render_cloud_template(tmp_path, kind)
         assert (
             "bootcmd:\n  - cloud-init-per instance puppet-enrollment-mask "
             "systemctl mask --runtime --now puppet.service\n" in rendered
         )
-        embedded = re.search(r"    content: \|\n((?:      .*\n|\n)+)", rendered)
-        assert embedded is not None
-        script = "\n".join(line[6:] for line in embedded[1].splitlines())
+        cloud_config = parse_cloud_template(rendered)
+        script = cloud_config["write_files"][0]["content"]
         if kind == "docker":
             assert script.rstrip("\n") == (
                 PROXMOX / "configure-puppet.sh"
             ).read_text().rstrip("\n")
-        invocation = re.search(
-            r"^  - /usr/local/(?:bin|sbin)/configure-puppet[^\n]*", rendered, re.M
+        invocation = next(
+            command
+            for command in cloud_config["runcmd"]
+            if isinstance(command, list) and command[0].startswith("/usr/local/")
         )
-        assert invocation is not None
-        args = shlex.split(invocation[0])[2:]
+        args = invocation[1:]
 
     # Absolute production paths are redirected before any script is executed.
     script = script.replace("/etc/puppetlabs/puppet", str(tmp_path / "puppet"))
     script = script.replace("/etc/facter/facts.d", str(tmp_path / "facts"))
     script = script.replace("/opt/puppetlabs/bin/puppet", "puppet")
+    script = script.replace("/opt/puppetlabs/puppet/bin/ruby", shutil.which("ruby"))
     for command in ["puppet", "systemctl"]:
         executable = (
             tmp_path / command if command == "systemctl" else tmp_path / "bin" / command
@@ -254,12 +292,17 @@ def test_rendered_enrollment_configures_exact_identity(
         executable.write_text(
             '#!/bin/bash\nprintf "%s %s\\n" "${0##*/}" "$*" >> "$COMMAND_LOG"\n'
             + (
+                'if [ "$1 $2 $3" = "config print key_type" ]; then echo mldsa44; fi\n'
                 'if [ "$1" = agent ]; then exit "$MOCK_PUPPET_STATUS"; fi\n'
                 if command == "puppet"
                 else ""
             )
         )
         executable.chmod(0o755)
+    (tmp_path / "puppet").mkdir()
+    (tmp_path / "puppet" / "openssl.cnf").write_text("# installed policy\n")
+    (tmp_path / "puppet" / "ssl/certs").mkdir(parents=True)
+    (tmp_path / "puppet" / "ssl/certs/ca.pem").write_text("# authenticated trust\n")
     subprocess.run(["bash", "-n"], input=script, text=True, check=True)
     result = subprocess.run(
         ["bash", "-c", script, "test", *args],
@@ -280,14 +323,21 @@ def test_rendered_enrollment_configures_exact_identity(
         else puppet_status
     )
     assert result.returncode == expected_status, result.stderr
-    assert (tmp_path / "puppet" / "csr_attributes.yaml").read_text() == (
-        f'custom_attributes:\n  1.2.840.113549.1.9.7: "{TOKEN}"\n'
-    )
+    assert json.loads((tmp_path / "puppet" / "csr_attributes.yaml").read_text()) == {
+        "custom_attributes": {"1.2.840.113549.1.9.7": TOKEN}
+    }
     assert (
         tmp_path / "facts" / "node_type.txt"
     ).read_text() == f"node_type={node_type}\n"
     commands = (tmp_path / "commands").read_text().splitlines()
-    assert commands[0] == "systemctl stop puppet"
+    assert commands[0] == (
+        "systemctl stop puppet"
+        if kind == "freeipa-client-acceptance"
+        else f"puppet config print hostprivkey --section agent --certname {CERTNAME}"
+    )
+    assert commands.index(
+        "puppet config set key_type mldsa44 --section agent"
+    ) < commands.index("puppet agent --test --waitforlock 300")
     assert "puppet config set server puppet.example --section main" in commands
     assert (
         commands.index(f"puppet config set certname {CERTNAME} --section main")
@@ -343,7 +393,11 @@ def test_desktop_enrollment_arguments_survive_serialization() -> None:
     config = json.loads(
         json.dumps(
             DESKTOP_CLOUD_INIT.build_cloud_config(
-                token, CERTNAME, "puppet.example", "home.arpa"
+                token,
+                CERTNAME,
+                "puppet.example",
+                "home.arpa",
+                "authenticated public CA",
             )
         )
     )
@@ -358,6 +412,250 @@ def test_desktop_enrollment_arguments_survive_serialization() -> None:
         config["write_files"][0]["content"]
         == (PROXMOX / "configure-puppet.sh").read_text()
     )
+    files = {item["path"]: item for item in config["write_files"]}
+    assert (
+        files["/usr/local/bin/install-openvox.sh"]["content"]
+        == (PROXMOX / "install-openvox.sh").read_text()
+    )
+    assert (
+        files["/etc/puppetlabs/puppet/ssl/certs/ca.pem"]["content"]
+        == "authenticated public CA"
+    )
+
+
+@pytest.mark.parametrize("kind", ["docker", "freeipa-client-acceptance", "ubuntu"])
+def test_full_cloud_template_preserves_scripts_trust_and_literal_arguments(
+    tmp_path: Path, kind: str
+) -> None:
+    """Exercise actual caller preparation, including all newly embedded inputs."""
+    token = "dummy'\"$TOKEN; $(id)\\token\nsecond line"
+    server = "puppet'\"$SERVER; $(id).example"
+    config = parse_cloud_template(render_cloud_template(tmp_path, kind, token, server))
+    files = {item["path"]: item for item in config["write_files"]}
+    assert (
+        files["/usr/local/bin/install-openvox.sh"]["content"]
+        == (PROXMOX / "install-openvox.sh").read_text()
+    )
+    assert files["/usr/local/bin/install-openvox.sh"]["permissions"] == "0755"
+    for path, item in files.items():
+        if path.endswith(".sh") or path.endswith("configure-puppet-acceptance"):
+            subprocess.run(["bash", "-n"], input=item["content"], text=True, check=True)
+    if kind == "ubuntu":
+        assert config["users"][0]["ssh_authorized_keys"] == [
+            'ssh-ed25519 AAAA comment: "$()" \' user'
+        ]
+        assert "/etc/puppetlabs/puppet/ssl/certs/ca.pem" not in files
+    else:
+        assert (tmp_path / "rendered.yml").stat().st_mode & 0o777 == 0o600
+        assert (
+            files["/etc/puppetlabs/puppet/ssl/certs/ca.pem"]["content"]
+            == (tmp_path / "public-ca.pem").read_text()
+        )
+        assert token in next(
+            command for command in config["runcmd"] if isinstance(command, list)
+        )
+        assert server in next(
+            command for command in config["runcmd"] if isinstance(command, list)
+        )
+        if kind == "docker":
+            assert (
+                files["/usr/local/bin/configure-puppet.sh"]["content"]
+                == (PROXMOX / "configure-puppet.sh").read_text()
+            )
+
+
+@pytest.mark.parametrize("kind", ["host", "freeipa-client-acceptance"])
+def test_enrollment_refuses_existing_rsa_before_unmasking(
+    tmp_path: Path, kind: str
+) -> None:
+    """Preserve existing identities instead of relabeling an RSA key as ML-DSA."""
+    if kind == "host":
+        script = (PROXMOX / "configure-puppet.sh").read_text()
+        args = ["proxmox", TOKEN, CERTNAME, "puppet.example"]
+    else:
+        config = parse_cloud_template(render_cloud_template(tmp_path, kind))
+        script = config["write_files"][0]["content"]
+        args = next(
+            command for command in config["runcmd"] if isinstance(command, list)
+        )[1:]
+    ruby = shutil.which("ruby")
+    if ruby is None:
+        pytest.skip("Ruby is required to validate native identities")
+    key = tmp_path / "existing-rsa.pem"
+    subprocess.run(
+        [
+            ruby,
+            "-ropenssl",
+            "-e",
+            "File.write(ARGV.fetch(0), OpenSSL::PKey::RSA.new(2048).to_pem)",
+            str(key),
+        ],
+        check=True,
+    )
+    original = key.read_bytes()
+    bins = tmp_path / "bin"
+    bins.mkdir()
+    log = tmp_path / "commands"
+    for name, body in {
+        "systemctl": ":",
+        "puppet": 'case "$1 $2 $3" in "config print key_type") echo mldsa44 ;; "config print hostprivkey") printf "%s\\n" "$HOST_KEY" ;; esac',
+    }.items():
+        path = bins / name
+        path.write_text(
+            '#!/bin/bash\nprintf "%s %s\\n" "${0##*/}" "$*" >> "$COMMAND_LOG"\n'
+            + body
+            + "\n"
+        )
+        path.chmod(0o755)
+    puppet = tmp_path / "puppet"
+    (puppet / "ssl/certs").mkdir(parents=True)
+    (puppet / "ssl/certs/ca.pem").write_text("authenticated trust")
+    (puppet / "openssl.cnf").write_text("# installed policy\n")
+    script = script.replace("/etc/puppetlabs/puppet", str(puppet)).replace(
+        "/etc/facter/facts.d", str(tmp_path / "facts")
+    )
+    script = script.replace("/opt/puppetlabs/bin/puppet", "puppet").replace(
+        "/opt/puppetlabs/puppet/bin/ruby", ruby
+    )
+    result = subprocess.run(
+        ["bash", "-c", script, "test", *args],
+        env={
+            **os.environ,
+            "PATH": f"{bins}:{os.environ['PATH']}",
+            "COMMAND_LOG": str(log),
+            "HOST_KEY": str(key),
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "Existing identity is not ML-DSA-44" in result.stderr
+    assert "systemctl unmask" not in log.read_text()
+    assert "puppet agent" not in log.read_text()
+    if kind == "host":
+        assert "systemctl" not in log.read_text()
+        assert "puppet config set" not in log.read_text()
+        assert not (puppet / "csr_attributes.yaml").exists()
+    assert key.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    "scenario", ["missing_ca", "different_ca", "rsa_current", "rsa_target", "fresh"]
+)
+def test_host_preflight_precedes_all_mutations(tmp_path: Path, scenario: str) -> None:
+    """Refuse incompatible hosts before token issuance, service or package changes."""
+    ruby = shutil.which("ruby")
+    if ruby is None:
+        pytest.skip("Ruby is required to validate native identities")
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    puppet = tmp_path / "puppet"
+    (puppet / "ssl/certs").mkdir(parents=True)
+    trust = puppet / "ssl/certs/ca.pem"
+    trust.write_text("existing authenticated trust")
+    ca = tmp_path / "authenticated-ca.pem"
+    if scenario != "missing_ca":
+        ca.write_text(
+            "different trust" if scenario == "different_ca" else trust.read_text()
+        )
+    key = tmp_path / "existing-rsa.pem"
+    subprocess.run(
+        [
+            ruby,
+            "-ropenssl",
+            "-e",
+            "File.write(ARGV.fetch(0), OpenSSL::PKey::RSA.new(2048).to_pem)",
+            str(key),
+        ],
+        check=True,
+    )
+    original = key.read_bytes()
+    commands = tmp_path / "commands"
+    bins = tmp_path / "bin"
+    bins.mkdir()
+    for name, body in {
+        "systemctl": ":",
+        "puppet": (
+            'if [[ "$*" == *--certname* && "$SCENARIO" == rsa_target || '
+            '"$*" != *--certname* && "$SCENARIO" == rsa_current ]]; then '
+            'printf "%s\\n" "$HOST_KEY"; fi'
+        ),
+    }.items():
+        path = bins / name
+        path.write_text(
+            '#!/bin/bash\nprintf "%s %s\\n" "${0##*/}" "$*" >> "$COMMAND_LOG"\n'
+            + body
+            + "\n"
+        )
+        path.chmod(0o755)
+    (scripts / "config.sh").write_text('PUPPET_SERVER="puppet.example"\n')
+    (scripts / "lib.sh").write_text(
+        'load_env() { :; }\ncreate_vault_token() { echo token >> "$COMMAND_LOG"; VM_TOKEN=dummy; }\n'
+    )
+    (scripts / "install-openvox.sh").write_text(
+        'echo install >> "$COMMAND_LOG"\nexit 42\n'
+    )
+    for name in ["enroll-proxmox.sh", "configure-puppet.sh"]:
+        script = (PROXMOX / name).read_text()
+        script = script.replace("/etc/puppetlabs/puppet", str(puppet))
+        script = script.replace("/opt/puppetlabs/bin/puppet", str(bins / "puppet"))
+        script = script.replace("/opt/puppetlabs/puppet/bin/ruby", ruby)
+        (scripts / name).write_text(script)
+        (scripts / name).chmod(0o755)
+    result = subprocess.run(
+        ["bash", str(scripts / "enroll-proxmox.sh")],
+        env={
+            **os.environ,
+            "PATH": f"{bins}:{os.environ['PATH']}",
+            "COMMAND_LOG": str(commands),
+            "SCENARIO": scenario,
+            "HOST_KEY": str(key),
+            "OPENVOX_CA_CERT": str(ca),
+            "VAULT_ADDR": "https://unused.example",
+            "VAULT_TOKEN": "dummy-admin",
+        },
+        capture_output=True,
+        text=True,
+    )
+    calls = commands.read_text().splitlines() if commands.exists() else []
+    assert result.returncode != 0
+    if scenario == "fresh":
+        assert result.returncode == 42, result.stderr
+        assert calls[-3:] == [
+            "token",
+            "systemctl mask --runtime --now puppet.service",
+            "install",
+        ]
+    else:
+        assert all(call.startswith("puppet config print hostprivkey") for call in calls)
+        if scenario.startswith("rsa_"):
+            assert "Existing identity is not ML-DSA-44" in result.stderr
+    assert key.read_bytes() == original
+    assert trust.read_text() == "existing authenticated trust"
+    assert not (puppet / "csr_attributes.yaml").exists()
+
+
+@pytest.mark.parametrize("installer_status", [0, 42])
+def test_base_template_propagates_installer_failure(
+    tmp_path: Path, installer_status: int
+) -> None:
+    """Run rendered cloud-init commands without packages or service operations."""
+    config = parse_cloud_template(render_cloud_template(tmp_path, "ubuntu"))
+    commands = config["runcmd"]
+    installer = commands.index("bash /usr/local/bin/install-openvox.sh")
+    calls = tmp_path / "commands"
+    # Keep shell options and command order, replacing operations with recordings.
+    script = "\n".join(
+        command
+        if command.startswith("set ")
+        else f"echo {index} >> {shlex.quote(str(calls))}\n"
+        + (f"(exit {installer_status})" if index == installer else ":")
+        for index, command in enumerate(commands)
+    )
+    result = subprocess.run(["sh", "-c", script], capture_output=True, text=True)
+    assert result.returncode == installer_status, result.stderr
+    last = installer if installer_status else len(commands) - 1
+    assert calls.read_text().splitlines()[-1] == str(last)
 
 
 def test_base_template_leaves_puppet_disabled() -> None:

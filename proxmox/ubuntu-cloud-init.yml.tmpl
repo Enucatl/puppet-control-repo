@@ -8,18 +8,16 @@ users:
     shell: /bin/bash
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     ssh_authorized_keys:
-      - ${SSH_PUBLIC_KEY}
+      - ${SSH_PUBLIC_KEY_JSON}
 
-# Create the authenticated APT source file.
 write_files:
-  - path: /etc/apt/auth.conf.d/puppet-core.conf
-    permissions: '0600'
+  - path: /usr/local/bin/install-openvox.sh
+    permissions: '0755'
     content: |
-      machine apt-puppetcore.puppet.com
-      login forge-key
-      password ${FORGE_KEY}
+${INSTALL_OPENVOX_SCRIPT}
 
 runcmd:
+  - set -e
   - export DEBIAN_FRONTEND=noninteractive
   - systemctl restart systemd-networkd
   - /lib/systemd/systemd-networkd-wait-online --timeout=120
@@ -31,19 +29,7 @@ runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
 
-  # --- Install Puppet Agent ---
-  # Download directly to a known path
-  - wget -O /tmp/puppet.deb https://apt-puppetcore.puppet.com/public/puppet8-release-noble.deb
-
-  # Install the package
-  - dpkg -i /tmp/puppet.deb
-
-  # Clean up
-  - rm /tmp/puppet.deb
-
-  # Update and Install
-  - apt-get update
-  - apt-get install -y puppet-agent
+  - bash /usr/local/bin/install-openvox.sh
 
   # Cloned guests configure their enrollment identity before enabling Puppet.
   - systemctl unmask --runtime puppet.service

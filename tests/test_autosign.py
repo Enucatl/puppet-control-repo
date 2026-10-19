@@ -8,7 +8,7 @@ import pytest
 from click.testing import CliRunner
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, mldsa
 from cryptography.x509.oid import NameOID
 
 SPEC = importlib.util.spec_from_file_location(
@@ -24,6 +24,7 @@ def make_csr(
     names: tuple[str, ...] = (CERTNAME,),
     sans: list[x509.GeneralName] | None = None,
     token: bytes | None = TOKEN.encode(),
+    algorithm: str = "ec",
 ) -> bytes:
     """Generate a real signed CSR for the requested test identities."""
     builder = x509.CertificateSigningRequestBuilder().subject_name(
@@ -37,8 +38,13 @@ def make_csr(
         builder = builder.add_attribute(
             x509.ObjectIdentifier("1.2.840.113549.1.9.7"), token
         )
+    key = (
+        mldsa.MLDSA44PrivateKey.generate()
+        if algorithm == "mldsa44"
+        else ec.generate_private_key(ec.SECP256R1())
+    )
     return builder.sign(
-        ec.generate_private_key(ec.SECP256R1()), hashes.SHA256()
+        key, None if algorithm == "mldsa44" else hashes.SHA256()
     ).public_bytes(serialization.Encoding.PEM)
 
 
@@ -60,15 +66,21 @@ def invoke(csr: bytes, certname: str = CERTNAME):
 
 @pytest.mark.parametrize("certname", [CERTNAME, "node-2.dev.home.arpa", "a.home.arpa"])
 @pytest.mark.parametrize("with_san", [False, True])
+@pytest.mark.parametrize("algorithm", ["ec", "mldsa44"])
 def test_matching_csr_uses_exactly_one_lookup(
-    vault: Mock, certname: str, with_san: bool
+    vault: Mock, certname: str, with_san: bool, algorithm: str
 ) -> None:
     """Both supported namespaces accept only the matching enrollment identity."""
     vault.return_value.auth.token.lookup_self.return_value["data"]["meta"][
         "certname"
     ] = certname
     result = invoke(
-        make_csr((certname,), [x509.DNSName(certname)] if with_san else None), certname
+        make_csr(
+            (certname,),
+            [x509.DNSName(certname)] if with_san else None,
+            algorithm=algorithm,
+        ),
+        certname,
     )
     assert result.exit_code == 0, result.output
     vault.assert_called_once_with(
@@ -118,24 +130,78 @@ def test_invalid_hostname_never_contacts_vault(vault: Mock, certname: str) -> No
         ((CERTNAME,), None, None),
     ],
 )
+@pytest.mark.parametrize("algorithm", ["ec", "mldsa44"])
 def test_invalid_csr_never_contacts_vault(
-    vault: Mock, names: tuple[str, ...], sans: list | None, token: bytes | None
+    vault: Mock,
+    names: tuple[str, ...],
+    sans: list | None,
+    token: bytes | None,
+    algorithm: str,
 ) -> None:
     """Reject name ambiguity, extra identities, and missing credentials locally."""
-    result = invoke(make_csr(names, sans, token))
+    result = invoke(make_csr(names, sans, token, algorithm))
     assert result.exit_code != 0
     assert TOKEN not in result.output
     vault.assert_not_called()
 
 
-def test_invalid_signature_and_pem(vault: Mock) -> None:
+@pytest.mark.parametrize("algorithm", ["ec", "mldsa44"])
+def test_invalid_signature_and_pem(vault: Mock, algorithm: str) -> None:
     """Reject malformed requests and a CSR with a tampered signature."""
-    csr = x509.load_pem_x509_csr(make_csr()).public_bytes(serialization.Encoding.DER)
+    csr = x509.load_pem_x509_csr(make_csr(algorithm=algorithm)).public_bytes(
+        serialization.Encoding.DER
+    )
     altered = x509.load_der_x509_csr(csr[:-1] + bytes([csr[-1] ^ 1])).public_bytes(
         serialization.Encoding.PEM
     )
     for invalid in (b"not a CSR", altered):
         assert invoke(invalid).exit_code != 0
+    vault.assert_not_called()
+
+
+@pytest.mark.parametrize("explicit_options", [False, True])
+def test_rehearsal_vault_trust_configuration(
+    vault: Mock, explicit_options: bool
+) -> None:
+    """Use rehearsal trust from the environment, with explicit flags taking priority."""
+    options = (
+        ["--vault_addr", "https://override.test:8200", "--verify", "/override ca.pem"]
+        if explicit_options
+        else []
+    )
+    result = CliRunner().invoke(
+        autosign.main,
+        [CERTNAME, *options],
+        input=make_csr(algorithm="mldsa44"),
+        env={
+            "VAULT_ADDR": "https://vault.rehearsal.test:8200",
+            "VAULT_CACERT": "/rehearsal trust/ca.pem",
+        },
+    )
+    assert result.exit_code == 0, result.output
+    vault.assert_called_once_with(
+        url=(
+            "https://override.test:8200"
+            if explicit_options
+            else "https://vault.rehearsal.test:8200"
+        ),
+        token=TOKEN,
+        verify="/override ca.pem" if explicit_options else "/rehearsal trust/ca.pem",
+        timeout=10,
+        allow_redirects=False,
+    )
+    vault.return_value.auth.token.lookup_self.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    "address", ["http://vault:8200", "https://user:password@vault"]
+)
+def test_insecure_endpoint_never_receives_enrollment_token(
+    vault: Mock, address: str
+) -> None:
+    """Reject plaintext and URL credentials before creating a Vault client."""
+    with pytest.raises(ValueError, match="Verified HTTPS"):
+        autosign.validate_csr(CERTNAME, make_csr(), address, "/trust.pem", "home.arpa")
     vault.assert_not_called()
 
 

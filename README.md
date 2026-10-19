@@ -2,17 +2,28 @@
 
 A monorepo for home lab infrastructure. It combines Puppet configuration management with the supporting infrastructure that runs the Puppet server itself — plus provisioning tools and Proxmox scripts — all in one place.
 
-The agreed target is to run OpenVox 9 Server in this repository's `infra` Compose
-stack (`docker/docker-compose.yml`), first on the existing `docker.home.arpa`
-host and later on Atlas. Publish our fork image to
-`ghcr.io/enucatl/openvox-server:9.1.0-mldsa.13001` after acceptance, with moving
-`:9.1.0` and `:latest` aliases. Deploy and recover by the recorded digest.
-See the [OpenVox container migration
-plan](docs/openvox-container-migration-plan.md) for the authoritative deployment
-decision and acceptance gates. This completes containerization of the core
-infrastructure application stack; native host agents, Docker hosts, and
-hypervisors remain host components. This migration is planned, not deployed;
-the host-service description below records the current installation.
+The goal is to reproduce the stack from versioned configuration, provisioning
+scripts, and explicitly identified secrets and backups. VM creation, enrollment,
+and recovery belong in documented workflows; any required manual step must state
+its inputs and outcome. This is the intended contract, not a claim that a complete
+rebuild has already been demonstrated. Start with the
+[Proxmox provisioning runbook](proxmox/README.md) and the
+[OpenVox / Ubuntu 26.04 migration plan](docs/26.04-migration-plan.md).
+
+The planned Ubuntu rebuild order is Atlas (infrastructure), then aperture
+(desktop), then cognition (GPU workloads). OpenVox and FreeIPA preparation on
+the existing Docker host precedes the Atlas move. Fresh installation and recovery
+use the same infrastructure-first order, with identity initialization or state
+restoration as appropriate.
+
+OpenVox #12 now has a [disposable rehearsal](docs/openvox-rehearsal.md),
+[prepared infra service](docs/openvox-infra.md), and
+[offline-root procedure](docs/openvox-offline-root.md). The new deployment uses
+a fresh ML-DSA-44 offline root and separate OpenVox/FreeIPA intermediates;
+production cutover remains #13. Read the [implementation report](docs/openvox-rehearsal-report.md)
+and [Vault configuration limits](docs/openvox-vault-limitations.md) before use.
+The host-service and legacy Vault bootstrap descriptions below describe the
+existing installation, rather than the new-chain setup procedure.
 
 ## Repository Structure
 
@@ -81,14 +92,15 @@ the host-service description below records the current installation.
 
 - **Puppet Server** runs as the host systemd service `puppetserver.service` on `docker.home.arpa` and serves catalogs to all managed nodes, including that host. **`docker/`** contains the accompanying container services.
 - **`modules/` + `data/`** are the Puppet content — profiles, roles, and Hiera data consumed by every node.
-- **`proxmox/`** contains provisioning scripts for new VMs/LXC containers on the hypervisor. They are not managed by Puppet; they run manually or via cron.
+- **`proxmox/`** contains provisioning scripts for new VMs/LXC containers on the hypervisor. These are part of the reproducible setup; their invocation and prerequisites belong in the [provisioning runbook](proxmox/README.md).
 - **`provisioning/`** handles infrastructure that Puppet cannot reach at boot time — primarily router/VyOS configuration via Ansible.
 - **`scripts/`** are server-side Puppet helpers (autosign policy, ENC) deployed alongside the Puppet Server.
 
 ## Desktop VM Provisioning
 
-On the Proxmox host, install `uv` and run the existing command from a directory
-containing your `.env`:
+Follow the [shared prerequisites and current replacement behavior](proxmox/README.md)
+first. On the Proxmox host, install `uv` and run the existing command from a
+directory containing your `.env`:
 
 ```bash
 bash /path/to/puppet-control-repo/proxmox/desktop.sh -l a -i 123 -c 8 -m 8000 -d 128G
@@ -114,7 +126,11 @@ snippet is restricted to its owner and removed when provisioning exits.
 ## Puppet Server Host Configuration
 
 The server is installed directly on `docker.home.arpa`; the current bootstrap
-scripts assume it is already installed. Its runtime configuration lives in
+scripts assume it is already installed. The Docker VM provisioning script also
+requires working Vault and Puppet services. A complete cold-start or recovery
+path for this central host remains tracked in
+[#18](https://github.com/Enucatl/puppet-control-repo/issues/18).
+Its runtime configuration lives in
 `/etc/puppetlabs/puppetserver/conf.d/`, and JVM settings are in
 `/etc/default/puppetserver`.
 
@@ -151,23 +167,19 @@ inventory of server overrides or confirmation of its current worker count.
 
 ## Puppet Agent Setup (New Node)
 
-1. Install the agent:
-   ```bash
-   sudo dpkg -i puppet-release-xxx.deb
-   sudo apt update && sudo apt install puppet-agent
-   ```
+Use `proxmox/install-openvox.sh` for the accepted signed native package and
+`proxmox/configure-puppet.sh` for certname-bound, single-use Vault enrollment.
+The installer supports Ubuntu 24.04/26.04 and Debian 13 on amd64, verifies the
+archive fingerprint and OS preferences, and leaves Puppet masked. It configures
+`key_type=mldsa44`, TLS 1.3, hybrid key exchange and seed-only private-key writes.
 
-2. Configure and bootstrap:
-   ```bash
-   sudo /opt/puppetlabs/bin/puppet config set server docker.home.arpa --section main
-   sudo /opt/puppetlabs/bin/puppet ssl bootstrap
-   sudo /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
-   ```
-
-3. Sign the certificate on the Puppet Server:
-   ```bash
-   sudo puppetserver ca sign --certname <hostname>
-   ```
+Supply authenticated CA trust before enrollment. Guest provisioning requires
+`OPENVOX_CA_CERT` to name the operator-verified public CA bundle; it embeds that
+bundle in the guest's `/etc/puppetlabs/puppet/ssl/certs/ca.pem`. Existing native
+hosts use `proxmox/enroll-proxmox.sh` with the same input. It refuses to replace
+different existing trust, and enrollment refuses existing non-ML-DSA identities.
+Plan their replacement through #13 rather than deleting identity automatically.
+See the [native client instructions](docs/openvox-container-migration-plan.md).
 
 ## Deployment
 

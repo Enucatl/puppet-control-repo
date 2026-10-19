@@ -8,7 +8,6 @@ source "$SCRIPT_DIR/lib.sh"
 # --- LOAD ENVIRONMENT VARIABLES ---
 load_env
 
-: "${FORGE_KEY:?FORGE_KEY is not set}"
 : "${LOG_DIR:?LOG_DIR is not set}"
 
 # --- CONFIGURATION VARIABLES ---
@@ -26,9 +25,11 @@ echo "--- Starting Template Build for VM $VMID ---"
 
 # --- 1. PREPARE CLOUD-INIT SNIPPET ---
 echo "Generating Cloud-Init snippet from template..."
-export SSH_PUBLIC_KEY
-SSH_PUBLIC_KEY=$(cat ~/.ssh/id_ed25519.pub)
-envsubst '${FORGE_KEY}${SSH_PUBLIC_KEY}' < "$TEMPLATE_SRC" > "$SNIPPET_PATH"
+SSH_PUBLIC_KEY_JSON=$(jq -cn --arg key "$(cat ~/.ssh/id_ed25519.pub)" '$key')
+export SSH_PUBLIC_KEY_JSON
+INSTALL_OPENVOX_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/install-openvox.sh")
+export INSTALL_OPENVOX_SCRIPT
+envsubst '${INSTALL_OPENVOX_SCRIPT}${SSH_PUBLIC_KEY_JSON}' < "$TEMPLATE_SRC" > "$SNIPPET_PATH"
 
 # 2. Download the Image (if not already present)
 if [ ! -f "/var/lib/vz/template/iso/$IMAGE_NAME" ]; then

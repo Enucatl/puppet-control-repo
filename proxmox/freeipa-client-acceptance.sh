@@ -32,8 +32,16 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 create_vault_token "$VM_FQDN"
+OPENVOX_CA_BUNDLE=$(sed 's/^/      /' "${OPENVOX_CA_CERT:?Set authenticated OpenVox CA bundle path}")
+export OPENVOX_CA_BUNDLE
 export VM_TOKEN NODE_TYPE PUPPET_SERVER VM_FQDN
-envsubst '${VM_TOKEN}${NODE_TYPE}${PUPPET_SERVER}${VM_FQDN}' \
+INSTALL_OPENVOX_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/install-openvox.sh")
+export INSTALL_OPENVOX_SCRIPT
+PUPPET_ENROLLMENT_COMMAND=$(jq -cn --arg certname "$VM_FQDN" --arg token "$VM_TOKEN" --arg type "$NODE_TYPE" --arg server "$PUPPET_SERVER" \
+  '["/usr/local/sbin/configure-puppet-acceptance", $certname, $token, $type, $server]')
+export PUPPET_ENROLLMENT_COMMAND
+install -m 0600 /dev/null "$SNIPPET"
+envsubst '${VM_FQDN}${INSTALL_OPENVOX_SCRIPT}${OPENVOX_CA_BUNDLE}${PUPPET_ENROLLMENT_COMMAND}' \
   < "${SCRIPT_DIR}/freeipa-client-acceptance-cloud-init.yml.tmpl" > "${SNIPPET}"
 
 qm clone "${TEMPLATE_ID}" "${VMID}" --name "${VMNAME}" --storage "${STORAGE}" --full 1

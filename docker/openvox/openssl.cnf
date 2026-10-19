@@ -1,0 +1,33 @@
+config_diagnostics = 1
+openssl_conf = openvox_init
+
+[openvox_init]
+providers = openvox_providers
+ssl_conf = openvox_ssl
+
+[openvox_providers]
+default = openvox_default
+base = openvox_base
+
+[openvox_default]
+activate = 1
+ml-dsa = openvox_mldsa
+
+[openvox_base]
+activate = 1
+ml-dsa = openvox_mldsa
+
+[openvox_mldsa]
+retain_seed = yes
+prefer_seed = yes
+output_formats = seed-only
+
+[openvox_ssl]
+system_default = openvox_tls
+
+[openvox_tls]
+MinProtocol = TLSv1.3
+MaxProtocol = TLSv1.3
+# Puppet sets its own minimum version; disable older protocols independently.
+Protocol = -ALL,+TLSv1.3
+Groups = X25519MLKEM768

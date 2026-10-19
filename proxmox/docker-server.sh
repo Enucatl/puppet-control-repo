@@ -65,9 +65,17 @@ echo "--- Starting Deployment for VM $VMID ($NEW_VM_NAME) ---"
 # 1. Generate Vault token and inject all variables into the template
 echo "[1/6] Generating Vault Token and Cloud-Init from template..."
 create_vault_token "$VM_FQDN"
+OPENVOX_CA_BUNDLE=$(sed 's/^/      /' "${OPENVOX_CA_CERT:?Set authenticated OpenVox CA bundle path}")
+export OPENVOX_CA_BUNDLE
 CONFIGURE_PUPPET_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/configure-puppet.sh")
 export CONFIGURE_PUPPET_SCRIPT
-envsubst '${IPV6_POOL}${IPV6_FIXED}${VM_TOKEN}${VAULT_ADDR}${PUPPET_SERVER}${DOMAIN_SUFFIX}${NODE_TYPE}${VM_FQDN}${CONFIGURE_PUPPET_SCRIPT}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+INSTALL_OPENVOX_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/install-openvox.sh")
+export INSTALL_OPENVOX_SCRIPT
+PUPPET_ENROLLMENT_COMMAND=$(jq -cn --arg type "$NODE_TYPE" --arg token "$VM_TOKEN" --arg certname "$VM_FQDN" --arg server "$PUPPET_SERVER" \
+  '["/usr/local/bin/configure-puppet.sh", $type, $token, $certname, $server]')
+export PUPPET_ENROLLMENT_COMMAND
+install -m 0600 /dev/null "$GENERATED_YAML"
+envsubst '${IPV6_POOL}${IPV6_FIXED}${DOMAIN_SUFFIX}${CONFIGURE_PUPPET_SCRIPT}${INSTALL_OPENVOX_SCRIPT}${OPENVOX_CA_BUNDLE}${PUPPET_ENROLLMENT_COMMAND}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
 
 # 2. Pre-flight Cleanup
 if qm status "$VMID" >/dev/null 2>&1; then

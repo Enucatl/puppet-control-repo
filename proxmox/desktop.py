@@ -42,7 +42,7 @@ def load_settings(env_file: Path = Path(".env")) -> dict[str, str]:
             if path == SCRIPT_DIR / "config.sh":
                 value = Template(value).substitute(settings)
             settings[key] = value
-    for key in ("VAULT_TOKEN", "VAULT_ADDR", "LOG_DIR"):
+    for key in ("VAULT_TOKEN", "VAULT_ADDR", "LOG_DIR", "OPENVOX_CA_CERT"):
         if not settings.get(key):
             raise ValueError(f"{key} is not set")
     return settings
@@ -162,9 +162,12 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
     log_dir = Path(settings["LOG_DIR"])
     log_dir.mkdir(parents=True, exist_ok=True)
     print(f"Preparing {name} (VMID: {vmid})", flush=True)
+    ca_bundle = Path(settings["OPENVOX_CA_CERT"]).read_text()
+    if "-----BEGIN CERTIFICATE-----" not in ca_bundle:
+        raise ValueError("OPENVOX_CA_CERT must contain authenticated CA certificates")
     token = create_vault_token(settings, certname)
     config = build_cloud_config(
-        token, certname, settings["PUPPET_SERVER"], settings["DOMAIN_SUFFIX"]
+        token, certname, settings["PUPPET_SERVER"], settings["DOMAIN_SUFFIX"], ca_bundle
     )
     cloned = False
     try:

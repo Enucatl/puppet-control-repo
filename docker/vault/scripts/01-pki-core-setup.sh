@@ -2,11 +2,33 @@
 
 set -eu
 
+if [ "${1:-}" = --offline-root ]; then
+    cat >&2 <<'EOF'
+Offline-root mode refuses the legacy online-root and Vault TLS bootstrap.
+Prepare/protect/unseal the offline authority through an operator ceremony first.
+Disposable proof: python3 scripts/openvox_offline_root.py rehearse --expected-root-sha256 ROOT_SHA256
+Public CRL refresh: python3 scripts/openvox_offline_root.py publish --expected-root-sha256 ROOT_SHA256
+Then use 02-pki-intermediate.sh --offline-root generate-csr --initialize DIRECTORY
+and import an externally signed chain. See docs/openvox-offline-root.md.
+Production root custody and Vault transport installation remain explicit operator work.
+EOF
+    exit 2
+fi
+
 . /scripts/config.sh
+
+publish_unseal_pin() {
+    # Every authenticated TLS key replacement must publish its public pin too.
+    mkdir -p /certificates/public
+    openssl x509 -in /certificates/vault.crt -pubkey -noout > /certificates/public/vault.pub.pem.new
+    chmod 644 /certificates/public/vault.pub.pem.new
+    mv /certificates/public/vault.pub.pem.new /certificates/public/vault.pub.pem
+}
 
 # Check if VAULT_ADDR starts with "https"
 case "$VAULT_ADDR" in
     https*)
+        publish_unseal_pin
         echo "vault is already configured with HTTPS, nothing to do"
         exit 0
         ;;
@@ -102,6 +124,8 @@ jq -r ".data.private_key" /tmp/vault_cert_bundle.json > /certificates/vault.key
 
 # Create Chain (Cert + CA)
 cat /certificates/vault.crt /certificates/ca.crt > /certificates/vault_chain.crt
+
+publish_unseal_pin
 
 echo "Certificates placed in /certificates/"
 echo "--- PKI Setup Complete ---"

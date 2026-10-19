@@ -62,6 +62,7 @@ def test_settings_preserve_quoted_literals(
         'VAULT_ADDR="https://vault.example:8200"\n'
         f'LOG_DIR="{tmp_path / "logs with spaces"}"\n'
         'VAULT_CACERT="/tmp/custom ca.pem" # comment\n'
+        'OPENVOX_CA_CERT="/tmp/authenticated-openvox-ca.pem"\n'
     )
     settings = desktop.load_settings(env)
     assert settings["VAULT_TOKEN"] == token
@@ -229,6 +230,10 @@ def test_provision_lifecycle_and_cleanup(
     snippets.mkdir()
     logs = tmp_path / "logs"
     logs.mkdir()
+    ca_bundle = tmp_path / "authenticated-ca.pem"
+    ca_bundle.write_text(
+        "-----BEGIN CERTIFICATE-----\npublic fixture\n-----END CERTIFICATE-----\n"
+    )
     settings = {
         "DOMAIN_SUFFIX": "home.arpa",
         "PUPPET_SERVER": "puppet.home.arpa",
@@ -238,6 +243,7 @@ def test_provision_lifecycle_and_cleanup(
         "SNIPPET_STORAGE": "local",
         "TEMPLATE_ID": "9000",
         "LOG_DIR": str(logs),
+        "OPENVOX_CA_CERT": str(ca_bundle),
     }
 
     def issue(_settings: dict[str, str], certname: str) -> str:

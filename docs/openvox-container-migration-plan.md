@@ -1,142 +1,96 @@
-# OpenVox Server container migration
+# OpenVox container and fresh-chain deployment (#12)
 
-Decision: 18 October 2026. Run OpenVox 9 Server in the existing `infra` Compose
-project in `docker/docker-compose.yml`, managed by `puppet-control-repo`.
-Deploy first on `docker.home.arpa`, then move the same image and active state
-to `atlas.home.arpa`. This makes the core infrastructure application stack
-containerized; agents, Docker hosts and Proxmox remain host components.
+Use the accepted image digest
+`sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185`
+from `ghcr.io/enucatl/openvox-server`, build 18001. The new infra profile is
+prepared, but production remains on the original host service. #13 owns its
+cutover and production agent re-enrollment.
 
-This is the deployment target. The current server is still host-installed.
-Image implementation does not complete the production rollout or PKI transition.
-The tracked readiness, rollout and recovery work is in issues
-[#12](https://github.com/Enucatl/puppet-control-repo/issues/12),
-[#13](https://github.com/Enucatl/puppet-control-repo/issues/13) and
-[#18](https://github.com/Enucatl/puppet-control-repo/issues/18).
+## Authority and activation order
 
-## Image and package delivery
+1. Establish the ML-DSA-44 root with its private key generated and retained
+   inside Vault, using authenticated bootstrap and protected recovery material.
+   Vault remains online for automatic CRL signing; no routine operator ceremony
+   is required.
+2. Prepare OpenVox's ML-DSA intermediate key/CSR on its owning host; have the
+   Vault-held root sign it with path length zero. Separately generate the online
+   Vault `pki_int` intermediate CSR and have the same root sign it.
+   The root permits one intermediate level. Do not import or cross-sign old RSA.
+3. Import the pinned public chains and signed root CRL through the explicit
+   [infra PKI helper](openvox-infra.md). Ordinary startup must find existing
+   authority state; it cannot initialize replacement identities. Restore uses
+   exact archived identities, images and configuration, never the fresh path.
+4. Configure Vault's own ML-DSA transport identity, TLS 1.3 bounds, scoped service
+   roles, exact-name cert auth and public issuer/CRL publication. Validate CRL
+   signatures, issuer and freshness before upload: Vault cert auth does not
+   provide all those checks. Enable Vault native automatic CRL rebuilding and
+   the small distribution/client jobs described in [CRL automation](openvox-infra.md#crl-automation).
+   No separate CRL web service is needed. See [Vault limits](openvox-vault-limitations.md).
+5. Deploy the real control repo through the container Git/r10k hook and enable
+   the opt-in infra service only after trust, data, code, keys and CRLs pass
+   preflight. Preserve direct agent TCP 8140 and direct Vault access.
+6. Rehearse fresh enrollment, catalogs, renewal/revocation/replacement, restart,
+   update/rollback and independent recovery before #13's production cutover.
 
-- Build an Ubuntu 26.04 amd64 image from the signed, versioned APT releases in
-  `Enucatl/openvox-packages`. Those packages are built from the coordinated
-  `feature/mldsa44` branches of the server, agent, SSL library and CA CLI;
-  preserve the matching server/agent dependency inside the image.
-- Publish the image as `ghcr.io/enucatl/openvox-server` after its selected
-  package release passes acceptance. Use `<upstream-version>-mldsa.<build>`
-  for unique image tags: `9.1.0-mldsa.18001` for the current package baseline.
-  Move `:9.1.0` to the accepted image for that upstream version and `:latest`
-  to the newest accepted image. The APT release is `resolute-18001`;
-  its codename-based identity is separate from OCI tags. Record the image tag,
-  package release/versions, source revisions, runtime inputs, image-build
-  revision and registry digest.
-  Subsequent successful branch builds produce new images; deploy and recover
-  by recorded digest rather than freezing development branches.
-- Use Java 25 and explicitly apply the tested BCJSSE/security/signature settings
-  in the foreground launcher. A container does not inherit systemd environment
-  settings. Include the patched SSL library, CA CLI and Python dependencies for
-  the real autosigner and ENC. Keep private identities and tokens out of images.
-- Keep signed APT delivery for native fleet agents. A container's Ubuntu 26.04
-  userland can run on the existing Docker host after container acceptance;
-  native package acceptance now covers Ubuntu 24.04 and Debian 13 amd64 as
-  well as Ubuntu 26.04. Compatibility of real inventoried host agents and the
-  control-repo integration remains a separate gate before live rollout.
-- Verify GHCR visibility and pull authentication. Keep the deployed image,
-  package archive/manifest, public archive key and any required registry access
-  recoverable independently of Vault, the old Docker host and its caches.
+The [disposable runbook](openvox-rehearsal.md) and
+[implementation report](openvox-rehearsal-report.md) record actual verification.
+The [historical offline-root runbook](openvox-offline-root.md) records same-key
+renewal, serial revocation and public CRL export. Its physically offline signing
+procedure is superseded for production by Vault-native automatic CRL rebuilding. The new `--offline-root` entry points
+in legacy scripts 01–04 prevent accidentally entering the old online-root,
+default-RSA and host-systemd flow. Legacy default behavior remains available
+for the existing production installation until its explicit retirement.
 
-## Verified image delivery (18 October 2026)
+## Native clients
 
-The [complete coordinated workflow](https://github.com/Enucatl/openvox-packages/actions/runs/39154755798)
-passed source suites, package builds, anonymous signed APT installation and
-installed RSA/ML-DSA/Vault lifecycles on Ubuntu 26.04, Ubuntu 24.04 and Debian 13
-amd64. It promoted [resolute-18001](https://github.com/Enucatl/openvox-packages/releases/tag/resolute-18001)
-and completed the downstream server-image build, lifecycle smoke check and
-publication from coordinator `4f719cb678cc06a6f8c57a2e4a6a6915b84413c9`.
-The image smoke check passed default RSA and explicit ML-DSA HTTPS, graceful
-stop and recreation with unchanged CA/server identities.
+Supported accepted native targets are Ubuntu 24.04, Ubuntu 26.04 and Debian 13,
+all amd64. The private #10 inventory records Ubuntu 24.04 x86_64 on Docker,
+Forbearance and Complex, and Debian 13 x86_64 on both Proxmox hosts. This maps
+the inventoried platforms to accepted package targets; it does not claim those
+hosts have been upgraded or their full role catalogs applied.
 
-The current image tags `9.1.0-mldsa.18001`, `9.1.0` and `latest` resolve to:
+On a genuinely fresh node, install the accepted package while keeping the
+service masked, preseed operator-authenticated public trust, and enroll with a
+single-use certname-bound token:
 
-```text
-ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185
+```sh
+sudo bash proxmox/install-openvox.sh
+sudo install -D -m 0644 /operator/authenticated-openvox-chain.pem \
+  /etc/puppetlabs/puppet/ssl/certs/ca.pem
+# Supply the token privately, without shell history or shell tracing.
+sudo bash proxmox/configure-puppet.sh NODE_TYPE "$ENROLLMENT_TOKEN" NODE.home.arpa docker.home.arpa
 ```
 
-The public [server-image.json provenance](https://github.com/Enucatl/openvox-packages/releases/download/resolute-18001/server-image.json)
-records that digest, tags, image revision and contained package/source/runtime
-manifest, including all three native package targets. Anonymous GHCR token and
-manifest requests returned HTTP 200 for all three current tags with the matching
-digest. This supersedes the first published `9.1.0-mldsa.13001` delivery
-baseline. Live Compose integration, the real control-repo autosigner/enrollment
-path, independent recovery and canary rollout remain open.
+For guest provisioning, set `OPENVOX_CA_CERT` to the authenticated public bundle
+on the provisioning host. Docker/desktop and FreeIPA acceptance cloud-init
+embed that bundle and the shared installer. The base template installs OpenVox
+but leaves it disabled and unenrolled; guest cloud-init supplies its own trust
+and identity. No Puppet Core credential is needed.
 
-## Runtime and integration
+For existing Proxmox hosts, use `proxmox/enroll-proxmox.sh` only within the
+planned #13 identity migration. It refuses different existing CA trust; the
+shared enrollment helper refuses an existing non-ML-DSA key. Existing identities
+are not converted by changing `key_type`. Back up and explicitly migrate them
+through the cutover procedure.
 
-- Add the server to the existing infrastructure Compose file and reuse the
-  existing deployment and hardening conventions. Run the installed foreground
-  launcher as `puppet`, with explicit resource settings and graceful shutdown.
-  The server needs neither privileged execution nor a Docker socket mount.
-- Publish TCP 8140 directly as the baseline. OpenVox terminates TLS and validates
-  client certificates. If Traefik routing is needed, use TCP TLS passthrough;
-  ordinary HTTP TLS termination is outside this plan.
-- Declare persistent mappings for `/etc/puppetlabs/puppetserver/ca`,
-  `/etc/puppetlabs/puppet/ssl`, effective server/agent configuration and the
-  writable state subdirectories below `/opt/puppetlabs/server/data/puppetserver`.
-  Keep image-owned provider policy, vendored gems and service definitions from
-  the selected image; a whole-directory volume must not mask them during an
-  update. Preserve ownership and Docker user-namespace mappings. Container
-  recreation must not initialize a new CA or replace an existing server identity.
-- The image uses `server_data` below that data tree for its mutable vardir and
-  `jruby-gems` for operator-installed gems. Map the old host's mutable vardir
-  contents into `server_data` during rehearsal; retain the original checkpoint
-  and do not copy its packaged gems or provider policy over image-owned files.
-- Preserve code under `/etc/puppetlabs/code`, the bare Git repository, hooks,
-  r10k configuration/cache and the production/dev environment model. Execute
-  deployment/type generation where the container can read the resulting code;
-  prove Git-triggered updates and environment-cache invalidation.
-- Preserve the Python autosigner, ENC, exact certname/SAN checks, single-use
-  Vault enrollment tokens, trust and Vault/Hiera module branch. Keep policy
-  autosigning; do not replace it with blanket certificate acceptance.
-- Version the bootstrap and restore commands so Docker/Compose, image access,
-  configuration and protected state can be restored before managed convergence.
-  Restoring Vault/OpenVox must not require a live instance of the same service
-  or new enrollment against the unavailable old configuration server.
+The installer verifies fingerprint
+`775661C709ACE6F7C1CF0FF6C4B7528F03E0BB94`, scopes `Signed-By`, installs the
+matching OS preferences and selects an exact 18001 package version. Unsupported
+OS/architecture combinations fail before package/service changes. Repeat
+platform acceptance and replace preferences when changing OS; retain the
+matching rollback artifacts independently.
 
-## Migration and recovery sequence
+## Completion boundaries
 
-1. In #12, build/test the published image with disposable state and the real
-   control-repo setup/enrollment scripts. Keep completed package/systemd tests
-   as evidence for package delivery; separately prove container operation.
-2. In #11, protect the old host-installed server and authority checkpoints plus
-   the new container mappings, image and effective configuration. Rehearse
-   restore and rollback with consistent authority, agent identity and trust.
-3. In #13, stop the old host server and start the container with the preserved
-   authority/state on `docker.home.arpa`. Prove existing-agent compatibility
-   before the separately rehearsed ML-DSA authority/identity transition. Keep
-   only one production server/CA writer and one listener active.
-4. Complete the canary and fleet agent transition, then the existing FreeIPA
-   gates. Keep the agreed rebuild order: Atlas, aperture, cognition.
-5. In #18, independently restore the selected image and active ML-DSA state on
-   isolated Atlas. Prove cold start without the old host's services; restore
-   existing authorities rather than rerunning fresh initialization.
-6. In #19, transfer the same containerized infrastructure stack and state to
-   Atlas, activate its endpoint, and verify existing agents before provisioning
-   dependent replacement guests. In #20, observe sustained operation and retire
-   old services/identities only after the existing retention gates.
+The isolated chain, transport, catalog, lifecycle, archive restore, rollback,
+offline-root lifecycle and internal Vault key encoding have measured evidence.
+Prepared infra and native caller changes require their final integration checks.
+The local Vault Hiera CRL/protocol fix must be published and its resolved deployed
+revision recorded before a fresh remote r10k deployment can reproduce it.
 
-## Delivery and remaining acceptance
-
-- [x] Publish a fork image with the selected package pair and source/runtime
-      provenance; verify pull access and record the deployment digest.
-- [ ] Prove foreground startup, readiness, resource use, graceful stop, restart,
-      container recreation and host reboot without authority/identity changes.
-- [ ] Prove real enrollment, catalog convergence, scheduled runs, facts/reports,
-      ENC, Git/r10k deployment, Vault/Hiera, renewal and CRL/revocation behavior.
-      Record actual TLS authentication signatures separately from key exchange.
-- [ ] Prove isolated recovery with independently available image/configuration,
-      restored volumes and old-host access blocked. Preserve the original
-      authority and enrolled identities, ownership and least privilege.
-- [ ] Prove image update and previous-digest rollback with compatible state;
-      authority/identity rollback requires the matching protected checkpoints.
-- [ ] Remove dependency on the old host-installed server after the cutover and
-      rollback observation period. Keep host agents native and operational.
-
-Image construction is implemented in `openvox-packages`; control-repo Compose
-integration, live migration and these operational gates remain tracked work.
+Remaining operational inputs include independent root custody/backups, actual
+issuer/CRL endpoints and freshness monitoring, disposable native guest/full-role
+catalog runs, a host reboot and cold bootstrap without the old services, and
+hosted CI. #14/#8 own actual CA-less FreeIPA consumer compatibility; #18 owns
+the later independent Atlas execution. No production rollout is implied by
+the local rehearsal.

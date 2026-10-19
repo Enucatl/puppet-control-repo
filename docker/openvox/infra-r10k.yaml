@@ -1,0 +1,7 @@
+:cachedir: '/var/cache/r10k'
+:git:
+  provider: shellgit
+:sources:
+  control:
+    remote: '/git/control.git'
+    basedir: '/etc/puppetlabs/code/environments'

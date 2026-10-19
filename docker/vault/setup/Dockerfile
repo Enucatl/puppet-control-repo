@@ -2,7 +2,7 @@ FROM hashicorp/vault:latest
 
 USER root
 
-RUN apk add --no-cache jq && \
+RUN apk add --no-cache jq openssl && \
     mkdir -p /certificates && \
     chown 100:100 /certificates
 

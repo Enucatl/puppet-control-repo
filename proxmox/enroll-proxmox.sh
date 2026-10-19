@@ -10,28 +10,30 @@ load_env
 
 : "${VAULT_TOKEN:?VAULT_TOKEN is not set}"
 : "${VAULT_ADDR:?VAULT_ADDR is not set}"
-: "${FORGE_KEY:?FORGE_KEY is not set}"
+: "${OPENVOX_CA_CERT:?Set authenticated OpenVox CA bundle path}"
+
+# Refuse incompatible trust/identity before changing an enrolled host.
+CERTNAME=$(hostname -f)
+trust=/etc/puppetlabs/puppet/ssl/certs/ca.pem
+test -s "$OPENVOX_CA_CERT"
+if [[ -e $trust ]]; then
+  cmp -s "$OPENVOX_CA_CERT" "$trust" || {
+    echo 'Existing CA trust differs; use the explicit identity migration procedure.' >&2; exit 1;
+  }
+fi
+if [[ -x /opt/puppetlabs/bin/puppet || -d /etc/puppetlabs/puppet/ssl/private_keys ]]; then
+  "$SCRIPT_DIR/configure-puppet.sh" --preflight "$CERTNAME"
+fi
 
 # --- 2. GENERATE VAULT TOKEN ---
-CERTNAME=$(hostname -f)
 create_vault_token "$CERTNAME"
 
-# --- 3. CONFIGURE REPO AUTHENTICATION ---
-mkdir -p /etc/apt/auth.conf.d/
-cat <<EOF > /etc/apt/auth.conf.d/puppet-core.conf
-machine apt-puppetcore.puppet.com
-login forge-key
-password ${FORGE_KEY}
-EOF
-chmod 0600 /etc/apt/auth.conf.d/puppet-core.conf
-
-# --- 4. INSTALL PUPPET AGENT ---
+# --- 3. INSTALL THE ACCEPTED NATIVE OPENVOX PACKAGE ---
 systemctl mask --runtime --now puppet.service
-wget -O /tmp/puppet.deb https://apt-puppetcore.puppet.com/public/puppet8-release-noble.deb
-dpkg -i /tmp/puppet.deb
-rm /tmp/puppet.deb
-apt-get update
-apt-get install -y puppet-agent
+bash "$SCRIPT_DIR/install-openvox.sh"
+if [[ ! -e $trust ]]; then
+  install -D -m 0644 "$OPENVOX_CA_CERT" "$trust"
+fi
 
 # --- 5. CONFIGURE AND RUN PUPPET ---
 "$SCRIPT_DIR/configure-puppet.sh" proxmox "$VM_TOKEN" "$CERTNAME" "$PUPPET_SERVER"
