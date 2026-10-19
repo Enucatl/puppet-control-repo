@@ -135,34 +135,41 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
     process = subprocess.run(command, text=True, capture_output=True,
                              env=environment)
     login = {}
+    login_error = None
     if request['action'] == 'rehearse' and process.returncode == 0:
-        conn = connection('ipa.home.arpa', request['target_password'],
-                          str(work / 'target-ca.pem'))
-        enabled = conn.search_s('cn=ipaconfig,cn=etc,dc=home,dc=arpa',
-            ldap.SCOPE_BASE, '(objectClass=*)', ['ipaMigrationEnabled'])[0][1]
-        assert enabled.get('ipaMigrationEnabled', [b'FALSE'])[0].upper() == b'TRUE'
-        user_dn = 'uid=puppet-enroller,cn=users,cn=accounts,dc=home,dc=arpa'
-        keys_before = bool(conn.search_s(user_dn, ldap.SCOPE_BASE,
-            '(objectClass=*)', ['krbPrincipalKey'])[0][1].get('krbPrincipalKey'))
-        assert not keys_before, 'Migrated principal must regenerate its Kerberos keys'
-        conn.simple_bind_s(user_dn, request['login_password'])
-        conn.simple_bind_s('cn=Directory Manager', request['target_password'])
-        keys_after = bool(conn.search_s(user_dn, ldap.SCOPE_BASE,
-            '(objectClass=*)', ['krbPrincipalKey'])[0][1].get('krbPrincipalKey'))
-        assert keys_after, 'Password LDAP bind did not generate target Kerberos keys'
-        conn.unbind_s()
-        login_environment = dict(environment, KRB5CCNAME='FILE:' + str(work / 'login-cc'))
-        subprocess.run(['kinit', 'puppet-enroller@HOME.ARPA'],
-            input=request['login_password'] + '\n', text=True,
-            capture_output=True, check=True, env=login_environment)
-        subprocess.run(['kinit', 'admin@HOME.ARPA'],
-            input=request['target_admin_password'] + '\n', text=True,
-            capture_output=True, check=True, env=environment)
-        subprocess.run(['ipa', 'ping'], text=True, capture_output=True,
-                       check=True, env=environment)
-        login = {'migration_enabled': True, 'ldap_bind': True,
-                 'kerberos_login': True, 'keys_were_absent': not keys_before,
-                 'keys_generated': keys_after, 'target_admin_api': True}
+        try:
+            conn = connection('ipa.home.arpa', request['target_password'],
+                              str(work / 'target-ca.pem'))
+            enabled = conn.search_s('cn=ipaconfig,cn=etc,dc=home,dc=arpa',
+                ldap.SCOPE_BASE, '(objectClass=*)', ['ipaMigrationEnabled'])[0][1]
+            assert enabled.get('ipaMigrationEnabled', [b'FALSE'])[0].upper() == b'TRUE'
+            user_dn = 'uid=puppet-enroller,cn=users,cn=accounts,dc=home,dc=arpa'
+            keys_before = bool(conn.search_s(user_dn, ldap.SCOPE_BASE,
+                '(objectClass=*)', ['krbPrincipalKey'])[0][1].get('krbPrincipalKey'))
+            assert not keys_before, 'Migrated principal must regenerate its Kerberos keys'
+            conn.simple_bind_s(user_dn, request['login_password'])
+            conn.simple_bind_s('cn=Directory Manager', request['target_password'])
+            keys_after = bool(conn.search_s(user_dn, ldap.SCOPE_BASE,
+                '(objectClass=*)', ['krbPrincipalKey'])[0][1].get('krbPrincipalKey'))
+            assert keys_after, 'Password LDAP bind did not generate target Kerberos keys'
+            conn.unbind_s()
+            login_environment = dict(environment, KRB5CCNAME='FILE:' + str(work / 'login-cc'))
+            subprocess.run(['kinit', 'puppet-enroller@HOME.ARPA'],
+                input=request['login_password'] + '\n', text=True,
+                capture_output=True, check=True, env=login_environment)
+            subprocess.run(['kinit', 'admin@HOME.ARPA'],
+                input=request['target_admin_password'] + '\n', text=True,
+                capture_output=True, check=True, env=environment)
+            subprocess.run(['ipa', 'ping'], text=True, capture_output=True,
+                           check=True, env=environment)
+            login = {'migration_enabled': True, 'ldap_bind': True,
+                     'kerberos_login': True, 'keys_were_absent': not keys_before,
+                     'keys_generated': keys_after, 'target_admin_api': True}
+        except Exception as error:
+            login = {'success': False}
+            login_error = {'type': type(error).__name__, 'message': str(error),
+                           'stdout': getattr(error, 'stdout', None),
+                           'stderr': getattr(error, 'stderr', None)}
     after = snapshot('ipa.home.arpa', request['target_password'],
                      str(work / 'target-ca.pem'))
     mismatches = {}
@@ -177,7 +184,7 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
               'mismatches': mismatches, 'unchanged': before == after,
               'trust_unchanged': before['trust'] == after['trust'],
               'schema_unchanged': before['schema'] == after['schema'],
-              'login': login,
+              'login': login, 'login_error': login_error,
               'source': source, 'before': before, 'after': after,
               'proposed_ldif': (work / 'proposed.ldif').read_text()
                                if (work / 'proposed.ldif').exists() else '',
@@ -262,6 +269,10 @@ def migrate(
         raise RuntimeError(f"Migration changed target trust; private evidence: {path}")
     if action == "dry-run" and not report["unchanged"]:
         raise RuntimeError(f"Dry-run changed identity state; private evidence: {path}")
+    if action == "rehearse" and report.get("login_error"):
+        raise RuntimeError(
+            f"Migrated password verification failed; private evidence: {path}"
+        )
     if action == "rehearse" and any(report["mismatches"].values()):
         raise RuntimeError(
             f"Imported identity comparison differs; private evidence: {path}"

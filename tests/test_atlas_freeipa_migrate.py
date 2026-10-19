@@ -99,8 +99,26 @@ def test_worker_requires_tls_and_retains_dryrun_evidence(migration: ModuleType) 
     assert "assert keys_after" in migration.WORKER
 
 
+@pytest.mark.parametrize(
+    "action, report",
+    [
+        ("dry-run", {"returncode": 1, "stderr": "private"}),
+        (
+            "rehearse",
+            {
+                "returncode": 0,
+                "trust_unchanged": True,
+                "login_error": {"type": "CalledProcessError"},
+            },
+        ),
+    ],
+)
 def test_failure_keeps_private_report(
-    migration: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    migration: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    action: str,
+    report: dict,
 ) -> None:
     """A failed command retains evidence before returning an error."""
     source = tmp_path / "source.json"
@@ -118,7 +136,7 @@ def test_failure_keeps_private_report(
         {"returncode": 1, "stderr": "private"}
     )
     with pytest.raises(RuntimeError, match="private evidence"):
-        migration.migrate("dry-run", "infra-ipa-1", source, source_ca)
+        migration.migrate(action, "target", source, source_ca, login)
     evidence = list(tmp_path.glob("migration-*.json"))
     assert len(evidence) == 1
     assert evidence[0].stat().st_mode & 0o777 == 0o600
