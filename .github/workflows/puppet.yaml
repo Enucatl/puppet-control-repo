@@ -16,6 +16,9 @@ on:
       - 'docker/docker-compose.yml'
       - 'docker/vault/scripts/0[1-4]-*.sh'
       - 'docker/vault/scripts/offline-intermediate.rb'
+      - 'docker/vault/scripts/unseal.sh'
+      - 'docker/vault/setup/Dockerfile'
+      - 'docker/vault/unsealer/Dockerfile'
       - 'docker/vault/scripts/06-vault-puppet.sh'
       - 'docker/vault/scripts/03-puppet-external-ca.sh'
       - 'docker/vault/scripts/08-vault-puppet-policy.sh'
@@ -37,6 +40,9 @@ on:
       - 'docker/docker-compose.yml'
       - 'docker/vault/scripts/0[1-4]-*.sh'
       - 'docker/vault/scripts/offline-intermediate.rb'
+      - 'docker/vault/scripts/unseal.sh'
+      - 'docker/vault/setup/Dockerfile'
+      - 'docker/vault/unsealer/Dockerfile'
       - 'docker/vault/scripts/06-vault-puppet.sh'
       - 'docker/vault/scripts/03-puppet-external-ca.sh'
       - 'docker/vault/scripts/08-vault-puppet-policy.sh'
@@ -76,7 +82,7 @@ jobs:
           sudo install vault /usr/local/bin/vault
       - name: Check enrollment scripts and single-use authorization
         run: |
-          for script in proxmox/*.sh docker/openvox/*.sh docker/vault/scripts/{01-pki-core-setup,02-pki-intermediate,03-puppet-external-ca,04-sign-csr,06-vault-puppet,08-vault-puppet-policy}.sh; do bash -n "$script"; done
+          for script in proxmox/*.sh docker/openvox/*.sh docker/vault/scripts/unseal.sh docker/vault/scripts/{01-pki-core-setup,02-pki-intermediate,03-puppet-external-ca,04-sign-csr,06-vault-puppet,08-vault-puppet-policy}.sh; do bash -n "$script"; done
           uv run --frozen ruff check scripts/autosign.py scripts/openvox*.py docker/openvox/vault-api.py docker/openvox/infra-pki-self-test.py proxmox/desktop.py proxmox/desktop_cloud_init.py tests/test_autosign*.py tests/test_openvox*.py tests/test_offline_vault*.py tests/test_puppet_enrollment_vault.py tests/test_puppet_pki_vault.py tests/test_vault_unseal_pin.py tests/test_puppet_provisioning.py tests/test_desktop_provisioning.py
           uv run --frozen ruff format --check scripts/autosign.py scripts/openvox*.py docker/openvox/vault-api.py docker/openvox/infra-pki-self-test.py proxmox/desktop.py proxmox/desktop_cloud_init.py tests/test_autosign*.py tests/test_openvox*.py tests/test_offline_vault*.py tests/test_puppet_enrollment_vault.py tests/test_puppet_pki_vault.py tests/test_vault_unseal_pin.py tests/test_puppet_provisioning.py tests/test_desktop_provisioning.py
           uv run --frozen python scripts/openvox_rehearsal_recovery.py
@@ -84,7 +90,7 @@ jobs:
   profiles:
     runs-on: ubuntu-24.04
     env:
-      PUPPET_TEST_MODULEPATH: ${{ runner.temp }}/openvox-modules
+      PUPPET_TEST_MODULEPATH: /tmp/openvox-ci-modules
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v9.0.0
