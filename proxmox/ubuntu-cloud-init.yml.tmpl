@@ -4,7 +4,7 @@ bootcmd:
   - cloud-init-per instance puppet-enrollment-mask systemctl mask --runtime --now puppet.service
 users:
   - name: user_l
-    groups: sudo, docker
+    groups: sudo
     shell: /bin/bash
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     ssh_authorized_keys:

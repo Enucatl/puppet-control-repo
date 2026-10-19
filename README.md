@@ -4,24 +4,29 @@ A monorepo for home lab infrastructure. It combines Puppet configuration managem
 
 The goal is to reproduce the stack from versioned configuration, provisioning
 scripts, and explicitly identified secrets and backups. VM creation, enrollment,
-and recovery belong in documented workflows; any required manual step must state
-its inputs and outcome. This is the intended contract, not a claim that a complete
+and recovery belong in scripted workflows with declared inputs and secret delivery;
+no manual guest setup or repair steps are part of migration acceptance.
+This is the intended contract, not a claim that a complete
 rebuild has already been demonstrated. Start with the
 [Proxmox provisioning runbook](proxmox/README.md) and the
 [OpenVox / Ubuntu 26.04 migration plan](docs/26.04-migration-plan.md).
 
 The planned Ubuntu rebuild order is Atlas (infrastructure), then aperture
-(desktop), then cognition (GPU workloads). OpenVox and FreeIPA preparation on
-the existing Docker host precedes the Atlas move. Fresh installation and recovery
+(desktop), then cognition (GPU workloads). Start Atlas at 8192 MiB alongside
+Docker; bootstrap its infra repository before enrolling its native agent.
+Existing hosts remain on the legacy server until their migrations; remaining
+legacy-agent handoff follows the three replacements under #20.
+Fresh installation and recovery
 use the same infrastructure-first order, with identity initialization or state
 restoration as appropriate.
 
 OpenVox #12 now has a [disposable rehearsal](docs/openvox-rehearsal.md),
 [tested infra service](docs/openvox-infra.md), and
-[offline-root procedure](docs/openvox-offline-root.md). The new deployment uses
+[root-custody and historical signing notes](docs/openvox-offline-root.md). The new deployment uses
 a fresh ML-DSA-44 root retained inside Vault and separate OpenVox/FreeIPA
 intermediates. Existing CRL behavior is retained without added refresh jobs;
-production cutover remains #13. Read the [implementation report](docs/openvox-rehearsal-report.md)
+#13 owns Atlas deployment/enrollment, #18 independent bootstrap/recovery, and
+#19 staged service/storage cutover. Read the [implementation report](docs/openvox-rehearsal-report.md)
 and [Vault configuration limits](docs/openvox-vault-limitations.md) before use.
 The host-service and legacy Vault bootstrap descriptions below describe the
 existing installation, rather than the new-chain setup procedure.
@@ -111,7 +116,8 @@ The launcher runs Python with the repository's locked dependencies. The same
 options are available with `uv run --frozen python proxmox/desktop.py` from the
 repository root. Defaults remain 8 cores, 8000 MB RAM, and a 128G disk; omitting
 `-i` asks Proxmox for the next VM ID, and `-l` restricts the dictionary hostname's
-first letter. An existing VM at the selected ID is replaced.
+first letter. Replacing an existing VM requires `--rebuild`, an explicit ID and
+name, and the matching provisioning ownership marker.
 
 Shared defaults still come from `proxmox/config.sh`. The `.env` file overrides
 those defaults and must provide `VAULT_ADDR`, `VAULT_TOKEN`, and `LOG_DIR`
@@ -179,7 +185,8 @@ Supply authenticated CA trust before enrollment. Guest provisioning requires
 bundle in the guest's `/etc/puppetlabs/puppet/ssl/certs/ca.pem`. Existing native
 hosts use `proxmox/enroll-proxmox.sh` with the same input. It refuses to replace
 different existing trust, and enrollment refuses existing non-ML-DSA identities.
-Plan their replacement through #13 rather than deleting identity automatically.
+Keep legacy identities unchanged until their migration; #20 handles remaining
+legacy-agent handoff after the three replacements. Do not delete identity automatically.
 See the [native client instructions](docs/openvox-container-migration-plan.md).
 
 ## Deployment

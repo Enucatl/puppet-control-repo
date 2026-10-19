@@ -1,0 +1,33 @@
+#cloud-config
+hostname: ${NEW_VM_NAME}
+fqdn: ${VM_FQDN}
+prefer_fqdn_over_hostname: false
+manage_etc_hosts: true
+output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
+write_files:
+  - path: /etc/cloud/cloud.cfg.d/99-hostname.cfg
+    permissions: '0644'
+    content: |
+      hostname: ${NEW_VM_NAME}
+      fqdn: ${VM_FQDN}
+      prefer_fqdn_over_hostname: false
+      manage_etc_hosts: true
+  - path: /etc/tmpfiles.d/atlas-scratch.conf
+    permissions: '0644'
+    content: |
+      d /scratch 0755 root root -
+      d /scratch/apt-cacher-ng 0755 apt-cacher-ng apt-cacher-ng 2d
+      d /scratch/backup 0700 root root -
+      d /scratch/backup/vault 0700 root root 7d
+runcmd:
+  - set -e
+  - id apt-cacher-ng >/dev/null 2>&1 || useradd --system --home-dir /var/cache/apt-cacher-ng --no-create-home apt-cacher-ng
+  - systemd-tmpfiles --create /etc/tmpfiles.d/atlas-scratch.conf
+  - systemctl enable --now systemd-tmpfiles-clean.timer
+  - systemctl disable --now puppet.service
+  - systemctl enable --now qemu-guest-agent
+  - test "$(hostname)" = '${NEW_VM_NAME}'
+  - test "$(hostname -f)" = '${VM_FQDN}'
+  - test "$(stat -c %d /scratch)" = "$(stat -c %d /)"
+  - test ! -e /etc/puppetlabs/puppet/ssl/private_keys
+final_message: "Infrastructure base ready; enrollment is a separate activation step."

@@ -104,8 +104,9 @@ The isolated integration and recovery acceptance for #12 is complete. No manual
 intervention was required for the completed lab steps. Reproduction inputs and
 commands are in the [operational record](openvox-operational-acceptance.md).
 
-Full workload provisioning and role application belong to the existing
-acceptance criteria in #15, which is blocked by #12; FreeIPA consumers belong
+Shared provisioning and the Atlas base belong to #15, whose #12 prerequisite is
+now satisfied. Live Atlas convergence belongs to #13 and full desktop/GPU role
+acceptance to #16/#17; FreeIPA consumers belong
 to #14/#8. Requiring those complete migrations to close #12 would create a
 dependency cycle. The native enrollment and fixture catalog applications prove
 the OpenVox integration; complete role compilation is recorded separately and

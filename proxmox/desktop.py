@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import platform
 import random
 import re
 import shlex
@@ -14,6 +15,7 @@ from string import Template
 import subprocess
 import sys
 import time
+from urllib.parse import unquote
 
 import niquests
 
@@ -53,6 +55,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-l", dest="letter", default="", metavar="LETTER")
     parser.add_argument("-i", dest="vmid", metavar="VMID")
+    parser.add_argument("-n", dest="name", metavar="HOSTNAME")
+    parser.add_argument("-t", dest="template_id", metavar="TEMPLATE_ID")
+    parser.add_argument("--puppet-server", metavar="HOSTNAME")
+    parser.add_argument("--rebuild", action="store_true")
     parser.add_argument("-c", dest="cores", type=int, default=8, metavar="CORES")
     parser.add_argument(
         "-m", dest="memory", type=int, default=8000, metavar="MEMORY_MB"
@@ -63,6 +69,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("LETTER must be a single ASCII letter")
     if args.vmid is not None and not re.fullmatch(r"[1-9][0-9]*", args.vmid):
         parser.error("VMID must be a positive integer")
+    for value in (args.name, args.puppet_server):
+        if value is not None and (
+            len(value) > 253
+            or any(
+                len(label) > 63
+                or not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label)
+                for label in value.split(".")
+            )
+        ):
+            parser.error("HOSTNAME must contain valid DNS labels")
+    if args.name and "." in args.name:
+        parser.error("-n requires a short hostname without the domain suffix")
+    if args.template_id is not None and not re.fullmatch(
+        r"[1-9][0-9]*", args.template_id
+    ):
+        parser.error("TEMPLATE_ID must be a positive integer")
+    if args.name and args.letter:
+        parser.error("-n and -l cannot be combined")
+    if args.rebuild and not (args.vmid and args.name):
+        parser.error("--rebuild requires explicit -i VMID and -n HOSTNAME")
     if args.cores <= 0 or args.memory <= 0:
         parser.error("CORES and MEMORY_MB must be positive")
     if not re.fullmatch(r"\+?[0-9]+(?:\.[0-9]+)?[KMGT]?", args.disk_size):
@@ -129,7 +155,8 @@ def run(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
 def wait_for_cloudinit(vmid: str) -> None:
     """Wait for guest readiness and collect diagnostics on cloud-init failure."""
     print("Waiting for cloud-init to finish...", flush=True)
-    while True:
+    deadline = time.monotonic() + 1800
+    while time.monotonic() < deadline:
         result = run(
             "qm", "guest", "exec", vmid, "--", "cloud-init", "status", check=False
         )
@@ -148,15 +175,92 @@ def wait_for_cloudinit(vmid: str) -> None:
                     print(diagnostic.stdout or diagnostic.stderr, file=sys.stderr)
                 raise RuntimeError("Cloud-init failed")
         time.sleep(10)
+    raise RuntimeError("Timed out waiting for cloud-init/QEMU guest agent")
+
+
+def require_owned_vm(vmid: str, name: str, marker: str) -> None:
+    """Refuse destructive operations unless the local VM has our exact identity."""
+    result = run("qm", "config", vmid)
+    config = dict(
+        line.split(": ", 1) for line in result.stdout.splitlines() if ": " in line
+    )
+    if config.get("name") != name or unquote(config.get("description", "")) != marker:
+        raise ValueError(f"VMID {vmid} is not the expected script-owned VM {name}")
+    if config.get("template") == "1":
+        raise ValueError(f"VMID {vmid} is a template")
+
+
+def verify_guest_hostname(vmid: str, name: str, certname: str) -> None:
+    """Check the guest's short and fully qualified names through its agent."""
+    for command, expected in ((("hostname",), name), (("hostname", "-f"), certname)):
+        result = run("qm", "guest", "exec", vmid, "--", *command)
+        output = json.loads(result.stdout)
+        if (
+            output.get("exitcode") != 0
+            or output.get("out-data", "").strip() != expected
+        ):
+            raise RuntimeError(f"Guest {' '.join(command)} does not equal {expected}")
 
 
 def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
     """Clone, configure, enroll, and reboot a desktop VM; clean up failed clones."""
     vmid = args.vmid or run("pvesh", "get", "/cluster/nextid").stdout.strip()
-    if not re.fullmatch(r"[1-9][0-9]*", vmid) or vmid == settings["TEMPLATE_ID"]:
-        raise ValueError("VMID must be positive and different from TEMPLATE_ID")
-    name = pick_vm_name(args.letter)
+    template_id = args.template_id or settings["TEMPLATE_ID"]
+    if not re.fullmatch(r"[1-9][0-9]*", vmid) or vmid in {"9000", template_id}:
+        raise ValueError(
+            "VMID must be positive and different from protected template IDs"
+        )
+    name = args.name or pick_vm_name(args.letter)
     certname = f"{name}.{settings['DOMAIN_SUFFIX']}"
+    marker = f"openvox-provisioning:desktop:{certname}"
+    resources = json.loads(
+        run(
+            "pvesh",
+            "get",
+            "/cluster/resources",
+            "--type",
+            "vm",
+            "--output-format",
+            "json",
+        ).stdout
+    )
+    if not isinstance(resources, list) or any(
+        not isinstance(resource, dict)
+        or type(resource.get("vmid")) is not int
+        or resource["vmid"] <= 0
+        for resource in resources
+    ):
+        raise ValueError("Invalid cluster VM inventory")
+    if any(
+        resource.get("name") == name and str(resource["vmid"]) != vmid
+        for resource in resources
+    ):
+        raise ValueError(f"Hostname {name} is already allocated in the cluster")
+    local_node = platform.node().split(".", 1)[0]
+    existing = [resource for resource in resources if str(resource["vmid"]) == vmid]
+    if existing:
+        if (
+            not args.rebuild
+            or len(existing) != 1
+            or existing[0].get("type") != "qemu"
+            or existing[0].get("template")
+            or existing[0].get("name") != name
+            or existing[0].get("node") != local_node
+        ):
+            raise ValueError(f"VMID {vmid} is already in use; refusing to replace it")
+        require_owned_vm(vmid, name, marker)
+    sources = [
+        resource for resource in resources if str(resource["vmid"]) == template_id
+    ]
+    if (
+        len(sources) != 1
+        or sources[0].get("type") != "qemu"
+        or sources[0].get("node") != local_node
+    ):
+        raise ValueError("Source must be a local QEMU template")
+    source_config = run("qm", "config", template_id).stdout.splitlines()
+    if "template: 1" not in source_config:
+        raise ValueError("Source must be a template")
     storage = settings["DEFAULT_STORAGE"]
     snippet = SNIPPET_DIR / f"generated-desktop-{vmid}.yml"
     log_dir = Path(settings["LOG_DIR"])
@@ -167,7 +271,11 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
         raise ValueError("OPENVOX_CA_CERT must contain authenticated CA certificates")
     token = create_vault_token(settings, certname)
     config = build_cloud_config(
-        token, certname, settings["PUPPET_SERVER"], settings["DOMAIN_SUFFIX"], ca_bundle
+        token,
+        certname,
+        args.puppet_server or settings["PUPPET_SERVER"],
+        settings["DOMAIN_SUFFIX"],
+        ca_bundle,
     )
     cloned = False
     try:
@@ -176,15 +284,16 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
             stream.write("#cloud-config\n")
             json.dump(config, stream, indent=2)
             stream.write("\n")
-        if run("qm", "status", vmid, check=False).returncode == 0:
-            print(f"Replacing existing VM {vmid}...", flush=True)
-            run("qm", "stop", vmid, check=False)
+        if existing:
+            require_owned_vm(vmid, name, marker)
+            print(f"Replacing owned development VM {vmid}...", flush=True)
+            run("qm", "stop", vmid)
             run("qm", "destroy", vmid, "--purge")
         print(f"Cloning and configuring VM {vmid}...", flush=True)
         run(
             "qm",
             "clone",
-            settings["TEMPLATE_ID"],
+            template_id,
             vmid,
             "--name",
             name,
@@ -192,6 +301,8 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
             storage,
             "--full",
             "1",
+            "--description",
+            marker,
         )
         cloned = True
         run("qm", "resize", vmid, "scsi0", args.disk_size)
@@ -224,9 +335,12 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
             f"vendor={settings['SNIPPET_STORAGE']}:snippets/{snippet.name}",
             "--ipconfig0",
             "ip=dhcp",
+            "--searchdomain",
+            settings["DOMAIN_SUFFIX"],
         )
         run("qm", "start", vmid)
         wait_for_cloudinit(vmid)
+        verify_guest_hostname(vmid, name, certname)
         result = run(
             "qm", "guest", "exec", vmid, "--", "cat", "/var/log/cloud-init-output.log"
         )
@@ -235,16 +349,48 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
             raise RuntimeError("Could not read the guest cloud-init log")
         with (log_dir / "cloud-init-output.log").open("a") as stream:
             stream.write(guest_log["out-data"])
+        run("qm", "set", vmid, "--delete", "cicustom")
     except Exception, KeyboardInterrupt:
         if cloned:
             print(f"Provisioning failed; removing VM {vmid}...", file=sys.stderr)
-            run("qm", "stop", vmid, check=False)
-            run("qm", "destroy", vmid, "--purge", check=False)
+            try:
+                require_owned_vm(vmid, name, marker)
+                run("qm", "stop", vmid)
+                run("qm", "destroy", vmid, "--purge")
+            except (ValueError, subprocess.CalledProcessError) as cleanup_error:
+                print(f"VM cleanup refused or failed: {cleanup_error}", file=sys.stderr)
         raise
     finally:
         snippet.unlink(missing_ok=True)
     print(f"Rebooting {name} to finalize the desktop...", flush=True)
+    boot_id_command = (
+        "qm",
+        "guest",
+        "exec",
+        vmid,
+        "--",
+        "cat",
+        "/proc/sys/kernel/random/boot_id",
+    )
+    boot_id = json.loads(run(*boot_id_command).stdout).get("out-data")
+    if not boot_id:
+        raise RuntimeError("Could not read the guest boot ID")
     run("qm", "reboot", vmid)
+    for _ in range(60):
+        time.sleep(5)
+        result = run(*boot_id_command, check=False)
+        if result.returncode == 0:
+            rebooted = json.loads(result.stdout)
+            if rebooted.get("exitcode") == 0 and rebooted.get("out-data") not in (
+                None,
+                "",
+                boot_id,
+            ):
+                break
+    else:
+        raise RuntimeError("Guest did not reboot within five minutes")
+    wait_for_cloudinit(vmid)
+    verify_guest_hostname(vmid, name, certname)
     return name
 
 

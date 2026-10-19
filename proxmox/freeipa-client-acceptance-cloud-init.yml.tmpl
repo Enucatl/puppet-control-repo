@@ -2,7 +2,9 @@
 output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
 bootcmd:
   - cloud-init-per instance puppet-enrollment-mask systemctl mask --runtime --now puppet.service
+hostname: ${NEW_VM_NAME}
 fqdn: ${VM_FQDN}
+prefer_fqdn_over_hostname: false
 manage_etc_hosts: true
 
 write_files:
@@ -45,6 +47,14 @@ write_files:
       # cloud-init.  Do not discard the VM's diagnostics if this bootstrap
       # catalog is temporarily unavailable.
       /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
+
+  - path: /etc/cloud/cloud.cfg.d/99-hostname.cfg
+    permissions: '0644'
+    content: |
+      hostname: ${NEW_VM_NAME}
+      fqdn: ${VM_FQDN}
+      prefer_fqdn_over_hostname: false
+      manage_etc_hosts: true
 
   - path: /usr/local/bin/install-openvox.sh
     permissions: '0755'

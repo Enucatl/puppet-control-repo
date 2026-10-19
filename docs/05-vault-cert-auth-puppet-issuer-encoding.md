@@ -2,6 +2,12 @@
 
 Date: 2026-04-25
 
+Historical diagnosis and proposed remedies for the legacy authority. The active
+[migration plan](26.04-migration-plan.md) supersedes the broad agent reissue and
+RSA/intermediate migration proposals below: deploy a fresh Vault-held ML-DSA-44
+hierarchy on Atlas and enroll only new hosts as they migrate. Existing agents
+remain on the old server until their own migration.
+
 ## Summary
 
 `proxmox.home.arpa` cannot authenticate to Vault through the generic Puppet

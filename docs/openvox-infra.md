@@ -48,8 +48,9 @@ Do not activate this service until all of these conditions are met:
    `02-pki-intermediate.sh` to prepare this hierarchy: those describe the older
    PKI. Their explicit `--offline-root` paths are documented in
    [the root-custody and historical rehearsal notes](openvox-offline-root.md).
-2. The existing OpenVox identity has been explicitly imported/restored and
-   verified. Server host private/public keys must be prepared with
+2. The new OpenVox identity has been explicitly prepared/imported on first
+   deployment, or its established new identity restored on recovery, and verified.
+   Server host private/public keys must be prepared with
    `key_type=mldsa44` before an external CA import. The listener PEM contains
    the server leaf followed by intermediate and root certificates. The server
    leaf and all CRLs must still be valid, and signed leaf lifetimes must not
@@ -71,9 +72,11 @@ Do not activate this service until all of these conditions are met:
    recovery, and migration gates are signed off separately. The complete
    disposable rehearsal is useful evidence, but does not activate this service
    or establish every production compatibility requirement.
-6. DNS, firewall and the port-8140 cutover are planned. The existing host
-   `puppetserver.service` cannot share the same port. Moving clients/production
-   enrollment and retiring that service belong to the explicit #13 cutover.
+6. Atlas uses a distinct address and direct port 8140 while Docker's existing
+   `puppetserver.service` continues serving legacy agents. #13 enrolls Atlas,
+   then Aperture and Cognition as they migrate; it does not retire the old
+   server or move legacy agents. Endpoint handoffs and old-service retirement
+   follow the staged [migration plan](26.04-migration-plan.md).
 
 | External volume | Container path | Contents |
 | --- | --- | --- |
@@ -95,8 +98,10 @@ verify renewal before the configured one-day leaf expires.
 
 ## Explicit preparation and activation commands
 
-These are future operator commands on the selected target daemon. They have
-not been executed against production. Never source a production `.env` while
+These commands describe the preparation interface on the selected target
+daemon; #18 must compose them into the scripted Atlas bootstrap with declared
+inputs and no manual guest setup. They have not been executed against production.
+Never source a production `.env` while
 testing; a Compose render can be checked without a daemon:
 
 ```sh

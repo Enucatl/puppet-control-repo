@@ -6,10 +6,11 @@ superseded for #12–#14 by the fresh ML-DSA-44 Vault-held root decision in the
 as design history, not installation commands or prerequisites. The current
 rehearsal uses the accepted OpenVox 24001 packages, a Vault-held ML-DSA root and
 separate OpenVox/FreeIPA intermediates. Follow the [infra runbook](openvox-infra.md),
-[offline-root runbook](openvox-offline-root.md) and
+[historical offline-root runbook](openvox-offline-root.md) and
 [measured Vault limits](openvox-vault-limitations.md) instead of the legacy
-online-root/default-RSA paths below. Atlas subsequently restores the established
-new hierarchy; production enrollment remains #13.
+online-root/default-RSA paths below. Deploy the new hierarchy on Atlas first;
+subsequent recovery restores it. Enrollment in #13 covers Atlas, then Aperture
+and Cognition as they migrate, leaving existing hosts unchanged.
 
 Scope: this document describes a separate development mirror and later
 cryptography experiments. The active OpenVox/Ubuntu migration sequence is in

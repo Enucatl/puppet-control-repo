@@ -12,9 +12,10 @@ refresh automation are removed. Baseline Vault/OpenVox revocation behaviour
 remains. No CRL publisher service, independent client timer, publisher AppRole or
 failure-mail machinery is required for #12.
 
-The remaining acceptance work concerns ML-DSA installation and authentication,
+The completed #12 acceptance covers ML-DSA installation and authentication,
 TLS negotiation, Hiera, normal convergence, authority-preserving recovery and
-rebooting a disposable Docker host.
+rebooting a disposable Docker host. Production Atlas execution remains #18,
+new-chain deployment/enrollment #13 and service cutover #19.
 
 ## Completed baseline evidence
 
@@ -82,8 +83,9 @@ source daemon's user namespaces into ordinary guest Docker.
 
 A fresh-authority restore does not prove production backup custody or restore
 FreeIPA/NFS application state. The current SSH account cannot inspect production
-Vault recovery-file metadata with passwordless sudo; #11/#18 must establish that
-access before production cutover. Off-host filesystem and SSH independence do not
+Vault recovery-file metadata with passwordless sudo during the rehearsal; #18
+must verify independently available production recovery access before cutover.
+#11 remains closed pre-rollout evidence. Off-host filesystem and SSH independence do not
 by themselves establish independent physical disks.
 
 No human emails were sent; the custom CRL alert machinery was removed. Full
@@ -110,27 +112,29 @@ issuance. Docker/desktop roles add NFS and toolchains. The actual
 Kerberos mounts, exports and Git deployment projects; it is not a generic lab
 fixture.
 
-[#15](https://github.com/Enucatl/puppet-control-repo/issues/15) owns complete
-Docker/desktop provisioning, repeated builds, occupied-ID safety and workload
-runs. It depends on #12; making its full outcome a prerequisite for #12 creates
-a dependency cycle. #12 explicitly assigns FreeIPA consumer compatibility to
-[#14](https://github.com/Enucatl/puppet-control-repo/issues/14)/#8. Production
-identity-state recovery remains #11/#18.
+[#15](https://github.com/Enucatl/puppet-control-repo/issues/15) owns shared
+provisioning, the repeatable Atlas base and designated-ID target handling.
+#13 owns live Atlas enrollment/convergence; #16/#17 own full desktop/GPU workload
+acceptance. #12 is closed isolated evidence, not blocked on these later tasks.
+FreeIPA consumer compatibility belongs to #14/#8; #18 verifies production
+identity-state recovery using #11's pre-rollout recovery evidence.
 
 The actual cloud-init sources are
 [`docker-cloud-init.yml.tmpl`](../proxmox/docker-cloud-init.yml.tmpl),
 [`desktop_cloud_init.py`](../proxmox/desktop_cloud_init.py) and
 [`ubuntu-cloud-init.yml.tmpl`](../proxmox/ubuntu-cloud-init.yml.tmpl). Rendering and
-enrollment have regression coverage; complete template-to-workload deployment
-remains #15. A future isolated test can boot their rendered output in a fresh
+enrollment have regression coverage; shared base provisioning remains #15 and
+full-role deployment #13/#16/#17. A future isolated test can boot rendered output in a fresh
 local VM; full-role application additionally needs real isolated
 FreeIPA/Kerberos and configured NFS/service dependencies.
 
-Do not run [`docker-server.sh`](../proxmox/docker-server.sh) or
-[`ubuntu-server-template.sh`](../proxmox/ubuntu-server-template.sh) against an
-unreviewed Proxmox ID: both still stop/destroy occupied IDs. The Docker wrapper
-also issues its token before checking the ID. These existing #15 defects remain
-open; dummy dependencies or a successful compile do not resolve them.
+[`docker-server.sh`](../proxmox/docker-server.sh) and
+[`ubuntu-server-template.sh`](../proxmox/ubuntu-server-template.sh) validate
+cluster inventory and the selected target before token issuance or guest mutation.
+Rebuilds require an explicit flag and matching local guest name and ownership
+marker. Template 9000 is protected, and failure cleanup rechecks ownership.
+Atlas base creation passed twice; live enrollment and full-role acceptance
+remain with #13/#16/#17.
 
 ## Final baseline recovery contract
 

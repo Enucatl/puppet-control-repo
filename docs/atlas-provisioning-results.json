@@ -1,0 +1,78 @@
+{
+  "accepted_on": "2026-10-19",
+  "proxmox_host": "proxmox.home.arpa",
+  "source_revision": "76307a3613d696406fc60635cd84bbed52128981+issue15-working-tree",
+  "source_checksum_manifest_sha256": "45015292b1d767103f129868bc47e948bc588b7998649e2c5e14c0a0cab9283f",
+  "host_evidence": "/root/openvox-issue15-20261019/evidence",
+  "template": {
+    "vmid": 9001,
+    "name": "ubuntu-server-2604-template",
+    "image_url": "https://cloud-images.ubuntu.com/releases/resolute/release-20260927/ubuntu-26.04-server-cloudimg-amd64.img",
+    "image_sha256": "8800651811af9a85465ad1d552add729947bb16488dddb4a9b5305a3d97332b2",
+    "build_and_rebuild_passed": true,
+    "contains_host_identity_or_enrollment_token": false,
+    "packages": {
+      "cloud-init": "26.1-0ubuntu3~26.04.1",
+      "openvox-agent": "9.1.0+homelab.24001-1+ubuntu26.04",
+      "qemu-guest-agent": "1:10.2.1+ds-1ubuntu3.2"
+    },
+    "openvox_runtime_openssl": "OpenSSL 3.5.9 29 Sep 2026"
+  },
+  "atlas": {
+    "vmid": 210,
+    "hostname": "atlas",
+    "fqdn": "atlas.home.arpa",
+    "cores": 8,
+    "memory_mib": 8192,
+    "system_disk_gib": 300,
+    "disk_resize": {
+      "verified_on": "2026-10-19",
+      "initial_system_disk_gib": 50,
+      "docker_system_disk_gib": 300,
+      "online_partition_and_ext4_growth_passed": true,
+      "guest_root_available_bytes": 308401758208,
+      "pool_available_bytes_after_growth": 621465657344,
+      "docker_configuration_unchanged": true
+    },
+    "searchdomain": "home.arpa",
+    "final_ipv4": "10.0.0.158",
+    "dns_resolution_verified": true,
+    "enrolled": false,
+    "puppet_service_active": false,
+    "scratch_on_system_filesystem": true,
+    "scratch_cache_owner": "apt-cacher-ng",
+    "scratch_vault_directory_owner_mode": "root:root 0700",
+    "docker_scratch_disk_attached": false,
+    "runs": [
+      {
+        "run": 1,
+        "ipv4": "10.0.0.139",
+        "cloud_init": "done",
+        "hostname_verified_after_reboot": true,
+        "fqdn_verified_after_reboot": true,
+        "ssh_and_passwordless_sudo": "passed"
+      },
+      {
+        "run": 2,
+        "ipv4": "10.0.0.158",
+        "cloud_init": "done",
+        "hostname_verified_after_reboot": true,
+        "fqdn_verified_after_reboot": true,
+        "ssh_and_passwordless_sudo": "passed"
+      }
+    ]
+  },
+  "protected_configuration_hashes_unchanged": [100, 200, 300, 1000, 9000],
+  "focused_tests_passed": 184,
+  "review_fixes": [
+    "Detach desktop cloud-init snippet before deletion and reboot",
+    "Load FreeIPA acceptance endpoint from optional .env",
+    "Reuse bounded shared cloud-init waiter for FreeIPA acceptance",
+    "Correct obsolete provisioning-safety documentation"
+  ],
+  "deferred_live_acceptance": [
+    "Atlas enrollment and convergence (#13)",
+    "Infrastructure deployment, recovery and promotion (#18)",
+    "Aperture and Cognition desktop/GPU roles (#16/#17)"
+  ]
+}

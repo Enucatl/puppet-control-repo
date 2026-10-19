@@ -4,131 +4,120 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/lib.sh"
+[[ ! -f .env ]] || load_env
 
-# --- CLI ARGUMENTS ---
 LETTER=""
+NEW_VM_NAME=""
 VMID=""
 CORES=8
 MEMORY=16384
 DISK_SIZE="50G"
 NODE_TYPE="docker"
+BASE_ONLY=false
+REBUILD=false
 
 usage() {
-    echo "Usage: $0 [-l LETTER] [-n NAME] [-i VMID] [-c CORES] [-m MEMORY_MB] [-d DISK_SIZE]"
-    exit 1
+    echo "Usage: $0 [-b] [-r] [-n NAME | -l LETTER] [-i VMID] [-t TEMPLATE_ID] [-s PUPPET_SERVER] [-c CORES] [-m MEMORY_MB] [-d DISK_SIZE]"
+    echo '  -b: infrastructure base without Vault/Puppet enrollment; -r: rebuild an owned development VM'
 }
-
-while getopts "l:n:i:c:m:d:h" opt; do
+while getopts "brl:n:i:t:s:c:m:d:h" opt; do
     case $opt in
+        b) BASE_ONLY=true ;;
+        r) REBUILD=true ;;
         l) LETTER="$OPTARG" ;;
         n) NEW_VM_NAME="$OPTARG" ;;
         i) VMID="$OPTARG" ;;
+        t) TEMPLATE_ID="$OPTARG" ;;
+        s) PUPPET_SERVER="$OPTARG" ;;
         c) CORES="$OPTARG" ;;
         m) MEMORY="$OPTARG" ;;
         d) DISK_SIZE="$OPTARG" ;;
-        h) usage ;;
-        *) usage ;;
+        h) usage; exit 0 ;;
+        *) usage; exit 1 ;;
     esac
 done
-
-if [ -z "${NEW_VM_NAME:-}" ]; then
-    NEW_VM_NAME=$(pick_vm_name "$LETTER")
-fi
-
-# --- LOAD ENVIRONMENT ---
-load_env
-
-: "${IPV6_PREFIX:?IPV6_PREFIX is not set}"
-: "${VAULT_TOKEN:?VAULT_TOKEN is not set}"
-: "${VAULT_ADDR:?VAULT_ADDR is not set}"
-: "${LOG_DIR:?LOG_DIR is not set}"
-
-VM_LETTER="${NEW_VM_NAME:0:1}"
-IPV6_POOL="${IPV6_PREFIX}:${VM_LETTER}000::/56"
-IPV6_FIXED="${IPV6_PREFIX}:${VM_LETTER}100::/64"
-VM_FQDN="${NEW_VM_NAME}.${DOMAIN_SUFFIX}"
-export IPV6_POOL IPV6_FIXED PUPPET_SERVER DOMAIN_SUFFIX NODE_TYPE VM_FQDN
-
-# --- DEFAULTS ---
-if [ -z "$VMID" ]; then
-    VMID=$(pvesh get /cluster/nextid)
-fi
-
-STORAGE="$DEFAULT_STORAGE"
-TEMPLATE_SRC="$SCRIPT_DIR/docker-cloud-init.yml.tmpl"
-GENERATED_YAML="/var/lib/vz/snippets/generated-docker-cloud-init-$VMID.yml"
-
-mkdir -p "$LOG_DIR"
-
-echo "--- Starting Deployment for VM $VMID ($NEW_VM_NAME) ---"
-
-# 1. Generate Vault token and inject all variables into the template
-echo "[1/6] Generating Vault Token and Cloud-Init from template..."
-create_vault_token "$VM_FQDN"
-OPENVOX_CA_BUNDLE=$(sed 's/^/      /' "${OPENVOX_CA_CERT:?Set authenticated OpenVox CA bundle path}")
-export OPENVOX_CA_BUNDLE
-CONFIGURE_PUPPET_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/configure-puppet.sh")
-export CONFIGURE_PUPPET_SCRIPT
-INSTALL_OPENVOX_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/install-openvox.sh")
-export INSTALL_OPENVOX_SCRIPT
-PUPPET_ENROLLMENT_COMMAND=$(jq -cn --arg type "$NODE_TYPE" --arg token "$VM_TOKEN" --arg certname "$VM_FQDN" --arg server "$PUPPET_SERVER" \
-  '["/usr/local/bin/configure-puppet.sh", $type, $token, $certname, $server]')
-export PUPPET_ENROLLMENT_COMMAND
-install -m 0600 /dev/null "$GENERATED_YAML"
-envsubst '${IPV6_POOL}${IPV6_FIXED}${DOMAIN_SUFFIX}${CONFIGURE_PUPPET_SCRIPT}${INSTALL_OPENVOX_SCRIPT}${OPENVOX_CA_BUNDLE}${PUPPET_ENROLLMENT_COMMAND}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
-
-# 2. Pre-flight Cleanup
-if qm status "$VMID" >/dev/null 2>&1; then
-    echo "[2/6] Destroying existing VM $VMID..."
-    qm stop "$VMID" >/dev/null 2>&1 || true
-    qm destroy "$VMID" --purge
-fi
-
-# 3. Clone the Template
-echo "[3/6] Cloning template..."
-qm clone "$TEMPLATE_ID" "$VMID" --name "$NEW_VM_NAME" --storage "$STORAGE" --full 1
-
-cleanup() {
-    echo "Error detected. Cleaning up..."
-    rm -f "$GENERATED_YAML" 2>/dev/null || true
-    qm stop "$VMID" 2>/dev/null || true
-    qm destroy "$VMID" --purge 2>/dev/null || true
+[[ $REBUILD != true || ( -n $VMID && -n $NEW_VM_NAME ) ]] || {
+    echo 'Rebuild requires an explicit VM ID and name.' >&2; exit 1;
 }
-trap cleanup ERR INT TERM
+[[ -z $LETTER || $LETTER =~ ^[a-zA-Z]$ ]] || { echo 'Invalid initial letter.' >&2; exit 1; }
+[[ -n $NEW_VM_NAME ]] || NEW_VM_NAME=$(pick_vm_name "$LETTER")
+[[ ${#NEW_VM_NAME} -le 63 && $NEW_VM_NAME =~ ^[a-z]([a-z0-9-]*[a-z0-9])?$ ]] || {
+    echo 'NAME must be a lowercase short DNS hostname.' >&2; exit 1;
+}
+[[ $CORES =~ ^[1-9][0-9]*$ && $MEMORY =~ ^[1-9][0-9]*$ && $DISK_SIZE =~ ^[1-9][0-9]*G$ ]] || {
+    echo 'Invalid resources; use positive cores/MiB and an absolute disk size such as 50G.' >&2; exit 1;
+}
+[[ -n $VMID ]] || VMID=$(pvesh get /cluster/nextid)
+VM_FQDN="${NEW_VM_NAME}.${DOMAIN_SUFFIX}"
+OWNER="openvox-provisioning:docker:${VM_FQDN}"
+validate_target "$VMID" "$NEW_VM_NAME" "$OWNER" "$REBUILD"
+check_provisioning_host
+qm config "$TEMPLATE_ID" | grep -q '^template: 1$' || { echo 'Source must be a template.' >&2; exit 1; }
 
-qm set "$VMID" \
-    --cores "$CORES" \
-    --memory "$MEMORY" \
-    --agent 1 \
-    --cpu host \
-    --bios ovmf \
-    --machine q35 \
-    --efidisk0 "${STORAGE}:0,efitype=4m,pre-enrolled-keys=0" \
-    --scsihw virtio-scsi-single
+LOG_DIR="${LOG_DIR:-/var/log/openvox-provisioning}"
+STORAGE="$DEFAULT_STORAGE"
+GENERATED_YAML="/var/lib/vz/snippets/generated-docker-cloud-init-$VMID.yml"
+export NEW_VM_NAME VM_FQDN DOMAIN_SUFFIX
+if [[ $BASE_ONLY == true ]]; then
+    TEMPLATE_SRC="$SCRIPT_DIR/atlas-cloud-init.yml.tmpl"
+    install -m 0600 /dev/null "$GENERATED_YAML"
+    envsubst '${NEW_VM_NAME}${VM_FQDN}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+else
+    : "${IPV6_PREFIX:?IPV6_PREFIX is not set}"
+    VM_LETTER="${NEW_VM_NAME:0:1}"
+    [[ $VM_LETTER =~ ^[a-f]$ && $IPV6_PREFIX =~ ^([[:xdigit:]]{1,4}:){2}[[:xdigit:]]{1,4}$ ]] || {
+        echo 'Docker IPv6 requires an a-f hostname initial and a three-hextet /48 prefix.' >&2; exit 1;
+    }
+    IPV6_POOL="${IPV6_PREFIX}:${VM_LETTER}000::/56"
+    IPV6_FIXED="${IPV6_PREFIX}:${VM_LETTER}100::/64"
+    export IPV6_POOL IPV6_FIXED PUPPET_SERVER NODE_TYPE
+    TEMPLATE_SRC="$SCRIPT_DIR/docker-cloud-init.yml.tmpl"
+    # Reject missing trust before issuing a single-use enrollment token.
+    test -s "${OPENVOX_CA_CERT:?Set authenticated OpenVox CA bundle path}"
+    create_vault_token "$VM_FQDN"
+    OPENVOX_CA_BUNDLE=$(sed 's/^/      /' "$OPENVOX_CA_CERT")
+    export OPENVOX_CA_BUNDLE
+    CONFIGURE_PUPPET_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/configure-puppet.sh")
+    export CONFIGURE_PUPPET_SCRIPT
+    INSTALL_OPENVOX_SCRIPT=$(sed 's/^/      /' "$SCRIPT_DIR/install-openvox.sh")
+    export INSTALL_OPENVOX_SCRIPT
+    PUPPET_ENROLLMENT_COMMAND=$(jq -cn --arg type "$NODE_TYPE" --arg token "$VM_TOKEN" --arg certname "$VM_FQDN" --arg server "$PUPPET_SERVER" \
+      '["/usr/local/bin/configure-puppet.sh", $type, $token, $certname, $server]')
+    export PUPPET_ENROLLMENT_COMMAND
+    install -m 0600 /dev/null "$GENERATED_YAML"
+    envsubst '${NEW_VM_NAME}${VM_FQDN}${IPV6_POOL}${IPV6_FIXED}${DOMAIN_SUFFIX}${CONFIGURE_PUPPET_SCRIPT}${INSTALL_OPENVOX_SCRIPT}${OPENVOX_CA_BUNDLE}${PUPPET_ENROLLMENT_COMMAND}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+fi
+
+# 2. Only remove a previously designated development guest; recheck ownership.
+CLONED=false
+cleanup() {
+    local status=$?
+    trap - EXIT
+    rm -f "$GENERATED_YAML"
+    if [[ $status != 0 && $CLONED == true ]]; then
+        remove_target "$VMID" || echo 'Retaining VM: cleanup could not verify ownership.' >&2
+    fi
+    exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+if [[ $TARGET_EXISTS == true ]]; then remove_target "$VMID"; fi
+qm clone "$TEMPLATE_ID" "$VMID" --name "$NEW_VM_NAME" --description "$OWNER" --storage "$STORAGE" --full 1
+CLONED=true
+qm set "$VMID" --cores "$CORES" --memory "$MEMORY" --agent 1 --cpu host \
+    --bios ovmf --machine q35 \
+    --efidisk0 "${STORAGE}:0,efitype=4m,pre-enrolled-keys=0" --scsihw virtio-scsi-single
 qm resize "$VMID" scsi0 "$DISK_SIZE"
-
-# 4. Apply Configuration
-echo "[4/6] Applying Cloud-Init..."
 qm set "$VMID" \
     --cicustom "vendor=${SNIPPET_STORAGE}:snippets/$(basename "$GENERATED_YAML")" \
-    --ipconfig0 "ip=dhcp" \
-    --ciuser user_l \
-    --sshkey ~/.ssh/id_ed25519.pub
-
-# 5. Start and Wait for Logs
-echo "[5/6] Starting VM..."
+    --ipconfig0 ip=dhcp --searchdomain "$DOMAIN_SUFFIX" --ciuser user_l --sshkey ~/.ssh/id_ed25519.pub
+mkdir -p "$LOG_DIR"
 qm start "$VMID"
-
 wait_for_cloudinit "$VMID"
-
-# 6. Fetch Log and Cleanup
-echo "[6/6] Fetching log to $LOG_DIR/cloud-init-output.log..."
-qm guest exec "$VMID" -- cat /var/log/cloud-init-output.log | jq -r '."out-data"' >> "$LOG_DIR/cloud-init-output.log"
-
-rm "$GENERATED_YAML"
-trap - ERR INT TERM
-
-echo "Removing Cloud-Init drive..."
-qm set "$VMID" --delete ide2
-
-echo "--- Deployment Complete! ---"
+verify_guest_identity "$VMID" "$NEW_VM_NAME" "$VM_FQDN"
+guest_exec "$VMID" cat /var/log/cloud-init-output.log >> "$LOG_DIR/cloud-init-output.log"
+qm set "$VMID" --delete cicustom
+# Keep the cloud-init disk: its instance ID must survive reboot.
+reboot_and_verify_guest "$VMID" "$NEW_VM_NAME" "$VM_FQDN"
+echo "Deployment complete: $VM_FQDN (VM $VMID)."

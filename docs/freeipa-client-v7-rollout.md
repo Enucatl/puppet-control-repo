@@ -1,5 +1,11 @@
 # FreeIPA client v7 rollout
 
+This describes the legacy client rollout, including its manual repair steps.
+For the Ubuntu 26.04 migration, follow the [current plan](26.04-migration-plan.md):
+script every required setup/repair step, validate CA-less consumers under #14/#8,
+and deploy to replacement hosts as they migrate. This is not a prerequisite to
+Atlas base creation or authorization to reconfigure the existing fleet.
+
 1. On an enrolled FreeIPA client with Vault access (for example,
    `forbearance.home.arpa`), obtain an admin ticket with `kinit admin`, then
    run `docker/freeipa/bootstrap-puppet-enroller.sh`. This creates the

@@ -9,6 +9,7 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import textwrap
 
 import pytest
 
@@ -50,10 +51,14 @@ def render_cloud_template(
         "SSH_PUBLIC_KEY_JSON=" if kind == "ubuntu" else 'create_vault_token "$VM_FQDN"'
     )
     start = source.index(first)
-    end = source.index(
-        "\nqm clone" if kind == "freeipa-client-acceptance" else "\n# 2.", start
-    )
-    preparation = source[start:end]
+    if kind == "docker":
+        start = source.rfind("\n", 0, start) + 1
+        end = source.index("\nfi\n\n# 2.", start)
+    else:
+        end = source.index(
+            "\nqm clone" if kind == "freeipa-client-acceptance" else "\n# 2.", start
+        )
+    preparation = textwrap.dedent(source[start:end])
     output = tmp_path / "rendered.yml"
     ca = tmp_path / "public-ca.pem"
     ca.write_text(
@@ -75,6 +80,7 @@ def render_cloud_template(
             "OPENVOX_CA_CERT": str(ca),
             "VM_TOKEN": token,
             "VM_FQDN": CERTNAME,
+            "NEW_VM_NAME": "test-vm",
             "NODE_TYPE": "docker" if kind == "docker" else "freeipa_acceptance",
             "PUPPET_SERVER": server,
             "DOMAIN_SUFFIX": "home.arpa",
@@ -108,6 +114,60 @@ def parse_cloud_template(rendered: str) -> dict:
             check=True,
         ).stdout
     )
+
+
+@pytest.mark.parametrize("server", [None, "atlas.home.arpa"])
+def test_freeipa_caller_loads_endpoint_and_propagates_shared_wait_failure(
+    tmp_path: Path, server: str | None
+) -> None:
+    """Exercise real caller initialization and retain diagnostics on wait failure."""
+    scripts = tmp_path / "scripts"
+    shutil.copytree(PROXMOX, scripts)
+    snippet_dir = tmp_path / "snippets"
+    snippet_dir.mkdir()
+    caller = scripts / "freeipa-client-acceptance.sh"
+    caller.write_text(
+        caller.read_text().replace("/var/lib/vz/snippets", str(snippet_dir))
+    )
+    with (scripts / "lib.sh").open("a") as library:
+        library.write(
+            "\nvalidate_target() { :; }\n"
+            "check_provisioning_host() { :; }\n"
+            "create_vault_token() { VM_TOKEN=dummy; }\n"
+            "qm() { :; }\n"
+            'wait_for_cloudinit() { printf "%s\\n" "$1" > "$WAITED"; return 42; }\n'
+        )
+    if server:
+        (tmp_path / ".env").write_text(f"PUPPET_SERVER={server}\n")
+    ca = tmp_path / "ca.pem"
+    ca.write_text("public CA fixture\n")
+    waited = tmp_path / "waited"
+    result = subprocess.run(
+        ["bash", str(caller), "211"],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "VAULT_TOKEN": "dummy-admin",
+            "OPENVOX_CA_CERT": str(ca),
+            "WAITED": str(waited),
+        },
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    assert result.returncode == 42, result.stderr
+    assert waited.read_text() == "211\n"
+    assert "retaining freeipa-acceptance-211" in result.stderr
+    config = parse_cloud_template(
+        (snippet_dir / "freeipa-client-acceptance-211.yml").read_text()
+    )
+    enrollment = next(
+        command
+        for command in config["runcmd"]
+        if isinstance(command, list)
+        and command[0] == "/usr/local/sbin/configure-puppet-acceptance"
+    )
+    assert enrollment[-1] == (server or "docker.home.arpa")
 
 
 def issue_token(
@@ -251,7 +311,11 @@ def test_rendered_enrollment_configures_exact_identity(
                 "puppet.service",
             ]
         ]
-        script = config["write_files"][0]["content"]
+        script = next(
+            item["content"]
+            for item in config["write_files"]
+            if item["path"] == "/usr/local/bin/configure-puppet.sh"
+        )
         assert script == (PROXMOX / "configure-puppet.sh").read_text()
         invocation = next(
             command
@@ -408,11 +472,11 @@ def test_desktop_enrollment_arguments_survive_serialization() -> None:
         CERTNAME,
         "puppet.example",
     ] in config["runcmd"]
+    files = {item["path"]: item for item in config["write_files"]}
     assert (
-        config["write_files"][0]["content"]
+        files["/usr/local/bin/configure-puppet.sh"]["content"]
         == (PROXMOX / "configure-puppet.sh").read_text()
     )
-    files = {item["path"]: item for item in config["write_files"]}
     assert (
         files["/usr/local/bin/install-openvox.sh"]["content"]
         == (PROXMOX / "install-openvox.sh").read_text()
@@ -462,6 +526,27 @@ def test_full_cloud_template_preserves_scripts_trust_and_literal_arguments(
                 files["/usr/local/bin/configure-puppet.sh"]["content"]
                 == (PROXMOX / "configure-puppet.sh").read_text()
             )
+
+
+@pytest.mark.parametrize("kind", ["docker", "freeipa-client-acceptance"])
+def test_cloud_template_persists_short_hostname_and_fqdn(
+    tmp_path: Path, kind: str
+) -> None:
+    """Keep the same short hostname and resolver identity after later boots."""
+    config = parse_cloud_template(render_cloud_template(tmp_path, kind))
+    expected = {
+        "hostname": "test-vm",
+        "fqdn": CERTNAME,
+        "prefer_fqdn_over_hostname": False,
+        "manage_etc_hosts": True,
+    }
+    assert {key: config[key] for key in expected} == expected
+    persistent = next(
+        item["content"]
+        for item in config["write_files"]
+        if item["path"] == "/etc/cloud/cloud.cfg.d/99-hostname.cfg"
+    )
+    assert parse_cloud_template(persistent) == expected
 
 
 @pytest.mark.parametrize("kind", ["host", "freeipa-client-acceptance"])

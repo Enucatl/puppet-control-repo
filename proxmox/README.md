@@ -1,122 +1,196 @@
 # Proxmox VM provisioning
 
-These scripts are the versioned entry points for building the Ubuntu template,
-Docker workload VMs, and desktop VMs. This runbook describes their current
-behavior. The [migration plan](../docs/26.04-migration-plan.md) tracks the OpenVox
-and Ubuntu 26.04 changes and acceptance work still required.
+Build a separate Ubuntu 26.04 template, then the Atlas development base at
+`atlas.home.arpa`, VMID **210**, with **8192 MiB RAM**. The user designated 210;
+read-only cluster inventory on 2026-10-19 confirmed that 210 and template ID 9001
+were free. Existing Docker, its disks, other guests and template 9000 remain in
+service. See the [migration plan](../docs/26.04-migration-plan.md) for subsequent
+enrollment, infrastructure recovery and cutover.
 
-## Prerequisites
+## Prerequisites and inputs
 
-Run on the target Proxmox host as root, with this repository checked out. The
-[host setup notes](../docs/02-proxmox-setup.md) are not yet a complete host rebuild
-procedure. Before provisioning, provide:
+Run from this repository on the target Proxmox host **as root**. The
+[host setup notes](../docs/02-proxmox-setup.md) describe the existing baseline.
+Provisioning needs:
 
-- Proxmox `qm` and `pvesh`, DHCP on bridge `vmbr0`, working DNS and outbound package
-  repository access for the host and guests.
-- Storage `local-zfs` and storage `local` with snippets enabled; existing writable
-  directories `/var/lib/vz/snippets` and `/var/lib/vz/template/iso`.
-- Host commands `curl`, `jq`, `envsubst` (gettext), `wget`, and standard shell
-  utilities; `/usr/share/dict/words` for generated VM names.
-- Root's `~/.ssh/id_ed25519.pub`; template creation embeds this key and Docker
-  provisioning sets it explicitly. Desktop clones inherit the template's user/key.
-- `uv` for desktop provisioning, with Python 3.14 or newer available to it. The
-  launcher uses the repository's frozen dependency lock.
-- A working Puppet server and Vault enrollment policy for either guest flow, plus
-  the DNS, FreeIPA, and other services required by the assigned Puppet catalog.
-  See [Puppet enrollment](../docs/puppet-enrollment.md).
+- Proxmox `qm` and `pvesh`, bridge `vmbr0` with DHCP, working DNS and outbound
+  HTTPS/package access from the host and guests.
+- Image storage `local-zfs`; snippet storage `snippets` with content type
+  `snippets` and path `/var/lib/vz`; directories `/var/lib/vz/snippets` and
+  `/var/lib/vz/template/iso`. On the current host, storage `local` does **not**
+  enable snippets.
+- Host commands `curl`, `jq`, `envsubst` (gettext), `sha256sum`, `ip`, Git and
+  standard shell utilities; root's `~/.ssh/id_ed25519.pub` for guest SSH access.
+- Available RAM and system-disk space while Docker continues running. Atlas
+  defaults to eight CPU cores, 8192 MiB RAM and a separate 300 GiB system disk,
+  matching Docker's system disk. Docker retains its separate 1.2 TB scratch disk.
+- For desktop provisioning, `uv` with Python 3.14 or newer and access to its
+  frozen dependency lock. Random names additionally need `/usr/share/dict/words`.
 
-Defaults in [config.sh](config.sh) are domain `home.arpa`, Puppet server
-`docker.home.arpa`, template ID `9000`, storage `local-zfs`, and snippet storage
-`local`. Both guest flows clone an existing template; build it first if absent.
+The template and Atlas base work without `.env`, Vault credentials, an OpenVox
+server or an enrollment token. Optional `.env` assignments in the **current
+working directory** override [config.sh](config.sh). Base defaults are:
 
-## Inputs
-
-All three entry points require a `.env` file in the **current working directory**,
-even when required values are already exported. The root
-[`.env.example`](../.env.example) covers only part of these inputs:
-
-| Input | Required by | Meaning |
-| --- | --- | --- |
-| `LOG_DIR` | All three | Host directory receiving `cloud-init-output.log`; create it before template creation |
-| `VAULT_ADDR` | Docker, desktop | Reachable Vault URL |
-| `VAULT_TOKEN` | Docker, desktop | Credential allowed to issue the enrollment token described below |
-| `VAULT_CACERT` | Optional for Docker, desktop | Host path to a trusted Vault CA certificate |
-| `OPENVOX_CA_CERT` | Docker, desktop and native host enrollment | Operator-authenticated public OpenVox CA bundle to preseed before enrollment |
-| `IPV6_PREFIX` | Docker | IPv6 prefix used to construct Docker address pools |
-
-Vault must allow `auth/token/create-orphan` for a single-use, two-hour service
-token with only the `puppet-enrollment` policy and the guest certname as metadata.
-Keep credentials in local files or secret storage, outside version control.
-
-Native installation now uses the signed OpenVox 24001 archive on Ubuntu
-24.04/26.04 or Debian 13 amd64, with authenticated archive key and OS-specific
-preferences. Puppet Core/Forge credentials are no longer installation inputs.
-The shared installer leaves the service masked until `mldsa44`, native TLS policy
-and authenticated CA trust are present. Existing trust or RSA identities are not
-automatically replaced. See the [new-chain setup](../docs/openvox-container-migration-plan.md)
-for commands and remaining guest-level verification.
-
-The shell scripts read `.env` through `grep`, `xargs`, and `export`; use simple
-`KEY=value` values without whitespace, quoting, inline comments, or expansion.
-Desktop uses a different parser: one assignment per line, quoted values supported,
-literal values with no shell expansion. Both load shared defaults before `.env`,
-so `.env` can override them. Template creation nevertheless hardcodes ID `9000`
-and the Noble image/name in its own script.
-
-## Current commands and behavior
-
-Run these commands from the directory containing the intended `.env`, replacing
-the repository path. They are separate entry points, not a command sequence to
-run blindly on an existing deployment.
-
-```bash
-# Build the current Ubuntu 24.04 / Puppet template, ID 9000.
-bash /path/to/puppet-control-repo/proxmox/ubuntu-server-template.sh
-
-# Create a Docker workload VM, using Proxmox's next available VM ID.
-bash /path/to/puppet-control-repo/proxmox/docker-server.sh -n app1 -c 8 -m 16384 -d 50G
-
-# Create a desktop VM, using Proxmox's next available VM ID.
-bash /path/to/puppet-control-repo/proxmox/desktop.sh -l a -c 8 -m 8000 -d 128G
+```dotenv
+LOG_DIR=/var/log/openvox-provisioning
+SNIPPET_STORAGE=snippets
+TEMPLATE_ID=9001
 ```
 
-Docker accepts `-n NAME` or chooses a dictionary name, optionally restricted by
-`-l LETTER`. Its IPv6 pool construction uses the first hostname character as a
-hex digit; choose a name beginning with `a`–`f` (or use `-l a`) for this current
-implementation. Desktop chooses a dictionary name and accepts `-l LETTER`.
-Both accept `-i VMID`; omitting it asks Proxmox for the next ID. The resource
-values above are their current defaults.
+The [.env example](../.env.example) also documents enrollment inputs. Shell
+entry points require simple literal `KEY=value` assignments without whitespace,
+quoting, inline comments or shell expansion. Desktop uses literal assignments
+and supports quoted values. Shared defaults retain `PUPPET_SERVER=docker.home.arpa`;
+select Atlas explicitly for new-chain enrollment, without switching existing agents.
 
-**An existing VM at the selected ID is stopped and destroyed.** The template
-builder also destroys existing ID `9000`. These commands are not safe reruns
-against an existing machine. Safe parallel template/VM creation remains pending
-[#15](https://github.com/Enucatl/puppet-control-repo/issues/15); use unused IDs and
-preserve old VMs for migration rollback. The current template builder cannot
-select a separate template ID through its CLI.
+## Template and Atlas base
 
-The template downloads `noble/current` only when its cached image is absent and
-installs current repository packages, so its result depends on cache age and
-upstream repositories. It has no image checksum verification or fixed image
-revision. It embeds Puppet Core repository authentication; restrict access to
-the resulting template and clones.
+From the repository root on `proxmox.home.arpa`:
 
-Guest provisioning writes cloud-init, clones the template, enrolls the guest,
-and waits for cloud-init completion. Desktop reboots afterward. Both append
-guest logs to `LOG_DIR/cloud-init-output.log`; a cloud-init wait can continue
-indefinitely if the guest agent never becomes reachable. Completion is not yet
-evidence of a second clean Puppet run or application acceptance.
+```bash
+bash proxmox/ubuntu-server-template.sh
+bash proxmox/atlas-server.sh
+```
 
-## Control-plane recovery and acceptance still required
+The builder defaults to template 9001, named `ubuntu-server-2604-template`.
+`-i TEMPLATE_ID` selects a different free ID. It downloads the dated
+[Ubuntu 26.04 image](https://cloud-images.ubuntu.com/releases/resolute/release-20260927/ubuntu-26.04-server-cloudimg-amd64.img)
+and verifies the same pinned SHA256 on both new downloads and cached files:
 
-`docker-server.sh` provisions an **enrolled Docker workload host**. It needs Vault
-to issue a token before VM creation and Puppet to configure the guest. It does
-not establish the initial Puppet server, restore Vault/FreeIPA state, or recover
-the central `docker.home.arpa` host from scratch. The dependency order, required
-secret/backups inventory, and cold-start recovery procedure remain tracked in
-[#18](https://github.com/Enucatl/puppet-control-repo/issues/18).
+```text
+8800651811af9a85465ad1d552add729947bb16488dddb4a9b5305a3d97332b2
+```
 
-For migration acceptance, record a disposable template build and both guest
-flows, SSH and guest-agent access, enrollment, a second clean Puppet run,
-role-specific service checks, and preservation of the old VMs. Record the image,
-package versions, configuration revision, and required external state. These
-checks have not been performed as part of writing this runbook.
+The checksum is published in Canonical's
+[SHA256SUMS](https://cloud-images.ubuntu.com/releases/resolute/release-20260927/SHA256SUMS).
+The template installs QEMU guest agent and the signed, accepted
+`9.1.0+homelab.24001-1+ubuntu26.04` OpenVox agent through
+[install-openvox.sh](install-openvox.sh). It leaves Puppet disabled and removes
+cloud-init instance state, machine identity and SSH host keys before conversion.
+It contains no enrolled host identity or reusable enrollment credential.
+Package versions and image/control-repository provenance are written under
+`LOG_DIR`; package updates still depend on the upstream repositories.
+
+`atlas-server.sh` selects the unenrolled infrastructure-base mode of
+`docker-server.sh`. It creates the short hostname `atlas` and FQDN
+`atlas.home.arpa`, persists both in cloud-init configuration, and verifies:
+
+```text
+hostname      -> atlas
+hostname -f   -> atlas.home.arpa
+```
+
+Cloud-init manages the canonical FQDN and short alias in `/etc/hosts` on every
+boot; no post-install hostname edits are required. Login uses `user_l` with
+root's public key and passwordless sudo. Proxmox receives `--searchdomain home.arpa`
+so its generated user-data agrees with the snippet's FQDN. The scripts wait for
+cloud-init through the QEMU agent, verify names and append guest output to
+`LOG_DIR/cloud-init-output.log`. The shared shell wait expires after 30 minutes.
+
+Atlas gets disposable `/scratch` on its system disk. Scripted ownership and
+tmpfiles cleanup cover `/scratch/apt-cacher-ng` (cache account, 0755, two days)
+and `/scratch/backup/vault` (root only, 0700, seven days). Temporary `/scratch`
+requires no enforced size limit: its contents are discarded at disk cutover.
+No Vault recovery material is supplied
+or generated by this base path. Docker/Compose installation and infrastructure
+deployment are also part of #18.
+
+Docker's existing scratch filesystem stays attached to Docker throughout
+coexistence. At #19, stop the relevant services, discard Atlas's temporary
+scratch contents and transfer Docker's filesystem with its existing contents.
+Do not copy or merge the temporary cache or local Vault archives. Local disposable
+archives do not replace independently protected recovery backups.
+
+## Rebuilding a development VM
+
+Existing targets are refused unless recreation is explicit and the local VM's
+name and exact provisioning ownership marker match. Template 9000 and unrelated
+guests are protected. Target validation happens before destructive operations
+and enrollment-token issuance; cleanup rechecks ownership before removing a
+failed new guest. To repeat the designated builds:
+
+```bash
+bash proxmox/ubuntu-server-template.sh -r
+bash proxmox/atlas-server.sh -r
+```
+
+`-r` stops, destroys and recreates the matching development VM, including its
+disks. Use it only while the guest is disposable. **After Atlas acquires real
+authority or application state, recovery must preserve that state; do not use
+`-r`.** #18 must remove its development ownership marker at promotion so this
+path cannot replace the authoritative VM. Recreating template 9001 also requires
+`-r` and its matching marker; it never authorizes replacement of 9000.
+
+## Enrolled workload and desktop guests
+
+These paths require `.env` with `VAULT_ADDR`, `VAULT_TOKEN`, `LOG_DIR` and an
+operator-authenticated public `OPENVOX_CA_CERT` bundle; set `VAULT_CACERT` when
+Vault uses a private CA. Vault must permit issuance of exact-certname, single-use,
+two-hour `puppet-enrollment` tokens. See [Puppet enrollment](../docs/puppet-enrollment.md).
+Keep credentials outside version control. Docker workload provisioning also needs
+`IPV6_PREFIX`, a three-hextet /48 prefix, and a hostname beginning with `a`–`f`.
+
+After Atlas's new server/enrollment policy is ready, create Aperture on
+`proxmox.home.arpa` and Cognition on `proxmox-cortex.home.arpa`:
+
+```bash
+# On proxmox.home.arpa; select an unused ID automatically.
+bash proxmox/desktop.sh -n aperture -t 9001 --puppet-server atlas.home.arpa
+
+# On proxmox-cortex.home.arpa; build its separate local template first.
+bash proxmox/ubuntu-server-template.sh
+bash proxmox/desktop.sh -n cognition -t 9001 --puppet-server atlas.home.arpa
+
+# An enrolled Docker workload host, separate from the Atlas base.
+bash proxmox/docker-server.sh -n app1 -t 9001 -s atlas.home.arpa -c 8 -m 16384 -d 50G
+```
+
+Desktop defaults are eight cores, 8000 MiB RAM and 128 GiB disk. Both flows accept
+an explicit `-i VMID`; desktop recreation additionally requires
+`--rebuild -i VMID -n NAME`, while Docker uses `-r -i VMID -n NAME`.
+Desktop's `-n` sets a short hostname; `-l LETTER` instead selects a random name.
+Desktop provisioning reboots and verifies the short hostname/FQDN again.
+The FreeIPA acceptance fixture also loads optional `.env` settings: set
+`PUPPET_SERVER=atlas.home.arpa` there to test the new server. Its readiness check
+uses the shared 30-minute timeout and retains the failed VM/snippet for diagnosis.
+
+## Acceptance and remaining work
+
+Live base acceptance passed on **2026-10-19**: template 9001 was built and rebuilt,
+then Atlas at 210 was recreated twice with 8192 MiB RAM and a 50 GiB system disk.
+Both runs passed cloud-init, QEMU-agent, SSH/sudo and hostname/FQDN checks after
+reboot, without manual guest changes. The final guest is running at `10.0.0.158`;
+`atlas.home.arpa` resolves to that address. The existing guests (100, 200, 300,
+1000) and template 9000 retained identical configuration hashes and their
+previous running/stopped states. See the sanitized
+[results](../docs/atlas-provisioning-results.json). Full host evidence is under
+`root@proxmox.home.arpa:/root/openvox-issue15-20261019/evidence`.
+
+Atlas's system disk was subsequently grown online from 50 to **300 GiB** on
+2026-10-19 to match Docker. The root partition and ext4 filesystem were expanded
+with `growpart` and `resize2fs`; the guest reported 308,401,758,208 bytes available
+on `/`. The pool still had about 579 GiB available after expansion, with Docker's
+configuration unchanged. Future Atlas builds default to 300 GiB, and acceptance
+checks that size.
+
+The focused provisioning/install suites passed **184 tests**, including target
+ownership, failure cleanup, explicit endpoint selection and hostname persistence.
+Regression checks also require desktop snippets to be detached before deletion
+and exercise FreeIPA's actual `.env` initialization and shared-wait failure path.
+The live run caught two fixes now covered by checks: Proxmox's generated user-data
+needs an explicit search domain to retain the FQDN, and `qm config` percent-encodes
+the ownership description.
+
+For the scripted live checks on an unused 210, run
+`bash proxmox/atlas-acceptance.sh`. It builds template 9001 if absent, creates
+Atlas twice, checks names across reboot and authenticated SSH, and compares
+unrelated guest/template configuration hashes. Evidence goes to
+`LOG_DIR/atlas-acceptance`.
+Use `-r` to retry with an existing matching development Atlas at 210.
+
+Live Atlas enrollment and convergence belong to #13. Independent infrastructure
+deployment/recovery and promotion protections belong to #18; this base does not
+start replacement authorities or recover Vault/FreeIPA. Full Aperture/Cognition
+desktop and GPU acceptance belongs to #16/#17. Existing agents stay on their old
+endpoint until their migration; #20 handles remaining legacy agents before
+retirement of the old configuration service.

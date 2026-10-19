@@ -100,7 +100,8 @@ requirements. The normal CA code continues to own its existing CRL behavior.
 
 The four existing `docker/vault/scripts/01` through `04` entry points now accept
 `--offline-root` as their **first** argument. Their legacy defaults are preserved
-for the existing deployment until the explicit #13 cutover. The opt-in branch
+for the existing deployment until its staged retirement under #20. #13 prepares
+the new Atlas deployment while legacy agents remain on the old server. The opt-in branch
 runs before legacy configuration, `.env` loading, token-file fallbacks, RSA
 generation, online-root signing, SSL-directory removal or systemd operations.
 

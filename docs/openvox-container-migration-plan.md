@@ -4,7 +4,9 @@ Use the accepted image digest
 `sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97`
 from `ghcr.io/enucatl/openvox-server`, build 24001. The new infra profile is
 prepared, but production remains on the original host service. #13 owns its
-cutover and production agent re-enrollment.
+deployment on the new Atlas VM and enrollment of new hosts as they migrate.
+Existing hosts remain on the legacy server. Follow the [current migration
+sequence](26.04-migration-plan.md); do not first deploy on the old Docker host.
 
 ## Authority and activation order
 
@@ -55,7 +57,7 @@ sudo bash proxmox/install-openvox.sh
 sudo install -D -m 0644 /operator/authenticated-openvox-chain.pem \
   /etc/puppetlabs/puppet/ssl/certs/ca.pem
 # Supply the token privately, without shell history or shell tracing.
-sudo bash proxmox/configure-puppet.sh NODE_TYPE "$ENROLLMENT_TOKEN" NODE.home.arpa docker.home.arpa
+sudo bash proxmox/configure-puppet.sh NODE_TYPE "$ENROLLMENT_TOKEN" NODE.home.arpa atlas.home.arpa
 ```
 
 For guest provisioning, set `OPENVOX_CA_CERT` to the authenticated public bundle
@@ -64,8 +66,12 @@ embed that bundle and the shared installer. The base template installs OpenVox
 but leaves it disabled and unenrolled; guest cloud-init supplies its own trust
 and identity. No Puppet Core credential is needed.
 
-For existing Proxmox hosts, use `proxmox/enroll-proxmox.sh` only within the
-planned #13 identity migration. It refuses different existing CA trust; the
+Atlas bootstrap under #18 must automate the installation, trust and enrollment
+steps above after its new OpenVox/Vault services are ready; they are not manual
+guest setup requirements.
+
+Existing Proxmox hosts remain on the old server until their own migration. Use
+`proxmox/enroll-proxmox.sh` only at that later explicit identity cutover. It refuses different existing CA trust; the
 shared enrollment helper refuses an existing non-ML-DSA key. Existing identities
 are not converted by changing `key_type`. Back up and explicitly migrate them
 through the cutover procedure.
@@ -85,8 +91,10 @@ Docker-host reboot, protected archive-only recovery and image rollback passed.
 See the [implementation report](openvox-rehearsal-report.md) and
 [operational record](openvox-operational-acceptance.md) for measured evidence.
 
-#15 owns complete template-to-workload provisioning and full role application;
-#14/#8 own actual CA-less FreeIPA consumers. #11 owns production backup custody,
-#18 full Atlas execution and #13 production cutover. Native fixture catalogs and
+#15 owns shared provisioning and the Atlas base; #13 owns live Atlas enrollment
+and convergence, and #16/#17 full desktop/GPU role acceptance. #14/#8 own actual
+CA-less FreeIPA consumers. #11 records pre-rollout backup evidence; #18 verifies
+Atlas recovery inputs and production-state restoration, and #19 service cutover.
+Native fixture catalogs and
 complete role compilation are distinct from full workload deployment. Production
 activation is not implied by the isolated acceptance.

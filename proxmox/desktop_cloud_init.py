@@ -1,5 +1,6 @@
 """Build desktop cloud-init configuration without shell template expansion."""
 
+import json
 from pathlib import Path
 
 
@@ -8,11 +9,15 @@ def build_cloud_config(
 ) -> dict[str, object]:
     """Return cloud-init data with literal enrollment arguments and script content."""
     hostname = certname.split(".", 1)[0]
-    hosts_entry = f"127.0.1.1 {hostname}.{domain_suffix} {hostname}"
-    hosts_entry = (
-        hosts_entry.replace("\\", "\\\\").replace("&", r"\&").replace("/", r"\/")
-    )
+    identity = {
+        "hostname": hostname,
+        "fqdn": certname,
+        "preserve_hostname": False,
+        "prefer_fqdn_over_hostname": False,
+        "manage_etc_hosts": True,
+    }
     return {
+        **identity,
         "output": {"all": "| tee -a /var/log/cloud-init-output.log /dev/ttyS0"},
         "bootcmd": [
             [
@@ -28,6 +33,11 @@ def build_cloud_config(
         ],
         "packages": ["auto-apt-proxy", "gnupg"],
         "write_files": [
+            {
+                "path": "/etc/cloud/cloud.cfg.d/99-hostname.cfg",
+                "permissions": "0644",
+                "content": json.dumps(identity) + "\n",
+            },
             {
                 "path": "/usr/local/bin/configure-puppet.sh",
                 "permissions": "0755",
@@ -52,7 +62,6 @@ def build_cloud_config(
             ["sleep", "5"],
             ["mkdir", "-p", "/run/sshd"],
             ["chmod", "755", "/run/sshd"],
-            ["sed", "-i", f"s/^127.0.1.1.*/{hosts_entry}/", "/etc/hosts"],
             ["install", "-m", "0755", "-d", "/etc/apt/keyrings"],
             "wget -O- https://apt.releases.hashicorp.com/gpg | "
             "gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg",

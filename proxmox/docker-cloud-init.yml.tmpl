@@ -1,4 +1,8 @@
 #cloud-config
+hostname: ${NEW_VM_NAME}
+fqdn: ${VM_FQDN}
+prefer_fqdn_over_hostname: false
+manage_etc_hosts: true
 output: {all: '| tee -a /var/log/cloud-init-output.log /dev/ttyS0'}
 bootcmd:
   - cloud-init-per instance puppet-enrollment-mask systemctl mask --runtime --now puppet.service
@@ -19,6 +23,14 @@ write_files:
     permissions: '0755'
     content: |
 ${CONFIGURE_PUPPET_SCRIPT}
+
+  - path: /etc/cloud/cloud.cfg.d/99-hostname.cfg
+    permissions: '0644'
+    content: |
+      hostname: ${NEW_VM_NAME}
+      fqdn: ${VM_FQDN}
+      prefer_fqdn_over_hostname: false
+      manage_etc_hosts: true
 
   - path: /usr/local/bin/install-openvox.sh
     permissions: '0755'
@@ -62,7 +74,6 @@ runcmd:
   - /lib/systemd/systemd-networkd-wait-online --timeout=60
   - sleep 5
   - mkdir -p /run/sshd && chmod 755 /run/sshd
-  - sed -i "s/^127.0.1.1.*/127.0.1.1 $(hostname).${DOMAIN_SUFFIX} $(hostname)/" /etc/hosts
 
   - install -m 0755 -d /etc/apt/keyrings
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc

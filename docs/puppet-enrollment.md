@@ -6,8 +6,9 @@ public CA trust before enrollment. Guest/native provisioning takes its path
 from `OPENVOX_CA_CERT`; guests receive it at
 `/etc/puppetlabs/puppet/ssl/certs/ca.pem`. The shared helper sets and verifies
 `key_type=mldsa44`, loads native TLS/seed policy, and refuses an existing
-non-ML-DSA key. Existing identity replacement belongs to #13's explicit migration;
-changing the setting does not rotate an old key. See the
+non-ML-DSA key. #13 enrolls Atlas, then Aperture and Cognition as they migrate.
+Existing hosts stay on the old server until their own migration; changing the
+setting does not rotate an old key. See the
 [container plan](openvox-container-migration-plan.md).
 
 Provisioning creates a two-hour Vault service token for one exact Puppet
@@ -25,6 +26,11 @@ Vault enforces consumption and concurrent-use protection. No local token state
 or separate revocation request is involved.
 
 ## Rollout
+
+Apply these steps through scripted bootstrap on the new Atlas stack. They do
+not authorize changing the old server or enrolling legacy hosts. Atlas base
+creation does not require a live enrollment token; enrollment follows deployment
+of its own OpenVox/Vault services. See the [migration plan](26.04-migration-plan.md).
 
 For the new-chain compiler, set `VAULT_ADDR` to the direct verified HTTPS Vault
 endpoint and `VAULT_CACERT` to authenticated root trust. The autosigner rejects

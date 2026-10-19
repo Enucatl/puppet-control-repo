@@ -1,3 +1,10 @@
+# Existing Proxmox baseline notes
+
+These host observations describe the existing installation, not the automated
+Atlas provisioning procedure. Follow the [current migration plan](26.04-migration-plan.md)
+and [provisioning runbook](../proxmox/README.md); #15 must encode required setup
+in scripts rather than add manual host/guest repair steps.
+
 # Load proxmox image through IPMI
 
 # Install with ZFS RAID 1 disk configuration

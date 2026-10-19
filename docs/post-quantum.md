@@ -1,5 +1,10 @@
 # Post-Quantum Cryptography Remediation
 
+This is the historical risk assessment of the classical deployment. Its proposed
+shorter lifetimes and exploratory crypto paths are not extra migration requirements.
+Use the [current migration plan](26.04-migration-plan.md), accepted #12 Vault-held
+ML-DSA-44 hierarchy, existing CRL behavior and measured Vault limitations.
+
 This repository still relies on classical asymmetric cryptography for its
 infrastructure identities, key exchange, and VPN access. In light of Filippo
 Valsorda's April 2026 article, [A Cryptography Engineer's Perspective on
