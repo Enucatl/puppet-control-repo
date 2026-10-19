@@ -608,6 +608,8 @@ def test_backup_preserves_native_agent_identities_without_host_caches(
         "etc/ipa/ca.crt": "IPA-CA-CANARY",
         "etc/krb5.conf": "includedir /etc/krb5.conf.d/\n",
         "etc/krb5.keytab": "KRB5-PRIVATE-KEYTAB-CANARY",
+        "etc/ssh/ssh_host_ed25519_key": "SSH-HOST-PRIVATE-KEY-CANARY",
+        "etc/ssh/ssh_host_ed25519_key.pub": "SSH-HOST-PUBLIC-KEY-CANARY",
         "etc/krb5.conf.d/ipa.conf": "default_realm = HOME.ARPA\n",
         "etc/sssd/sssd.conf": "SSSD-PRIVATE-CONFIG-CANARY",
         "var/lib/ipa-client/sysrestore/sysrestore.state": "IPA-SYSRESTORE-CANARY",
@@ -619,6 +621,8 @@ def test_backup_preserves_native_agent_identities_without_host_caches(
         "var/lib/sss/db/cache_home.arpa.ldb": "SSSD-CACHE-CANARY",
         "var/cache/puppet/catalog.json": "PUPPET-CACHE-CANARY",
         "etc/shadow": "SHADOW-CANARY",
+        "etc/ssh/ssh_config": "UNRELATED-SSH-CONFIG-CANARY",
+        "etc/ssh/ssh_known_hosts": "SSH-HOST-CACHE-CANARY",
     }
     for name, content in (files | omitted).items():
         path = authority / name
@@ -697,3 +701,23 @@ def test_failed_backup_restores_native_agent_only_after_authorities(
     assert (authority / "puppet-active").exists() == (
         failure not in {"restore", "puppet-start"}
     )
+
+
+def test_backup_keeps_host_ssh_key_symlinks(authority: Path) -> None:
+    """Preserve existing key links without dereferencing or archiving other SSH state."""
+    directory = authority / "etc/ssh"
+    directory.mkdir()
+    target = authority / "external-ssh-key"
+    target.write_text("EXTERNAL-SSH-KEY-CANARY")
+    (directory / "ssh_host_rsa_key").symlink_to(target)
+    (directory / "ssh_host_rsa_key.pub").symlink_to("missing-public-key")
+    result = backup(authority)
+    assert result.returncode == 0, result.stderr
+    output = authority / "scratch/vault/snapshot"
+    with tarfile.open(output / "host-config.tar.gz") as archive:
+        key = archive.getmember("etc/ssh/ssh_host_rsa_key")
+        assert key.issym() and key.linkname == str(target)
+        public = archive.getmember("etc/ssh/ssh_host_rsa_key.pub")
+        assert public.issym() and public.linkname == "missing-public-key"
+        assert "external-ssh-key" not in archive.getnames()
+    assert "EXTERNAL-SSH-KEY-CANARY" not in result.stdout + result.stderr

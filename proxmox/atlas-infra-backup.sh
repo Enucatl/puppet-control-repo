@@ -161,6 +161,9 @@ for config in etc/puppetlabs/puppet etc/facter/facts.d etc/ipa \
     usr/local/share/ca-certificates/atlas-infrastructure.crt; do
     if [[ -e /"$config" || -L /"$config" ]]; then host_config+=("$config"); fi
 done
+for key in /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub; do
+    if [[ -f $key || -L $key ]]; then host_config+=("etc/ssh/${key##*/}"); fi
+done
 for unit in atlas-openvox-renew.service atlas-openvox-renew.timer; do
     if [[ -f /etc/systemd/system/$unit ]]; then host_config+=("etc/systemd/system/$unit"); fi
 done
