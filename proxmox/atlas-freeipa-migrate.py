@@ -101,6 +101,22 @@ def snapshot(host, password, ca):
     conn.unbind_s()
     return result
 
+def compare_identities(source, target):
+    counts = {}
+    for kind in ('users', 'groups', 'hbac', 'sudo'):
+        counts[kind] = 0
+        for dn, attrs in source[kind].items():
+            actual = target[kind].get(dn)
+            if actual is None and kind == 'hbac':
+                # Existing HBAC rules keep target UUIDs; the importer matches their CN.
+                matches = [values for target_dn, values in target[kind].items()
+                           if DN(target_dn)[1:] == DN(dn)[1:]
+                           and values.get('cn') == attrs.get('cn')]
+                if len(matches) == 1:
+                    actual = matches[0]
+            counts[kind] += actual != attrs
+    return counts
+
 def export_database(conn, path):
     suffix = DN('dc=home,dc=arpa')
     excluded = [DN('cn=certificates,cn=ipa,cn=etc', suffix), DN('cn=ca', suffix)]
@@ -203,12 +219,7 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
                            'stderr': getattr(error, 'stderr', None)}
     after = snapshot('ipa.home.arpa', request['target_password'],
                      str(work / 'target-ca.pem'))
-    mismatches = {}
-    for kind, entries in source.items():
-        if kind in {'trust', 'schema'}:
-            continue
-        mismatches[kind] = sum(after[kind].get(dn) != values
-                               for dn, values in entries.items())
+    mismatches = compare_identities(source, after)
     report = {'action': request['action'], 'returncode': process.returncode,
               'source_export': export_counts,
               'source_counts': {kind: len(values) for kind, values in source.items()},

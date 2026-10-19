@@ -210,3 +210,45 @@ def test_database_export_filters_authorities_only(
     assert exported[-1] == "cn=alice,cn=groups,cn=accounts," + suffix
     assert set(exported) == set(retained)
     assert counts == {"exported": len(retained), "excluded_authority": len(omitted)}
+
+
+def test_hbac_comparison_accepts_only_unique_same_parent_name(
+    migration: ModuleType,
+) -> None:
+    """Accept native HBAC UUID reuse while rejecting policy or identity changes."""
+    import ast
+
+    function = next(
+        node
+        for node in ast.parse(migration.WORKER).body
+        if isinstance(node, ast.FunctionDef) and node.name == "compare_identities"
+    )
+    namespace = {"DN": lambda value: tuple(value.lower().split(","))}
+    exec(
+        compile(ast.Module(body=[function], type_ignores=[]), "compare", "exec"),
+        namespace,
+    )
+    compare = namespace["compare_identities"]
+    attrs = {"cn": ["rule"], "ipaenabledflag": ["TRUE"]}
+    source = {
+        "users": {},
+        "groups": {},
+        "sudo": {},
+        "hbac": {"ipauniqueid=old,cn=hbac,dc=home,dc=arpa": attrs},
+    }
+    target = {
+        **source,
+        "hbac": {"ipauniqueid=new,cn=hbac,dc=home,dc=arpa": dict(attrs)},
+    }
+    assert compare(source, target)["hbac"] == 0
+    target["hbac"]["ipauniqueid=new,cn=hbac,dc=home,dc=arpa"]["ipaenabledflag"] = [
+        "FALSE"
+    ]
+    assert compare(source, target)["hbac"] == 1
+    target["hbac"] = {"cn=rule,cn=hbacservices,cn=hbac,dc=home,dc=arpa": attrs}
+    assert compare(source, target)["hbac"] == 1
+    target["hbac"] = {
+        "ipauniqueid=first,cn=hbac,dc=home,dc=arpa": attrs,
+        "ipauniqueid=second,cn=hbac,dc=home,dc=arpa": attrs,
+    }
+    assert compare(source, target)["hbac"] == 1
