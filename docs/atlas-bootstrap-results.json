@@ -1,0 +1,47 @@
+{
+  "verified_at": "2026-10-19T12:24:45+00:00",
+  "fqdn": "atlas.home.arpa",
+  "bootstrap_runs": 2,
+  "bootstrap": {
+    "control_revision": "06ff5054b3cd1634eded0ba57a2df0d3b9ecfe56",
+    "baseline_revision": "41c57257d33d471e2ae7cc7264938944c67434fd",
+    "userns_base": 100000,
+    "docker_version": "29.9.1",
+    "storage_driver": "overlay2"
+  },
+  "hello_world_image": "hello-world@sha256:11a3eb1597e864c51b3f56733cb2e8a90bf0c284bfc05f9444d81c558bc848aa",
+  "hello_world_passed": true,
+  "infrastructure_containers": 0,
+  "authority_volumes": 0,
+  "puppet_enrolled": false,
+  "system_disk_gib": 300,
+  "scratch_on_system_filesystem": true,
+  "ssh_origins_verified": true,
+  "checkouts_clean": true,
+  "bootstrap_script_sha256": "def45bea3d0c7a20c5c19bbb2b6090278f3a10e9d4b91f97a21591a14c05c085",
+  "packages": {
+    "containerd.io": "2.4.2-2~ubuntu.26.04~resolute",
+    "docker-buildx-plugin": "0.38.0-1~ubuntu.26.04~resolute",
+    "docker-ce": "5:29.9.1-1~ubuntu.26.04~resolute",
+    "docker-ce-cli": "5:29.9.1-1~ubuntu.26.04~resolute",
+    "docker-compose-plugin": "5.6.0-1~ubuntu.26.04~resolute"
+  },
+  "protected_configurations_unchanged": [
+    100,
+    200,
+    300,
+    1000,
+    9000,
+    9001
+  ],
+  "focused_tests_passed": 201,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39251779846"
+  },
+  "deferred_acceptance": [
+    "New OpenVox/Vault initialization, Atlas enrollment and convergence (#13)",
+    "Complete infrastructure rebuild and independent authority/application recovery (#18)",
+    "Service activation and exclusive scratch-disk handoff (#19)"
+  ]
+}

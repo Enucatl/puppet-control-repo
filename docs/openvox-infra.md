@@ -8,6 +8,13 @@ Compose also permits explicit service selection to bypass a profile, so the
 profile prevents accidental inclusion in a whole-stack start, not deliberate
 activation by an operator.
 
+Atlas's independent Docker/tooling bootstrap and pinned repository checkouts
+have passed twice under #18 Stage A. See the
+[bootstrap runbook](../proxmox/README.md#independent-atlas-tooling-bootstrap-18-stage-a)
+and [live results](atlas-bootstrap-results.json). The infra stack is still
+inactive on Atlas; adapting its service identity and explicit authority
+initialization/enrollment belong to #13.
+
 The accepted `24001` OpenVox image is pinned by digest in
 `docker/openvox/infra.Dockerfile`; the derived image adds Git and r10k 5.0.3.
 Provider/JDK/package policy remains owned by the accepted image. The service

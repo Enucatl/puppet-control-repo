@@ -141,6 +141,21 @@ activation to #13: no Compose stack, authority initialization, enrollment or
 deployment watcher is started. Package versions and selected Git revisions are
 recorded under `/var/log/openvox-provisioning/atlas-bootstrap*`.
 
+Live tooling acceptance passed on **2026-10-19**, using control revision
+`06ff5054b3cd1634eded0ba57a2df0d3b9ecfe56`. Two invocations completed without
+repairs; the second retained the same package versions, clean checkouts and
+daemon settings. Docker 29.9.1 runs with `overlay2` and remapped storage at
+`/var/lib/docker/100000.100000`; Compose 5.6.0 and Buildx 0.38.0 passed their
+checks. A disposable `hello-world` container ran and was removed.
+
+Puppet remains disabled and unenrolled. No infrastructure containers or authority
+volumes were created, and protected guest/template configuration hashes were
+unchanged. The local focused suite passed **201 tests**, and hosted CI passed.
+See the [sanitized bootstrap results](../docs/atlas-bootstrap-results.json).
+This proves tooling installation and rerun behavior; complete infrastructure
+rebuild, authority activation/enrollment and independent state recovery remain
+under #13/#18.
+
 ## Rebuilding a development VM
 
 Existing targets are refused unless recreation is explicit and the local VM's
