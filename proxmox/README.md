@@ -127,13 +127,53 @@ Docker Engine/CLI, containerd, Compose and Buildx from
 It checks out the declared control revision at `/opt/docker/puppet-control-repo`
 and the CI-pinned hardening revision at sibling
 `/opt/docker/compose-security-baseline`, matching the existing Compose paths.
+`/opt/docker` is owned by `user_l:docker`, mode `2775`: the group can write, and
+new directories inherit the Docker group. Both checkouts belong to `user_l:docker`;
+Git commands run as `user_l`, using the forwarded SSH agent. The script adds
+`user_l` to the Docker group, so a subsequent login can use the Docker socket.
 Reruns refuse modified/unrelated checkouts and incompatible Docker settings.
+The exact earlier minimal bootstrap configuration can be upgraded when Docker
+has no containers, volumes or custom networks. The script stops the daemon and
+socket before changing its settings and mapping, then restarts it after installation.
 
-Docker uses bounded JSON logs and `userns-remap=user_l`. The template already
-assigns `user_l:100000:65536` in both subordinate-ID files; the script validates
-that mapping before installation. This preserves the existing infrastructure's
-`100000:100000` container ownership without allocating overlapping ranges or
-depending on a FreeIPA account. Keep this account and mapping during recovery.
+Docker retains `ipv6=true`, `userns-remap=default`, `userland-proxy=false` and
+bounded JSON logs (`10m`, three files), plus the existing experimental flag.
+The template initially assigns `user_l:100000:65536` in both subordinate-ID files.
+The bootstrap transfers this allocation to Docker's dedicated `dockremap`
+account before Docker installation and refuses conflicts with another account.
+This preserves `100000:100000` container ownership without overlapping ranges.
+Recovery must retain the `dockremap` account and its numeric mapping.
+
+Atlas reuses Docker's IPv4 allocation for cutover and uses distinct IPv6 ranges:
+
+| Setting | Atlas value |
+| --- | --- |
+| IPv4 default pool | `172.17.0.0/12`, allocated as `/20` networks |
+| IPv4 default bridge (`bip`) | `172.20.0.1/16` |
+| IPv6 default pool | `2a02:168:6278:a400::/56`, allocated as `/64` networks |
+| IPv6 default bridge (`fixed-cidr-v6`) | `2a02:168:6278:a500::/64` |
+
+`bip` specifies the `docker0` bridge's IPv4 gateway address and subnet; it is
+separate from pools used for automatically created Compose networks. The IPv4
+settings match the old Docker host. Standard bridge networking uses NAT and
+published host ports, so these host-local ranges can be reused on both hosts.
+The old Docker host will be switched off at cutover.
+`172.17.0.0/12` covers `172.16.0.0/12`; Docker reserves the bridge subnet when
+allocating networks from that pool. The IPv6 pool and bridge are separate from
+each other and the existing hosts' IPv6 ranges.
+The proposed `a200::/56` and `a300::/64` ranges are already assigned to the desktop
+in [the router template](../provisioning/templates/partials/nat_routing.j2).
+Before enabling routed IPv6 workloads, provision routes for `a400::/56` and
+`a500::/64` to Atlas's actual next hop. This bootstrap does not apply router changes.
+
+The bootstrap installs
+[Sysbox CE 0.7.1](https://github.com/nestybox/sysbox/releases/tag/v0.7.1) from
+`sysbox-ce_0.7.1.linux_amd64.deb`, verifies the published SHA256
+`9d6d5484f980d0a17f86c492c1262015c2afb66280bdb97215b79fde6a0261c5`,
+and registers `/usr/bin/sysbox-runc` as an optional Docker runtime. APT installs
+its dependencies; Sysbox is installed before Docker so the runtime binary exists
+when the daemon first starts. The script checks the package version
+`0.7.1.linux`, the three Sysbox services and Docker's runtime registration.
 
 The script starts Docker, verifies its API and namespace mapping, and checks
 Compose/Buildx and a sanitized Compose render. It leaves infrastructure service
@@ -141,7 +181,11 @@ activation to #13: no Compose stack, authority initialization, enrollment or
 deployment watcher is started. Package versions and selected Git revisions are
 recorded under `/var/log/openvox-provisioning/atlas-bootstrap*`.
 
-Live tooling acceptance passed on **2026-10-19**, using control revision
+The ownership, networking and Sysbox changes above are scripted for both a fresh
+base and an empty installation of the earlier minimal bootstrap. General
+Docker installations and populated state are not automatically migrated.
+
+Earlier live tooling acceptance passed on **2026-10-19**, using control revision
 `06ff5054b3cd1634eded0ba57a2df0d3b9ecfe56`. Two invocations completed without
 repairs; the second retained the same package versions, clean checkouts and
 daemon settings. Docker 29.9.1 runs with `overlay2` and remapped storage at

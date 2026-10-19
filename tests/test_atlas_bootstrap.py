@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
 import shlex
 import subprocess
+import re
 
 import pytest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "proxmox/atlas-bootstrap.sh"
 FINGERPRINT = "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+SYSBOX_FIXTURE = b"fixture Sysbox package\n"
 
 
 def git(directory: Path, *arguments: str) -> str:
@@ -62,6 +66,10 @@ def bootstrap(tmp_path: Path) -> Path:
         "41c57257d33d471e2ae7cc7264938944c67434fd",
         revisions["docker-compose-security-baseline"],
     )
+    source = source.replace(
+        "9d6d5484f980d0a17f86c492c1262015c2afb66280bdb97215b79fde6a0261c5",
+        hashlib.sha256(SYSBOX_FIXTURE).hexdigest(),
+    )
     for prefix in ("/etc/", "/opt/", "/var/"):
         source = source.replace(prefix, str(tmp_path) + prefix)
     (tmp_path / "bootstrap.sh").write_text(source)
@@ -72,13 +80,51 @@ name=${0##*/}
 printf '%s %s\n' "$name" "$*" >> "$root/commands"
 failure=$(cat "$root/failure")
 case "$name" in
-  id) echo 0 ;;
+  id)
+    if [[ ${2:-} == dockremap ]]; then test -f "$root/dockremap-user"; else echo 0; fi
+    ;;
+  getent) test -f "$root/docker-group" ;;
+  groupadd) touch "$root/docker-group" ;;
+  useradd) touch "$root/dockremap-user" ;;
+  usermod)
+    case "$1" in
+      --del-subuids) sed -i '/^user_l:/d' "$root/etc/subuid" ;;
+      --del-subgids) sed -i '/^user_l:/d' "$root/etc/subgid" ;;
+      --add-subuids) printf 'dockremap:100000:65536\n' >> "$root/etc/subuid" ;;
+      --add-subgids) printf 'dockremap:100000:65536\n' >> "$root/etc/subgid" ;;
+      --append) [[ "$*" == '--append --groups docker user_l' ]] ;;
+      *) exit 99 ;;
+    esac
+    ;;
+  runuser)
+    [[ $1 == -u && $2 == user_l && $3 == -- ]]
+    shift 3
+    exec "$@"
+    ;;
+  chown) [[ $1 == -R && $2 == user_l:docker && $3 == "$root/opt/docker/"* ]] ;;
+  install)
+    arguments=()
+    while (( $# )); do
+      case "$1" in
+        -o|-g) shift 2 ;;
+        *) arguments+=("$1"); shift ;;
+      esac
+    done
+    exec /usr/bin/install "${arguments[@]}"
+    ;;
   hostname) cat "$root/hostname" ;;
   dpkg) cat "$root/architecture" ;;
   apt-get)
     if [[ $failure == packages && "$*" == *docker-ce=* ]]; then exit 42; fi
+    if [[ $failure == sysbox-package && "$*" == *sysbox-ce.deb* ]]; then exit 42; fi
     ;;
-  curl) printf 'fixture key\n' > "${@: -1}" ;;
+  curl)
+    if [[ "$*" == *sysbox-ce_0.7.1.linux_amd64.deb* && $failure != checksum ]]; then
+      printf 'fixture Sysbox package\n' > "${@: -1}"
+    else
+      printf 'fixture key\n' > "${@: -1}"
+    fi
+    ;;
   gpg)
     printf 'pub:::::::::\nfpr:::::::::%s:\n' "$(cat "$root/fingerprint")"
     ;;
@@ -87,15 +133,36 @@ case "$name" in
       [[ $1 == --host && $2 == "unix://$root/var/run/docker.sock" ]]
       shift 2
       [[ $1 == info ]]
-      printf '{"DockerRootDir":"%s/var/lib/docker/100000.100000","SecurityOptions":["name=userns"],"ServerVersion":"29.9.1","Driver":"overlayfs"}\n' "$root"
+      runtime='{"sysbox-runc":{}}'
+      [[ $failure != runtime ]] || runtime='{}'
+      printf '{"DockerRootDir":"%s/var/lib/docker/100000.100000","SecurityOptions":["name=userns"],"ServerVersion":"29.9.1","Driver":"overlayfs","Runtimes":%s}\n' "$root" "$runtime"
+    elif [[ $1 == --host ]]; then
+      [[ $2 == "unix://$root/var/run/docker.sock" ]]
+      shift 2
+      [[ $failure != inventory ]] || exit 42
+      case "$*" in
+        'ps -aq') resource=containers ;;
+        'volume ls -q') resource=volumes ;;
+        'network ls --filter type=custom --quiet') resource=networks ;;
+        *) exit 99 ;;
+      esac
+      if [[ $failure == "$resource" ]]; then printf 'existing-%s\n' "$resource"; fi
     elif [[ "$*" == *'config --quiet'* ]]; then
       [[ -z ${VAULT_TOKEN:-} && -z ${COMPOSE_FILE:-} && -z ${DOCKER_HOST:-} && -z ${DOCKER_CONTEXT:-} ]]
       [[ $DOCKER_DOMAIN == atlas.home.arpa && "$*" == *'--env-file /dev/null'* ]]
       [[ $failure != compose ]] || exit 42
     fi
     ;;
-  dpkg-query) printf 'docker-ce\tfixture-version\n' ;;
-  systemctl) : ;;
+  dpkg-query)
+    if [[ "$*" == *'${Version}'* ]]; then
+      [[ $failure != sysbox-version ]] && printf '0.7.1.linux' || printf '0.6.7.linux'
+    else
+      printf 'docker-ce\tfixture-version\nsysbox-ce\t0.7.1.linux\n'
+    fi
+    ;;
+  systemctl)
+    if [[ $failure == sysbox-service && $1 == is-active ]]; then exit 42; fi
+    ;;
   *) exit 99 ;;
 esac
 """
@@ -110,6 +177,13 @@ esac
         "docker",
         "dpkg-query",
         "systemctl",
+        "getent",
+        "groupadd",
+        "useradd",
+        "usermod",
+        "runuser",
+        "chown",
+        "install",
     ):
         binary = tmp_path / "bin" / name
         binary.write_text(command)
@@ -161,9 +235,22 @@ def test_fresh_and_repeated_bootstrap(bootstrap: Path) -> None:
     assert len(list((bootstrap / "etc/apt/sources.list.d").iterdir())) == 1
     assert (
         json.loads((bootstrap / "etc/docker/daemon.json").read_text())["userns-remap"]
-        == "user_l"
+        == "default"
     )
+    for mapping in ("subuid", "subgid"):
+        assert (bootstrap / "etc" / mapping).read_text() == "dockremap:100000:65536\n"
+    assert (bootstrap / "opt/docker").stat().st_mode & 0o7777 == 0o2775
     calls = (bootstrap / "commands").read_text()
+    assert calls.count("usermod --append --groups docker user_l\n") == 2
+    assert calls.count("useradd --system") == 1
+    assert calls.count("usermod --add-subuids") == 1
+    assert calls.count("usermod --add-subgids") == 1
+    for name in ("puppet-control-repo", "compose-security-baseline"):
+        assert (
+            calls.count(f"chown -R user_l:docker {bootstrap}/opt/docker/{name}\n") == 2
+        )
+    assert calls.count("runuser -u user_l -- git clone") == 2
+    assert calls.count("systemctl is-active --quiet sysbox sysbox-mgr sysbox-fs\n") == 2
     assert calls.count("systemctl enable --now docker\n") == 2
     assert "config --quiet" in calls
     assert "compose up" not in calls
@@ -177,6 +264,8 @@ def test_fresh_and_repeated_bootstrap(bootstrap: Path) -> None:
         ("architecture", "arm64"),
         ("etc/subuid", "user_l:165536:65536\n"),
         ("etc/subgid", "user_l:100000:65536\nuser_l:165536:65536\n"),
+        ("etc/subuid", "other:110000:65536\n"),
+        ("etc/subgid", "dockremap:200000:65536\n"),
     ],
 )
 def test_wrong_target_refused_before_packages(
@@ -211,6 +300,51 @@ def test_existing_docker_state_is_preserved(bootstrap: Path, state: str) -> None
         assert json.loads(daemon.read_text()) == {"userns-remap": "default"}
 
 
+@pytest.mark.parametrize(
+    "occupied", [None, "containers", "volumes", "networks", "inventory"]
+)
+def test_previous_bootstrap_upgrade_requires_empty_daemon(
+    bootstrap: Path, occupied: str | None
+) -> None:
+    """Upgrade only the empty known daemon, stopping it before any settings transfer."""
+    daemon = bootstrap / "etc/docker/daemon.json"
+    daemon.parent.mkdir()
+    previous = {
+        "userns-remap": "user_l",
+        "userland-proxy": False,
+        "log-driver": "json-file",
+        "log-opts": {"max-size": "10m", "max-file": "3"},
+    }
+    daemon.write_text(json.dumps(previous))
+    (bootstrap / "var/lib/docker").mkdir(parents=True)
+    (bootstrap / "failure").write_text(occupied or "")
+    result = run_bootstrap(bootstrap)
+    calls = (bootstrap / "commands").read_text().splitlines()
+    stop = "systemctl stop docker.service docker.socket"
+    if occupied:
+        assert result.returncode != 0
+        assert json.loads(daemon.read_text()) == previous
+        assert stop not in calls
+        assert not any(call.startswith("usermod ") for call in calls)
+        for mapping in ("subuid", "subgid"):
+            assert (bootstrap / "etc" / mapping).read_text() == "user_l:100000:65536\n"
+        return
+    assert result.returncode == 0, result.stderr
+    first_daemon_write = next(
+        index
+        for index, call in enumerate(calls)
+        if call.startswith("install -m 0644 ") and call.endswith(str(daemon))
+    )
+    transfer = calls.index("usermod --del-subuids 100000-165535 user_l")
+    assert calls.index(stop) < first_daemon_write < transfer
+    assert json.loads(daemon.read_text())["userns-remap"] == "default"
+    for mapping in ("subuid", "subgid"):
+        assert (bootstrap / "etc" / mapping).read_text() == "dockremap:100000:65536\n"
+    result = run_bootstrap(bootstrap)
+    assert result.returncode == 0, result.stderr
+    assert (bootstrap / "commands").read_text().splitlines().count(stop) == 1
+
+
 @pytest.mark.parametrize("problem", ["dirty", "wrong-origin"])
 def test_modified_checkout_is_preserved(bootstrap: Path, problem: str) -> None:
     """Refuse unexpected existing repositories rather than resetting user work."""
@@ -220,16 +354,47 @@ def test_modified_checkout_is_preserved(bootstrap: Path, problem: str) -> None:
         (checkout / "fixture").write_text("operator change")
     else:
         git(checkout, "remote", "set-url", "origin", "/unrelated/repository")
+    owner_changes = (bootstrap / "commands").read_text().count("chown -R")
     result = run_bootstrap(bootstrap)
     assert result.returncode != 0
     assert "Refusing to overwrite" in result.stderr
+    assert (bootstrap / "commands").read_text().count("chown -R") == owner_changes
     if problem == "dirty":
         assert (checkout / "fixture").read_text() == "operator change"
     else:
         assert git(checkout, "remote", "get-url", "origin") == "/unrelated/repository"
 
 
-@pytest.mark.parametrize("failure", ["packages", "fingerprint", "compose"])
+@pytest.mark.parametrize("uid_mapping", ["", "dockremap:100000:65536\n"])
+def test_interrupted_mapping_transfer_can_resume(
+    bootstrap: Path, uid_mapping: str
+) -> None:
+    """Resume after range removal or UID transfer without overlapping other users."""
+    (bootstrap / "dockremap-user").touch()
+    other = "other:165536:65536\n"
+    (bootstrap / "etc/subuid").write_text(uid_mapping + other)
+    (bootstrap / "etc/subgid").write_text("user_l:100000:65536\n" + other)
+    result = run_bootstrap(bootstrap)
+    assert result.returncode == 0, result.stderr
+    for mapping in ("subuid", "subgid"):
+        lines = (bootstrap / "etc" / mapping).read_text().splitlines()
+        assert sorted(lines) == ["dockremap:100000:65536", "other:165536:65536"]
+    assert "useradd" not in (bootstrap / "commands").read_text()
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "packages",
+        "fingerprint",
+        "compose",
+        "checksum",
+        "sysbox-package",
+        "sysbox-version",
+        "sysbox-service",
+        "runtime",
+    ],
+)
 def test_failed_setup_never_records_success(bootstrap: Path, failure: str) -> None:
     """Propagate package, trust and Compose failures without success evidence."""
     (bootstrap / "failure").write_text(failure)
@@ -239,5 +404,53 @@ def test_failed_setup_never_records_success(bootstrap: Path, failure: str) -> No
     assert not (
         bootstrap / "var/log/openvox-provisioning/atlas-bootstrap.json"
     ).exists()
-    if failure in ("packages", "fingerprint"):
-        assert "systemctl" not in (bootstrap / "commands").read_text()
+    calls = (bootstrap / "commands").read_text()
+    if failure not in ("compose", "runtime"):
+        assert "systemctl enable --now docker" not in calls
+    if failure == "checksum":
+        assert not any(
+            line.startswith("apt-get install") and "sysbox-ce.deb" in line
+            for line in calls.splitlines()
+        )
+
+
+def test_daemon_networks_do_not_overlap_existing_routes(bootstrap: Path) -> None:
+    """Reuse legacy IPv4 settings while reserving separate Atlas IPv6 allocations."""
+    result = run_bootstrap(bootstrap)
+    assert result.returncode == 0, result.stderr
+    daemon = json.loads((bootstrap / "etc/docker/daemon.json").read_text())
+    pools = [
+        ipaddress.ip_network(pool["base"], strict=False)
+        for pool in daemon["default-address-pools"]
+    ]
+    bridges = [
+        ipaddress.ip_interface(daemon["bip"]).network,
+        ipaddress.ip_network(daemon["fixed-cidr-v6"]),
+    ]
+    for pool in pools:
+        for bridge in bridges:
+            if pool.version == bridge.version == 6:
+                assert not pool.overlaps(bridge)
+    router = SCRIPT.parents[1] / "provisioning/templates/partials/nat_routing.j2"
+    suffixes = re.findall(r"route6 \{\{ ipv6_prefix \}\}:(\S+)", router.read_text())
+    assert suffixes
+    for suffix in suffixes:
+        allocated = ipaddress.ip_network("2a02:168:6278:" + suffix)
+        assert all(
+            not allocated.overlaps(network)
+            for network in pools + bridges
+            if network.version == 6
+        )
+    assert daemon["default-address-pools"][0] == {
+        "base": "172.17.0.0/12",
+        "size": 20,
+    }
+    assert daemon["bip"] == "172.20.0.1/16"
+    assert pools[0] == ipaddress.ip_network("172.16.0.0/12")
+    assert bridges[0].subnet_of(pools[0])
+    assert daemon["experimental"] is True
+    assert daemon["ipv6"] is True
+    assert daemon["userland-proxy"] is False
+    assert daemon["log-driver"] == "json-file"
+    assert daemon["log-opts"] == {"max-size": "10m", "max-file": "3"}
+    assert daemon["runtimes"]["sysbox-runc"]["path"] == "/usr/bin/sysbox-runc"
