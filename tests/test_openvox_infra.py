@@ -125,8 +125,9 @@ def test_openvox_state_cannot_be_replaced_by_implicit_empty_volumes(compose_mode
         assert volume["external"] is True
         assert volume["name"].startswith("infra_openvox_")
     assert mounts["/trust"]["read_only"] is True
+    # Compose versions can omit false-valued fields from normalized JSON.
     assert all(
-        m["bind"]["create_host_path"] is False
+        m["bind"].get("create_host_path", False) is False
         for m in service["volumes"]
         if m["type"] == "bind"
     )

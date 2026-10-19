@@ -94,6 +94,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v9.0.0
+      - uses: actions/checkout@v5
+        with:
+          repository: Enucatl/docker-compose-security-baseline
+          ref: 41c57257d33d471e2ae7cc7264938944c67434fd
+          path: .ci-compose-baseline
+          persist-credentials: false
+      - name: Expose pinned sibling Compose baseline
+        run: ln -s "$GITHUB_WORKSPACE/.ci-compose-baseline" "$GITHUB_WORKSPACE/../compose-security-baseline"
       - name: Install the accepted Ubuntu 24.04 OpenVox test runtime
         env:
           OPENVOX_RELEASE_URL: https://github.com/Enucatl/openvox-packages/releases/download/resolute-18001
