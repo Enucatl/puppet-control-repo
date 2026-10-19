@@ -145,6 +145,11 @@ and Kerberos login with that password, plus the new administrator credentials.
 LDAP login generates the migrated user's Kerberos keys under the new realm's
 master key. Existing client keytabs still require client re-enrollment.
 
+Export ordinary users before their managed private groups: user creation
+generates those groups, after which migration restores the source group IDs
+and memberships. Existing HBAC rules can retain their target UUID DNs; verify
+their unique names, parent containers and complete policy attributes instead.
+
 The clone restores the original initialized database from the verified archive;
 it never generates authorities or mounts the live IPA data. Its dedicated bridge
 allows source LDAP reads, but it publishes no ports or production DNS aliases.
@@ -164,6 +169,14 @@ API access, and no Dogtag instance. `ipa-pkinit-manage status` reports disabled;
 FreeIPA still retains its self-signed KDC certificate and PKINIT configuration.
 The pre-migration backup contains 13 volumes and 19 archives, with every archive
 checksum verified on Proxmox after copying it off Atlas. No clients have moved.
+
+Actual production-mode import has passed on the isolated clone, including the
+existing enrollment password's LDAP and Kerberos logins. See
+[migration evidence](atlas-ipa-migration-results.json) for measured acceptance.
+The live server still contains only its bootstrap accounts. Final live import
+belongs in the source identity-change freeze, using a fresh source export and
+the same exclusions and acceptance checks, before enrolling Atlas. Do not
+promote the rehearsal volume or reuse its generated client keys.
 
 ## Focused checks
 
