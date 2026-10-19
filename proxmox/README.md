@@ -127,8 +127,11 @@ Docker Engine/CLI, containerd, Compose and Buildx from
 It checks out the declared control revision at `/opt/docker/puppet-control-repo`
 and the CI-pinned hardening revision at sibling
 `/opt/docker/compose-security-baseline`, matching the existing Compose paths.
-`/opt/docker` is owned by `user_l:docker`, mode `2775`: the group can write, and
-new directories inherit the Docker group. Both checkouts belong to `user_l:docker`;
+`/opt/docker` and both checkout roots are owned by `user_l:docker`, mode `2770`:
+the group can write, new directories inherit the Docker group, and other users
+cannot list or traverse these directories to read deployment secrets. The script
+enforces these directory modes on every run without recursively changing secret
+file permissions or container data. Both checkouts belong to `user_l:docker`;
 Git commands run as `user_l`, using the forwarded SSH agent. The script adds
 `user_l` to the Docker group, so a subsequent login can use the Docker socket.
 Reruns refuse modified/unrelated checkouts and incompatible Docker settings.

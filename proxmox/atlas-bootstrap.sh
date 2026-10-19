@@ -94,11 +94,13 @@ checkout() {
         runuser -u user_l -- git clone "$repository" "$directory"
     fi
     chown -R user_l:docker "$directory"
+    chmod 2770 "$directory"
     "${repository_git[@]}" -C "$directory" fetch --depth 1 origin "$revision"
     [[ $("${repository_git[@]}" -C "$directory" rev-parse FETCH_HEAD) == "$revision" ]]
     "${repository_git[@]}" -C "$directory" checkout --detach "$revision"
 }
-install -d -o user_l -g docker -m 2775 /opt/docker
+# Deployment trees can contain secrets; only their owner and Docker group may enter.
+install -d -o user_l -g docker -m 2770 /opt/docker
 checkout git@github.com:Enucatl/puppet-control-repo.git /opt/docker/puppet-control-repo "$CONTROL_REVISION"
 checkout git@github.com:Enucatl/docker-compose-security-baseline.git /opt/docker/compose-security-baseline "$BASELINE_REVISION"
 

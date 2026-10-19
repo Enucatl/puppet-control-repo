@@ -227,7 +227,7 @@ def test_fresh_and_repeated_bootstrap(bootstrap: Path) -> None:
     profile.parent.mkdir(parents=True)
     unrelated_rule = "/srv/operator-fuse/** rw,"
     profile.write_text(unrelated_rule)
-    for _ in range(2):
+    for attempt in range(2):
         result = run_bootstrap(bootstrap)
         assert result.returncode == 0, result.stderr
         checkout = bootstrap / "opt/docker/puppet-control-repo"
@@ -242,6 +242,15 @@ def test_fresh_and_repeated_bootstrap(bootstrap: Path) -> None:
         )
         assert evidence["control_revision"] == git(checkout, "rev-parse", "HEAD")
         assert evidence["userns_base"] == 100000
+        for directory in (
+            bootstrap / "opt/docker",
+            checkout,
+            bootstrap / "opt/docker/compose-security-baseline",
+        ):
+            assert directory.stat().st_mode & 0o7777 == 0o2770
+            if attempt == 0:
+                # Rerunning must correct permissions on existing directories.
+                directory.chmod(0o2775)
     assert len(list((bootstrap / "etc/apt/sources.list.d").iterdir())) == 1
     assert (
         json.loads((bootstrap / "etc/docker/daemon.json").read_text())["userns-remap"]
@@ -249,7 +258,6 @@ def test_fresh_and_repeated_bootstrap(bootstrap: Path) -> None:
     )
     for mapping in ("subuid", "subgid"):
         assert (bootstrap / "etc" / mapping).read_text() == "dockremap:100000:65536\n"
-    assert (bootstrap / "opt/docker").stat().st_mode & 0o7777 == 0o2775
     calls = (bootstrap / "commands").read_text()
     assert calls.count("usermod --append --groups docker user_l\n") == 2
     assert calls.count("useradd --system") == 1
