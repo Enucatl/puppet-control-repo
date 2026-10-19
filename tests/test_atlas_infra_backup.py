@@ -112,6 +112,21 @@ case "$name" in
         [[ "$*" == '-w 300 9' && $failure != lock ]] || exit 42
         exec /usr/bin/flock "$@"
         ;;
+    systemctl)
+        case "$*" in
+            'is-active --quiet puppet.service') [[ -f $root/puppet-active ]] ;;
+            'stop puppet.service')
+                [[ -f $root/puppet-active && ! -f $root/services-stopped ]]
+                rm "$root/puppet-active"
+                [[ $failure != puppet-stop ]]
+                ;;
+            'start puppet.service')
+                [[ ! -f $root/puppet-masked && ! -f $root/services-stopped && $failure != puppet-start ]]
+                touch "$root/puppet-active"
+                ;;
+            *) exit 99 ;;
+        esac
+        ;;
     tar)
         [[ $failure != credentials || "$*" != *credentials.tar.gz* ]] || exit 42
         arguments=()
@@ -241,7 +256,7 @@ case "$name" in
 esac
 """
     )
-    for name in ("id", "hostname", "docker", "tar", "flock"):
+    for name in ("id", "hostname", "docker", "tar", "flock", "systemctl"):
         path = bins / name
         path.write_text(double)
         path.chmod(0o755)
@@ -351,6 +366,9 @@ def test_failed_backup_restores_services_and_never_claims_completion(
         " start vault vault-unsealer openvox\n" in (authority / "commands").read_text()
     )
     assert (authority / "services-stopped").exists() == (failure == "restore")
+    commands = (authority / "commands").read_text()
+    assert "systemctl stop puppet.service\n" not in commands
+    assert "systemctl start puppet.service\n" not in commands
 
 
 @pytest.mark.parametrize(
@@ -574,10 +592,14 @@ def test_backup_does_not_rewrite_checkout_indexes(authority: Path) -> None:
         assert (index.stat().st_ino, index.read_bytes()) == before
 
 
+@pytest.mark.parametrize("active", [True, False])
 def test_backup_preserves_native_agent_identities_without_host_caches(
     authority: Path,
+    active: bool,
 ) -> None:
     """Retain enrollment keys, trust and configuration in the private host archive."""
+    if active:
+        (authority / "puppet-active").touch()
     files = {
         "etc/puppetlabs/puppet/puppet.conf": "[main]\ncertname = atlas.home.arpa\n",
         "etc/puppetlabs/puppet/ssl/private_keys/atlas.home.arpa.pem": "PUPPET-PRIVATE-KEY-CANARY",
@@ -616,8 +638,62 @@ def test_backup_preserves_native_agent_identities_without_host_caches(
             assert (member.uid, member.gid) == (source.st_uid, source.st_gid)
             assert archive.extractfile(member).read() == content.encode()
         assert not (set(omitted) & set(archive.getnames()))
+    assert (authority / "puppet-active").exists() == active
     public_output = (
         result.stdout + result.stderr + (output / "manifest.json").read_text()
     )
     for canary in (*files.values(), *omitted.values()):
         assert canary not in public_output
+
+
+@pytest.mark.parametrize("state", ["active", "inactive", "masked"])
+def test_backup_restores_original_native_agent_state(
+    authority: Path, state: str
+) -> None:
+    """Quiesce only an active daemon and restart it after healthy authorities."""
+    if state != "inactive":
+        (authority / f"puppet-{state}").touch()
+    result = backup(authority)
+    assert result.returncode == 0, result.stderr
+    commands = (authority / "commands").read_text()
+    stop = "systemctl stop puppet.service\n"
+    start = "systemctl start puppet.service\n"
+    if state == "active":
+        assert commands.count(stop) == commands.count(start) == 1
+        assert commands.index(stop) < commands.index(
+            " stop openvox vault-unsealer vault\n"
+        )
+        assert commands.index(start) > commands.index("State.Health.Status")
+        assert commands.index(start) < commands.index("image save")
+    else:
+        assert stop not in commands and start not in commands
+    assert (authority / "puppet-active").exists() == (state == "active")
+    assert (authority / "puppet-masked").exists() == (state == "masked")
+
+
+@pytest.mark.parametrize(
+    "failure",
+    ["archive", "credentials", "images", "puppet-stop", "puppet-start", "restore"],
+)
+def test_failed_backup_restores_native_agent_only_after_authorities(
+    authority: Path, failure: str
+) -> None:
+    """Failure cleanup restores the daemon unless authoritative recovery failed."""
+    (authority / "puppet-active").touch()
+    (authority / "failure").write_text(failure)
+    result = backup(authority)
+    assert result.returncode != 0
+    assert "Backup ready:" not in result.stdout
+    assert not (authority / "scratch/vault/snapshot/manifest.json").exists()
+    commands = (authority / "commands").read_text()
+    assert commands.count("systemctl stop puppet.service\n") == 1
+    if failure == "restore":
+        assert "systemctl start puppet.service\n" not in commands
+    else:
+        assert "systemctl start puppet.service\n" in commands
+        assert commands.index("systemctl start puppet.service\n") > commands.index(
+            "State.Health.Status"
+        )
+    assert (authority / "puppet-active").exists() == (
+        failure not in {"restore", "puppet-start"}
+    )

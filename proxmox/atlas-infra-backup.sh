@@ -98,6 +98,7 @@ install -d -m 0700 /scratch/vault
 mkdir -m 0700 "$output"
 
 stopped=true
+puppet_stopped=false
 wait_healthy() {
     local deadline=$((SECONDS + 300)) records
     while (( SECONDS < deadline )); do
@@ -117,6 +118,9 @@ start_services() {
     "${compose[@]}" start vault vault-unsealer openvox >/dev/null || status=1
     if [[ $ipa_running == true ]]; then "${ipa_compose[@]}" start ipa >/dev/null || status=1; fi
     wait_healthy || status=1
+    if [[ $status == 0 && $puppet_stopped == true ]]; then
+        if systemctl start puppet.service; then puppet_stopped=false; else status=1; fi
+    fi
     return "$status"
 }
 restore_services() {
@@ -132,6 +136,11 @@ restore_services() {
 trap restore_services EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+# The native agent must not change its enrollment state while authorities are saved.
+if systemctl is-active --quiet puppet.service; then
+    puppet_stopped=true
+    systemctl stop puppet.service
+fi
 if [[ $ipa_running == true ]]; then "${ipa_compose[@]}" stop ipa >/dev/null; fi
 "${compose[@]}" stop openvox vault-unsealer vault >/dev/null
 
