@@ -261,7 +261,9 @@ The bare repository is created with an empty Git template and no deployment
 hook. Setup refuses an existing active hook; container activation owns that
 later transition.
 
-Atlas keeps GitHub's SSH URL for fetches. Ordinary `git push` from its checkout
+Atlas keeps GitHub's SSH URL for fetches and pins GitHub's public host key in
+the checkout's Git metadata. GitHub authentication uses the administrator's
+forwarded SSH agent; private keys are not copied to Atlas. Ordinary `git push` from its checkout
 publishes only the local `production` branch to both:
 
 - `git@github.com:Enucatl/puppet-control-repo.git`, branch `production`.
