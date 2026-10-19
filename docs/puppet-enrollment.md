@@ -67,6 +67,13 @@ After the verified final IPA import, run from Atlas's clean published checkout:
 sudo python3 proxmox/atlas-enroll.py
 ```
 
+Atlas's Ubuntu curl 8.18 backport handles digestless ML-DSA signatures in
+Kerberos HTTPS negotiation using curl's upstream fix. Build it with
+`proxmox/build-atlas-curl.sh OUTPUT_DIRECTORY` and deliver the checked artifacts
+to protected `/root/openvox-infra/curl`. The enrollment script verifies and
+installs only the patched `curl` and `libcurl4t64` prerequisites before invoking
+Puppet. TLS certificate and hostname verification remain enabled.
+
 The script installs authenticated public CA trust, configures scoped ML-DSA-44
 runtime issuance in the new Vault, creates a single-use enrollment token and
 passes it through stdin to the shared helper. Atlas enrolls as `atlas.home.arpa`
