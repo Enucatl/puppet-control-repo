@@ -163,7 +163,7 @@ install_nvm() {
 <%- } -%>
 NVM_DEFAULT_PACKAGES
 
-  installed_node_version="$(nvm version '<%= $node_version %>')"
+  installed_node_version="$(nvm version '<%= $node_version %>' || true)"
   remote_node_version="$(nvm version-remote '<%= $node_version %>')"
   if [ "$installed_node_version" != "$remote_node_version" ]; then
     log "updating node: installed=${installed_node_version:-unknown} published=${remote_node_version:-unknown}"
