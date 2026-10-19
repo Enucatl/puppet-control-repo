@@ -44,6 +44,10 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         },
     )
     result = resources(catalog)
+    ssh_config = result["Concat::Fragment[ssh_config global config]"]["content"]
+    assert "ProxyCommand none\n" in ssh_config
+    assert "KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H\n" in ssh_config
+    assert "sss_ssh_knownhostsproxy" not in ssh_config
     for title in (
         "neovim-install",
         "sync-user-toolchain-user",
@@ -123,6 +127,9 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     )
     assert "Service[alloy]" in resources(catalog)
     result = resources(catalog)
+    if node_type in {"docker", "desktop"}:
+        ssh_config = result["Concat::Fragment[ssh_config global config]"]["content"]
+        assert "ProxyCommand /usr/bin/sss_ssh_knownhostsproxy -p %p %h\n" in ssh_config
     assert ("File[/usr/local/bin/typst]" in result) == (node_type == "desktop")
     assert ("Cron[typst-update]" in result) == (node_type == "desktop")
     certificate_role = "puppet-docker.home.arpa" if hostname == "docker" else "puppet"
