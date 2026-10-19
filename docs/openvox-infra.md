@@ -1,8 +1,9 @@
-# Prepared OpenVox service in the infra stack (#12)
+# OpenVox service in the Atlas infra stack (#12, #13)
 
-`docker/docker-compose.yml` now contains an opt-in `openvox` service. This is
-deployment preparation; this stack has not been started as part of the
-disposable rehearsal. Ordinary `docker compose up` excludes the service.
+`docker/docker-compose.yml` contains an opt-in `openvox` service. Atlas now runs
+OpenVox, Vault and the Vault unsealer; all three services passed their health
+checks on 2026-10-19 at deployed control revision `145302c`.
+Ordinary `docker compose up` excludes OpenVox.
 Activation requires `--profile openvox` or explicitly selecting the service.
 Compose also permits explicit service selection to bypass a profile, so the
 profile prevents accidental inclusion in a whole-stack start, not deliberate
@@ -11,9 +12,17 @@ activation by an operator.
 Atlas's independent Docker/tooling bootstrap and pinned repository checkouts
 have passed twice under #18 Stage A. See the
 [bootstrap runbook](../proxmox/README.md#independent-atlas-tooling-bootstrap-18-stage-a)
-and [live results](atlas-bootstrap-results.json). The infra stack is still
-inactive on Atlas; adapting its service identity and explicit authority
-initialization/enrollment belong to #13.
+and [live results](atlas-bootstrap-results.json). Explicit authority
+initialization is complete. Atlas's native agent is not yet enrolled, and an
+independent restore has not yet been tested. Live receive-hook execution still
+requires verification.
+
+The initialized Vault root certificate DER SHA-256 fingerprint is
+`9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea`.
+The initial recovery kit is stored off-VM at
+`root@proxmox.home.arpa:/root/openvox-atlas-initial-20261019T162722Z`.
+All 18 archives passed SHA-256 verification, including all twelve persistent
+volumes. This establishes an initial backup, not independent restore acceptance.
 
 ## Atlas endpoint requirements (#13)
 
@@ -110,7 +119,7 @@ alone does not satisfy independent recovery. Never overwrite the #12 test kit.
 A backup proves preservation only; restoration and unchanged-identity acceptance
 remain separate checks before issue closure.
 
-## Prepared service implementation
+## Service implementation
 
 The accepted `24001` OpenVox image is pinned by digest in
 `docker/openvox/infra.Dockerfile`; the derived image adds Git and r10k 5.0.3.
@@ -156,9 +165,10 @@ the first deployment; startup verifies its exact content. Publisher checks the
 deployment status and requested commit after an updated production receive,
 because Git itself can accept refs even when post-receive deployment fails.
 
-## Activation prerequisites
+## Authority and recovery requirements
 
-Do not activate this service until all of these conditions are met:
+Retain these requirements when operating or restoring the initialized service;
+remaining recovery and migration acceptance is separate from its live status:
 
 1. The new hierarchy has been prepared with the root key generated internally
    and retained inside Vault. Vault retains the root signing key. Its OpenVox intermediate is ML-DSA-44 with `CA:TRUE,pathlen:0`, its
@@ -193,8 +203,8 @@ Do not activate this service until all of these conditions are met:
    the existing read-only `/infra` mount.
 5. Production outbound crypto/consumer compatibility, independent offline
    recovery, and migration gates are signed off separately. The complete
-   disposable rehearsal is useful evidence, but does not activate this service
-   or establish every production compatibility requirement.
+   disposable rehearsal does not establish every production compatibility
+   requirement; independent Atlas restore acceptance is still outstanding.
 6. Atlas uses a distinct address and direct port 8140 while Docker's existing
    `puppetserver.service` continues serving legacy agents. #13 enrolls Atlas,
    then Aperture and Cognition as they migrate; it does not retire the old
@@ -221,10 +231,10 @@ verify renewal before the configured one-day leaf expires.
 
 ## Explicit preparation and activation commands
 
-These commands describe the preparation interface on the selected target
-daemon; #18 must compose them into the scripted Atlas bootstrap with declared
-inputs and no manual guest setup. They have not been executed against production.
-Never source a production `.env` while
+These commands document the lower-level preparation interface used by the
+scripted Atlas initialization above. Do not repeat fresh preparation or import
+against the established authorities; use `atlas-infra.py start` for normal
+startup. Never source a production `.env` while
 testing; a Compose render can be checked without a daemon:
 
 ```sh
@@ -271,8 +281,8 @@ failed import requires inspection/restoration; the helper never deletes it to
 permit a retry. The rehearsal's `pki.rb` uses rehearsal names and must not be
 run on this production identity.
 
-Build and prepare code only after restoring the external volumes. The host
-receive-hook dispatch and startup check described above are separate #13 work;
+Build and prepare code only after restoring the external volumes. The scripted
+initializer installs the host receive dispatcher and startup checks it;
 the container cannot install a hook in its read-only source repository.
 These commands select just OpenVox, start no dependency, and publish no port
 during `run`:
@@ -294,7 +304,7 @@ docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml \
   '
 ```
 
-When the explicit production cutover is approved and prerequisites are met:
+The corresponding low-level OpenVox-only startup and health commands are:
 
 ```sh
 docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml \
@@ -332,14 +342,16 @@ rehearsal tools image already built, repeat it locally with:
 python3 docker/openvox/infra-pki-self-test.py
 ```
 
-A production runtime start, host-port cutover and actual production catalog
-application remain unperformed.
+Atlas's production runtime now starts and passes service health checks.
+Native-agent enrollment, actual host catalog application and independent
+restore acceptance remain outstanding.
 
 ## Separate opt-in Vault configuration
 
-`docker/openvox/infra-vault.override.yaml` is an explicit future Vault cutover
-file. It is never included by the OpenVox profile automatically and does not
-change the currently bound `docker/vault/config/vault-conf.hcl`. The override
+`docker/openvox/infra-vault.override.yaml` is the explicit Vault configuration
+used by Atlas's initializer and normal startup. It is never included by the
+OpenVox profile automatically and leaves the legacy
+`docker/vault/config/vault-conf.hcl` unchanged. The override
 pins the accepted Vault 2.2.0 image, replaces only the Vault configuration mount
 and command, and keeps the existing `vault_data:/vault/file` file backend and
 `vault_logs` volume. It mounts the certificate volume read-only.
@@ -373,8 +385,8 @@ env -i PATH="$PATH" DOCKER_DOMAIN=example.invalid \
   -f docker/openvox/infra-vault.override.yaml config --quiet
 ```
 
-After the explicit Vault cutover is approved and established state/certificates
-are prepared, select only Vault on the intended host:
+For a low-level Vault-only start with established state and certificates,
+select only Vault on the intended host:
 
 ```sh
 docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml \

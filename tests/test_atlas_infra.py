@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 import re
 import ssl
+import subprocess
+import sys
 from types import ModuleType
 from unittest.mock import Mock
 
@@ -20,6 +22,36 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize("data", [None, "explicit child input"])
+def test_commands_do_not_consume_caller_input(data: str | None) -> None:
+    """Docker/SSH children must leave later shell commands on the parent's stdin."""
+    program = """
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('infra', sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+child = module.run([sys.executable, '-c', 'import sys; print(sys.stdin.read())'], json.loads(sys.argv[2]))
+print(json.dumps({'child': child, 'remaining': sys.stdin.read()}))
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            program,
+            str(ROOT / "proxmox/atlas-infra.py"),
+            json.dumps(data),
+        ],
+        input="remaining verification commands",
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert json.loads(result.stdout) == {
+        "child": (data or "") + "\n",
+        "remaining": "remaining verification commands",
+    }
 
 
 @pytest.fixture

@@ -27,7 +27,12 @@ LABEL = "home.arpa.authority=atlas"
 def run(arguments: list[str], data: str | None = None) -> str:
     """Keep command diagnostics private because API output can contain secrets."""
     result = subprocess.run(
-        arguments, input=data, text=True, capture_output=True, timeout=1800
+        arguments,
+        input=data,
+        stdin=subprocess.DEVNULL if data is None else None,
+        text=True,
+        capture_output=True,
+        timeout=1800,
     )
     if result.returncode:
         log = STATE / f"failure-{time.time_ns()}.log"
