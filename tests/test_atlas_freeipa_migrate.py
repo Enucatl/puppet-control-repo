@@ -99,6 +99,9 @@ def test_worker_requires_tls_and_retains_dryrun_evidence(migration: ModuleType) 
     assert "['kinit', 'puppet-enroller@HOME.ARPA']" in migration.WORKER
     assert "assert not keys_before" in migration.WORKER
     assert "assert keys_after" in migration.WORKER
+    assert migration.WORKER.index(
+        "marker.write_text('Migration started"
+    ) < migration.WORKER.index("process = subprocess.run(command")
 
 
 @pytest.mark.parametrize(
@@ -147,13 +150,14 @@ def test_failure_keeps_private_report(
     assert json.loads(payload)["source_password"] == "source-secret"
 
 
+@pytest.mark.parametrize("action", ["rehearse", "import"])
 def test_rehearsal_requires_password_login_proof(
-    migration: ModuleType, monkeypatch: pytest.MonkeyPatch
+    migration: ModuleType, monkeypatch: pytest.MonkeyPatch, action: str
 ) -> None:
     """A rehearsal cannot skip proving the migrated account password works."""
     monkeypatch.setattr(migration, "private_json", lambda _: {"dm_password": "private"})
     with pytest.raises(RuntimeError, match="login-password-file"):
-        migration.migrate("rehearse", "atlas-ipa-rehearsal", Path("source"), Path("ca"))
+        migration.migrate(action, "target", Path("source"), Path("ca"))
     migration.infra.run.assert_not_called()
 
 
@@ -252,3 +256,60 @@ def test_hbac_comparison_accepts_only_unique_same_parent_name(
         "ipauniqueid=second,cn=hbac,dc=home,dc=arpa": attrs,
     }
     assert compare(source, target)["hbac"] == 1
+
+
+def live_metadata(migration: ModuleType) -> dict:
+    """Describe the authoritative deployment and its exact persistent data mount."""
+    result = metadata()
+    result["Config"]["Labels"] = {
+        "com.docker.compose.project": "infra",
+        "com.docker.compose.service": "ipa",
+    }
+    result["NetworkSettings"]["Networks"] = {"infra": {}}
+    result["Mounts"] = [
+        {
+            "Destination": "/data",
+            "Name": migration.controller.VOLUME,
+            "Type": "volume",
+            "RW": True,
+        }
+    ]
+    return result
+
+
+def test_live_import_checks_persisted_volume_identity(
+    migration: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the exact live mount can reach the controller's UUID validation."""
+    migration.infra.run.return_value = json.dumps([live_metadata(migration)])
+    volume = Mock()
+    monkeypatch.setattr(migration.controller, "volume", volume)
+    migration.target("import", "infra-ipa-1")
+    volume.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    "unsafe", ["container", "volume", "label", "network", "readonly"]
+)
+def test_live_import_refuses_other_deployments(
+    migration: ModuleType, monkeypatch: pytest.MonkeyPatch, unsafe: str
+) -> None:
+    """A clone, substituted volume or other deployment cannot receive a live import."""
+    target = live_metadata(migration)
+    container = "infra-ipa-1"
+    if unsafe == "container":
+        container = "atlas-ipa-rehearsal"
+    elif unsafe == "volume":
+        target["Mounts"][0]["Name"] = "replacement"
+    elif unsafe == "label":
+        target["Config"]["Labels"]["home.arpa.rehearsal"] = "ipa-migration"
+    elif unsafe == "network":
+        target["NetworkSettings"]["Networks"] = {"atlas-ipa-rehearsal": {}}
+    else:
+        target["Mounts"][0]["RW"] = False
+    migration.infra.run.return_value = json.dumps([target])
+    volume = Mock()
+    monkeypatch.setattr(migration.controller, "volume", volume)
+    with pytest.raises(RuntimeError, match="authoritative"):
+        migration.target("import", container)
+    volume.assert_not_called()

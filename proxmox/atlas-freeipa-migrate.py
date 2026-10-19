@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dry-run IPA migration or rehearse a production-mode import in an isolated clone."""
+"""Dry-run, rehearse or import filtered production-mode IPA account data."""
 
 from __future__ import annotations
 
@@ -47,8 +47,9 @@ local_addresses = {'127.0.0.1', '::1'} | set(
 target_addresses = {entry[4][0] for entry in socket.getaddrinfo('ipa.home.arpa', 389)}
 assert target_addresses and target_addresses <= local_addresses, \
     'ipa.home.arpa must resolve exclusively to this container'
-marker = Path('/data/.atlas-ipa-migration-rehearsed')
-assert not marker.exists(), 'Use a fresh clone for each rehearsal'
+marker = Path('/data/.atlas-ipa-migration-' +
+              ('imported' if request['action'] == 'import' else 'rehearsed'))
+assert not marker.exists(), 'Migration already attempted; restore instead of repeating'
 
 attributes = {
     'users': ['uid', 'uidNumber', 'gidNumber', 'ipaNTSecurityIdentifier'],
@@ -148,9 +149,9 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
                       str(work / 'source-ca.pem'))
     before = snapshot('ipa.home.arpa', request['target_password'],
                       str(work / 'target-ca.pem'))
-    if request['action'] == 'rehearse':
+    if request['action'] != 'dry-run':
         assert set(before['users']) == {'uid=admin,cn=users,cn=accounts,dc=home,dc=arpa'}, \
-            'Rehearsal requires a fresh bootstrap-only target'
+            'Import requires a fresh bootstrap-only target'
     conn = connection('freeipa.home.arpa', request['source_password'],
                       str(work / 'source-ca.pem'))
     export_counts = export_database(conn, work / 'source.ldif')
@@ -179,11 +180,13 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
     subprocess.run(['kinit', 'admin@HOME.ARPA'],
                    input=request['target_admin_password'] + '\n',
                    text=True, capture_output=True, check=True, env=environment)
+    if request['action'] != 'dry-run':
+        marker.write_text('Migration started; restore before retrying an interrupted import.\n')
     process = subprocess.run(command, text=True, capture_output=True,
                              env=environment)
     login = {}
     login_error = None
-    if request['action'] == 'rehearse' and process.returncode == 0:
+    if request['action'] != 'dry-run' and process.returncode == 0:
         try:
             conn = connection('ipa.home.arpa', request['target_password'],
                               str(work / 'target-ca.pem'))
@@ -234,8 +237,8 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
               'stdout': process.stdout, 'stderr': process.stderr,
               'log': (work / 'migration.log').read_text()
                      if (work / 'migration.log').exists() else ''}
-    if request['action'] == 'rehearse':
-        marker.write_text('Imported rehearsal; discard clone before repeating.\n')
+    if request['action'] != 'dry-run':
+        marker.write_text('Migration attempted; inspect saved report and restore before retrying.\n')
     print(json.dumps(report))
 """
 
@@ -249,10 +252,34 @@ def private_json(path: Path) -> dict:
 
 
 def target(action: str, container: str) -> None:
-    """Allow live dry-runs and restrict imports to the dedicated isolated clone."""
+    """Restrict each write action to its exact volume and deployment identity."""
     metadata = json.loads(infra.run(infra.DOCKER + ["inspect", container]))[0]
     if metadata["Config"]["Hostname"] != controller.HOSTNAME:
         raise RuntimeError("Target hostname must be ipa.home.arpa")
+    if action == "import":
+        data_mounts = [
+            mount
+            for mount in metadata.get("Mounts", [])
+            if mount.get("Destination") == "/data"
+        ]
+        if (
+            container != "infra-ipa-1"
+            or metadata["Config"].get("Labels", {}).get("com.docker.compose.project")
+            != "infra"
+            or metadata["Config"].get("Labels", {}).get("com.docker.compose.service")
+            != "ipa"
+            or metadata["Config"].get("Labels", {}).get("home.arpa.rehearsal")
+            or len(data_mounts) != 1
+            or data_mounts[0].get("Name") != controller.VOLUME
+            or data_mounts[0].get("Type") != "volume"
+            or not data_mounts[0].get("RW")
+            or set(metadata["NetworkSettings"]["Networks"]) != {"infra"}
+        ):
+            raise RuntimeError(
+                "Live import requires the authoritative infra-ipa-1 volume"
+            )
+        controller.volume()
+        return
     if action == "dry-run" and container == "infra-ipa-1":
         return
     if (
@@ -279,10 +306,8 @@ def migrate(
     source = private_json(source_file)
     if set(source) != {"dm_password"} or not isinstance(source["dm_password"], str):
         raise RuntimeError("Source JSON requires only dm_password")
-    if action == "rehearse" and login_file is None:
-        raise RuntimeError(
-            "Rehearsal requires --login-password-file for puppet-enroller"
-        )
+    if action != "dry-run" and login_file is None:
+        raise RuntimeError("Import requires --login-password-file for puppet-enroller")
     settings = private_json(controller.STATE / "installer.json")
     target(action, container)
     request = {
@@ -312,11 +337,11 @@ def migrate(
         raise RuntimeError(f"Migration changed target trust; private evidence: {path}")
     if action == "dry-run" and not report["unchanged"]:
         raise RuntimeError(f"Dry-run changed identity state; private evidence: {path}")
-    if action == "rehearse" and report.get("login_error"):
+    if action != "dry-run" and report.get("login_error"):
         raise RuntimeError(
             f"Migrated password verification failed; private evidence: {path}"
         )
-    if action == "rehearse" and any(report["mismatches"].values()):
+    if action != "dry-run" and any(report["mismatches"].values()):
         raise RuntimeError(
             f"Imported identity comparison differs; private evidence: {path}"
         )
@@ -344,7 +369,7 @@ def migrate(
 def main() -> None:
     """Run only on Atlas under the existing authority maintenance lock."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("dry-run", "rehearse"))
+    parser.add_argument("action", choices=("dry-run", "rehearse", "import"))
     parser.add_argument("--container", default="infra-ipa-1")
     parser.add_argument("--source-password-file", type=Path, required=True)
     parser.add_argument("--source-ca", type=Path, required=True)
