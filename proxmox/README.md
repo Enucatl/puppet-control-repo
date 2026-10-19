@@ -194,16 +194,19 @@ base and an empty installation of the earlier minimal bootstrap. General
 Docker installations and populated state are not automatically migrated.
 
 The refined configuration passed live acceptance on **2026-10-19**, using control
-revision `44a7603aac130dc75b1a91ab5351e6b25286518d`. Two bootstrap invocations
+revision `f448ee8f1a90e96670849daa6603847ca9608b04`. Two bootstrap invocations
 completed; ownership, group access, daemon settings, bridge IPv4/IPv6 allocation
-and clean SSH-origin checkouts matched the declarations above. Both a disposable
+and clean SSH-origin checkouts matched the declarations above. All three directory
+roots had mode `2770`; `user_l` could read the repository and create/remove a
+file under `/opt/docker`, while `nobody` could neither list/traverse `/opt/docker`
+nor read a known repository file. Both a disposable
 `hello-world` container and a Debian container using `--runtime=sysbox-runc` ran
 successfully as `user_l` and were removed. The `fusermount3` AppArmor profile
 remained enforced, with each local Sysbox rule present exactly once.
 Puppet remains disabled and unenrolled; no infrastructure containers or authority
 volumes were created. Protected guest/template configurations were unchanged.
-The focused suite passed **217 tests**, plus Bash, ShellCheck and Ruff checks;
-[hosted CI passed](https://github.com/Enucatl/puppet-control-repo/actions/runs/39258803652).
+The focused bootstrap suite passed **33 tests**, plus Bash, ShellCheck and Ruff
+checks; [hosted CI passed](https://github.com/Enucatl/puppet-control-repo/actions/runs/39276522973).
 See the [configuration acceptance evidence](../docs/atlas-configuration-results.json).
 
 Earlier live tooling acceptance passed on **2026-10-19**, using control revision

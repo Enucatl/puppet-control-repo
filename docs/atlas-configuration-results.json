@@ -1,9 +1,9 @@
 {
-  "verified_at": "2026-10-19T13:17:09+00:00",
+  "verified_at": "2026-10-19T15:16:52+00:00",
   "fqdn": "atlas.home.arpa",
   "bootstrap_runs": 2,
   "bootstrap": {
-    "control_revision": "44a7603aac130dc75b1a91ab5351e6b25286518d",
+    "control_revision": "f448ee8f1a90e96670849daa6603847ca9608b04",
     "baseline_revision": "41c57257d33d471e2ae7cc7264938944c67434fd",
     "userns_base": 100000,
     "docker_version": "29.9.1",
@@ -44,12 +44,12 @@
   "sysbox_fuse_rules_unique": true,
   "docker_access_as_user_l": true,
   "repository_owner": "user_l:docker",
-  "parent_owner_mode": "user_l:docker 2775",
+  "parent_owner_mode": "user_l:docker 2770",
   "docker_bridge_ipv6_enabled": true,
   "infrastructure_containers": 0,
   "authority_volumes": 0,
   "puppet_enrolled": false,
-  "bootstrap_script_sha256": "6ecf1e35270b393d9bfeec6e6bb38f626900f591f803dd4425fb41cbc9a84533",
+  "bootstrap_script_sha256": "caf171adf2740fc89ef9d4e21a1ed7fce7ac17b2717534890ced94bb14528145",
   "ssh_origins_verified": true,
   "checkouts_clean": true,
   "dockremap_subuid": "100000:65536",
@@ -71,7 +71,7 @@
     9000,
     9001
   ],
-  "focused_tests_passed": 217,
+  "focused_tests_passed": 33,
   "checks_passed": [
     "bash -n",
     "shellcheck -x",
@@ -86,9 +86,13 @@
     "Complete infrastructure rebuild and independent authority/application recovery (#18)",
     "Service activation and exclusive scratch-disk handoff (#19)"
   ],
+  "checkout_roots_mode": "2770",
+  "other_user_read_traverse_denied": true,
+  "owner_read_write_passed": true,
+  "focused_tests_scope": "tests/test_atlas_bootstrap.py",
   "ci": {
-    "control_revision": "44a7603aac130dc75b1a91ab5351e6b25286518d",
+    "control_revision": "f448ee8f1a90e96670849daa6603847ca9608b04",
     "conclusion": "success",
-    "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39258803652"
+    "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39276522973"
   }
 }
