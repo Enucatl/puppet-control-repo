@@ -77,6 +77,7 @@ class profile::user_toolchain (
   exec { "sync-user-toolchain-${username}":
     command     => '/usr/local/sbin/puppet-user-toolchain-sync',
     user        => $username,
+    cwd         => $resolved_home,
     path        => ['/usr/local/sbin', '/usr/local/bin', '/usr/bin', '/bin'],
     environment => [
       "HOME=${resolved_home}",

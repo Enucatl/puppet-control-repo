@@ -89,6 +89,8 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     )
     assert "Class[Profile::Docker_node]" not in result
     pairs = ordered_pairs(catalog)
+    assert result["Exec[sync-user-toolchain-user]"]["cwd"] == "/home/user"
+    assert ("File[/home/user]", "Exec[sync-user-toolchain-user]") in pairs
     assert ("Exec[apt_update]", "Package[alloy]") in pairs
     apt_errors = result["File[/etc/apt/apt.conf.d/50update-errors]"]
     assert 'APT::Update::Error-Mode "any";' in apt_errors["content"]
