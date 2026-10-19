@@ -313,3 +313,45 @@ def test_live_import_refuses_other_deployments(
     with pytest.raises(RuntimeError, match="authoritative"):
         migration.target("import", container)
     volume.assert_not_called()
+
+
+def test_verified_live_import_records_success_checkpoint(
+    migration: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Client enrollment can require a protected checkpoint written after all checks."""
+    source = tmp_path / "source.json"
+    source.write_text('{"dm_password":"source-secret"}')
+    (tmp_path / "installer.json").write_text(
+        '{"dm_password":"target-secret","admin_password":"admin-secret"}'
+    )
+    source_ca = tmp_path / "ca.pem"
+    source_ca.write_text("old-ca")
+    (tmp_path / "root.pem").write_text("new-ca")
+    login = tmp_path / "login.json"
+    login.write_text('{"password":"private"}')
+    monkeypatch.setattr(migration, "private_json", lambda p: json.loads(p.read_text()))
+    monkeypatch.setattr(migration, "target", Mock())
+    monkeypatch.setattr(migration.infra, "git", Mock(return_value="revision\n"))
+    migration.infra.run.return_value = json.dumps(
+        {
+            "action": "import",
+            "returncode": 0,
+            "trust_unchanged": True,
+            "login": {"ldap_bind": True, "kerberos_login": True},
+            "login_error": None,
+            "mismatches": {"users": 0},
+            "source_export": {},
+            "source_counts": {},
+            "target_counts": {},
+            "unchanged": False,
+            "schema_unchanged": False,
+        }
+    )
+    evidence = migration.migrate("import", "infra-ipa-1", source, source_ca, login)
+    checkpoint = tmp_path / "imported.json"
+    assert json.loads(checkpoint.read_text()) == {
+        "success": True,
+        "evidence": str(evidence),
+        "revision": "revision",
+    }
+    assert checkpoint.stat().st_mode & 0o777 == 0o600

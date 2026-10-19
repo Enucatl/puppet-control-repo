@@ -337,13 +337,28 @@ def migrate(
         raise RuntimeError(f"Migration changed target trust; private evidence: {path}")
     if action == "dry-run" and not report["unchanged"]:
         raise RuntimeError(f"Dry-run changed identity state; private evidence: {path}")
-    if action != "dry-run" and report.get("login_error"):
+    if action != "dry-run" and (
+        report.get("login_error")
+        or not report.get("login")
+        or not all(report["login"].values())
+    ):
         raise RuntimeError(
             f"Migrated password verification failed; private evidence: {path}"
         )
     if action != "dry-run" and any(report["mismatches"].values()):
         raise RuntimeError(
             f"Imported identity comparison differs; private evidence: {path}"
+        )
+    if action == "import":
+        infra.save(
+            controller.STATE / "imported.json",
+            json.dumps(
+                {
+                    "success": True,
+                    "evidence": str(path),
+                    "revision": infra.git("rev-parse", "HEAD").strip(),
+                }
+            ),
         )
     print(
         json.dumps(
