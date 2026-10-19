@@ -59,6 +59,26 @@ service and sets that exact certname before its first configured agent run.
 
 ## Replacement token
 
+### Atlas
+
+After the verified final IPA import, run from Atlas's clean published checkout:
+
+```bash
+sudo python3 proxmox/atlas-enroll.py
+```
+
+The script installs authenticated public CA trust, configures scoped ML-DSA-44
+runtime issuance in the new Vault, creates a single-use enrollment token and
+passes it through stdin to the shared helper. Atlas enrolls as `atlas.home.arpa`
+against `openvox.home.arpa`. Its catalog installs the FreeIPA client and runs
+`ipa-client-install` with `ipa.home.arpa` and the authenticated CA file. It also
+creates the website certificate directories and certificates from Atlas's node
+data. Existing Docker clients retain their original node data and endpoints.
+Private enrollment output is retained under `/root/openvox-infra`; an existing
+agent certificate requires an ordinary agent run instead of re-enrollment.
+
+### Other provisioning
+
 On the provisioning administrator's trusted shell, from the repository root:
 
 ```bash

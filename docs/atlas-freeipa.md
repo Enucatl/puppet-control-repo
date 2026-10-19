@@ -173,10 +173,23 @@ checksum verified on Proxmox after copying it off Atlas. No clients have moved.
 Actual production-mode import has passed on the isolated clone, including the
 existing enrollment password's LDAP and Kerberos logins. See
 [migration evidence](atlas-ipa-migration-results.json) for measured acceptance.
-The live server still contains only its bootstrap accounts. Final live import
-belongs in the source identity-change freeze, using a fresh source export and
-the same exclusions and acceptance checks, before enrolling Atlas. Do not
-promote the rehearsal volume or reuse its generated client keys.
+Final live import belongs in the source identity-change freeze, using a fresh
+source export and the same exclusions and acceptance checks, before enrolling
+Atlas. After verifying a fresh off-host backup, run:
+
+```bash
+sudo python3 proxmox/atlas-freeipa-migrate.py import \
+  --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json \
+  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem \
+  --login-password-file /root/openvox-infra/ipa-migration-source/login.json
+```
+
+The live action accepts only the authoritative container and volume with their
+original identity. It requires a bootstrap-only target and records the attempt
+before importing; an interrupted or failed import cannot be repeated over
+partial state. Successful acceptance writes protected `imported.json`, which
+the Atlas enrollment script requires. Do not promote the rehearsal volume or
+reuse its generated client keys.
 
 ## Focused checks
 

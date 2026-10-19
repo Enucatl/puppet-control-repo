@@ -24,6 +24,10 @@ fi
 
 NODE_TYPE="${1:?node_type required}"
 VAULT_TOKEN="${2:?vault_token required}"
+if [[ $VAULT_TOKEN == - ]]; then
+  IFS= read -r VAULT_TOKEN
+  [[ -n $VAULT_TOKEN ]] || { echo 'Missing enrollment token on stdin.' >&2; exit 1; }
+fi
 CERTNAME="${3:?certname required}"
 PUPPET_SERVER="${4:-docker.home.arpa}"
 
