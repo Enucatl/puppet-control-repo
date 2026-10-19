@@ -73,17 +73,20 @@ jq -e --arg root "$root" '.hostname == "ipa.home.arpa" and .root_sha256 == $root
 "${docker[@]}" volume create --label "$label" "$volume" >/dev/null
 "${docker[@]}" network create --driver bridge --label "$label" "$network" >/dev/null
 # The backup and restore helpers use the same Docker remapping and numeric IDs.
-"${docker[@]}" run --rm --pull never --label "$label" --network none --read-only --user 0:0 \
+"${docker[@]}" run --rm --pull never --label "$label" \
+    --label com.docker.compose.project=atlas-ipa-rehearsal --network none --read-only --user 0:0 \
     --mount "type=volume,src=$volume,dst=/volume" \
     --entrypoint /bin/tar -i "$helper" --numeric-owner --acls --xattrs -xzf - -C /volume \
     < "$backup/infra_ipa_data.tar.gz"
 # shellcheck disable=SC2016 # Expand the identity checks inside the helper.
-"${docker[@]}" run --rm --pull never --label "$label" --network none --read-only --user 0:0 \
+"${docker[@]}" run --rm --pull never --label "$label" \
+    --label com.docker.compose.project=atlas-ipa-rehearsal --network none --read-only --user 0:0 \
     --mount "type=volume,src=$volume,dst=/volume,readonly" --entrypoint /bin/sh "$helper" -ec \
     'test "$(cat /volume/.atlas-freeipa-volume)" = "$1";
      test "$(cat /volume/.atlas-freeipa-installed)" = "$1";
      test -s /volume/etc/ipa/default.conf' sh "$identity"
 "${docker[@]}" run --detach --pull never --name "$name" --label "$label" \
+    --label com.docker.compose.project=atlas-ipa-rehearsal --label com.docker.compose.service=ipa \
     --hostname ipa.home.arpa --add-host ipa.home.arpa:127.0.0.1 --runtime sysbox-runc \
     --network "$network" --memory 2g --memory-swap 2g --pids-limit 512 \
     --env IPA_SERVER_IP=no-update --mount "type=volume,src=$volume,dst=/data" \

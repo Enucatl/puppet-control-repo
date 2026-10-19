@@ -124,6 +124,8 @@ if args[0] in ("container", "volume", "network"):
 elif args[:2] == ["image", "inspect"]:
     assert all(value.startswith("sha256:") for value in args[2:])
 elif args[0] == "run":
+    # The saved production image carries Compose labels; every clone/helper overrides them.
+    assert "com.docker.compose.project=atlas-ipa-rehearsal" in args
     assert "--pull" in args and args[args.index("--pull") + 1] == "never"
     assert not any(value in args for value in ("--publish", "-p", "--privileged", "--userns=host"))
     mount = next(value for value in args if value.startswith("type=volume,"))
