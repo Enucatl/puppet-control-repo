@@ -55,6 +55,7 @@ path "auth/token/lookup-self" {{
                 "allow_localhost": False,
                 "allow_ip_sans": False,
                 "cn_validations": ["hostname"],
+                "key_usage": ["DigitalSignature"],
                 "max_ttl": "2160h",
             },
         )

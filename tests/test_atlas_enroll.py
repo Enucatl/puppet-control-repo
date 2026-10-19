@@ -89,6 +89,7 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
     assert role["allowed_domains"] == ["atlas.home.arpa"]
     assert role["key_type"] == "ml-dsa"
     assert role["parameter_set"] == "ml-dsa-44"
+    assert role["key_usage"] == ["DigitalSignature"]
     assert role["allow_ip_sans"] is False
     policy = next(
         call.args[2]["policy"]
