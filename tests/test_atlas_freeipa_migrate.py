@@ -87,6 +87,7 @@ def test_worker_requires_tls_and_retains_dryrun_evidence(migration: ModuleType) 
     assert "'--skip-config'" in migration.WORKER
     assert "'--dryrun-record'" in migration.WORKER
     assert "conn.start_tls_s()" in migration.WORKER
+    assert "target_addresses <= local_addresses" in migration.WORKER
     assert "['kinit', 'admin@HOME.ARPA']" in migration.WORKER
     assert "input=request['target_admin_password']" in migration.WORKER
     assert "env=environment" in migration.WORKER

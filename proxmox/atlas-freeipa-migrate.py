@@ -27,6 +27,7 @@ import configparser
 import json
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import tempfile
@@ -38,6 +39,10 @@ config = configparser.ConfigParser()
 config.read('/etc/ipa/default.conf')
 assert config['global']['host'] == 'ipa.home.arpa'
 assert config['global']['realm'] == 'HOME.ARPA'
+local_addresses = set(subprocess.check_output(['hostname', '-I'], text=True).split())
+target_addresses = {entry[4][0] for entry in socket.getaddrinfo('ipa.home.arpa', 389)}
+assert target_addresses and target_addresses <= local_addresses, \
+    'ipa.home.arpa must resolve exclusively to this container'
 marker = Path('/data/.atlas-ipa-migration-rehearsed')
 assert not marker.exists(), 'Use a fresh clone for each rehearsal'
 
