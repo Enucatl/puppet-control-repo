@@ -130,8 +130,15 @@ sudo bash proxmox/atlas-freeipa-rehearse.sh /scratch/vault/EXACT_BACKUP_DIRECTOR
 sudo python3 proxmox/atlas-freeipa-migrate.py rehearse \
   --container atlas-ipa-rehearsal \
   --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json \
-  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem
+  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem \
+  --login-password-file /root/openvox-infra/ipa-migration-source/login.json
 ```
+
+The private login JSON contains only `password`, using the existing
+`puppet-enroller` password from Vault. The rehearsal checks a verified LDAP bind
+and Kerberos login with that password, plus the new administrator credentials.
+LDAP login generates the migrated user's Kerberos keys under the new realm's
+master key. Existing client keytabs still require client re-enrollment.
 
 The clone restores the original initialized database from the verified archive;
 it never generates authorities or mounts the live IPA data. Its dedicated bridge
