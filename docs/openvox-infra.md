@@ -13,7 +13,10 @@ Atlas's independent Docker/tooling bootstrap and pinned repository checkouts
 have passed twice under #18 Stage A. See the
 [bootstrap runbook](../proxmox/README.md#independent-atlas-tooling-bootstrap-18-stage-a)
 and [live results](atlas-bootstrap-results.json). Explicit authority
-initialization is complete. Atlas's native agent is not yet enrolled.
+initialization and final FreeIPA import are complete. Atlas's native OpenVox
+agent is enrolled and its Docker-role catalog passed with 242 resources, zero
+failures and zero skipped resources. OpenVox installed and enrolled the IPA
+client against `ipa.home.arpa`. See [enrollment evidence](atlas-enrollment-results.json).
 Independent restoration, isolated host reboot and image rollback passed before
 the maintenance release at `60da9a9`. Its production push verified the host hook,
 actual deployed commit, generated types and compiler cache refresh.
@@ -473,7 +476,9 @@ python3 docker/openvox/infra-pki-self-test.py
 ```
 
 Atlas's production runtime now starts and passes service health checks.
-Native-agent enrollment and actual host catalog application remain outstanding.
+Native-agent enrollment and actual host Docker-role application passed on
+2026-10-19; a second enrollment-helper run also passed without changing the
+native, website, IPA or SSH identities.
 Independent authority restoration, isolated host reboot and image rollback
 passed the maintenance acceptance above.
 

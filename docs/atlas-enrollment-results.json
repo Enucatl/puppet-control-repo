@@ -1,0 +1,170 @@
+{
+  "recorded_date": "2026-10-19",
+  "host": "atlas.home.arpa",
+  "server": "openvox.home.arpa",
+  "successful_catalog_revision": "f328356235bfeee03f8dc0c93adb7d13ad4fd2b7",
+  "entrypoint": "sudo python3 proxmox/atlas-enroll.py",
+  "role": "docker",
+  "catalog": {
+    "resources": 242,
+    "failed": 0,
+    "skipped": 0,
+    "failed_to_restart": 0,
+    "event_failures": 0,
+    "puppet_enabled": true,
+    "puppet_active": true,
+    "production_infrastructure_services_healthy": 4,
+    "repeat": {
+      "passed": true,
+      "resources": 242,
+      "failed": 0,
+      "skipped": 0,
+      "identity_files_byte_equal": 20,
+      "changed_resources": 2,
+      "changed_resources_reason": "Existing toolchain and plugin synchronization Exec resources run on each catalog"
+    }
+  },
+  "native_identity": {
+    "public_key_algorithm": "ML-DSA-44",
+    "signature_algorithm": "ML-DSA-44",
+    "certificate_der_sha256": "32960a95685e6f0ad117e303e6d16f65de9d7e72d98d6e662bbcba8826d46f4a",
+    "private_key_matches": true,
+    "root_der_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+    "root_unchanged": true,
+    "tls_version": "TLSv1.3",
+    "negotiated_group": "X25519MLKEM768"
+  },
+  "freeipa": {
+    "installer": "OpenVox freeipa::client resource; no manual ipa-client-install",
+    "server": "ipa.home.arpa",
+    "host": "atlas.home.arpa",
+    "realm": "HOME.ARPA",
+    "installation_complete": true,
+    "sssd_active": true,
+    "sssd_server_pinned": true,
+    "host_keytab_kinit": true,
+    "host_service_ticket": true,
+    "nss_users_resolved": [
+      "user",
+      "beszel"
+    ],
+    "imported_users": 10,
+    "imported_groups": 16,
+    "pkinit_disabled": true,
+    "dogtag_installed": false,
+    "migration_evidence": "atlas-ipa-migration-results.json"
+  },
+  "certificates": [
+    {
+      "name": "atlas",
+      "certificate": "/opt/docker/traefik/data/certs/atlas_fullchain.pem",
+      "private_key": "/opt/docker/traefik/data/certs/atlas_key.pem",
+      "sans": [
+        "*.atlas.home.arpa",
+        "atlas.home.arpa"
+      ],
+      "certificate_der_sha256": "112eb5592340c25372da01cc36baf47a47bb564c6e4d3de1767c83b083314e35",
+      "public_key_algorithm": "ML-DSA-44",
+      "signature_algorithm": "ML-DSA-44",
+      "private_key_matches": true,
+      "chain_verifies_to_authenticated_root": true,
+      "expires_at": "2027-01-17T20:12:03Z"
+    },
+    {
+      "name": "airflow",
+      "certificate": "/opt/docker/airflow/secrets/fullchain.pem",
+      "private_key": "/opt/docker/airflow/secrets/key.pem",
+      "sans": [
+        "airflow.atlas.home.arpa"
+      ],
+      "certificate_der_sha256": "bfad6ec16ee7400df81c82f464190fc6475e5aad0fa3637e15c0a2dd4ffdc9f7",
+      "public_key_algorithm": "ML-DSA-44",
+      "signature_algorithm": "ML-DSA-44",
+      "private_key_matches": true,
+      "chain_verifies_to_authenticated_root": true,
+      "expires_at": "2027-01-17T20:12:03Z"
+    },
+    {
+      "name": "wolf",
+      "certificate": "/opt/docker/puppet-control-repo/docker/wolf/secrets/fullchain.pem",
+      "private_key": "/opt/docker/puppet-control-repo/docker/wolf/secrets/key.pem",
+      "sans": [
+        "wolf.atlas.home.arpa"
+      ],
+      "certificate_der_sha256": "bb7bbb86b1d4d8345165e4242122cebec61a903a32c06aceb7d86d930ac1653d",
+      "public_key_algorithm": "ML-DSA-44",
+      "signature_algorithm": "ML-DSA-44",
+      "private_key_matches": true,
+      "chain_verifies_to_authenticated_root": true,
+      "expires_at": "2027-01-17T20:12:03Z"
+    },
+    {
+      "name": "browser-use",
+      "certificate": "/opt/docker/browser-use/secrets/browser-use.crt",
+      "private_key": "/opt/docker/browser-use/secrets/browser-use.key",
+      "sans": [
+        "browser-use.atlas.home.arpa"
+      ],
+      "certificate_der_sha256": "11e176422342195427de28778e194733926e4215fcb30a801a6a12d2c9f40aed",
+      "public_key_algorithm": "ML-DSA-44",
+      "signature_algorithm": "ML-DSA-44",
+      "private_key_matches": true,
+      "chain_verifies_to_authenticated_root": true,
+      "expires_at": "2027-01-17T20:12:03Z"
+    },
+    {
+      "name": "codex",
+      "certificate": "/home/user/.config/home-arpa/mtls/codex.crt",
+      "private_key": "/home/user/.config/home-arpa/mtls/codex.key",
+      "sans": [
+        "codex.atlas.home.arpa"
+      ],
+      "certificate_der_sha256": "5aeab46a4b90f987595021b8108d6cb5e65422063539c452ebec76f805cd09fb",
+      "public_key_algorithm": "ML-DSA-44",
+      "signature_algorithm": "ML-DSA-44",
+      "private_key_matches": true,
+      "chain_verifies_to_authenticated_root": true,
+      "expires_at": "2027-01-17T20:12:06Z"
+    }
+  ],
+  "vault_authorization": {
+    "certificate_authentication_passed": true,
+    "token_policies": [
+      "puppet"
+    ],
+    "agent_hiera_kv_read_http_status": 403,
+    "other_hostname_issue_http_status": 400,
+    "legacy_docker_role_issue_http_status": 403,
+    "negative_checks_issued_certificates": false
+  },
+  "packages": {
+    "openvox-agent": "9.1.0+homelab.24001-1+ubuntu26.04",
+    "freeipa-client": "4.13.1-1",
+    "python3-ipalib": "4.13.1-1+atlas1",
+    "curl": "8.18.0-1ubuntu2.8+atlas1",
+    "libcurl4t64": "8.18.0-1ubuntu2.8+atlas1",
+    "sssd": "2.12.0-1ubuntu5.5"
+  },
+  "focused_checks": {
+    "migration_tests": 21,
+    "freeipa_provider_specs": 29,
+    "user_profile_catalog_tests": 30,
+    "enrollment_provisioning_tests": 60,
+    "curl_crypto_checks": 9,
+    "ipalib_spki_algorithms": 3,
+    "publisher_tests": 27,
+    "backup_tests": 47,
+    "toolchain_first_install_tests": 2
+  },
+  "private_evidence": {
+    "successful_catalog_log": "/root/openvox-infra/atlas-enrollment.log",
+    "enrollment_checkpoint": "/root/openvox-infra/atlas-enrolled.json",
+    "last_run_summary": "/opt/puppetlabs/puppet/public/last_run_summary.yaml"
+  },
+  "limits": [
+    "No production host reboot or restore of the final post-enrollment backup was performed in this acceptance.",
+    "Interactive human SSH GSSAPI login and website application deployment were not exercised.",
+    "Website certificate renewal was not exercised.",
+    "Native curl and python3-ipalib backports must be refreshed or retired as distribution packages change; packages are not held."
+  ]
+}

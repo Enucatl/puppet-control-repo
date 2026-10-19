@@ -2,9 +2,12 @@
 
 This is the scripted implementation for [rehearsal #14](https://github.com/Enucatl/puppet-control-repo/issues/14)
 and [deployment #8](https://github.com/Enucatl/puppet-control-repo/issues/8).
-Atlas's native OpenVox enrollment waits for the new identity service and its
-required accounts. The new endpoint is `ipa.home.arpa`; the existing
-`freeipa.home.arpa` service remains on Docker during preparation.
+The final live import preserved all 10 users and 16 groups, including their
+IDs, memberships, HBAC and sudo policies. Atlas is now enrolled through
+OpenVox's `freeipa::client` resource against `ipa.home.arpa`; its full Docker
+catalog passed. The existing `freeipa.home.arpa` service remains on Docker.
+See [migration evidence](atlas-ipa-migration-results.json) and
+[enrollment evidence](atlas-enrollment-results.json).
 
 The realm remains `HOME.ARPA` and the domain remains `home.arpa`. The operator
 confirmed that password Kerberos and SSH GSSAPI are sufficient: the installer
@@ -162,20 +165,20 @@ as proof of account preservation, renewal, client enrollment or recovery. #14
 also requires real HTTP/LDAP/Kerberos checks, unchanged required access, renewal
 and reload, absence of Dogtag and the original-deployment rollback procedure.
 
-DNS is deployed and the image's fresh-install checks passed. Record real
-account-migration acceptance separately before Atlas's first full catalog.
+DNS is deployed, and fresh initialization, account migration and Atlas
+client enrollment have passed their recorded acceptance checks.
 Initialization passed with ML-DSA-44 HTTPS and LDAPS, administrator Kerberos and
 API access, and no Dogtag instance. `ipa-pkinit-manage status` reports disabled;
 FreeIPA still retains its self-signed KDC certificate and PKINIT configuration.
 The pre-migration backup contains 13 volumes and 19 archives, with every archive
-checksum verified on Proxmox after copying it off Atlas. No clients have moved.
+checksum verified on Proxmox after copying it off Atlas. Atlas now uses the
+new IPA service; other clients have not moved.
 
 Actual production-mode import has passed on the isolated clone, including the
 existing enrollment password's LDAP and Kerberos logins. See
 [migration evidence](atlas-ipa-migration-results.json) for measured acceptance.
-Final live import belongs in the source identity-change freeze, using a fresh
-source export and the same exclusions and acceptance checks, before enrolling
-Atlas. After verifying a fresh off-host backup, run:
+The final live import then passed against the authoritative service, using a
+fresh source export after a verified off-host backup. The command used was:
 
 ```bash
 sudo python3 proxmox/atlas-freeipa-migrate.py import \
