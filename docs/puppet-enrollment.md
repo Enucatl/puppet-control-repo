@@ -74,8 +74,10 @@ against `openvox.home.arpa`. Its catalog installs the FreeIPA client and runs
 `ipa-client-install` with `ipa.home.arpa` and the authenticated CA file. It also
 creates the website certificate directories and certificates from Atlas's node
 data. Existing Docker clients retain their original node data and endpoints.
-Private enrollment output is retained under `/root/openvox-infra`; an existing
-agent certificate requires an ordinary agent run instead of re-enrollment.
+Private enrollment output is retained under `/root/openvox-infra`. Repeating
+the command with an existing certificate resumes an ordinary catalog run. It
+checks the configured certname and server, preserves the identity, and does not
+create another enrollment token.
 
 ### Other provisioning
 

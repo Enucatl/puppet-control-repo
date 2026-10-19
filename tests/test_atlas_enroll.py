@@ -24,6 +24,7 @@ def enrollment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.setattr(module.infra, "STATE", tmp_path)
     monkeypatch.setattr(module, "PUPPET_CA", tmp_path / "puppet-ca.pem")
     monkeypatch.setattr(module, "SYSTEM_CA", tmp_path / "system-ca.crt")
+    monkeypatch.setattr(module, "CERTIFICATE", tmp_path / "atlas.pem")
     for name in ("run", "api", "openvox", "git"):
         monkeypatch.setattr(module.infra, name, Mock(name=name))
     module.infra.openvox.return_value = "puppet-chain"
@@ -132,3 +133,22 @@ def test_token_uses_stdin(
         ]
         == "atlas.home.arpa"
     )
+
+
+def test_existing_certificate_resumes_catalog(
+    enrollment: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Retry a partial first catalog without issuing another enrollment token."""
+    (enrollment.infra.STATE / "freeipa").mkdir()
+    (enrollment.infra.STATE / "freeipa/imported.json").write_text('{"success":true}')
+    enrollment.CERTIFICATE.write_text("existing certificate")
+    monkeypatch.setattr(enrollment, "install_trust", Mock())
+    monkeypatch.setattr(enrollment, "configure_runtime", Mock())
+    enrollment.infra.run.return_value = "catalog applied"
+    enrollment.enroll()
+    enrollment.infra.api.assert_not_called()
+    assert enrollment.infra.run.call_args.args[0][-3:] == [
+        "--apply",
+        "atlas.home.arpa",
+        "openvox.home.arpa",
+    ]

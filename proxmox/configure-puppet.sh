@@ -3,6 +3,7 @@ set -euo pipefail
 # Shared Puppet enrollment script
 # Usage: configure-puppet.sh <node_type> <vault_token> <certname> [puppet_server]
 # Read-only host preflight: configure-puppet.sh --preflight <certname>
+# Resume a catalog: configure-puppet.sh --apply <certname> <puppet_server>
 
 check_existing_identity() {
   local host_key
@@ -16,10 +17,35 @@ check_existing_identity() {
   fi
 }
 
+apply_catalog() {
+  systemctl unmask --runtime puppet.service
+  systemctl enable puppet
+  /opt/puppetlabs/bin/puppet resource service puppet enable=true
+  local puppet_status=0
+  /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || puppet_status=$?
+  case "$puppet_status" in
+    0|2) ;;
+    *) return "$puppet_status" ;;
+  esac
+  /opt/puppetlabs/bin/puppet resource service puppet ensure=running
+}
+
 if [[ ${1:-} == --preflight ]]; then
   check_existing_identity
   check_existing_identity --certname "${2:?certname required}"
   exit 0
+fi
+
+if [[ ${1:-} == --apply ]]; then
+  export OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
+  test -s "$OPENSSL_CONF"
+  [[ $(/opt/puppetlabs/bin/puppet config print certname --section agent) == "${2:?certname required}" &&
+     $(/opt/puppetlabs/bin/puppet config print server --section agent) == "${3:?server required}" ]]
+  test -s "$(/opt/puppetlabs/bin/puppet config print hostcert --section agent)"
+  check_existing_identity
+  systemctl stop puppet
+  apply_catalog
+  exit
 fi
 
 NODE_TYPE="${1:?node_type required}"
@@ -59,14 +85,4 @@ echo "node_type=${NODE_TYPE}" > /etc/facter/facts.d/node_type.txt
 /opt/puppetlabs/bin/puppet config set certname "$CERTNAME" --section main
 /opt/puppetlabs/bin/puppet config set certificate_revocation leaf --section agent
 
-# Enable and run
-systemctl unmask --runtime puppet.service
-systemctl enable puppet
-/opt/puppetlabs/bin/puppet resource service puppet enable=true
-PUPPET_STATUS=0
-/opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || PUPPET_STATUS=$?
-case "$PUPPET_STATUS" in
-    0|2) ;; # Successful run, with or without changes.
-    *) exit "$PUPPET_STATUS" ;;
-esac
-/opt/puppetlabs/bin/puppet resource service puppet ensure=running
+apply_catalog

@@ -18,6 +18,7 @@ SPEC.loader.exec_module(infra)
 CERTNAME = "atlas.home.arpa"
 SYSTEM_CA = Path("/usr/local/share/ca-certificates/atlas-infrastructure.crt")
 PUPPET_CA = Path("/etc/puppetlabs/puppet/ssl/certs/ca.pem")
+CERTIFICATE = Path("/etc/puppetlabs/puppet/ssl/certs/atlas.home.arpa.pem")
 
 
 def configure_runtime() -> None:
@@ -96,42 +97,40 @@ def enroll() -> None:
         or json.loads(checkpoint.read_text()).get("success") is not True
     ):
         raise RuntimeError("Complete the verified final IPA import before enrollment")
-    certificate = Path("/etc/puppetlabs/puppet/ssl/certs/atlas.home.arpa.pem")
-    if certificate.exists():
-        raise RuntimeError(
-            "Atlas already has a certificate; run its agent instead of reenrolling"
-        )
     helper = str(infra.SOURCE / "proxmox/configure-puppet.sh")
     infra.run(["bash", helper, "--preflight", CERTNAME])
     install_trust()
     configure_runtime()
-    token = infra.api(
-        "POST",
-        "auth/token/create-orphan",
-        {
-            "policies": ["puppet-enrollment"],
-            "type": "service",
-            "ttl": "2h",
-            "num_uses": 1,
-            "renewable": False,
-            "no_default_policy": True,
-            "meta": {"certname": CERTNAME},
-        },
-    )["auth"]
-    if (
-        token["policies"] != ["puppet-enrollment"]
-        or token["metadata"] != {"certname": CERTNAME}
-        or token["num_uses"] != 1
-        or not token["orphan"]
-        or token["renewable"]
-        or token["token_type"] != "service"
-        or not 0 < token["lease_duration"] <= 7200
-    ):
-        raise RuntimeError("Vault returned an invalid enrollment token")
-    log = infra.run(
-        ["bash", helper, "docker", "-", CERTNAME, "openvox.home.arpa"],
-        token["client_token"] + "\n",
-    )
+    if CERTIFICATE.exists():
+        log = infra.run(["bash", helper, "--apply", CERTNAME, "openvox.home.arpa"])
+    else:
+        token = infra.api(
+            "POST",
+            "auth/token/create-orphan",
+            {
+                "policies": ["puppet-enrollment"],
+                "type": "service",
+                "ttl": "2h",
+                "num_uses": 1,
+                "renewable": False,
+                "no_default_policy": True,
+                "meta": {"certname": CERTNAME},
+            },
+        )["auth"]
+        if (
+            token["policies"] != ["puppet-enrollment"]
+            or token["metadata"] != {"certname": CERTNAME}
+            or token["num_uses"] != 1
+            or not token["orphan"]
+            or token["renewable"]
+            or token["token_type"] != "service"
+            or not 0 < token["lease_duration"] <= 7200
+        ):
+            raise RuntimeError("Vault returned an invalid enrollment token")
+        log = infra.run(
+            ["bash", helper, "docker", "-", CERTNAME, "openvox.home.arpa"],
+            token["client_token"] + "\n",
+        )
     infra.save(infra.STATE / "atlas-enrollment.log", log)
     infra.save(
         infra.STATE / "atlas-enrolled.json",
