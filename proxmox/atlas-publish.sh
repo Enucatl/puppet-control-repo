@@ -82,7 +82,6 @@ chmod 2775 /opt/git/openvox "$bare"
 "${bare_git[@]}" config core.sharedRepository 0664
 chmod -R o+rX,o-w "$bare"
 install -d -o user_l -g docker -m 2775 "$bare/hooks"
-install -o user_l -g docker -m 0755 "$checkout/docker/openvox/infra-host-pre-receive" "$bare/hooks/pre-receive"
 
 if "${control_git[@]}" show-ref --verify --quiet refs/heads/production; then
     "${control_git[@]}" switch production
@@ -90,6 +89,7 @@ if "${control_git[@]}" show-ref --verify --quiet refs/heads/production; then
 else
     "${control_git[@]}" switch --create production "$revision"
 fi
+install -o user_l -g docker -m 0755 "$checkout/docker/openvox/infra-host-pre-receive" "$bare/hooks/pre-receive"
 "${control_git[@]}" config --local --replace-all remote.origin.pushurl "$github"
 "${control_git[@]}" config --local --add remote.origin.pushurl "$bare"
 "${control_git[@]}" config --local --replace-all remote.origin.push refs/heads/production:refs/heads/production

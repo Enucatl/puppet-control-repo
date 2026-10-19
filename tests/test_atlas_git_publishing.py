@@ -50,15 +50,16 @@ def publishing(tmp_path: Path) -> Path:
     reference.write_text(
         (PROXMOX.parent / "docker/openvox/infra-host-post-receive").read_text()
     )
+    git(seed, "add", str(reference))
+    base = commit(seed, "production base")
+    git(seed, "switch", "-qc", "dev")
     guard = reference.with_name("infra-host-pre-receive")
     guard.write_text(
         (PROXMOX.parent / "docker/openvox/infra-host-pre-receive")
         .read_text()
         .replace("/run/lock/", str(tmp_path / "run/lock") + "/")
     )
-    git(seed, "add", str(reference), str(guard))
-    base = commit(seed, "production base")
-    git(seed, "switch", "-qc", "dev")
+    git(seed, "add", str(guard))
     revision = commit(seed, "published dev target")
     github = tmp_path / "github.git"
     git(tmp_path, "clone", "-q", "--bare", str(seed), str(github))
