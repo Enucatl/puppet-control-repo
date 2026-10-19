@@ -505,6 +505,19 @@ def deploy_initial() -> None:
     run(
         [
             "install",
+            "-d",
+            "-o",
+            "user_l",
+            "-g",
+            "docker",
+            "-m",
+            "2775",
+            "/opt/git/openvox/control.git/hooks",
+        ]
+    )
+    run(
+        [
+            "install",
             "-o",
             "user_l",
             "-g",
