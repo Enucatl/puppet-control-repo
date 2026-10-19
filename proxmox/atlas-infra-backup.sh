@@ -144,6 +144,14 @@ for volume in "${volumes[@]}"; do
 done
 tar --numeric-owner --acls --xattrs -czf "$output/credentials.tar.gz" -C /root openvox-infra
 host_config=(etc/docker/daemon.json etc/subuid etc/subgid etc/openvox-infra/promoted)
+# Native agent identities must survive restoration alongside the server volumes.
+for config in etc/puppetlabs/puppet etc/facter/facts.d etc/ipa \
+    etc/krb5.conf etc/krb5.keytab etc/krb5.conf.d etc/sssd \
+    var/lib/ipa-client/sysrestore var/lib/ipa-client/pki \
+    etc/systemd/system/puppet.service.d \
+    usr/local/share/ca-certificates/atlas-infrastructure.crt; do
+    if [[ -e /"$config" || -L /"$config" ]]; then host_config+=("$config"); fi
+done
 for unit in atlas-openvox-renew.service atlas-openvox-renew.timer; do
     if [[ -f /etc/systemd/system/$unit ]]; then host_config+=("etc/systemd/system/$unit"); fi
 done

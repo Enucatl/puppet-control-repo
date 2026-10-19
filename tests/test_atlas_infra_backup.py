@@ -248,6 +248,7 @@ esac
     source = SCRIPT.read_text()
     for prefix in ("/scratch/vault", "/etc/", "/root", "/opt/", "/run/lock/"):
         source = source.replace(prefix, str(tmp_path) + prefix)
+    source = source.replace('/"$config"', str(tmp_path) + '/"$config"')
     source = source.replace("SECONDS + 300", "SECONDS + 1").replace(
         "sleep 2", "sleep 0.05"
     )
@@ -571,3 +572,52 @@ def test_backup_does_not_rewrite_checkout_indexes(authority: Path) -> None:
     assert result.returncode == 0, result.stderr
     for index, before in indexes.items():
         assert (index.stat().st_ino, index.read_bytes()) == before
+
+
+def test_backup_preserves_native_agent_identities_without_host_caches(
+    authority: Path,
+) -> None:
+    """Retain enrollment keys, trust and configuration in the private host archive."""
+    files = {
+        "etc/puppetlabs/puppet/puppet.conf": "[main]\ncertname = atlas.home.arpa\n",
+        "etc/puppetlabs/puppet/ssl/private_keys/atlas.home.arpa.pem": "PUPPET-PRIVATE-KEY-CANARY",
+        "etc/facter/facts.d/node_type.yaml": "node_type: docker\n",
+        "etc/ipa/default.conf": "[global]\nserver = ipa.home.arpa\n",
+        "etc/ipa/ca.crt": "IPA-CA-CANARY",
+        "etc/krb5.conf": "includedir /etc/krb5.conf.d/\n",
+        "etc/krb5.keytab": "KRB5-PRIVATE-KEYTAB-CANARY",
+        "etc/krb5.conf.d/ipa.conf": "default_realm = HOME.ARPA\n",
+        "etc/sssd/sssd.conf": "SSSD-PRIVATE-CONFIG-CANARY",
+        "var/lib/ipa-client/sysrestore/sysrestore.state": "IPA-SYSRESTORE-CANARY",
+        "var/lib/ipa-client/pki/ca-bundle.pem": "IPA-PKI-CA-CANARY",
+        "etc/systemd/system/puppet.service.d/openssl.conf": "[Service]\nEnvironment=OPENSSL_CONF=/etc/ssl/openssl.cnf\n",
+        "usr/local/share/ca-certificates/atlas-infrastructure.crt": "ATLAS-PUBLIC-CA-CANARY",
+    }
+    omitted = {
+        "var/lib/sss/db/cache_home.arpa.ldb": "SSSD-CACHE-CANARY",
+        "var/cache/puppet/catalog.json": "PUPPET-CACHE-CANARY",
+        "etc/shadow": "SHADOW-CANARY",
+    }
+    for name, content in (files | omitted).items():
+        path = authority / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        path.chmod(0o600)
+    result = backup(authority)
+    assert result.returncode == 0, result.stderr
+    output = authority / "scratch/vault/snapshot"
+    archive_path = output / "host-config.tar.gz"
+    assert archive_path.stat().st_mode & 0o777 == 0o600
+    with tarfile.open(archive_path) as archive:
+        for name, content in files.items():
+            member = archive.getmember(name)
+            source = (authority / name).stat()
+            assert member.mode == 0o600
+            assert (member.uid, member.gid) == (source.st_uid, source.st_gid)
+            assert archive.extractfile(member).read() == content.encode()
+        assert not (set(omitted) & set(archive.getnames()))
+    public_output = (
+        result.stdout + result.stderr + (output / "manifest.json").read_text()
+    )
+    for canary in (*files.values(), *omitted.values()):
+        assert canary not in public_output
