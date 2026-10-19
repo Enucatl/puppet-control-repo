@@ -263,8 +263,8 @@ later transition.
 
 Atlas keeps GitHub's SSH URL for fetches and pins GitHub's public host key in
 the checkout's Git metadata. GitHub authentication uses the administrator's
-forwarded SSH agent; private keys are not copied to Atlas. Ordinary `git push` from its checkout
-publishes only the local `production` branch to both:
+forwarded SSH agent; private keys are not copied to Atlas. Ordinary `git push`
+from its checkout publishes only the local `production` branch to both:
 
 - `git@github.com:Enucatl/puppet-control-repo.git`, branch `production`.
 - `/opt/git/openvox/control.git`, branch `production`.
@@ -282,6 +282,17 @@ already runs r10k, generates Puppet types and refreshes the environment caches;
 it uses container paths and cannot run directly as the host's Git hook. Its
 startup hook check must match the dispatch arrangement. Initial code deployment
 must precede normal startup; root/CA initialization remains separate and explicit.
+
+Live publishing acceptance passed on **2026-10-19**, using script revision
+`9586b9c5cacf9906cbf1b73a8da997fa4e03e272`. Two setup/publication runs completed;
+an ordinary `git push` from a separate Atlas SSH session then reached both
+production targets using the stored configuration. Both refs matched the
+requested revision, the working checkout was clean on `production`, and the
+bare repository was `user_l:docker`, mode `2770`, with no active receive hook.
+Legacy checkout/index/untracked-content/ref hashes and its receiver refs/hook
+hashes were unchanged by the routing handover. **12 real-Git tests passed**,
+including divergent-history and dirty-work refusal, shallow-history recovery
+and repeatability. See the [publishing evidence](../docs/atlas-git-publishing-results.json).
 
 ## Rebuilding a development VM
 

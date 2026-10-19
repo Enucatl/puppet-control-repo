@@ -1,0 +1,68 @@
+{
+  "verified_at": "2026-10-19T15:53:21+00:00",
+  "source_revision": "9586b9c5cacf9906cbf1b73a8da997fa4e03e272",
+  "fqdn": "atlas.home.arpa",
+  "checkout": "/opt/docker/puppet-control-repo",
+  "branch": "production",
+  "bare_repository": "/opt/git/openvox/control.git",
+  "bare_owner_mode": "user_l:docker 2770",
+  "push_urls": [
+    "git@github.com:Enucatl/puppet-control-repo.git",
+    "/opt/git/openvox/control.git"
+  ],
+  "production_targets_equal": true,
+  "publishing_runs": 2,
+  "ordinary_git_push_passed": true,
+  "checkout_clean": true,
+  "complete_history": true,
+  "bare_receive_hook_active": false,
+  "infrastructure_containers": 0,
+  "authority_volumes": 0,
+  "puppet_enrolled": false,
+  "legacy_checkout": "/export/docker/puppet-control-repo",
+  "legacy_fetch_and_only_push_url": "user_l@docker.home.arpa:/opt/git/puppet-control-repo.git",
+  "legacy_bare_github_remote_removed": true,
+  "legacy_head": "226eed630f3ffd67f3d16b8acefedf7d01d89f3c",
+  "legacy_worktree_index_untracked_and_refs_preserved": true,
+  "legacy_bare_refs_and_deployment_hook_preserved": true,
+  "legacy_preservation_hashes": {
+    "status_sha256": "9c4314b4006babeae179186c53d8ddd96ecc9ce4c5e1ec3907d5abde4c04b604",
+    "tracked_diff_sha256": "ea74570e3402430316c2245d4f13749b6c96916a9100d502e5f7e48146bcc056",
+    "refs_sha256": "22194ae9092da5ac6832147147683975df40f048e50054589d614f928370ef8d",
+    "staged_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "head": "226eed630f3ffd67f3d16b8acefedf7d01d89f3c",
+    "untracked_contents_sha256": "4ce2bc78f1bbebf5cb2860ed6c18e9ca41dcf17c115f8725fb4aef830a341bea"
+  },
+  "tests_passed": 12,
+  "checks_passed": [
+    "Real-Git integration tests",
+    "Ruff format/check",
+    "Bash syntax",
+    "ShellCheck",
+    "git diff --check"
+  ],
+  "script_sha256": {
+    "proxmox/atlas-publish.sh": "0c19b4ffee518c02571c3636dfd00f95a02f27c90fe933417c75ee68a7be0da0",
+    "proxmox/legacy-git-remotes.sh": "72b0de00913e3ab7743d28349c799d269b2e9db88c6f65761cf6b22ead1bf5cb"
+  },
+  "ci_observed": [
+    {
+      "conclusion": "",
+      "databaseId": 39281300496,
+      "status": "queued",
+      "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39281300496"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 39281208139,
+      "status": "queued",
+      "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39281208139"
+    }
+  ],
+  "deferred_acceptance": [
+    "Bind Atlas Git storage into the OpenVox container and grant remapped UID access (#13)",
+    "Connect a host receive hook to container r10k/type generation/cache refresh and update startup hook validation (#13)",
+    "Explicit new ML-DSA-44 authority initialization, service activation and Atlas enrollment (#13)",
+    "Independent rebuild and established identity/state recovery (#18)"
+  ]
+}
