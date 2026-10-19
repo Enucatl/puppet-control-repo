@@ -72,8 +72,8 @@ getent group docker >/dev/null || groupadd --system docker
 usermod --append --groups docker user_l
 id -u dockremap >/dev/null 2>&1 || useradd --system --user-group --no-create-home \
     --home-dir /nonexistent --shell /usr/sbin/nologin dockremap
-if grep -q '^user_l:' /etc/subuid; then usermod --del-subuids 100000-165535 user_l; fi
-if grep -q '^user_l:' /etc/subgid; then usermod --del-subgids 100000-165535 user_l; fi
+# usermod refuses this change while user_l's bootstrap SSH session is active.
+sed -i '/^user_l:100000:65536$/d' /etc/subuid /etc/subgid
 if ! grep -q '^dockremap:' /etc/subuid; then usermod --add-subuids 100000-165535 dockremap; fi
 if ! grep -q '^dockremap:' /etc/subgid; then usermod --add-subgids 100000-165535 dockremap; fi
 

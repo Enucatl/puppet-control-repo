@@ -88,14 +88,14 @@ case "$name" in
   useradd) touch "$root/dockremap-user" ;;
   usermod)
     case "$1" in
-      --del-subuids) sed -i '/^user_l:/d' "$root/etc/subuid" ;;
-      --del-subgids) sed -i '/^user_l:/d' "$root/etc/subgid" ;;
+      --del-subuids|--del-subgids) echo 'user_l is currently used by a process' >&2; exit 8 ;;
       --add-subuids) printf 'dockremap:100000:65536\n' >> "$root/etc/subuid" ;;
       --add-subgids) printf 'dockremap:100000:65536\n' >> "$root/etc/subgid" ;;
       --append) [[ "$*" == '--append --groups docker user_l' ]] ;;
       *) exit 99 ;;
     esac
     ;;
+  sed) exec /usr/bin/sed "$@" ;;
   runuser)
     [[ $1 == -u && $2 == user_l && $3 == -- ]]
     shift 3
@@ -184,6 +184,7 @@ esac
         "runuser",
         "chown",
         "install",
+        "sed",
     ):
         binary = tmp_path / "bin" / name
         binary.write_text(command)
@@ -335,8 +336,13 @@ def test_previous_bootstrap_upgrade_requires_empty_daemon(
         for index, call in enumerate(calls)
         if call.startswith("install -m 0644 ") and call.endswith(str(daemon))
     )
-    transfer = calls.index("usermod --del-subuids 100000-165535 user_l")
-    assert calls.index(stop) < first_daemon_write < transfer
+    transfer = next(
+        index
+        for index, call in enumerate(calls)
+        if call.startswith("sed -i /^user_l:100000:65536$/d ")
+    )
+    add_mapping = calls.index("usermod --add-subuids 100000-165535 dockremap")
+    assert calls.index(stop) < first_daemon_write < transfer < add_mapping
     assert json.loads(daemon.read_text())["userns-remap"] == "default"
     for mapping in ("subuid", "subgid"):
         assert (bootstrap / "etc" / mapping).read_text() == "dockremap:100000:65536\n"
