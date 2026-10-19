@@ -190,6 +190,19 @@ The ownership, networking and Sysbox changes above are scripted for both a fresh
 base and an empty installation of the earlier minimal bootstrap. General
 Docker installations and populated state are not automatically migrated.
 
+The refined configuration passed live acceptance on **2026-10-19**, using control
+revision `44a7603aac130dc75b1a91ab5351e6b25286518d`. Two bootstrap invocations
+completed; ownership, group access, daemon settings, bridge IPv4/IPv6 allocation
+and clean SSH-origin checkouts matched the declarations above. Both a disposable
+`hello-world` container and a Debian container using `--runtime=sysbox-runc` ran
+successfully as `user_l` and were removed. The `fusermount3` AppArmor profile
+remained enforced, with each local Sysbox rule present exactly once.
+Puppet remains disabled and unenrolled; no infrastructure containers or authority
+volumes were created. Protected guest/template configurations were unchanged.
+The focused suite passed **217 tests**, plus Bash, ShellCheck and Ruff checks;
+[hosted CI passed](https://github.com/Enucatl/puppet-control-repo/actions/runs/39258803652).
+See the [configuration acceptance evidence](../docs/atlas-configuration-results.json).
+
 Earlier live tooling acceptance passed on **2026-10-19**, using control revision
 `06ff5054b3cd1634eded0ba57a2df0d3b9ecfe56`. Two invocations completed without
 repairs; the second retained the same package versions, clean checkouts and
@@ -201,7 +214,7 @@ Puppet remains disabled and unenrolled. No infrastructure containers or authorit
 volumes were created, and protected guest/template configuration hashes were
 unchanged. The local focused suite passed **201 tests**, and hosted CI passed.
 See the [sanitized bootstrap results](../docs/atlas-bootstrap-results.json).
-This proves tooling installation and rerun behavior; complete infrastructure
+These runs prove tooling installation and rerun behavior; complete infrastructure
 rebuild, authority activation/enrollment and independent state recovery remain
 under #13/#18.
 

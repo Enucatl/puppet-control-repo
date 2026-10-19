@@ -1,0 +1,94 @@
+{
+  "verified_at": "2026-10-19T13:17:09+00:00",
+  "fqdn": "atlas.home.arpa",
+  "bootstrap_runs": 2,
+  "bootstrap": {
+    "control_revision": "44a7603aac130dc75b1a91ab5351e6b25286518d",
+    "baseline_revision": "41c57257d33d471e2ae7cc7264938944c67434fd",
+    "userns_base": 100000,
+    "docker_version": "29.9.1",
+    "storage_driver": "overlay2"
+  },
+  "daemon": {
+    "default-address-pools": [
+      {
+        "base": "172.17.0.0/12",
+        "size": 20
+      },
+      {
+        "base": "2a02:168:6278:a400::/56",
+        "size": 64
+      }
+    ],
+    "bip": "172.20.0.1/16",
+    "experimental": true,
+    "fixed-cidr-v6": "2a02:168:6278:a500::/64",
+    "ipv6": true,
+    "userns-remap": "default",
+    "userland-proxy": false,
+    "log-driver": "json-file",
+    "log-opts": {
+      "max-size": "10m",
+      "max-file": "3"
+    },
+    "runtimes": {
+      "sysbox-runc": {
+        "path": "/usr/bin/sysbox-runc"
+      }
+    }
+  },
+  "sysbox_image": "debian@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f",
+  "sysbox_runtime_passed": true,
+  "hello_world_passed": true,
+  "fusermount3_apparmor_enforced": true,
+  "sysbox_fuse_rules_unique": true,
+  "docker_access_as_user_l": true,
+  "repository_owner": "user_l:docker",
+  "parent_owner_mode": "user_l:docker 2775",
+  "docker_bridge_ipv6_enabled": true,
+  "infrastructure_containers": 0,
+  "authority_volumes": 0,
+  "puppet_enrolled": false,
+  "bootstrap_script_sha256": "6ecf1e35270b393d9bfeec6e6bb38f626900f591f803dd4425fb41cbc9a84533",
+  "ssh_origins_verified": true,
+  "checkouts_clean": true,
+  "dockremap_subuid": "100000:65536",
+  "dockremap_subgid": "100000:65536",
+  "user_l_subordinate_ranges_removed": true,
+  "packages": {
+    "containerd.io": "2.4.2-2~ubuntu.26.04~resolute",
+    "docker-buildx-plugin": "0.38.0-1~ubuntu.26.04~resolute",
+    "docker-ce": "5:29.9.1-1~ubuntu.26.04~resolute",
+    "docker-ce-cli": "5:29.9.1-1~ubuntu.26.04~resolute",
+    "docker-compose-plugin": "5.6.0-1~ubuntu.26.04~resolute",
+    "sysbox-ce": "0.7.1.linux"
+  },
+  "protected_configurations_unchanged": [
+    100,
+    200,
+    300,
+    1000,
+    9000,
+    9001
+  ],
+  "focused_tests_passed": 217,
+  "checks_passed": [
+    "bash -n",
+    "shellcheck -x",
+    "ruff check",
+    "ruff format --check",
+    "git diff --check"
+  ],
+  "acceptance_scope": "Apply scripted configuration to the earlier empty bootstrap and repeat it; no fresh VM recreation or authority activation.",
+  "deferred_acceptance": [
+    "Router routes for Atlas a400::/56 and a500::/64 before routed IPv6 workloads",
+    "New OpenVox/Vault initialization, Atlas enrollment and convergence (#13)",
+    "Complete infrastructure rebuild and independent authority/application recovery (#18)",
+    "Service activation and exclusive scratch-disk handoff (#19)"
+  ],
+  "ci": {
+    "control_revision": "44a7603aac130dc75b1a91ab5351e6b25286518d",
+    "conclusion": "success",
+    "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39258803652"
+  }
+}
