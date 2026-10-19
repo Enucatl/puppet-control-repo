@@ -2,7 +2,7 @@
   "recorded_at": "2026-10-19T19:31:12.409678+00:00",
   "source": "freeipa.home.arpa",
   "target": "ipa.home.arpa",
-  "scope": "Isolated prod-mode rehearsal; no live import or client enrollment",
+  "scope": "Verified isolated rehearsal followed by the authorized final live production-mode import",
   "rehearsal_container": "atlas-ipa-rehearsal",
   "live_dry_run": {
     "revision": "d283ce18ee3af4a85fd46fec89eccaacc3f95185",
@@ -82,10 +82,19 @@
     "hbac_matching": "Exact DN, or unique CN within the same parent when native migration retains a pre-existing target UUID; all captured policy attributes must match",
     "directory_entry_counts_include_selected_containers": true,
     "source_mutations": false,
-    "live_import_performed": false,
+    "live_import_performed": true,
     "client_enrollment_performed": false
   },
-  "live_authority_audit": {
+  "commands": {
+    "dry_run": "sudo python3 proxmox/atlas-freeipa-migrate.py dry-run --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json --source-ca /root/openvox-infra/ipa-migration-source/ca.pem",
+    "rehearsal": "sudo python3 proxmox/atlas-freeipa-migrate.py rehearse --container atlas-ipa-rehearsal --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json --source-ca /root/openvox-infra/ipa-migration-source/ca.pem --login-password-file /root/openvox-infra/ipa-migration-source/login.json",
+    "import": "sudo python3 proxmox/atlas-freeipa-migrate.py import --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json --source-ca /root/openvox-infra/ipa-migration-source/ca.pem --login-password-file /root/openvox-infra/ipa-migration-source/login.json"
+  },
+  "local_tests": {
+    "command": "uv run pytest -q tests/test_atlas_freeipa_migrate.py",
+    "passed": 21
+  },
+  "pre_import_live_authority_audit": {
     "production_services_healthy": 4,
     "ipa_users": 1,
     "ipa_groups": 5,
@@ -93,12 +102,79 @@
     "atlas_native_ipa_configuration_present": false,
     "atlas_openvox_client_certificate_present": false
   },
-  "commands": {
-    "dry_run": "sudo python3 proxmox/atlas-freeipa-migrate.py dry-run --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json --source-ca /root/openvox-infra/ipa-migration-source/ca.pem",
-    "rehearsal": "sudo python3 proxmox/atlas-freeipa-migrate.py rehearse --container atlas-ipa-rehearsal --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json --source-ca /root/openvox-infra/ipa-migration-source/ca.pem --login-password-file /root/openvox-infra/ipa-migration-source/login.json"
-  },
-  "local_tests": {
-    "command": "uv run pytest -q tests/test_atlas_freeipa_migrate.py",
-    "passed": 13
+  "final_live_import": {
+    "recorded_at": "2026-10-19T19:41:04.808965+00:00",
+    "revision": "7bb361a4a42d87399e62b7a89df7a3da77cb3ed8",
+    "container": "infra-ipa-1",
+    "volume": "infra_ipa_data",
+    "result": "passed",
+    "ipa_migrate_returncode": 0,
+    "source_export": {
+      "exported": 559,
+      "excluded_authority": 14
+    },
+    "source_entity_counts": {
+      "users": 10,
+      "groups": 16
+    },
+    "target_entity_counts": {
+      "users": 10,
+      "groups": 16
+    },
+    "source_directory_entry_counts": {
+      "users": 10,
+      "groups": 17,
+      "hbac": 23,
+      "sudo": 5,
+      "trust": 4,
+      "schema": 2
+    },
+    "target_directory_entry_counts": {
+      "users": 10,
+      "groups": 17,
+      "hbac": 23,
+      "sudo": 5,
+      "trust": 3,
+      "schema": 2
+    },
+    "identity_and_policy_mismatches": {
+      "users": 0,
+      "groups": 0,
+      "hbac": 0,
+      "sudo": 0
+    },
+    "trust_store_unchanged": true,
+    "schema_changed": true,
+    "login_proof": {
+      "migration_enabled": true,
+      "ldap_bind": true,
+      "kerberos_login": true,
+      "keys_were_absent": true,
+      "keys_generated": true,
+      "target_admin_api": true
+    },
+    "http_runtime_leaf_unchanged": true,
+    "http_public_key_algorithm": "ML-DSA-44",
+    "ldap_runtime_leaf_unchanged": true,
+    "ldap_public_key_algorithm": "ML-DSA-44",
+    "pkinit_disabled": true,
+    "production_services_healthy": 4,
+    "ipa_server_upgrade_succeeded": true,
+    "sidgen_succeeded": true,
+    "migration_error_log_lines": 0,
+    "success_checkpoint": "/root/openvox-infra/freeipa/imported.json",
+    "checkpoint_root_owned": true,
+    "checkpoint_mode": "0600",
+    "private_evidence": "/root/openvox-infra/freeipa/migration-import-1792438806540830028.json",
+    "pre_import_backup": {
+      "atlas": "/scratch/vault/atlas-ipa-pre-final-import-20261019T193701Z",
+      "offhost": "/root/openvox-atlas-ipa-pre-final-import-20261019T193701Z",
+      "volumes": 13,
+      "archives": 19,
+      "sha256_verified": true,
+      "manifest_sha256": "a2ac0da78597d8d2cde8098070ce490729dc076b12ed201013033ffb6abae4f6"
+    },
+    "source_mutations": false,
+    "client_enrollment_performed_by_import_script": false
   }
 }
