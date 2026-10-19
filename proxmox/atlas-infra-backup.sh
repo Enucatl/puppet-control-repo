@@ -60,18 +60,39 @@ for repository in "$source" "$baseline"; do
     }
 done
 [[ $(git -c "safe.directory=$bare" --git-dir="$bare" rev-parse --is-bare-repository) == true ]]
+if [[ ! -x $bare/hooks/pre-receive ]] ||
+    ! cmp -s "$source/docker/openvox/infra-host-pre-receive" "$bare/hooks/pre-receive"; then
+    echo 'Install the managed receive guard through publishing before backup.' >&2; exit 1;
+fi
 control_revision=$(git -c "safe.directory=$source" -C "$source" rev-parse HEAD)
 baseline_revision=$(git -c "safe.directory=$baseline" -C "$baseline" rev-parse HEAD)
 install -d -m 0700 /scratch/vault
 mkdir -m 0700 "$output"
 
 stopped=true
+wait_healthy() {
+    local deadline=$((SECONDS + 300)) records
+    while (( SECONDS < deadline )); do
+        records=$("${docker[@]}" inspect --format \
+            '{{.State.Running}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "${containers[@]}") || return 1
+        if [[ $records == $'true healthy\ntrue healthy\ntrue healthy' ]]; then return 0; fi
+        if [[ $records == *false* ]]; then
+            echo 'An established Atlas service stopped during recovery.' >&2; return 1
+        fi
+        sleep 2
+    done
+    echo 'Timed out waiting for healthy Atlas services.' >&2
+    return 1
+}
+start_services() {
+    "${compose[@]}" start vault vault-unsealer openvox >/dev/null && wait_healthy
+}
 restore_services() {
     local status=$?
     trap - EXIT
     if [[ $stopped == true ]]; then
-        "${compose[@]}" start vault vault-unsealer openvox >/dev/null || {
-            echo 'Backup failed to restart established Atlas services; restore them explicitly.' >&2; exit 1;
+        start_services || {
+            echo 'Backup failed to restore healthy established Atlas services; restore them explicitly.' >&2; exit 1;
         }
     fi
     exit "$status"
@@ -95,9 +116,9 @@ for unit in atlas-openvox-renew.service atlas-openvox-renew.timer; do
 done
 tar --numeric-owner --acls --xattrs -czf "$output/host-config.tar.gz" -C / "${host_config[@]}"
 tar --numeric-owner --acls --xattrs -czf "$output/control.git.tar.gz" -C /opt/git/openvox control.git
-git -c "safe.directory=$source" -C "$source" archive --format=tar.gz HEAD > "$output/control.tar.gz"
-git -c "safe.directory=$baseline" -C "$baseline" archive --format=tar.gz HEAD > "$output/hardening.tar.gz"
-"${compose[@]}" start vault vault-unsealer openvox >/dev/null
+git -c "safe.directory=$source" -C "$source" archive --format=tar.gz "$control_revision" > "$output/control.tar.gz"
+git -c "safe.directory=$baseline" -C "$baseline" archive --format=tar.gz "$baseline_revision" > "$output/hardening.tar.gz"
+start_services
 stopped=false
 # Image IDs are immutable; export them after the authorities are running again.
 "${docker[@]}" image save "${images[@]}" | gzip -1 > "$output/images.tar.gz"

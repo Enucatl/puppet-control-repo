@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import fcntl
 import os
 from pathlib import Path
 import subprocess
@@ -48,7 +50,13 @@ def publishing(tmp_path: Path) -> Path:
     reference.write_text(
         (PROXMOX.parent / "docker/openvox/infra-host-post-receive").read_text()
     )
-    git(seed, "add", str(reference))
+    guard = reference.with_name("infra-host-pre-receive")
+    guard.write_text(
+        (PROXMOX.parent / "docker/openvox/infra-host-pre-receive")
+        .read_text()
+        .replace("/run/lock/", str(tmp_path / "run/lock") + "/")
+    )
+    git(seed, "add", str(reference), str(guard))
     base = commit(seed, "production base")
     git(seed, "switch", "-qc", "dev")
     revision = commit(seed, "published dev target")
@@ -71,6 +79,7 @@ def publishing(tmp_path: Path) -> Path:
     (tmp_path / "base").write_text(base)
     (tmp_path / "uid").write_text("0")
     (tmp_path / "hostname").write_text("atlas.home.arpa")
+    (tmp_path / "run/lock").mkdir(parents=True)
     bins = tmp_path / "bin"
     bins.mkdir()
     commands = {
@@ -126,6 +135,7 @@ def run_script(
     source = (PROXMOX / name).read_text()
     source = source.replace(GITHUB, (root / "github.git").as_uri())
     source = source.replace("/opt/", str(root / "opt") + "/")
+    source = source.replace("/run/lock/", str(root / "run/lock") + "/")
     script = root / name
     script.write_text(source)
     return subprocess.run(
@@ -145,7 +155,7 @@ def run_script(
 
 
 def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> None:
-    """Publish a shallow detached checkout without introducing receiver hooks."""
+    """Publish a shallow detached checkout with only the managed receive guard."""
     revision = (publishing / "revision").read_text()
     checkout = publishing / "opt/docker/puppet-control-repo"
     bare = publishing / "opt/git/openvox/control.git"
@@ -194,7 +204,10 @@ def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> No
             assert not path.stat().st_mode & 0o002, path
             if path.is_dir():
                 assert path.stat().st_mode & 0o001, path
-        assert not any(path.is_file() for path in (bare / "hooks").glob("*"))
+        assert sorted(path.name for path in (bare / "hooks").glob("*")) == [
+            "pre-receive"
+        ]
+        assert (bare / "hooks/pre-receive").stat().st_mode & 0o111
 
 
 def test_atlas_preserves_dirty_checkout_without_publishing(publishing: Path) -> None:
@@ -427,6 +440,17 @@ def test_container_handler_records_commit_only_after_deploy_types_and_flush(
     """Verify deployment order, isolated Git context and persistent failure status."""
     for directory in ("git", "infra", "etc/puppetlabs/code/environments/production"):
         (tmp_path / directory).mkdir(parents=True)
+    deployed = tmp_path / "etc/puppetlabs/code/environments/production"
+    git(deployed, "init", "-q", "--initial-branch=production")
+    revision = commit(deployed, "deployed production")
+    git(
+        tmp_path,
+        "clone",
+        "-q",
+        "--bare",
+        str(deployed),
+        str(tmp_path / "git/control.git"),
+    )
     (tmp_path / "infra/infra-hiera.yaml").write_text("Atlas Hiera settings\n")
     for command in (
         "opt/puppetlabs/puppet/bin/r10k",
@@ -448,7 +472,6 @@ fi
 """
         )
         executable.chmod(0o755)
-    revision = "a" * 40
     result = subprocess.run(
         ["bash", str(runtime_script(tmp_path, "infra-post-receive"))],
         input=(
@@ -530,3 +553,31 @@ def test_startup_requires_the_exact_executable_host_hook(
     )
     assert (result.returncode == 0) == (hook == "managed"), result.stderr
     assert (tmp_path / "server-started").exists() == (hook == "managed")
+
+
+def test_publishing_waits_for_backup_before_checkout_or_ref_changes(
+    publishing: Path,
+) -> None:
+    """The actual publisher must hold maintenance exclusion before any Git mutation."""
+    checkout = publishing / "opt/docker/puppet-control-repo"
+    before = git(checkout, "show-ref")
+    revision = (publishing / "revision").read_text()
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        with (publishing / "run/lock/atlas-openvox-maintenance.lock").open(
+            "a"
+        ) as backup:
+            fcntl.flock(backup, fcntl.LOCK_EX)
+            pending = executor.submit(
+                run_script, publishing, "atlas-publish.sh", revision
+            )
+            try:
+                with pytest.raises(TimeoutError):
+                    pending.result(timeout=0.2)
+                assert git(checkout, "show-ref") == before
+                assert not (publishing / "opt/git/openvox/control.git").exists()
+                assert not (checkout / ".git/github-known-hosts").exists()
+            finally:
+                fcntl.flock(backup, fcntl.LOCK_UN)
+        result = pending.result(timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert git(checkout, "rev-parse", "production") == revision

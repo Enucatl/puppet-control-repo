@@ -9,6 +9,9 @@ BASELINE_REVISION=41c57257d33d471e2ae7cc7264938944c67434fd
 [[ $(id -u) == 0 && $(hostname -f) == atlas.home.arpa ]] || {
     echo 'Run as root on atlas.home.arpa.' >&2; exit 1;
 }
+if [[ -e /etc/openvox-infra/promoted || -L /etc/openvox-infra/promoted ]]; then
+    echo 'Atlas is promoted; use publishing and recovery procedures instead of bootstrap.' >&2; exit 1
+fi
 . /etc/os-release
 [[ $ID:$VERSION_ID:$(dpkg --print-architecture) == ubuntu:26.04:amd64 ]] || {
     echo 'Atlas bootstrap requires Ubuntu 26.04 amd64.' >&2; exit 1;

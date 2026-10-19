@@ -58,6 +58,14 @@ def authority(tmp_path: Path) -> Path:
         repository.mkdir(parents=True)
         git(repository, "init", "-q", "--initial-branch=production")
         (repository / "configuration").write_text(name)
+        if name == "puppet-control-repo":
+            guard = repository / "docker/openvox/infra-host-pre-receive"
+            guard.parent.mkdir(parents=True)
+            guard.write_text(
+                (
+                    SCRIPT.parent.parent / "docker/openvox/infra-host-pre-receive"
+                ).read_text()
+            )
         git(repository, "add", ".")
         git(
             repository,
@@ -79,6 +87,11 @@ def authority(tmp_path: Path) -> Path:
         str(tmp_path / "opt/docker/puppet-control-repo"),
         str(bare),
     )
+    guard = bare / "hooks/pre-receive"
+    guard.write_text(
+        (SCRIPT.parent.parent / "docker/openvox/infra-host-pre-receive").read_text()
+    )
+    guard.chmod(0o755)
     bins = tmp_path / "bin"
     bins.mkdir()
     (tmp_path / "run/lock").mkdir(parents=True)
@@ -119,6 +132,16 @@ case "$name" in
                 if [[ $failure == unmanaged-volume ]]; then echo other; else echo atlas; fi
                 ;;
             'inspect --format')
+                if [[ $3 == *State.Health* ]]; then
+                    if [[ $failure == exited ]]; then
+                        printf 'false unhealthy\ntrue healthy\ntrue healthy\n'
+                    elif [[ $failure == unhealthy || $failure == archive-unhealthy ]]; then
+                        printf 'true healthy\ntrue unhealthy\ntrue healthy\n'
+                    else
+                        printf 'true healthy\ntrue healthy\ntrue healthy\n'
+                    fi
+                    exit
+                fi
                 running=true
                 [[ $failure != stopped ]] || running=false
                 printf 'sha256:%064d %s\n' 0 "$running" | tr 0 a
@@ -166,7 +189,15 @@ case "$name" in
                     fi
                 done
                 [[ -n $volume ]]
-                [[ $failure != archive ]] || exit 42
+                [[ $failure != archive && $failure != archive-unhealthy ]] || exit 42
+                if [[ $failure == drift && ! -f $root/drifted ]]; then
+                    touch "$root/drifted"
+                    for repository in "$root/opt/docker/puppet-control-repo" "$root/opt/docker/compose-security-baseline"; do
+                        printf changed > "$repository/configuration"
+                        git -C "$repository" add configuration
+                        git -C "$repository" -c user.name=Test -c user.email=test@example.invalid commit -qm drift
+                    done
+                fi
                 exec /usr/bin/tar --numeric-owner --owner=999 --group=999 -czf - -C "$root/volumes/$volume" .
                 ;;
             *) exit 99 ;;
@@ -183,6 +214,9 @@ esac
     source = SCRIPT.read_text()
     for prefix in ("/scratch/vault", "/etc/", "/root", "/opt/", "/run/lock/"):
         source = source.replace(prefix, str(tmp_path) + prefix)
+    source = source.replace("SECONDS + 300", "SECONDS + 1").replace(
+        "sleep 2", "sleep 0.05"
+    )
     (tmp_path / "backup.sh").write_text(source)
     return tmp_path
 
@@ -329,3 +363,54 @@ def test_preflight_refuses_unsafe_or_incomplete_backup_before_stopping(
     commands = authority / "commands"
     assert not commands.exists() or " stop " not in commands.read_text()
     assert not (authority / "services-stopped").exists()
+
+
+@pytest.mark.parametrize("failure", ["unhealthy", "exited", "archive-unhealthy"])
+def test_backup_requires_healthy_service_restoration(
+    authority: Path, failure: str
+) -> None:
+    """Both normal restoration and failure cleanup must verify all service health."""
+    (authority / "failure").write_text(failure)
+    result = backup(authority)
+    assert result.returncode != 0
+    assert "Backup ready:" not in result.stdout
+    assert "restore healthy established Atlas services" in result.stderr
+    assert not (authority / "scratch/vault/snapshot/manifest.json").exists()
+    commands = (authority / "commands").read_text()
+    assert "State.Health.Status" in commands
+    assert "infra-openvox-1 infra-vault-1 infra-vault-unsealer-1" in commands
+
+
+def test_backup_archives_captured_commits_even_if_checkout_advances(
+    authority: Path,
+) -> None:
+    """Manifest commit IDs and archives agree even after an external checkout move."""
+    revisions = {
+        name: git(authority / "opt/docker" / name, "rev-parse", "HEAD")
+        for name in ("puppet-control-repo", "compose-security-baseline")
+    }
+    (authority / "failure").write_text("drift")
+    result = backup(authority)
+    assert result.returncode == 0, result.stderr
+    output = authority / "scratch/vault/snapshot"
+    manifest = json.loads((output / "manifest.json").read_text())
+    for repository, archive_name, field in (
+        ("puppet-control-repo", "control", "control_revision"),
+        ("compose-security-baseline", "hardening", "baseline_revision"),
+    ):
+        assert manifest[field] == revisions[repository]
+        assert (
+            git(authority / "opt/docker" / repository, "rev-parse", "HEAD")
+            != revisions[repository]
+        )
+        with tarfile.open(output / f"{archive_name}.tar.gz") as archive:
+            assert archive.extractfile("configuration").read().decode() == repository
+
+
+def test_backup_refuses_unprotected_git_receiver(authority: Path) -> None:
+    """A legacy receiver must install the guard before stopped-state capture."""
+    (authority / "opt/git/openvox/control.git/hooks/pre-receive").unlink()
+    result = backup(authority)
+    assert result.returncode != 0
+    assert "managed receive guard" in result.stderr
+    assert " stop " not in (authority / "commands").read_text()

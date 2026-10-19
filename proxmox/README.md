@@ -141,6 +141,9 @@ file permissions or container data. Both checkouts belong to `user_l:docker`;
 Git commands run as `user_l`, using the forwarded SSH agent. The script adds
 `user_l` to the Docker group, so a subsequent login can use the Docker socket.
 Reruns refuse modified/unrelated checkouts and incompatible Docker settings.
+After promotion, bootstrap refuses to run before changing the host or checkouts.
+Use publishing for subsequent code updates and recovery procedures for established
+state.
 The exact earlier minimal bootstrap configuration can be upgraded when Docker
 has no containers, volumes or custom networks. The script stops the daemon and
 socket before changing its settings and mapping, then restarts it after installation.
@@ -262,14 +265,15 @@ This receiver contains public committed code: its directory and parent use
 `core.sharedRepository=0664` keeps future objects and refs readable even under
 a restrictive umask. Other users cannot write. The working checkout under
 `/opt/docker` retains mode `2770` because it can contain deployment secrets.
-The bare repository is created with an empty Git template and no deployment
-hook. Setup refuses an existing active hook; container activation owns that
-later transition.
+The bare repository is created with an empty Git template and a managed
+pre-receive guard. Setup permits only the managed receive hooks; container
+activation installs the deployment dispatcher.
 
 Atlas keeps GitHub's SSH URL for fetches and pins GitHub's public host key in
 the checkout's Git metadata. GitHub authentication uses the administrator's
-forwarded SSH agent; private keys are not copied to Atlas. Ordinary `git push`
-from its checkout publishes only the local `production` branch to both:
+forwarded SSH agent; private keys are not copied to Atlas. Use
+`atlas-publish.sh` for every publication: it holds the maintenance lock before
+changing the checkout or receiver refs and publishes local `production` to both:
 
 - `git@github.com:Enucatl/puppet-control-repo.git`, branch `production`.
 - `/opt/git/openvox/control.git`, branch `production`.
@@ -278,6 +282,9 @@ GitHub `dev` remains available for development; the publishing setup promotes a
 declared commit rather than rewriting or deleting that branch. Git push to two
 URLs is not a cross-repository transaction. The script verifies both production
 hashes after publication; rerun the same revision if one target fails.
+The receiver rejects direct pushes without the inherited maintenance lock,
+including ordinary `git push`. Re-run publishing at the current revision to
+install the guard on an existing receiver before taking a backup.
 
 This stage stores code without starting containers or generating authorities.
 Compose mounts only the public bare repository read-only at `/git/control.git`.
@@ -343,9 +350,12 @@ bash proxmox/atlas-server.sh -r
 `-r` stops, destroys and recreates the matching development VM, including its
 disks. Use it only while the guest is disposable. **After Atlas acquires real
 authority or application state, recovery must preserve that state; do not use
-`-r`.** #18 must remove its development ownership marker at promotion so this
-path cannot replace the authoritative VM. Recreating template 9001 also requires
-`-r` and its matching marker; it never authorizes replacement of 9000.
+`-r`.** Run [atlas-promote.sh](atlas-promote.sh) on Proxmox before activation;
+it replaces VM 210's development ownership marker with the authority marker and
+writes `/etc/openvox-infra/promoted` in the guest. Provisioning then refuses to
+recreate the authoritative VM, and bootstrap refuses further runs. Recreating
+template 9001 also requires `-r` and its matching marker; it never authorizes
+replacement of 9000.
 
 ## Enrolled workload and desktop guests
 

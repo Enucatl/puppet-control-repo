@@ -8,6 +8,8 @@ revision="$1"
 [[ $(id -u) == 0 && $(hostname -f) == atlas.home.arpa ]] || {
     echo 'Run as root on atlas.home.arpa.' >&2; exit 1;
 }
+exec 9>/run/lock/atlas-openvox-maintenance.lock
+flock -w 300 9
 github=git@github.com:Enucatl/puppet-control-repo.git
 checkout=/opt/docker/puppet-control-repo
 bare=/opt/git/openvox/control.git
@@ -63,11 +65,15 @@ fi
 managed_hook=false
 for hook in "$bare"/hooks/*; do
     if [[ -x $hook && $hook != *.sample ]]; then
-        if [[ $hook != "$bare/hooks/post-receive" ]] ||
-            ! cmp -s "$checkout/docker/openvox/infra-host-post-receive" "$hook"; then
-            echo 'Publishing setup permits only the managed host post-receive hook.' >&2; exit 1;
-        fi
-        managed_hook=true
+        case "${hook##*/}" in
+            pre-receive|post-receive)
+                cmp -s "$checkout/docker/openvox/infra-host-${hook##*/}" "$hook" || {
+                    echo 'Publishing setup permits only managed host receive hooks.' >&2; exit 1;
+                }
+                [[ ${hook##*/} != post-receive ]] || managed_hook=true
+                ;;
+            *) echo 'Publishing setup permits only managed host receive hooks.' >&2; exit 1 ;;
+        esac
     fi
 done
 previous_revision=$("${bare_git[@]}" rev-parse --verify refs/heads/production 2>/dev/null || true)
@@ -75,6 +81,8 @@ previous_revision=$("${bare_git[@]}" rev-parse --verify refs/heads/production 2>
 chmod 2775 /opt/git/openvox "$bare"
 "${bare_git[@]}" config core.sharedRepository 0664
 chmod -R o+rX,o-w "$bare"
+install -d -o user_l -g docker -m 2775 "$bare/hooks"
+install -o user_l -g docker -m 0755 "$checkout/docker/openvox/infra-host-pre-receive" "$bare/hooks/pre-receive"
 
 if "${control_git[@]}" show-ref --verify --quiet refs/heads/production; then
     "${control_git[@]}" switch production

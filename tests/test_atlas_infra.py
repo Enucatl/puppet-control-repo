@@ -64,6 +64,7 @@ def controller(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module, "STATE", tmp_path)
+    monkeypatch.setattr(module, "MAINTENANCE_LOCK", tmp_path / "maintenance.lock")
     for name in ("run", "compose", "api", "openvox", "volume_file"):
         monkeypatch.setattr(module, name, Mock(name=name))
     return module
@@ -345,9 +346,19 @@ def test_resume_never_regenerates_a_missing_pinned_root(
 
 @pytest.mark.parametrize("established", [False, True])
 def test_access_setup_scopes_compiler_and_preserves_existing_data(
-    controller: ModuleType, established: bool
+    controller: ModuleType,
+    established: bool,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Create only absent mounts and authorize only the new compiler identity."""
+    """Load shared policies without shell source and preserve scoped access."""
+    policies = tmp_path / "docker/vault/scripts/policies"
+    policies.mkdir(parents=True)
+    for name in ("puppet-server", "puppet-enrollment"):
+        (policies / f"{name}.hcl").write_text(
+            (ROOT / f"docker/vault/scripts/policies/{name}.hcl").read_text()
+        )
+    monkeypatch.setattr(controller, "SOURCE", tmp_path)
     responses = {
         ("GET", "sys/mounts"): {"data": {"kv/": {}} if established else {}},
         ("GET", "kv/data/puppet"): {
@@ -387,3 +398,165 @@ def test_access_setup_scopes_compiler_and_preserves_existing_data(
         policy = writes[f"sys/policies/acl/{name}"]["policy"]
         assert re.findall(r'path "([^"]+)"', policy) == [path]
         assert re.findall(r"capabilities\s*=\s*\[([^]]+)\]", policy) == ['"read"']
+
+
+@pytest.fixture
+def intermediate(controller: ModuleType) -> tuple[ModuleType, dict]:
+    """Model the saved request, original key and a real signed certificate."""
+    key = ed25519.Ed25519PrivateKey.generate()
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Services")])
+    now = datetime.now(timezone.utc)
+    certificate = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(key.public_key())
+        .serial_number(42)
+        .not_valid_before(now - timedelta(minutes=1))
+        .not_valid_after(now + timedelta(days=1))
+        .sign(key, None)
+        .public_bytes(serialization.Encoding.PEM)
+        .decode()
+    )
+    state = {
+        "issuers": [],
+        "keys": ["original-key"],
+        "imports": [],
+        "signed": 0,
+        "certificate": certificate,
+        "key_id": "original-key",
+        "issuer_id": "original-issuer",
+    }
+    (controller.STATE / "vault-intermediate.json").write_text(
+        json.dumps({"csr": "saved CSR", "key_id": "original-key"})
+    )
+
+    def response(method: str, path: str, body: dict | None = None, **kwargs) -> dict:
+        """Only permit the expected initialization API operations."""
+        if path == "sys/mounts":
+            return {"data": {"pki_int/": {}}}
+        if path == "pki_int/issuers":
+            return {"data": {"keys": state["issuers"]}}
+        if path == "pki_int/keys":
+            return {"data": {"keys": state["keys"]}}
+        if path == "pki/root/sign-intermediate":
+            state["signed"] += 1
+            return {"data": {"certificate": certificate}}
+        if path == "pki_int/intermediate/set-signed":
+            assert (controller.STATE / "vault-intermediate.pem").read_text() == body[
+                "certificate"
+            ]
+            state["imports"].append(body["certificate"])
+            if state.get("fail_import"):
+                raise RuntimeError("interrupted import")
+            state["issuers"] = ["original-issuer"]
+            return {}
+        if path == "pki_int/issuer/default":
+            return {
+                "data": {
+                    name: state[name] for name in ("certificate", "key_id", "issuer_id")
+                }
+            }
+        raise AssertionError(f"Unexpected API operation: {method} {path}")
+
+    controller.api.side_effect = response
+    return controller, state
+
+
+def test_interrupted_services_import_reuses_exact_saved_certificate(
+    intermediate: tuple,
+) -> None:
+    """An import retry never signs the saved CSR for a second certificate."""
+    controller, state = intermediate
+    state["fail_import"] = True
+    with pytest.raises(RuntimeError, match="interrupted import"):
+        controller.services_intermediate()
+    state["fail_import"] = False
+    controller.services_intermediate()
+    controller.services_intermediate()
+    assert state["signed"] == 1
+    assert state["imports"] == [state["certificate"], state["certificate"]]
+    assert json.loads(
+        (controller.STATE / "vault-intermediate-established.json").read_text()
+    ) == {
+        "key_id": "original-key",
+        "issuer_id": "original-issuer",
+    }
+
+
+@pytest.mark.parametrize("missing", ["issuer", "key", "request", "certificate"])
+def test_established_services_state_requires_recovery(
+    intermediate: tuple, missing: str
+) -> None:
+    """Losing any established state cannot generate or import a replacement."""
+    controller, state = intermediate
+    controller.services_intermediate()
+    controller.api.reset_mock()
+    if missing == "issuer":
+        state["issuers"] = []
+    elif missing == "key":
+        state["keys"] = []
+    elif missing == "request":
+        (controller.STATE / "vault-intermediate.json").unlink()
+    else:
+        (controller.STATE / "vault-intermediate.pem").unlink()
+    with pytest.raises(RuntimeError, match="[Mm]issing|[Rr]ecover"):
+        controller.services_intermediate()
+    assert all(
+        call.args[0] == "GET" or call.args[0] == "LIST"
+        for call in controller.api.call_args_list
+    )
+    assert state["signed"] == 1
+    assert len(state["imports"]) == 1
+
+
+@pytest.mark.parametrize("changed", ["certificate", "key_id", "issuer_id"])
+def test_services_issuer_and_associated_key_are_verified(
+    intermediate: tuple, changed: str
+) -> None:
+    """An existing issuer must retain its exact certificate, ID and original key."""
+    controller, state = intermediate
+    controller.services_intermediate()
+    if changed == "certificate":
+        state[changed] = (
+            "-----BEGIN CERTIFICATE-----\nY2hhbmdlZA==\n-----END CERTIFICATE-----\n"
+        )
+    else:
+        state[changed] = "replacement"
+    with pytest.raises(RuntimeError, match="issuer.*changed"):
+        controller.services_intermediate()
+    assert state["signed"] == 1
+    assert len(state["imports"]) == 1
+
+
+def test_services_refuses_missing_established_mount(intermediate: tuple) -> None:
+    """A lost established mount cannot silently become an empty replacement."""
+    controller, _state = intermediate
+    controller.api.side_effect = None
+    controller.api.return_value = {"data": {}}
+    with pytest.raises(RuntimeError, match="mount missing"):
+        controller.services_intermediate()
+    controller.api.assert_called_once_with("GET", "sys/mounts")
+
+
+def test_new_services_request_preserves_the_generated_key(intermediate: tuple) -> None:
+    """Fresh generation records the key and persists the certificate before import."""
+    controller, state = intermediate
+    request = controller.STATE / "vault-intermediate.json"
+    request.unlink()
+    state["keys"] = []
+    existing_response = controller.api.side_effect
+
+    def response(method: str, path: str, body: dict | None = None, **kwargs) -> dict:
+        """Generate once, then delegate the remaining fake Vault operations."""
+        if path == "pki_int/intermediate/generate/internal":
+            assert not request.exists()
+            state["keys"] = ["original-key"]
+            return {"data": {"csr": "generated CSR", "key_id": "original-key"}}
+        return existing_response(method, path, body, **kwargs)
+
+    controller.api.side_effect = response
+    controller.services_intermediate()
+    assert json.loads(request.read_text())["key_id"] == "original-key"
+    assert state["signed"] == 1
+    assert state["imports"] == [state["certificate"]]

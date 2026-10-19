@@ -399,6 +399,47 @@ def test_modified_checkout_is_preserved(bootstrap: Path, problem: str) -> None:
         assert git(checkout, "remote", "get-url", "origin") == "/unrelated/repository"
 
 
+@pytest.mark.parametrize("requested", ["current", "older"])
+def test_promoted_checkout_is_preserved(bootstrap: Path, requested: str) -> None:
+    """Refuse bootstrap before mutations even with matching settings and a clean tree."""
+    result = run_bootstrap(bootstrap)
+    assert result.returncode == 0, result.stderr
+    checkout = bootstrap / "opt/docker/puppet-control-repo"
+    previous = git(checkout, "rev-parse", "HEAD")
+    git(checkout, "switch", "-c", "production")
+    (checkout / "fixture").write_text("production deployment")
+    git(checkout, "add", ".")
+    git(
+        checkout,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-qm",
+        "Production",
+    )
+    current = git(checkout, "rev-parse", "HEAD")
+    # Publish both revisions so a missing guard would successfully detach either.
+    git(checkout, "push", "origin", "production")
+    marker = bootstrap / "etc/openvox-infra/promoted"
+    marker.parent.mkdir()
+    marker.write_text("openvox-authority:atlas.home.arpa\n")
+    (bootstrap / "commands").write_text("")
+
+    result = run_bootstrap(bootstrap, current if requested == "current" else previous)
+
+    assert result.returncode != 0
+    assert "Atlas is promoted" in result.stderr
+    assert (bootstrap / "commands").read_text().splitlines() == [
+        "id -u",
+        "hostname -f",
+    ]
+    assert git(checkout, "symbolic-ref", "--short", "HEAD") == "production"
+    assert git(checkout, "rev-parse", "HEAD") == current
+    assert git(checkout, "status", "--porcelain") == ""
+
+
 @pytest.mark.parametrize("uid_mapping", ["", "dockremap:100000:65536\n"])
 def test_interrupted_mapping_transfer_can_resume(
     bootstrap: Path, uid_mapping: str

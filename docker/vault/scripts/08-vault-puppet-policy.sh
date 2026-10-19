@@ -9,17 +9,14 @@ if [ -f .env ]; then
 fi
 
 export VAULT_CACERT=${VAULT_CACERT:-/etc/ssl/certs/ca-certificates.crt}
+POLICY_DIR=$(dirname -- "${BASH_SOURCE[0]}")/policies
 
 CERT_AUTH_ACCESSOR=$(vault auth list -format=json | jq -er '."cert/".accessor')
 PUPPET_CERTNAME="{{identity.entity.aliases.${CERT_AUTH_ACCESSOR}.name}}"
 PUPPET_CA_CERT=$(vault read -field=certificate "auth/cert/certs/${PUPPET_CERT_AUTH_ROLE:-puppet}")
 
 # Separate logins keep Hiera and runtime KV access out of every agent's policy.
-vault policy write puppet-server - <<'EOF'
-path "kv/data/puppet" {
-    capabilities = ["read"]
-}
-EOF
+vault policy write puppet-server "$POLICY_DIR/puppet-server.hcl"
 
 vault policy write puppet-wolf - <<'EOF'
 path "kv/data/wolf" {
@@ -87,8 +84,4 @@ EOF
 
 # Bootstrap credentials have no runtime secret access and are never granted to
 # the Puppet certificate auth role.
-vault policy write puppet-enrollment - <<'EOF'
-path "auth/token/lookup-self" {
-  capabilities = ["read"]
-}
-EOF
+vault policy write puppet-enrollment "$POLICY_DIR/puppet-enrollment.hcl"

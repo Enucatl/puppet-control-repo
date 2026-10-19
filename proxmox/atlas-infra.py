@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 import os
@@ -13,6 +15,7 @@ import ssl
 import subprocess
 import tempfile
 import time
+from collections.abc import Iterator
 
 SOURCE = Path(__file__).resolve().parents[1]
 STATE = Path("/root/openvox-infra")
@@ -22,6 +25,15 @@ DOCKER = ["docker", "--host", "unix:///var/run/docker.sock"]
 OPENVOX_VOLUMES = ("ssl", "ca", "code", "data", "gems", "git", "r10k_cache", "trust")
 VAULT_VOLUMES = ("vault_data", "vault_logs", "certificates", "vault_unseal")
 LABEL = "home.arpa.authority=atlas"
+MAINTENANCE_LOCK = Path("/run/lock/atlas-openvox-maintenance.lock")
+
+
+@contextmanager
+def maintenance() -> Iterator[None]:
+    """Exclude backup and publication while changing established services."""
+    with MAINTENANCE_LOCK.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
 
 
 def run(arguments: list[str], data: str | None = None) -> str:
@@ -190,6 +202,96 @@ def mount(name: str, kind: str, options: dict | None = None) -> None:
         api("POST", "sys/mounts/" + name, {"type": kind, **(options or {})})
 
 
+def services_intermediate() -> None:
+    """Import only the saved services certificate and its original Vault key."""
+    request = STATE / "vault-intermediate.json"
+    signed = STATE / "vault-intermediate.pem"
+    established = STATE / "vault-intermediate-established.json"
+    if (
+        any(
+            path.exists()
+            for path in (request, signed, established, STATE / "vault-transport.json")
+        )
+        and "pki_int/" not in api("GET", "sys/mounts")["data"]
+    ):
+        raise RuntimeError("Established services mount missing; restore existing state")
+    mount("pki_int", "pki", {"config": {"max_lease_ttl": "43800h"}})
+    issuers = (
+        api("LIST", "pki_int/issuers", accepted=(200, 404))
+        .get("data", {})
+        .get("keys", [])
+    )
+    keys = (
+        api("LIST", "pki_int/keys", accepted=(200, 404)).get("data", {}).get("keys", [])
+    )
+    if (
+        established.exists() or (STATE / "vault-transport.json").exists()
+    ) and not issuers:
+        raise RuntimeError(
+            "Established services issuer missing; restore existing state"
+        )
+    if not request.exists():
+        if keys or issuers or signed.exists() or established.exists():
+            raise RuntimeError("Missing saved intermediate CSR; recover request state")
+        save(
+            request,
+            json.dumps(
+                api(
+                    "POST",
+                    "pki_int/intermediate/generate/internal",
+                    {
+                        "common_name": "Atlas services intermediate",
+                        "key_type": "ml-dsa",
+                        "parameter_set": "ml-dsa-44",
+                    },
+                )["data"]
+            ),
+        )
+        keys = api("LIST", "pki_int/keys")["data"]["keys"]
+    saved_request = json.loads(request.read_text())
+    if saved_request["key_id"] not in keys:
+        raise RuntimeError(
+            "Original services intermediate key missing; restore existing state"
+        )
+    if not signed.exists():
+        if issuers or established.exists():
+            raise RuntimeError(
+                "Missing saved services certificate; restore existing state"
+            )
+        chain = api(
+            "POST",
+            "pki/root/sign-intermediate",
+            {
+                "csr": saved_request["csr"],
+                "format": "pem_bundle",
+                "ttl": "43800h",
+                "max_path_length": 0,
+            },
+        )["data"]["certificate"]
+        save(signed, chain)
+    chain = signed.read_text()
+    if not issuers:
+        api("POST", "pki_int/intermediate/set-signed", {"certificate": chain})
+    current = api("GET", "pki_int/issuer/default")["data"]
+    certificate = (
+        chain.split("-----END CERTIFICATE-----", 1)[0] + "-----END CERTIFICATE-----\n"
+    )
+    if (
+        ssl.PEM_cert_to_DER_cert(current["certificate"])
+        != ssl.PEM_cert_to_DER_cert(certificate)
+        or current["key_id"] != saved_request["key_id"]
+    ):
+        raise RuntimeError(
+            "Established services issuer or key changed; restore existing state"
+        )
+    identity = {"issuer_id": current["issuer_id"], "key_id": current["key_id"]}
+    if established.exists() and json.loads(established.read_text()) != identity:
+        raise RuntimeError(
+            "Established services issuer identity changed; restore existing state"
+        )
+    save(established, json.dumps(identity))
+
+
 def initialize() -> None:
     """Create fresh authorities only on this explicit, resumable setup path."""
     print("Preparing protected Atlas authority volumes", flush=True)
@@ -317,37 +419,7 @@ def initialize() -> None:
         )["data"]["certificate"]
         volume_file("openvox_trust", "openvox-chain.pem", chain)
         openvox(RUBY, "/infra/infra-pki.rb", "import", "--root-sha256", fingerprint)
-    mount("pki_int", "pki", {"config": {"max_lease_ttl": "43800h"}})
-    issuers = api("LIST", "pki_int/issuers", accepted=(200, 404))
-    if not issuers.get("data", {}).get("keys"):
-        request = STATE / "vault-intermediate.json"
-        if not request.exists():
-            keys = api("LIST", "pki_int/keys", accepted=(200, 404))
-            if keys.get("data", {}).get("keys"):
-                raise RuntimeError(
-                    "Missing saved intermediate CSR; recover request state"
-                )
-            save(
-                request,
-                json.dumps(
-                    api(
-                        "POST",
-                        "pki_int/intermediate/generate/internal",
-                        {
-                            "common_name": "Atlas services intermediate",
-                            "key_type": "ml-dsa",
-                            "parameter_set": "ml-dsa-44",
-                        },
-                    )["data"]
-                ),
-            )
-        csr = json.loads(request.read_text())["csr"]
-        chain = api(
-            "POST",
-            "pki/root/sign-intermediate",
-            {"csr": csr, "format": "pem_bundle", "ttl": "43800h", "max_path_length": 0},
-        )["data"]["certificate"]
-        api("POST", "pki_int/intermediate/set-signed", {"certificate": chain})
+    services_intermediate()
     configure_access()
     print("Installing the root-signed Vault TLS identity", flush=True)
     api(
@@ -404,8 +476,6 @@ def initialize() -> None:
             }
         ),
     )
-    start()
-    print("Atlas Vault, unsealer and OpenVox are healthy", flush=True)
 
 
 def configure_access() -> None:
@@ -420,11 +490,8 @@ def configure_access() -> None:
         )
     if "cert/" not in api("GET", "sys/auth")["data"]:
         api("POST", "sys/auth/cert", {"type": "cert"})
-    source = (SOURCE / "docker/vault/scripts/08-vault-puppet-policy.sh").read_text()
     for name in ("puppet-server", "puppet-enrollment"):
-        policy = source.split(f"vault policy write {name} - <<'EOF'\n", 1)[1].split(
-            "\nEOF", 1
-        )[0]
+        policy = (SOURCE / f"docker/vault/scripts/policies/{name}.hcl").read_text()
         api("PUT", "sys/policies/acl/" + name, {"policy": policy})
     chain = openvox("/bin/cat", "/trust/openvox-chain.pem")
     api(
@@ -533,6 +600,19 @@ def deploy_initial() -> None:
             "/opt/git/openvox/control.git/hooks/post-receive",
         ]
     )
+    run(
+        [
+            "install",
+            "-o",
+            "user_l",
+            "-g",
+            "docker",
+            "-m",
+            "0755",
+            str(SOURCE / "docker/openvox/infra-host-pre-receive"),
+            "/opt/git/openvox/control.git/hooks/pre-receive",
+        ]
+    )
 
 
 def start() -> None:
@@ -541,32 +621,33 @@ def start() -> None:
         raise RuntimeError(
             "Missing initialized state; explicitly initialize or restore it"
         )
-    compose(
-        "up",
-        "-d",
-        "--no-deps",
-        "--wait",
-        "--wait-timeout",
-        "300",
-        "vault",
-        "vault-unsealer",
-        "openvox",
-    )
-    run(
-        [
-            "install",
-            "-o",
-            "root",
-            "-g",
-            "root",
-            "-m",
-            "0644",
-            str(SOURCE / "proxmox/systemd/atlas-openvox-renew.service"),
-            str(SOURCE / "proxmox/systemd/atlas-openvox-renew.timer"),
-            "/etc/systemd/system/",
-        ]
-    )
-    run(["systemctl", "daemon-reload"])
+    with maintenance():
+        compose(
+            "up",
+            "-d",
+            "--no-deps",
+            "--wait",
+            "--wait-timeout",
+            "300",
+            "vault",
+            "vault-unsealer",
+            "openvox",
+        )
+        run(
+            [
+                "install",
+                "-o",
+                "root",
+                "-g",
+                "root",
+                "-m",
+                "0644",
+                str(SOURCE / "proxmox/systemd/atlas-openvox-renew.service"),
+                str(SOURCE / "proxmox/systemd/atlas-openvox-renew.timer"),
+                "/etc/systemd/system/",
+            ]
+        )
+        run(["systemctl", "daemon-reload"])
     run(["systemctl", "start", "atlas-openvox-renew.service"])
     run(["systemctl", "enable", "--now", "atlas-openvox-renew.timer"])
 
@@ -592,7 +673,12 @@ def main() -> None:
         raise RuntimeError("Activation requires a clean versioned checkout")
     os.environ["OPENSSL_CONF"] = str(SOURCE / "docker/openvox/openssl.cnf")
     os.environ["DOCKER_DOMAIN"] = "home.arpa"
-    initialize() if action == "initialize" else start()
+    if action == "initialize":
+        with maintenance():
+            initialize()
+    # Renewal takes the same lock; synchronous systemctl start must run outside it.
+    start()
+    print("Atlas Vault, unsealer and OpenVox are healthy", flush=True)
 
 
 if __name__ == "__main__":

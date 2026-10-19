@@ -25,6 +25,8 @@ def renewal(tmp_path: Path) -> Path:
         "hostname": "atlas.home.arpa",
         "failure": "",
         "response": '{"reload_required":true}',
+        "running": "true",
+        "health": "healthy",
     }
     for name, value in files.items():
         path = tmp_path / name
@@ -56,18 +58,27 @@ case "$name" in
         fi
         shift 2
         case "$*" in
+            'inspect --format {{.State.Running}} infra-openvox-1')
+                [[ $failure != missing-container ]] || exit 42
+                cat "$root/running"
+                ;;
+            'inspect --format {{.State.Running}} {{if .State.Health}}{{.State.Health.Status}}{{end}} infra-openvox-1')
+                health=$(cat "$root/health")
+                [[ $failure != wait ]] || health=starting
+                printf '%s %s\n' "$(cat "$root/running")" "$health"
+                if [[ $health == starting ]]; then printf healthy > "$root/health"; fi
+                ;;
+            'start infra-openvox-1')
+                [[ $failure != start ]] || exit 42
+                printf true > "$root/running"
+                ;;
             'exec infra-openvox-1 /opt/puppetlabs/puppet/bin/ruby /infra/infra-renew.rb renew')
+                [[ $(cat "$root/running") == true ]]
                 [[ $failure != renew ]] || exit 42
                 cat "$root/response"
                 ;;
             'restart --time 60 infra-openvox-1')
-                [[ $failure != restart ]] || exit 42
-                ;;
-            'compose --env-file /dev/null -p infra -f '*)
-                [[ "$*" == *'docker/docker-compose.yml -f '* ]]
-                [[ "$*" == *'docker/openvox/infra-vault.override.yaml up -d --wait --wait-timeout 300 --no-deps openvox' ]]
-                [[ -z ${VAULT_TOKEN:-} && -z ${COMPOSE_FILE:-} && $DOCKER_DOMAIN == home.arpa ]]
-                [[ $failure != wait ]] || exit 42
+                if [[ $failure == restart ]]; then printf false > "$root/running"; exit 42; fi
                 ;;
             'exec infra-openvox-1 /opt/puppetlabs/puppet/bin/ruby /infra/infra-renew.rb verify')
                 [[ $failure != verify ]] || exit 42
@@ -76,11 +87,12 @@ case "$name" in
             *) exit 99 ;;
         esac
         ;;
+    sleep) [[ $failure != wait ]] || exit 42 ;;
     *) exit 99 ;;
 esac
 """
     )
-    for name in ("id", "hostname", "flock", "docker"):
+    for name in ("id", "hostname", "flock", "docker", "sleep"):
         path = bins / name
         path.write_text(command)
         path.chmod(0o755)
@@ -121,17 +133,19 @@ def test_renewal_restarts_only_when_required_and_verifies_after_readiness(
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {"verified": True}
     docker = [call for call in calls if call.startswith("docker ")]
-    assert docker[0].endswith("/infra/infra-renew.rb renew")
+    assert docker[0].endswith("inspect --format {{.State.Running}} infra-openvox-1")
+    assert docker[1].endswith("/infra/infra-renew.rb renew")
     assert docker[-1].endswith("/infra/infra-renew.rb verify")
-    assert len(docker) == (4 if reload_required else 2)
+    assert len(docker) == (5 if reload_required else 4)
     if reload_required:
-        assert docker[1].endswith("restart --time 60 infra-openvox-1")
-        assert " up -d --wait --wait-timeout 300 --no-deps openvox" in docker[2]
+        assert docker[2].endswith("restart --time 60 infra-openvox-1")
+        assert "{{.State.Health.Status}}" in docker[3]
     assert calls.index("flock -w 300 9") < calls.index(docker[0])
 
 
 @pytest.mark.parametrize(
-    "failure", ["renew", "restart", "wait", "verify", "json", "lock"]
+    "failure",
+    ["renew", "restart", "wait", "verify", "json", "lock", "missing-container"],
 )
 def test_renewal_failure_propagates_without_clearing_pending_work(
     renewal: Path, failure: str
@@ -147,6 +161,87 @@ def test_renewal_failure_propagates_without_clearing_pending_work(
         assert not any(call.endswith("/infra/infra-renew.rb verify") for call in calls)
     if failure in ("renew", "json", "lock"):
         assert not any(" restart " in call for call in calls)
+
+
+def test_failed_restart_is_recovered_by_the_next_timer_invocation(
+    renewal: Path,
+) -> None:
+    """Start the stopped existing container before retrying durable pending work."""
+    (renewal / "failure").write_text("restart")
+    result, _ = run_renewal(renewal)
+    assert result.returncode != 0
+    assert (renewal / "running").read_text() == "false"
+    (renewal / "failure").write_text("")
+    (renewal / "commands").unlink()
+
+    result, calls = run_renewal(renewal)
+    assert result.returncode == 0, result.stderr
+    start = next(i for i, call in enumerate(calls) if " start infra-openvox-1" in call)
+    renew = next(
+        i for i, call in enumerate(calls) if call.endswith("infra-renew.rb renew")
+    )
+    assert start < renew
+    assert calls[-1].endswith("infra-renew.rb verify")
+
+
+def test_recovery_does_not_run_helper_if_existing_container_cannot_start(
+    renewal: Path,
+) -> None:
+    """Preserve pending work when the established stopped container cannot start."""
+    (renewal / "running").write_text("false")
+    (renewal / "failure").write_text("start")
+    result, calls = run_renewal(renewal)
+    assert result.returncode != 0
+    assert not any("infra-renew.rb" in call for call in calls)
+
+
+def test_health_wait_allows_startup_and_has_a_deadline(renewal: Path) -> None:
+    """Wait for the existing health check, then fail clearly when time expires."""
+    (renewal / "health").write_text("starting")
+    result, calls = run_renewal(renewal)
+    assert result.returncode == 0, result.stderr
+    assert "sleep 2" in calls
+
+    wrapper = renewal / "renew.sh"
+    wrapper.write_text(wrapper.read_text().replace("SECONDS + 300", "SECONDS + 0"))
+    (renewal / "commands").unlink()
+    result, calls = run_renewal(renewal)
+    assert result.returncode != 0
+    assert "Timed out waiting" in result.stderr
+    assert not any("infra-renew.rb verify" in call for call in calls)
+
+
+@pytest.mark.parametrize("health", ["unhealthy", ""])
+def test_unavailable_health_does_not_verify_pending_work(
+    renewal: Path, health: str
+) -> None:
+    """An absent or unhealthy service cannot complete certificate verification."""
+    (renewal / "health").write_text(health)
+    if health == "unhealthy":
+        wrapper = renewal / "renew.sh"
+        wrapper.write_text(wrapper.read_text().replace("SECONDS + 300", "SECONDS + 0"))
+    result, calls = run_renewal(renewal)
+    assert result.returncode != 0
+    assert not any("infra-renew.rb verify" in call for call in calls)
+
+
+def test_renewal_does_not_reconcile_checkout_configuration_or_image_drift(
+    renewal: Path,
+) -> None:
+    """Only restart the existing container even when checkout deployment changes."""
+    compose = renewal / "opt/docker/puppet-control-repo/docker/docker-compose.yml"
+    compose.parent.mkdir(parents=True)
+    compose.write_text(
+        "services:\n  openvox:\n    image: openvox:unrelated-update\n"
+        "    environment: {UNRELATED_SETTING: changed}\n"
+    )
+    result, calls = run_renewal(renewal)
+    assert result.returncode == 0, result.stderr
+    docker = [call for call in calls if call.startswith("docker ")]
+    assert any(" restart --time 60 infra-openvox-1" in call for call in docker)
+    assert not any(
+        " compose " in call or " pull " in call or " create " in call for call in docker
+    )
 
 
 @pytest.mark.parametrize("failure", ["root", "hostname", "promoted", "ready"])

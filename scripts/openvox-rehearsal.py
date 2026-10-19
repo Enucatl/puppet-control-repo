@@ -478,13 +478,10 @@ def configure_access() -> None:
         api("vault", "POST", "sys/auth/cert", {"type": "cert"})
         auth = api("vault", "GET", "sys/auth")["data"]
     identity = "{{identity.entity.aliases." + auth["cert/"]["accessor"] + ".name}}"
-    policy_source = (
-        SOURCE / "docker/vault/scripts/08-vault-puppet-policy.sh"
-    ).read_text()
     for policy in ("puppet-server", "puppet-enrollment"):
-        policy_text = policy_source.split(
-            f"vault policy write {policy} - <<'EOF'\n", 1
-        )[1].split("\nEOF", 1)[0]
+        policy_text = (
+            SOURCE / f"docker/vault/scripts/policies/{policy}.hcl"
+        ).read_text()
         api("vault", "PUT", "sys/policies/acl/" + policy, {"policy": policy_text})
     api(
         "vault",

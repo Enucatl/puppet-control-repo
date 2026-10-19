@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import os
-import re
 import shutil
 import socket
 import ssl
@@ -94,18 +93,10 @@ def vault(
             root = hvac.Client(
                 url=address, token="disposable-enrollment-root", verify=str(ca)
             )
-            policy_script = (
-                ROOT / "docker/vault/scripts/08-vault-puppet-policy.sh"
+            policy = (
+                ROOT / "docker/vault/scripts/policies/puppet-enrollment.hcl"
             ).read_text()
-            policy = re.search(
-                r"vault policy write puppet-enrollment - <<['\"]?EOF['\"]?\n(.*?)\nEOF",
-                policy_script,
-                re.DOTALL,
-            )
-            assert policy is not None, (
-                "Enrollment policy must be installed by Vault setup"
-            )
-            root.sys.create_or_update_policy("puppet-enrollment", policy.group(1))
+            root.sys.create_or_update_policy("puppet-enrollment", policy)
             root.sys.create_or_update_policy(
                 "enrollment-issuer",
                 'path "auth/token/create-orphan" { capabilities = ["update", "sudo"] }',

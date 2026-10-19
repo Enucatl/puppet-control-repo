@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+exec 9>/git/deploy.lock
+flock -x 9
 trap 'printf "%s\n" "$?" > /git/deploy.status' EXIT
 
 # Git exports its own repository context; r10k must use each deployed repository.
@@ -10,15 +12,25 @@ while read -r _old new ref; do
     refs/heads/production|refs/heads/dev)
       [[ $new != 0000000000000000000000000000000000000000 ]] || continue
       environment=${ref#refs/heads/}
+      [[ $(git --git-dir=/git/control.git rev-parse "$ref") == "$new" ]] || {
+        printf 'Refusing stale deployment input for %s.\n' "$environment" >&2
+        exit 1
+      }
       /opt/puppetlabs/puppet/bin/r10k deploy environment "$environment" --modules \
         --config /infra/infra-r10k.yaml
+      actual_revision=$(git -C "/etc/puppetlabs/code/environments/$environment" rev-parse HEAD)
+      [[ $actual_revision == "$new" ]] || {
+        printf 'Deployed %s commit %s differs from requested %s.\n' \
+          "$environment" "$actual_revision" "$new" >&2
+        exit 1
+      }
       install -m 0644 /infra/infra-hiera.yaml \
         "/etc/puppetlabs/code/environments/$environment/hiera.yaml"
       /opt/puppetlabs/bin/puppet generate types --environment "$environment" \
         --config /etc/puppetlabs/puppet/puppet.conf \
         --codedir /etc/puppetlabs/code \
         --vardir /opt/puppetlabs/server/data/puppetserver/server_data
-      deployed_revision="$new"
+      deployed_revision="$actual_revision"
       ;;
   esac
 done

@@ -105,10 +105,16 @@ OpenVox receives public root trust, never Vault storage or root credentials.
 Vault's compiler cert-auth role admits exactly `openvox.home.arpa`, with only
 the existing read policy for `kv/data/puppet`. Fresh Vault starts with a harmless
 Hiera marker, not copied legacy secrets or broad legacy issuance policies.
+The compiler and enrollment ACLs are shared with the legacy setup through
+`docker/vault/scripts/policies/puppet-server.hcl` and `puppet-enrollment.hcl`.
 
 An interrupted explicit initialization retains keys and repairs TLS from saved
 material. Once volume allocation completes, missing volumes require restoration.
 A missing established issuer or changed root pin fails before replacement.
+The signed services intermediate is saved before import. An interrupted import
+reuses that exact certificate, checks the original Vault key and issuer identity,
+and requires restoration if established request, certificate, key or issuer state
+is missing.
 After initialization, `initialize` refuses; normal startup is:
 
 ```sh
@@ -117,7 +123,7 @@ python3 proxmox/atlas-infra.py start
 
 Startup waits for health and has no initialization or signing operation.
 The script deploys production/dev, installs the scoped Hiera overlay, generates
-types and installs the host receive dispatcher before starting OpenVox.
+types and installs the host receive guard and dispatcher before starting OpenVox.
 The code volume disables Docker's image-template copying so r10k starts with an
 empty environment directory. An older volume containing exactly the packaged
 template is preserved under `packaged-environments` before deployment; unknown
@@ -125,11 +131,17 @@ code is refused rather than moved or removed.
 Subsequent receives repeat those deployment steps and invalidate compiler caches.
 An unchanged push does not replay a failed deployment: explicitly replay its
 ref-update input to the managed hook after correcting the scripted cause.
+Replay must name the current branch commit; stale input is rejected. Deployment
+handling is serialized and verifies the deployed environment's actual Git HEAD
+before recording a successful receipt.
 
 Use `proxmox/atlas-infra-backup.sh /scratch/vault/NEW_DIRECTORY` as root on Atlas
 to stop the three services, archive all twelve volumes, separate recovery
 inputs, exact images, control/hardening configuration, public Git receiver and
-daemon mapping, then restart established services. Every output is private and
+daemon mapping, then restart established services and wait up to five minutes
+for all three to become healthy. Failure cleanup also checks service health;
+failed recovery returns failure and requires explicit repair. Configuration
+archives use the commit IDs captured in the manifest. Every output is private and
 hash-listed. Copy the complete kit to a new root-only Atlas-specific directory
 on Proxmox and verify its manifest. `/scratch` is temporary and its local copy
 alone does not satisfy independent recovery. Never overwrite the #12 test kit.
@@ -157,7 +169,12 @@ Only a changed leaf, or an unfinished prior reload, restarts OpenVox. After
 readiness, a fresh exact-name TLS handshake must serve the same certificate as
 the file before the durable reload marker is cleared. This allows retry after
 an interrupted publish/restart; a no-op check does not restart the container.
-The maintenance lock shared with backup prevents those operations overlapping.
+The maintenance lock shared with backup, startup and publishing prevents those
+operations overlapping. Publishing acquires it before Git refs can change;
+the receiver guard rejects receives without its inherited lock. Startup releases
+the lock before synchronously starting renewal. Renewal recovers a stopped
+existing OpenVox container and waits for its health without reconciling Compose
+configuration or image changes.
 The CLI uses the accepted `certificate_revocation=leaf` agent policy.
 
 Run `systemctl start atlas-openvox-renew.service` for an immediate check and
@@ -214,10 +231,11 @@ The private `/opt/docker` tree retains mode `2770`. The remapped OpenVox user
 (`999:999` inside, `100999:100999` on Atlas) can read public Git data; writable
 deployment status remains on the separate `/git` volume. r10k uses the file URL
 `file:///git/control.git`, with Git trust scoped to that exact repository in the
-image. The managed host receive hook dispatches to the container's
+image. The managed host pre-receive guard requires the publisher's maintenance
+lock before accepting ref updates. The host post-receive hook dispatches to the container's
 r10k/types/cache-refresh helper. The initialization script installs it after
 the first deployment; startup verifies its exact content. Publisher checks the
-deployment status and requested commit after an updated production receive,
+deployment status and verified deployed commit after an updated production receive,
 because Git itself can accept refs even when post-receive deployment fails.
 
 ## Authority and recovery requirements

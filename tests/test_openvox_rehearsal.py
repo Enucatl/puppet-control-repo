@@ -519,3 +519,35 @@ def test_recovery_refuses_existing_target_before_stopping_source(
     with pytest.raises(RuntimeError, match="Restore project already exists"):
         recovery.recover(rehearsal)
     assert rehearsal.PROJECT == "openvox-rehearsal"
+
+
+def test_access_setup_loads_shared_policies_without_shell_source(
+    rehearsal, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rehearsal installs the same ACL files as Atlas and the legacy setup."""
+    policies = tmp_path / "docker/vault/scripts/policies"
+    policies.mkdir(parents=True)
+    expected = {}
+    for name in ("puppet-server", "puppet-enrollment"):
+        expected[name] = (
+            REPO / f"docker/vault/scripts/policies/{name}.hcl"
+        ).read_text()
+        (policies / f"{name}.hcl").write_text(expected[name])
+    monkeypatch.setattr(rehearsal, "SOURCE", tmp_path)
+    monkeypatch.setattr(rehearsal, "mount", lambda *args: None)
+    monkeypatch.setattr(rehearsal, "inside", lambda *args, **kwargs: "saved chain")
+    writes = {}
+
+    def api(service, method, path, body=None):
+        """Expose existing cert auth and record the configured policies."""
+        assert service == "vault"
+        if method == "GET":
+            assert path == "sys/auth"
+            return {"data": {"cert/": {"accessor": "saved-accessor"}}}
+        writes[path] = body
+        return {}
+
+    monkeypatch.setattr(rehearsal, "api", api)
+    rehearsal.configure_access()
+    for name, policy in expected.items():
+        assert writes[f"sys/policies/acl/{name}"] == {"policy": policy}
