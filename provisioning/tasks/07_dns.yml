@@ -1,0 +1,58 @@
+---
+# DNS-only updates avoid applying unrelated firewall, route or container changes.
+- name: Render DNS configuration and smoke checks locally
+  delegate_to: localhost
+  ansible.builtin.template:
+    src: "templates/app_configs/{{ item }}.j2"
+    dest: "/tmp/{{ item }}"
+    mode: "0600"
+  loop:
+    - dnsmasq.conf
+    - router-smoke-check.sh
+
+- name: Upload staged dnsmasq configuration
+  ansible.netcommon.net_put:
+    src: /tmp/dnsmasq.conf
+    dest: /tmp/dnsmasq.conf
+
+- name: Validate staged dnsmasq configuration before replacement
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n install -o root -g vyattacfg -m 0644 /tmp/dnsmasq.conf {{ dnsmasq_data_path }}/conf/.dnsmasq.conf.next &&
+        sudo -n podman exec dnsmasq dnsmasq --test --conf-file=/etc/dnsmasq.d/.dnsmasq.conf.next
+    wait_for:
+      - result[0] contains 'syntax check OK'
+
+- name: Back up and install validated dnsmasq configuration
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n cp {{ dnsmasq_data_path }}/conf/dnsmasq.conf {{ dnsmasq_data_path }}/dnsmasq.conf.previous &&
+        sudo -n install -o root -g vyattacfg -m 0644 {{ dnsmasq_data_path }}/conf/.dnsmasq.conf.next {{ dnsmasq_data_path }}/conf/dnsmasq.conf &&
+        sudo -n rm {{ dnsmasq_data_path }}/conf/.dnsmasq.conf.next && echo DNS_INSTALLED
+    wait_for:
+      - result[0] contains 'DNS_INSTALLED'
+
+- name: Upload updated DNS smoke checks
+  ansible.netcommon.net_put:
+    src: /tmp/router-smoke-check.sh
+    dest: /tmp/router-smoke-check.sh
+
+- name: Install smoke checks and restart DNS containers to clear cached answers
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n install -o root -g vyattacfg -m 0755 /tmp/router-smoke-check.sh /config/scripts/router-smoke-check.sh &&
+        rm /tmp/dnsmasq.conf /tmp/router-smoke-check.sh
+      - restart container dnsmasq
+      - restart container adguard
+
+- name: Remove local rendered files
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: "/tmp/{{ item }}"
+    state: absent
+  loop:
+    - dnsmasq.conf
+    - router-smoke-check.sh

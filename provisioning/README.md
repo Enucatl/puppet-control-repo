@@ -57,6 +57,38 @@ VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inven
 5. `--tags healthcheck` if you want to re-run router smoke checks on demand
 6. `--tags upgrade` when you need to move the router to the latest signed rolling release
 
+## Atlas infrastructure DNS and DHCP
+
+`host_vars/router.yml` reserves Atlas at `10.0.0.158` for MAC
+`bc:24:11:4e:a4:9e`. The Atlas VM creation script keeps that MAC across rebuilds;
+update both declarations together if the NIC reservation changes.
+The dnsmasq template publishes exact A and AAAA records for `atlas.home.arpa`,
+`vault.home.arpa` and `openvox.home.arpa` at this address and Atlas's verified
+EUI-64 ULA `fd6b:d722:1738::be24:11ff:fe4e:a49e`. The ULA is retained across
+ISP prefix changes; the pinned NIC MAC preserves its interface identifier on
+rebuild. Reverse DNS remains
+`atlas.home.arpa`. Legacy Docker/FreeIPA/`hcv.home.arpa` records retain their
+existing address.
+
+Apply only DNS/DHCP and its smoke checks with:
+
+```bash
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags dns,healthcheck
+```
+
+This path validates the staged configuration with the running dnsmasq image,
+backs up the prior file to `/config/containers/dnsmasq/dnsmasq.conf.previous`,
+installs the configuration and updated smoke script, then restarts dnsmasq and
+AdGuard to clear cached DNS answers. It does not apply the declarative router
+configuration or update other containers. Full `--tags apply` also includes
+these DNS declarations. Smoke checks verify all three names through AdGuard
+over IPv4/IPv6 and dnsmasq directly, plus Atlas's canonical PTR record.
+
+These records prepare #13's service endpoints: `https://vault.home.arpa:8200`
+and direct TLS `openvox.home.arpa:8140`. Service certificates must contain the
+corresponding DNS names; Atlas's native agent identity remains `atlas.home.arpa`.
+DNS publication does not initialize or activate Vault/OpenVox.
+
 ## Secrets (vars/secrets.yml)
 
 `vars/secrets.yml` is an Ansible Vault-encrypted file. The vault password is stored in `vars/password` (not committed). To recreate it:

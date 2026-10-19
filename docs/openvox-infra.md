@@ -15,6 +15,44 @@ and [live results](atlas-bootstrap-results.json). The infra stack is still
 inactive on Atlas; adapting its service identity and explicit authority
 initialization/enrollment belong to #13.
 
+## Atlas endpoint requirements (#13)
+
+The router reserves Atlas's current `10.0.0.158` address for MAC
+`bc:24:11:4e:a4:9e`, which the creation script retains on rebuild. The host and
+both new services use separate DNS identities at that same IPv4 address and
+the verified stable ULA `fd6b:d722:1738::be24:11ff:fe4e:a49e`:
+
+| Purpose | Identity / endpoint |
+| --- | --- |
+| Host and native agent certname | `atlas.home.arpa` |
+| OpenVox service/server certname | `openvox.home.arpa`, direct TLS TCP `8140` |
+| Vault service | `https://vault.home.arpa:8200` |
+
+The [router provisioning](../provisioning/README.md#atlas-infrastructure-dns-and-dhcp)
+declares these exact DNS records and the DHCP reservation. Reverse DNS identifies
+the host as Atlas. Legacy `docker.home.arpa` and `hcv.home.arpa` continue to reach
+the existing Docker host; existing agents and service consumers keep their old
+endpoints until their migrations.
+
+Before #13 activation, adapt the prepared OpenVox Compose hostname, Puppet
+certname/server and certificate paths, PKI preparation, readiness and cache-flush
+helpers to `openvox.home.arpa`. Point its Vault environment, Hiera backend and
+the opt-in Vault configuration/API address at `vault.home.arpa`. Change these
+together before generating identities. OpenVox and Vault leaf certificates must
+contain their respective service DNS SANs, and Vault's scoped compiler cert-auth
+role must authorize `openvox.home.arpa`. Atlas enrollment uses
+`PUPPET_SERVER=openvox.home.arpa`, `VAULT_ADDR=https://vault.home.arpa:8200` and
+native certname `atlas.home.arpa` with authenticated new-chain trust.
+
+DNS alone does not make these services ready. The prepared service files below
+still carry legacy names and must be adapted explicitly under #13; do not
+globally replace legacy defaults or run the old combined Vault policy setup
+against the new authorities. Fresh authority initialization remains explicit;
+restore established identities on later rebuilds. The root private key stays
+inside Vault, and the online OpenVox intermediate retains its own protected key.
+
+## Prepared service implementation
+
 The accepted `24001` OpenVox image is pinned by digest in
 `docker/openvox/infra.Dockerfile`; the derived image adds Git and r10k 5.0.3.
 Provider/JDK/package policy remains owned by the accepted image. The service

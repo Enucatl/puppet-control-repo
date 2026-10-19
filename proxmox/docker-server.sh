@@ -12,15 +12,16 @@ VMID=""
 CORES=8
 MEMORY=16384
 DISK_SIZE="50G"
+MAC_ADDRESS=""
 NODE_TYPE="docker"
 BASE_ONLY=false
 REBUILD=false
 
 usage() {
-    echo "Usage: $0 [-b] [-r] [-n NAME | -l LETTER] [-i VMID] [-t TEMPLATE_ID] [-s PUPPET_SERVER] [-c CORES] [-m MEMORY_MB] [-d DISK_SIZE]"
+    echo "Usage: $0 [-b] [-r] [-n NAME | -l LETTER] [-i VMID] [-t TEMPLATE_ID] [-s PUPPET_SERVER] [-c CORES] [-m MEMORY_MB] [-d DISK_SIZE] [-a MAC_ADDRESS]"
     echo '  -b: infrastructure base without Vault/Puppet enrollment; -r: rebuild an owned development VM'
 }
-while getopts "brl:n:i:t:s:c:m:d:h" opt; do
+while getopts "brl:n:i:t:s:c:m:d:a:h" opt; do
     case $opt in
         b) BASE_ONLY=true ;;
         r) REBUILD=true ;;
@@ -32,6 +33,13 @@ while getopts "brl:n:i:t:s:c:m:d:h" opt; do
         c) CORES="$OPTARG" ;;
         m) MEMORY="$OPTARG" ;;
         d) DISK_SIZE="$OPTARG" ;;
+        a)
+            if ! [[ $OPTARG =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ && $OPTARG != 00:00:00:00:00:00 ]] ||
+                (( (16#${OPTARG:0:2} & 1) != 0 )); then
+                echo 'MAC_ADDRESS must be a nonzero unicast MAC address.' >&2; exit 1;
+            fi
+            MAC_ADDRESS="$OPTARG"
+            ;;
         h) usage; exit 0 ;;
         *) usage; exit 1 ;;
     esac
@@ -105,6 +113,13 @@ trap 'exit 143' TERM
 if [[ $TARGET_EXISTS == true ]]; then remove_target "$VMID"; fi
 qm clone "$TEMPLATE_ID" "$VMID" --name "$NEW_VM_NAME" --description "$OWNER" --storage "$STORAGE" --full 1
 CLONED=true
+if [[ -n $MAC_ADDRESS ]]; then
+    NET0=$(qm config "$VMID" | sed -n 's/^net0: //p')
+    [[ $NET0 =~ ^([^=]+)=[^,]+(.*)$ ]] || {
+        echo 'Clone has no valid net0 configuration.' >&2; exit 1;
+    }
+    qm set "$VMID" --net0 "${BASH_REMATCH[1]}=$MAC_ADDRESS${BASH_REMATCH[2]}"
+fi
 qm set "$VMID" --cores "$CORES" --memory "$MEMORY" --agent 1 --cpu host \
     --bios ovmf --machine q35 \
     --efidisk0 "${STORAGE}:0,efitype=4m,pre-enrolled-keys=0" --scsihw virtio-scsi-single

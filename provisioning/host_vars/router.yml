@@ -123,6 +123,11 @@ cortex_dhcp_end: "10.0.{{ cortex_vlan }}.200"
 
 docker_node_ip: "10.0.0.128"
 docker_node_mac: "bc:24:11:4a:bf:ed"
+# Atlas and its new Vault/OpenVox endpoints share this reserved address.
+atlas_node_ip: "10.0.0.158"
+atlas_node_mac: "bc:24:11:4e:a4:9e"
+# Verified EUI-64 address on Atlas; ULA stays stable across ISP prefix changes.
+atlas_node_ula: "{{ ula_prefix }}::be24:11ff:fe4e:a49e"
 complex_node_ip: "10.0.{{ cortex_vlan }}.133"
 complex_node_mac: "bc:24:11:b0:32:c9"
 complex_node_ipv6_suffix: "::be24:11ff:feb0:32c9"

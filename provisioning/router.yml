@@ -28,6 +28,10 @@
       ansible.builtin.import_tasks: tasks/06_upgrade_vyos.yml
       tags: [upgrade, never]
 
+    - name: Update DNS and DHCP only
+      ansible.builtin.import_tasks: tasks/07_dns.yml
+      tags: [dns, never]
+
     - name: Prepare file system and persistent directories
       ansible.builtin.import_tasks: tasks/01_setup_dirs.yml
       tags: [apply]

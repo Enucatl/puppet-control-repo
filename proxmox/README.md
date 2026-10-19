@@ -101,6 +101,12 @@ scratch contents and transfer Docker's filesystem with its existing contents.
 Do not copy or merge the temporary cache or local Vault archives. Local disposable
 archives do not replace independently protected recovery backups.
 
+Atlas creation uses MAC `bc:24:11:4e:a4:9e`, matching the router DHCP reservation
+for `10.0.0.158`. The shared creation script's optional `-a MAC_ADDRESS` replaces
+only the clone NIC's MAC, retaining its other network options. An explicit
+override must also update the router reservation. This keeps Atlas and its
+`vault.home.arpa` / `openvox.home.arpa` service names stable across rebuilds.
+
 ## Independent Atlas tooling bootstrap (#18 Stage A)
 
 After base creation, run [atlas-bootstrap.sh](atlas-bootstrap.sh) on Atlas as
@@ -253,19 +259,21 @@ two-hour `puppet-enrollment` tokens. See [Puppet enrollment](../docs/puppet-enro
 Keep credentials outside version control. Docker workload provisioning also needs
 `IPV6_PREFIX`, a three-hextet /48 prefix, and a hostname beginning with `a`–`f`.
 
-After Atlas's new server/enrollment policy is ready, create Aperture on
+For Atlas's new deployment, set `VAULT_ADDR=https://vault.home.arpa:8200` in the
+declared environment with authenticated new-chain trust. After its new
+`openvox.home.arpa` server/enrollment policy is ready, create Aperture on
 `proxmox.home.arpa` and Cognition on `proxmox-cortex.home.arpa`:
 
 ```bash
 # On proxmox.home.arpa; select an unused ID automatically.
-bash proxmox/desktop.sh -n aperture -t 9001 --puppet-server atlas.home.arpa
+bash proxmox/desktop.sh -n aperture -t 9001 --puppet-server openvox.home.arpa
 
 # On proxmox-cortex.home.arpa; build its separate local template first.
 bash proxmox/ubuntu-server-template.sh
-bash proxmox/desktop.sh -n cognition -t 9001 --puppet-server atlas.home.arpa
+bash proxmox/desktop.sh -n cognition -t 9001 --puppet-server openvox.home.arpa
 
 # An enrolled Docker workload host, separate from the Atlas base.
-bash proxmox/docker-server.sh -n app1 -t 9001 -s atlas.home.arpa -c 8 -m 16384 -d 50G
+bash proxmox/docker-server.sh -n app1 -t 9001 -s openvox.home.arpa -c 8 -m 16384 -d 50G
 ```
 
 Desktop defaults are eight cores, 8000 MiB RAM and 128 GiB disk. Both flows accept
@@ -274,7 +282,7 @@ an explicit `-i VMID`; desktop recreation additionally requires
 Desktop's `-n` sets a short hostname; `-l LETTER` instead selects a random name.
 Desktop provisioning reboots and verifies the short hostname/FQDN again.
 The FreeIPA acceptance fixture also loads optional `.env` settings: set
-`PUPPET_SERVER=atlas.home.arpa` there to test the new server. Its readiness check
+`PUPPET_SERVER=openvox.home.arpa` there to test the new server. Its readiness check
 uses the shared 30-minute timeout and retains the failed VM/snippet for diagnosis.
 
 ## Acceptance and remaining work

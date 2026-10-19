@@ -359,7 +359,12 @@ reboot_and_verify_guest 210 atlas atlas.home.arpa
 
 
 def run_atlas(
-    tmp_path: Path, *, failure: str = "", resources: list[dict] | None = None
+    tmp_path: Path,
+    *,
+    failure: str = "",
+    resources: list[dict] | None = None,
+    arguments: tuple[str, ...] = (),
+    script_name: str = "atlas-server.sh",
 ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
     """Run copied deployment scripts with harmless recording Proxmox binaries."""
     scripts = tmp_path / "scripts"
@@ -393,6 +398,9 @@ case "$1" in
         if [ "$2" = 9001 ]; then printf 'template: 1\n'; exit 0; fi
         [ -f "$MOCK_CLONED" ] || exit 1
         printf 'name: atlas\ndescription: openvox-provisioning:docker:atlas.home.arpa\n'
+        if [ "$FAILURE" != net0 ]; then
+            printf 'net0: virtio=DE:AD:BE:EF:00:01,bridge=vmbr0,firewall=1,tag=12,mtu=1450\n'
+        fi
         ;;
     set)
         if [ "$FAILURE" = set ] && [[ "$*" == *--cores* ]]; then exit 42; fi
@@ -420,7 +428,7 @@ esac
         )
         command.chmod(0o755)
     result = subprocess.run(
-        ["bash", str(scripts / "atlas-server.sh")],
+        ["bash", str(scripts / script_name), *arguments],
         cwd=tmp_path,
         env={
             **os.environ,
@@ -444,7 +452,7 @@ esac
     return result, log.read_text().splitlines() if log.exists() else []
 
 
-@pytest.mark.parametrize("failure", ["", "clone", "set"])
+@pytest.mark.parametrize("failure", ["", "clone", "set", "net0"])
 def test_atlas_base_deployment_and_owned_failure_cleanup(
     tmp_path: Path, failure: str
 ) -> None:
@@ -458,8 +466,10 @@ def test_atlas_base_deployment_and_owned_failure_cleanup(
     if failure == "":
         assert any("--searchdomain home.arpa" in call for call in calls)
     destroys = [call for call in calls if call.startswith("qm destroy ")]
-    assert destroys == (["qm destroy 210 --purge"] if failure == "set" else [])
-    if failure != "clone":
+    assert destroys == (
+        ["qm destroy 210 --purge"] if failure in ("set", "net0") else []
+    )
+    if failure not in ("clone", "net0"):
         settings = next(
             call
             for call in calls
@@ -467,6 +477,9 @@ def test_atlas_base_deployment_and_owned_failure_cleanup(
         )
         assert "--memory 8192" in settings
     if not failure:
+        network = "qm set 210 --net0 virtio=bc:24:11:4e:a4:9e,bridge=vmbr0,firewall=1,tag=12,mtu=1450"
+        assert network in calls
+        assert calls.index(network) < calls.index("qm start 210")
         assert "qm resize 210 scsi0 300G" in calls
         assert calls.count("qm reboot 210") == 1
         assert calls.count("qm guest exec 210 -- hostname") == 2
@@ -489,6 +502,44 @@ def test_atlas_base_deployment_and_owned_failure_cleanup(
     assert "d /scratch/backup/vault 0700 root root 7d" in scratch
     assert "systemctl enable --now systemd-tmpfiles-clean.timer" in config["runcmd"]
     assert not config.get("mounts")
+
+
+@pytest.mark.parametrize(
+    "mac",
+    ["", "invalid", "00:00:00:00:00:00", "ff:ff:ff:ff:ff:ff", "01:24:11:4e:a4:9e"],
+)
+def test_atlas_rejects_invalid_or_multicast_mac_before_mutations(
+    tmp_path: Path, mac: str
+) -> None:
+    """Reject unusable reservation addresses before creating a VM or snippet."""
+    result, calls = run_atlas(tmp_path, arguments=("-a", mac))
+    assert result.returncode != 0
+    assert "nonzero unicast MAC address" in result.stderr
+    assert calls == []
+    assert list((tmp_path / "snippets").iterdir()) == []
+
+
+def test_atlas_mac_can_be_overridden(tmp_path: Path) -> None:
+    """Allow an explicit replacement reservation without losing NIC options."""
+    result, calls = run_atlas(tmp_path, arguments=("-a", "02:AA:BB:CC:DD:EE"))
+    assert result.returncode == 0, result.stderr
+    assert (
+        "qm set 210 --net0 virtio=02:AA:BB:CC:DD:EE,bridge=vmbr0,firewall=1,tag=12,mtu=1450"
+        in calls
+    )
+
+
+def test_shared_docker_creation_keeps_generated_mac_without_option(
+    tmp_path: Path,
+) -> None:
+    """Preserve ordinary Docker provisioning's generated MAC behavior."""
+    result, calls = run_atlas(
+        tmp_path,
+        arguments=("-b", "-n", "atlas", "-i", "210"),
+        script_name="docker-server.sh",
+    )
+    assert result.returncode == 0, result.stderr
+    assert not any("--net0" in call for call in calls)
 
 
 def test_atlas_preflight_precedes_token_snippet_or_mutations(tmp_path: Path) -> None:
