@@ -94,7 +94,12 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
                '--log-file', str(work / 'migration.log')]
     if request['action'] == 'dry-run':
         command += ['--dryrun', '--dryrun-record', str(work / 'proposed.ldif')]
-    process = subprocess.run(command, text=True, capture_output=True)
+    environment = dict(os.environ, KRB5CCNAME='FILE:' + str(work / 'krb5cc'))
+    subprocess.run(['kinit', 'admin@HOME.ARPA'],
+                   input=request['target_admin_password'] + '\n',
+                   text=True, capture_output=True, check=True, env=environment)
+    process = subprocess.run(command, text=True, capture_output=True,
+                             env=environment)
     after = snapshot('ipa.home.arpa', request['target_password'],
                      str(work / 'target-ca.pem'))
     mismatches = {}
@@ -157,6 +162,7 @@ def migrate(action: str, container: str, source_file: Path, source_ca: Path) -> 
         "source_password": source["dm_password"],
         "source_ca": source_ca.read_text(),
         "target_password": settings["dm_password"],
+        "target_admin_password": settings["admin_password"],
         "target_ca": (controller.STATE / "root.pem").read_text(),
     }
     report = json.loads(
