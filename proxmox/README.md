@@ -256,7 +256,12 @@ reference watched by its existing deployment service.
 and a commit already published on GitHub `dev`. It restores complete history
 when the bootstrap checkout is shallow, requires fast-forward ancestry for all
 existing production targets, checks out local `production`, and creates the
-private `user_l:docker` bare repository at `/opt/git/openvox/control.git`.
+`user_l:docker` bare repository at `/opt/git/openvox/control.git`.
+This receiver contains public committed code: its directory and parent use
+`2775`, existing contents gain read/traverse access for others, and
+`core.sharedRepository=0664` keeps future objects and refs readable even under
+a restrictive umask. Other users cannot write. The working checkout under
+`/opt/docker` retains mode `2770` because it can contain deployment secrets.
 The bare repository is created with an empty Git template and no deployment
 hook. Setup refuses an existing active hook; container activation owns that
 later transition.
@@ -275,8 +280,22 @@ URLs is not a cross-repository transaction. The script verifies both production
 hashes after publication; rerun the same revision if one target fails.
 
 This stage stores code without starting containers or generating authorities.
-Before #13 activation, connect `/opt/git/openvox` to the external OpenVox Git
-volume at `/git`, grant the remapped container user access, and install a host
+Compose mounts only the public bare repository read-only at `/git/control.git`.
+The separate external volume at `/git` remains writable for deployment status.
+Container UID/GID `999:999` maps to host `100999:100999`; public read/traverse
+permissions allow it to read the bare repository without ACLs or ownership
+changes. r10k uses `file:///git/control.git` to avoid local-clone hard links
+across ownership boundaries, and the image trusts exactly `/git/control.git`
+through Git's `safe.directory` setting.
+
+After publishing and building `infra-openvox:24001`, run
+`bash proxmox/atlas-git-access-check.sh` on Atlas. It uses a disposable container
+with UID/GID `999:999`, user remapping, no network, a read-only image/source and
+temporary writable deployment/cache/code directories. It checks the numeric
+mapping, denied source writes, writable deployment status and a real r10k
+checkout of `production`. It starts no OpenVox server and initializes no CA.
+
+Before #13 activation, prepare the writable deployment volume and install a host
 receive hook that dispatches into the container. The container deployment helper
 already runs r10k, generates Puppet types and refreshes the environment caches;
 it uses container paths and cannot run directly as the host's Git hook. Its

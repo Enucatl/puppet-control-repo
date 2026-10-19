@@ -50,6 +50,7 @@ def publishing(tmp_path: Path) -> Path:
     git(tmp_path, "clone", "-q", "--bare", str(seed), str(github))
     checkout = tmp_path / "opt/docker/puppet-control-repo"
     checkout.parent.mkdir(parents=True)
+    checkout.parent.chmod(0o2770)
     git(
         tmp_path,
         "clone",
@@ -111,6 +112,7 @@ def run_script(
         text=True,
         capture_output=True,
         timeout=15,
+        umask=0o077,
     )
 
 
@@ -119,7 +121,17 @@ def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> No
     revision = (publishing / "revision").read_text()
     checkout = publishing / "opt/docker/puppet-control-repo"
     bare = publishing / "opt/git/openvox/control.git"
-    for _ in range(2):
+    for attempt in range(2):
+        if attempt:
+            for path in [bare, *bare.rglob("*")]:
+                path.chmod(path.stat().st_mode & ~0o007)
+            revision = commit(publishing / "seed", "next published dev target")
+            git(
+                publishing / "seed",
+                "push",
+                str(publishing / "github.git"),
+                "HEAD:refs/heads/dev",
+            )
         result = run_script(publishing, "atlas-publish.sh", revision)
         assert result.returncode == 0, result.stderr
         for repository in (checkout, bare, publishing / "github.git"):
@@ -145,7 +157,15 @@ def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> No
         assert git(checkout, "rev-parse", "--abbrev-ref", "@{upstream}") == (
             "origin/production"
         )
-        assert bare.stat().st_mode & 0o7777 == 0o2770
+        assert checkout.parent.stat().st_mode & 0o7777 == 0o2770
+        assert bare.parent.stat().st_mode & 0o7777 == 0o2775
+        assert bare.stat().st_mode & 0o7777 == 0o2775
+        assert git(bare, "config", "core.sharedRepository") == "0664"
+        for path in bare.rglob("*"):
+            assert path.stat().st_mode & 0o004, path
+            assert not path.stat().st_mode & 0o002, path
+            if path.is_dir():
+                assert path.stat().st_mode & 0o001, path
         assert not any(path.is_file() for path in (bare / "hooks").glob("*"))
 
 

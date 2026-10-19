@@ -93,6 +93,11 @@ services:
       - openvox_data:/opt/puppetlabs/server/data/puppetserver/server_data
       - openvox_gems:/opt/puppetlabs/server/data/puppetserver/jruby-gems
       - openvox_git:/git
+      - type: bind
+        source: /opt/git/openvox/control.git
+        target: /git/control.git
+        read_only: true
+        bind: {create_host_path: false}
       - openvox_r10k_cache:/var/cache/r10k
       - openvox_trust:/trust:ro
     healthcheck:

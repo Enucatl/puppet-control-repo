@@ -53,7 +53,7 @@ if [[ -e $bare ]]; then
         }
     fi
 else
-    install -d -o user_l -g docker -m 2770 /opt/git/openvox "$bare"
+    install -d -o user_l -g docker -m 2775 /opt/git/openvox "$bare"
     # An empty template prevents legacy host hooks from being installed.
     runuser -u user_l -- git init --bare --shared=group --initial-branch=production --template= "$bare"
 fi
@@ -65,6 +65,10 @@ for hook in "$bare"/hooks/*; do
         echo 'Publishing setup refuses an active bare-repository hook.' >&2; exit 1;
     }
 done
+# This receiver contains public GitHub code; remapped container users may read it.
+chmod 2775 /opt/git/openvox "$bare"
+"${bare_git[@]}" config core.sharedRepository 0664
+chmod -R o+rX,o-w "$bare"
 
 if "${control_git[@]}" show-ref --verify --quiet refs/heads/production; then
     "${control_git[@]}" switch production

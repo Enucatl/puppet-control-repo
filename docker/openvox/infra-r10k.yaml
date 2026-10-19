@@ -3,5 +3,5 @@
   provider: shellgit
 :sources:
   control:
-    remote: '/git/control.git'
+    remote: 'file:///git/control.git'
     basedir: '/etc/puppetlabs/code/environments'

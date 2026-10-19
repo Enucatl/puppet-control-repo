@@ -85,10 +85,15 @@ Atlas's [publishing handover](../proxmox/README.md#atlas-production-publishing-a
 separates code publication from container deployment. Its host bare repository is
 `/opt/git/openvox/control.git`; the working checkout publishes `production` to
 GitHub and this receiver. Legacy Docker publishes and fetches only its own old
-bare repository. Before activation, bind the Atlas Git storage into `/git` and
-connect host receives to the container's r10k/types/cache-refresh helper, including
-the remapped UID permissions and startup hook validation. The publishing stage
-creates no active receive hook and starts no service.
+bare repository. The receiver is public-readable (`2775` directory roots,
+`core.sharedRepository=0664`) and Compose binds it read-only at `/git/control.git`.
+The private `/opt/docker` tree retains mode `2770`. The remapped OpenVox user
+(`999:999` inside, `100999:100999` on Atlas) can read public Git data; writable
+deployment status remains on the separate `/git` volume. r10k uses the file URL
+`file:///git/control.git`, with Git trust scoped to that exact repository in the
+image. Before activation, connect host receives to the container's
+r10k/types/cache-refresh helper and update startup hook validation. The publishing
+stage creates no active receive hook and starts no service.
 
 ## Activation prerequisites
 
@@ -120,8 +125,11 @@ Do not activate this service until all of these conditions are met:
    imports an intermediate.
 4. Production/dev code contains the accepted Puppetfile and enrollment helpers,
    and has been deployed using the container r10k configuration. The restored
-   bare Git hook is replaced with `infra-post-receive`; the host hook uses
-   `sudo` and different paths and is not compatible with this container.
+   host Git receive hook dispatches into the container's `infra-post-receive`
+   helper; the legacy host hook uses `sudo` and different paths. Installing
+   hooks from inside the container is blocked by the read-only source mount.
+   #13 must implement that dispatch and adapt the current startup hook check,
+   which still expects the container helper itself in the bare repository.
 5. Production outbound crypto/consumer compatibility, independent offline
    recovery, and migration gates are signed off separately. The complete
    disposable rehearsal is useful evidence, but does not activate this service
@@ -139,7 +147,7 @@ Do not activate this service until all of these conditions are met:
 | `infra_openvox_code` | `/etc/puppetlabs/code` | Deployed production/dev environments |
 | `infra_openvox_data` | `/opt/puppetlabs/server/data/puppetserver/server_data` | Mutable server data, facts/reports and agent state |
 | `infra_openvox_gems` | `/opt/puppetlabs/server/data/puppetserver/jruby-gems` | Operator-installed JRuby gems |
-| `infra_openvox_git` | `/git` | `control.git`, executable post-receive hook and deployment status |
+| `infra_openvox_git` | `/git` | Writable deployment status; host bare repository is a separate read-only bind at `/git/control.git` |
 | `infra_openvox_r10k_cache` | `/var/cache/r10k` | Deployment cache |
 | `infra_openvox_trust` | `/trust` (read-only) | `root.pem`, `root.crl`, `openvox-chain.pem` public bundles |
 
@@ -202,7 +210,9 @@ failed import requires inspection/restoration; the helper never deletes it to
 permit a retry. The rehearsal's `pki.rb` uses rehearsal names and must not be
 run on this production identity.
 
-Build and prepare the code/hook only after restoring the external volumes.
+Build and prepare code only after restoring the external volumes. The host
+receive-hook dispatch and startup check described above are separate #13 work;
+the container cannot install a hook in its read-only source repository.
 These commands select just OpenVox, start no dependency, and publish no port
 during `run`:
 
@@ -212,7 +222,6 @@ docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml \
 docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml \
   --profile openvox run --rm --no-deps --entrypoint bash openvox -euc '
     test -s /git/control.git/HEAD
-    install -m 0755 /infra/infra-post-receive /git/control.git/hooks/post-receive
     for environment in production dev; do
       /opt/puppetlabs/puppet/bin/r10k deploy environment "$environment" --modules \
         --config /infra/infra-r10k.yaml

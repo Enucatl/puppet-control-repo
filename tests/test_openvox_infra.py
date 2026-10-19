@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import re
 
 import pytest
 
@@ -136,6 +137,36 @@ def test_start_fails_before_launch_when_state_is_missing():
     )
     assert result.returncode == 1
     assert "Restore established OpenVox state before startup; missing:" in result.stderr
+
+
+def test_published_control_repo_is_read_only_with_writable_deployment_status(
+    compose_model,
+):
+    """Expose public control code without allowing deployment to modify its source."""
+    mounts = {
+        mount["target"]: mount
+        for mount in compose_model["services"]["openvox"]["volumes"]
+    }
+    repository = mounts["/git/control.git"]
+    assert repository["type"] == "bind"
+    assert repository["source"] == "/opt/git/openvox/control.git"
+    assert repository["read_only"] is True
+    assert repository["bind"].get("create_host_path", False) is False
+    assert mounts["/git"]["type"] == "volume"
+    assert mounts["/git"]["source"] == "openvox_git"
+    assert mounts["/git"].get("read_only", False) is False
+
+
+def test_r10k_reads_foreign_owned_repo_using_file_transport_and_scoped_trust():
+    """Avoid local clone hard links and trust only the mounted control repository."""
+    configuration = (ROOT / "docker/openvox/infra-r10k.yaml").read_text()
+    assert re.findall(r"remote:\s*'([^']+)'", configuration) == [
+        "file:///git/control.git"
+    ]
+    dockerfile = (ROOT / "docker/openvox/infra.Dockerfile").read_text()
+    assert re.findall(
+        r"git config --system --add safe\.directory (\S+)", dockerfile
+    ) == ["/git/control.git"]
 
 
 def test_vault_cutover_is_a_separate_pinned_override(compose_model):
