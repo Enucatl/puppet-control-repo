@@ -178,6 +178,7 @@ def test_database_export_filters_authorities_only(
         suffix,
         "uid=alice,cn=users,cn=accounts," + suffix,
         "cn=ca-other," + suffix,
+        "cn=alice,cn=groups,cn=accounts," + suffix,
     ]
     omitted = [
         "cn=ca," + suffix,
@@ -187,6 +188,7 @@ def test_database_export_filters_authorities_only(
     ]
     conn = Mock()
     conn.search_s.return_value = [(dn, {"cn": [b"entry"]}) for dn in omitted + retained]
+    conn.search_s.return_value[-1][1]["mepManagedBy"] = [b"uid=alice"]
     writer = Mock()
     namespace = {
         "DN": DN,
@@ -205,5 +207,6 @@ def test_database_export_filters_authorities_only(
     counts = namespace["export_database"](conn, tmp_path / "source.ldif")
     exported = [call.args[0] for call in writer.unparse.call_args_list]
     assert exported[0] == suffix
+    assert exported[-1] == "cn=alice,cn=groups,cn=accounts," + suffix
     assert set(exported) == set(retained)
     assert counts == {"exported": len(retained), "excluded_authority": len(omitted)}

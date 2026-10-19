@@ -106,8 +106,10 @@ def export_database(conn, path):
     excluded = [DN('cn=certificates,cn=ipa,cn=etc', suffix), DN('cn=ca', suffix)]
     entries = conn.search_s(str(suffix), ldap.SCOPE_SUBTREE,
                             '(objectClass=*)', ['*', 'nsaccountlock'])
-    entries = sorted((entry for entry in entries if entry[0]),
-                     key=lambda entry: (len(DN(entry[0])), entry[0].lower()))
+    # User creation regenerates private groups before their source attrs are merged.
+    entries = sorted((entry for entry in entries if entry[0]), key=lambda entry: (
+        any(attr.lower() == 'mepmanagedby' for attr in entry[1]),
+        len(DN(entry[0])), entry[0].lower()))
     counts = {'exported': 0, 'excluded_authority': 0}
     with path.open('w') as stream:
         writer = ldif.LDIFWriter(stream)
