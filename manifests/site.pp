@@ -35,4 +35,11 @@ $classes = lookup('classes', Array[String])
 
 node default {
   $classes.include
+
+  # IPA must make its users visible before their files, jobs, and tools are managed.
+  ['freeipa_users', 'profile::common', 'profile::dotfiles', 'profile::codex_mtls', 'profile::user_toolchain'].each |$profile| {
+    if $profile in $classes {
+      Class['freeipa::client'] -> Class[$profile]
+    }
+  }
 }

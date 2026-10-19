@@ -25,6 +25,61 @@ DUMMY_SECRETS = {
 }
 
 
+def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
+    """Enroll IPA before user resources and issue Atlas certificates on new Vault."""
+    catalog = compile_catalog(
+        tmp_path,
+        (ROOT / "manifests/site.pp").read_text(),
+        DUMMY_SECRETS,
+        hostname="atlas",
+        fact_overrides={
+            "os": {
+                "family": "Debian",
+                "name": "Ubuntu",
+                "architecture": "amd64",
+                "release": {"major": "26.04", "full": "26.04"},
+                "distro": {"codename": "resolute"},
+            }
+        },
+    )
+    result = resources(catalog)
+    enrollment = result["Freeipa_client_enrollment[default]"]
+    assert enrollment["server"] == "ipa.home.arpa"
+    assert enrollment["ca_cert_file"] == (
+        "/usr/local/share/ca-certificates/atlas-infrastructure.crt"
+    )
+    assert (
+        "set target[.='domain/home.arpa']/ipa_server ipa.home.arpa"
+        in (result["Augeas[sssd_krb5_renewal]"]["changes"])
+    )
+    for name in ("atlas", "airflow", "wolf", "browser-use", "codex"):
+        certificate = result[f"Vault_cert[{name}]"]
+        assert certificate["vault_uri"] == (
+            "https://vault.home.arpa:8200/v1/pki_int/issue/puppet-atlas.home.arpa"
+        )
+        assert certificate["ca_trust"] == "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
+        assert "atlas.home.arpa" in certificate["cert_data"]["common_name"]
+        if name != "codex":
+            for key in ("cert_chain_file", "key_file"):
+                directory = Path(certificate[key]).parent
+                assert result[f"File[{directory}]"]["ensure"] == "directory"
+    assert (
+        result["Vault_cert[atlas]"]["cert_data"]["common_name"] == "*.atlas.home.arpa"
+    )
+    assert "Class[Profile::Docker_node]" not in result
+    pairs = ordered_pairs(catalog)
+    for resource in (
+        "Exec[add_ipa_user_user_to_groups]",
+        "Vault_cert[codex]",
+        "File[/home/user]",
+        "File[/home/user/.config/home-arpa/mtls]",
+        "Exec[sync-user-toolchain-user]",
+        "Exec[sync-codex-plugins-user]",
+        "Cron[user-toolchain-cache-prune]",
+    ):
+        assert ("Freeipa_client_enrollment[default]", resource) in pairs
+
+
 @pytest.mark.parametrize(
     ("hostname", "node_type"),
     [

@@ -1,4 +1,6 @@
-class profile::common::identity {
+class profile::common::identity (
+  String $server = lookup('freeipa::client::server'),
+) {
   exec { 'restart_sssd_after_identity_configuration':
     command     => '/bin/systemctl restart sssd',
     refreshonly => true,
@@ -15,7 +17,7 @@ class profile::common::identity {
   augeas { 'sssd_krb5_renewal':
     context => '/files/etc/sssd/sssd.conf',
     changes => [
-      "set target[.='domain/home.arpa']/ipa_server freeipa.home.arpa",
+      "set target[.='domain/home.arpa']/ipa_server ${server}",
       "set target[.='domain/home.arpa']/ldap_sasl_canonicalize false",
       "set target[.='domain/home.arpa']/krb5_canonicalize false",
       "set target[.='domain/home.arpa']/krb5_renewable_lifetime 7d",

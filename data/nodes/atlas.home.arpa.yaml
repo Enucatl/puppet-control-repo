@@ -1,0 +1,56 @@
+---
+freeipa::client::server: ipa.home.arpa
+freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
+
+profile::common::certs::directories:
+  - /opt/docker
+  - /opt/docker/traefik
+  - /opt/docker/traefik/data
+  - /opt/docker/traefik/data/certs
+  - /opt/docker/airflow
+  - /opt/docker/airflow/secrets
+  - /opt/docker/puppet-control-repo
+  - /opt/docker/puppet-control-repo/docker
+  - /opt/docker/puppet-control-repo/docker/wolf
+  - /opt/docker/puppet-control-repo/docker/wolf/secrets
+  - /opt/docker/browser-use
+  - /opt/docker/browser-use/secrets
+
+profile::common::certs::vault_certs_default_location: /opt/docker/traefik/data/certs
+profile::common::certs::vault_certs_defaults:
+  vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/puppet-atlas.home.arpa'
+  ca_trust: /etc/puppetlabs/puppet/ssl/certs/ca.pem
+
+profile::common::certs::vault_certs:
+  atlas:
+    cert_data:
+      common_name: '*.atlas.home.arpa'
+      alt_names: '*.atlas.home.arpa,atlas.home.arpa'
+    key_mode: '0640'
+  airflow:
+    cert_chain_file: /opt/docker/airflow/secrets/fullchain.pem
+    cert_chain_owner: 150000
+    cert_chain_group: 100000
+    cert_chain_mode: '0640'
+    key_file: /opt/docker/airflow/secrets/key.pem
+    key_owner: 150000
+    key_group: 100000
+    key_mode: '0600'
+  wolf:
+    cert_chain_file: /opt/docker/puppet-control-repo/docker/wolf/secrets/fullchain.pem
+    cert_chain_owner: 101000
+    cert_chain_group: 100000
+    cert_chain_mode: '0640'
+    key_file: /opt/docker/puppet-control-repo/docker/wolf/secrets/key.pem
+    key_owner: 101000
+    key_group: 100000
+    key_mode: '0600'
+  browser-use:
+    cert_chain_file: /opt/docker/browser-use/secrets/browser-use.crt
+    cert_chain_owner: 101000
+    cert_chain_group: 100000
+    cert_chain_mode: '0444'
+    key_file: /opt/docker/browser-use/secrets/browser-use.key
+    key_owner: 101000
+    key_group: 100000
+    key_mode: '0400'

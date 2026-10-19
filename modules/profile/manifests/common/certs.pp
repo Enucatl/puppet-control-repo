@@ -2,8 +2,13 @@ class profile::common::certs (
   Hash $vault_certs = {},
   Hash $vault_certs_defaults = {},
   String $vault_certs_default_location = '/opt/certs',
+  Array[Stdlib::Absolutepath] $directories = [],
 ) {
   require vault_secrets::vault_cert
+
+  file { $directories:
+    ensure => directory,
+  }
 
   $vault_certs.each |String $subdomain, Optional[Hash] $config| {
     $default_value = "${subdomain}.${facts['networking']['fqdn']}"
