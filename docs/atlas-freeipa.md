@@ -27,7 +27,9 @@ Its published base is pinned to
 from fork revision `cea6c6b250867cd9dbf23c7224d81d1ae7908b83`.
 [The hosted build and focused checks passed](https://github.com/Enucatl/freeipa-container/actions/runs/39307303697).
 The versioned full-install harness also passed on Atlas with disposable
-state and no published ports. Production deployment waits for image review.
+state and no published ports. The new server is initialized and healthy;
+[initialization evidence](atlas-ipa-initialization-results.json) records its
+certificate identities, authenticated checks and protected off-host backup.
 
 `atlas-entrypoint.py` reads protected inputs, validates the prepared data volume
 identity, writes the image's supported installer options file and delegates to
@@ -144,8 +146,12 @@ also requires real HTTP/LDAP/Kerberos checks, unchanged required access, renewal
 and reload, absence of Dogtag and the original-deployment rollback procedure.
 
 DNS is deployed and the image's fresh-install checks passed. Record real
-initialization and account-migration acceptance separately before Atlas's first
-full catalog; an initialized empty server does not satisfy that prerequisite.
+account-migration acceptance separately before Atlas's first full catalog.
+Initialization passed with ML-DSA-44 HTTPS and LDAPS, administrator Kerberos and
+API access, and no Dogtag instance. `ipa-pkinit-manage status` reports disabled;
+FreeIPA still retains its self-signed KDC certificate and PKINIT configuration.
+The pre-migration backup contains 13 volumes and 19 archives, with every archive
+checksum verified on Proxmox after copying it off Atlas. No clients have moved.
 
 ## Focused checks
 

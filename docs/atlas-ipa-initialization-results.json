@@ -1,0 +1,73 @@
+{
+  "date_utc": "2026-10-19",
+  "host": "atlas.home.arpa",
+  "endpoint": "ipa.home.arpa",
+  "initialization_control_revision": "fd2b1a1abe24fd1f5b78929474ef05d588cf2a5c",
+  "backup_control_revision": "42d48f765b1ad7dcd3a222c7af8cf8e536fce242",
+  "initialization_command": "sudo python3 proxmox/atlas-freeipa.py initialize",
+  "initialization_exit_status": 0,
+  "manual_guest_repairs": false,
+  "image": {
+    "base": "ghcr.io/enucatl/freeipa-server@sha256:80024f5e76ce4eedd986eb9e7ed63461cafb1bc1774386cf4ff41a259633d0cb",
+    "running_id": "sha256:9e5a9083ba1b4290ab2b14e406cc7388d6ddfbe38c604790af447edf96d97db2",
+    "ipa_version": "4.13.4",
+    "api_version": "2.257"
+  },
+  "authority": {
+    "live_vault_root_der_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+    "root_matches_original_checkpoint": true,
+    "freeipa_issuer_and_key_match_saved_checkpoint": true,
+    "intermediate_subject": "CN=Atlas FreeIPA intermediate",
+    "intermediate_issuer": "CN=Atlas infrastructure root",
+    "intermediate_not_after_utc": "2031-10-18T19:11:41Z"
+  },
+  "readiness": {
+    "container_healthy": true,
+    "admin_password_kerberos_kinit": "passed",
+    "authenticated_ipa_ping": "passed",
+    "ca_enabled": false,
+    "ra_plugin": "None",
+    "dogtag_service": "inactive",
+    "dogtag_instance_files_present": false,
+    "ipa_pkinit_manage_status": "PKINIT is disabled",
+    "pkinit_note": "FreeIPA retains a self-signed KDC certificate and PKINIT configuration even with --no-pkinit; supported ipa-pkinit-manage status reports disabled and ipa pkinit-status lists zero enabled servers.",
+    "external_https_ui_status": 200,
+    "external_https_hostname_and_root_verification": "passed",
+    "external_ldaps_hostname_and_root_verification": "passed",
+    "live_tls_leaves_match_saved_originals": true
+  },
+  "http_certificate": {
+    "sha256": "5abcad5c1494c4534b94c41299a8b4e07402ca686c2eb574b13a1b7f7a059b9f",
+    "public_key_algorithm": "ML-DSA-44",
+    "signature_algorithm": "ML-DSA-44",
+    "dns_san": ["ipa.home.arpa"],
+    "not_before_utc": "2026-10-19T19:11:12Z",
+    "not_after_utc": "2027-01-17T19:11:42Z"
+  },
+  "ldap_certificate": {
+    "sha256": "2bd8db542b9d016734a7878edd5b3e4846f0781f6d8488b20a6ab8f6d82b2062",
+    "public_key_algorithm": "ML-DSA-44",
+    "signature_algorithm": "ML-DSA-44",
+    "dns_san": ["ipa.home.arpa"],
+    "not_before_utc": "2026-10-19T19:11:12Z",
+    "not_after_utc": "2027-01-17T19:11:42Z"
+  },
+  "pre_migration_backup": {
+    "atlas_directory": "/scratch/vault/atlas-ipa-pre-migration-20261019T191402Z",
+    "proxmox_directory": "/root/openvox-atlas-ipa-pre-migration-20261019T191402Z",
+    "manifest_sha256": "e3042047e453c8573d8e68df34c3d3f9ffadfd81bda31bfd6a71c6e51f912e51",
+    "volume_count": 13,
+    "archive_count": 19,
+    "all_offhost_archive_checksums_verified": true,
+    "offhost_kit_root_owned_without_group_or_other_access": true,
+    "four_services_healthy_after_restart": true,
+    "root_and_tls_leaf_identities_unchanged_after_restart": true,
+    "admin_kerberos_and_api_passed_after_restart": true,
+    "openvox_deployment_exit_status": 0
+  },
+  "limitations": [
+    "This evidence establishes fresh-server initialization and preservation, not account migration.",
+    "No clients were enrolled and no existing client was switched.",
+    "Certificate renewal and actual disaster recovery were not exercised by initialization."
+  ]
+}
