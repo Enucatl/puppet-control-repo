@@ -174,6 +174,11 @@ and registers `/usr/bin/sysbox-runc` as an optional Docker runtime. APT installs
 its dependencies; Sysbox is installed before Docker so the runtime binary exists
 when the daemon first starts. The script checks the package version
 `0.7.1.linux`, the three Sysbox services and Docker's runtime registration.
+Ubuntu's enforced `fusermount3` AppArmor profile also needs permission to mount
+and unmount under `/var/lib/sysboxfs`. The script preserves existing local rules,
+adds the [upstream-recommended permissions](https://github.com/nestybox/sysbox/issues/947#issuecomment-3071416102)
+to `/etc/apparmor.d/local/fusermount3` and reloads the profile. AppArmor remains
+enforced; reruns do not duplicate the rules.
 
 The script starts Docker, verifies its API and namespace mapping, and checks
 Compose/Buildx and a sanitized Compose render. It leaves infrastructure service

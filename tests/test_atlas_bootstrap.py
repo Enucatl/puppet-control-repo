@@ -163,6 +163,10 @@ case "$name" in
   systemctl)
     if [[ $failure == sysbox-service && $1 == is-active ]]; then exit 42; fi
     ;;
+  apparmor_parser)
+    [[ "$*" == "-r $root/etc/apparmor.d/fusermount3" ]]
+    [[ $failure != apparmor ]] || exit 42
+    ;;
   *) exit 99 ;;
 esac
 """
@@ -185,6 +189,7 @@ esac
         "chown",
         "install",
         "sed",
+        "apparmor_parser",
     ):
         binary = tmp_path / "bin" / name
         binary.write_text(command)
@@ -218,6 +223,10 @@ def run_bootstrap(
 
 def test_fresh_and_repeated_bootstrap(bootstrap: Path) -> None:
     """Install once, retain checkouts/settings on rerun and validate sanitized Compose."""
+    profile = bootstrap / "etc/apparmor.d/local/fusermount3"
+    profile.parent.mkdir(parents=True)
+    unrelated_rule = "/srv/operator-fuse/** rw,"
+    profile.write_text(unrelated_rule)
     for _ in range(2):
         result = run_bootstrap(bootstrap)
         assert result.returncode == 0, result.stderr
@@ -255,6 +264,17 @@ def test_fresh_and_repeated_bootstrap(bootstrap: Path) -> None:
     assert calls.count("systemctl enable --now docker\n") == 2
     assert "config --quiet" in calls
     assert "compose up" not in calls
+    rules = profile.read_text().replace(str(bootstrap), "").splitlines()
+    assert rules.count(unrelated_rule) == 1
+    for rule in (
+        "mount fstype=@{fuse_types} options=(nosuid,nodev,rw) -> /var/lib/sysboxfs/**/,",
+        "mount fstype=@{fuse_types} options=(nosuid,nodev,ro) -> /var/lib/sysboxfs/**/,",
+        "umount /var/lib/sysboxfs/**/,",
+    ):
+        assert rules.count(rule) == 1
+    assert (
+        calls.count(f"apparmor_parser -r {bootstrap}/etc/apparmor.d/fusermount3\n") == 2
+    )
 
 
 @pytest.mark.parametrize(
@@ -399,6 +419,7 @@ def test_interrupted_mapping_transfer_can_resume(
         "sysbox-version",
         "sysbox-service",
         "runtime",
+        "apparmor",
     ],
 )
 def test_failed_setup_never_records_success(bootstrap: Path, failure: str) -> None:
@@ -418,6 +439,8 @@ def test_failed_setup_never_records_success(bootstrap: Path, failure: str) -> No
             line.startswith("apt-get install") and "sysbox-ce.deb" in line
             for line in calls.splitlines()
         )
+    if failure == "apparmor":
+        assert "systemctl enable --now" not in calls
 
 
 def test_daemon_networks_do_not_overlap_existing_routes(bootstrap: Path) -> None:

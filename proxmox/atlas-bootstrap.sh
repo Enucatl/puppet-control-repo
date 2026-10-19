@@ -28,7 +28,7 @@ trap 'rm -rf "$work"' EXIT
 chmod 0755 "$work"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y ca-certificates curl gnupg git jq openssh-client
+apt-get install -y apparmor ca-certificates curl gnupg git jq openssh-client
 
 cat > "$work/daemon.json" <<'JSON'
 {
@@ -126,6 +126,17 @@ curl --fail --silent --show-error --location \
 printf '%s  %s\n' 9d6d5484f980d0a17f86c492c1262015c2afb66280bdb97215b79fde6a0261c5 "$work/sysbox-ce.deb" | sha256sum --check -
 apt-get install -y "$work/sysbox-ce.deb"
 [[ $(dpkg-query -W -f='${Version}' sysbox-ce) == 0.7.1.linux ]]
+# Ubuntu's enforced fusermount3 profile needs access to Sysbox's FUSE mounts.
+install -d -m 0755 /etc/apparmor.d/local
+for rule in \
+    'mount fstype=@{fuse_types} options=(nosuid,nodev,rw) -> /var/lib/sysboxfs/**/,' \
+    'mount fstype=@{fuse_types} options=(nosuid,nodev,ro) -> /var/lib/sysboxfs/**/,' \
+    'umount /var/lib/sysboxfs/**/,'; do
+    if ! grep -Fxq "$rule" /etc/apparmor.d/local/fusermount3 2>/dev/null; then
+        printf '\n%s\n' "$rule" >> /etc/apparmor.d/local/fusermount3
+    fi
+done
+apparmor_parser -r /etc/apparmor.d/fusermount3
 apt-get install -y \
     docker-ce=5:29.9.1-1~ubuntu.26.04~resolute \
     docker-ce-cli=5:29.9.1-1~ubuntu.26.04~resolute \
