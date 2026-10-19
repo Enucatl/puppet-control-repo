@@ -61,6 +61,16 @@ class profile::alloy (
     'router_config'  => $router_config,
   })
 
+  if $facts['os']['family'] == 'Debian' {
+    include apt
+    # Failed repository downloads must not leave a falsely successful empty cache.
+    apt::conf { 'update-errors':
+      content       => 'APT::Update::Error-Mode "any";',
+      notify_update => true,
+    }
+    Class['apt::update'] -> Package['alloy']
+  }
+
   # Pass the generated string to the official module
   class { 'grafana_alloy':
     config => $config_content,

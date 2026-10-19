@@ -48,15 +48,14 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     assert "ProxyCommand none\n" in ssh_config
     assert "KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H\n" in ssh_config
     assert "sss_ssh_knownhostsproxy" not in ssh_config
-    for title in (
-        "neovim-install",
-        "sync-user-toolchain-user",
-        "sync-codex-plugins-user",
-    ):
-        assert (
-            "OPENSSL_CONF=/etc/ssl/openssl.cnf"
-            in result[f"Exec[{title}]"]["environment"]
-        )
+    shim = result["File[/usr/local/libexec/openvox-child-policy.rb]"]
+    assert shim["source"] == "puppet:///modules/profile/openvox-child-policy.rb"
+    assert shim["mode"] == "0644"
+    crypto = result["File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]"][
+        "content"
+    ]
+    assert "-r /usr/local/libexec/openvox-child-policy.rb" in crypto
+    assert "OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf" in crypto
     assert result["File[/etc/apt/keyrings/grafana-alloy-archive-keyring.asc]"][
         "source"
     ] == ("puppet:///modules/profile/grafana-signing-key.asc")
@@ -66,6 +65,7 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     assert "Package[wget]" in result
     enrollment = result["Freeipa_client_enrollment[default]"]
     assert enrollment["server"] == "ipa.home.arpa"
+    assert enrollment["hostname"] == "atlas.home.arpa"
     assert enrollment["ca_cert_file"] == (
         "/usr/local/share/ca-certificates/atlas-infrastructure.crt"
     )
@@ -89,6 +89,10 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     )
     assert "Class[Profile::Docker_node]" not in result
     pairs = ordered_pairs(catalog)
+    assert ("Exec[apt_update]", "Package[alloy]") in pairs
+    apt_errors = result["File[/etc/apt/apt.conf.d/50update-errors]"]
+    assert 'APT::Update::Error-Mode "any";' in apt_errors["content"]
+    assert apt_errors["notify"] == "Class[Apt::Update]"
     for resource in (
         "Exec[add_ipa_user_user_to_groups]",
         "File[/etc/beszel-agent]",
@@ -103,6 +107,7 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         "Exec[sync-user-toolchain-user]",
         "Exec[sync-codex-plugins-user]",
         "Cron[user-toolchain-cache-prune]",
+        "Concat_file[/etc/ssh/ssh_config]",
     ):
         assert ("Freeipa_client_enrollment[default]", resource) in pairs
 
@@ -127,6 +132,8 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     )
     assert "Service[alloy]" in resources(catalog)
     result = resources(catalog)
+    assert "File[/usr/local/libexec/openvox-child-policy.rb]" not in result
+    assert "File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]" not in result
     if node_type in {"docker", "desktop"}:
         ssh_config = result["Concat::Fragment[ssh_config global config]"]["content"]
         assert "ProxyCommand /usr/bin/sss_ssh_knownhostsproxy -p %p %h\n" in ssh_config

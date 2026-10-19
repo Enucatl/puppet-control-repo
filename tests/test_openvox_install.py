@@ -63,6 +63,7 @@ def test_native_install_pins_supported_signed_package(
         path.chmod(0o755)
     script = (ROOT / "proxmox/install-openvox.sh").read_text()
     script = script.replace("/etc/", str(directory) + "/")
+    script = script.replace("/usr/local/libexec", str(tmp_path / "libexec"))
     script = script.replace("/opt/puppetlabs/bin/puppet", str(binaries / "puppet"))
     script = script.replace("/opt/puppetlabs/puppet/bin/ruby", str(binaries / "ruby"))
     result = subprocess.run(
@@ -92,6 +93,14 @@ def test_native_install_pins_supported_signed_package(
         source = (directory / "apt/sources.list.d/openvox-homelab.list").read_text()
         assert "signed-by=" in source
         if accepted:
+            shim = (tmp_path / "libexec/openvox-child-policy.rb").read_text()
+            assert shim == (
+                ROOT / "modules/profile/files/openvox-child-policy.rb"
+            ).read_text().replace("/etc/", str(directory) + "/")
+            dropin = (
+                directory / "systemd/system/puppet.service.d/puppet-crypto.conf"
+            ).read_text()
+            assert f"-r {tmp_path / 'libexec/openvox-child-policy.rb'}" in dropin
             assert "key_type mldsa44 --section agent" in calls
             assert "systemctl unmask" not in calls
             assert (

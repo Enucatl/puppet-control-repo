@@ -63,9 +63,20 @@ MaxProtocol = TLSv1.3
 Protocol = -ALL,+TLSv1.3
 Groups = X25519MLKEM768
 POLICY
-cat > /etc/systemd/system/puppet.service.d/crypto.conf <<'POLICY'
+install -d -m 0755 /usr/local/libexec
+cat > /usr/local/libexec/openvox-child-policy.rb <<'RUBY'
+# Initialize Puppet/Vault TLS before giving subprocesses the system TLS policy.
+ENV['OPENSSL_CONF'] = '/etc/puppetlabs/puppet/openssl.cnf'
+require 'openssl'
+OpenSSL::SSL::SSLContext.new
+ENV['OPENSSL_CONF'] = '/etc/ssl/openssl.cnf'
+RUBY
+chmod 0644 /usr/local/libexec/openvox-child-policy.rb
+cat > /etc/systemd/system/puppet.service.d/puppet-crypto.conf <<'POLICY'
 [Service]
 Environment=OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
+ExecStart=
+ExecStart=/opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb /opt/puppetlabs/puppet/bin/puppet agent $PUPPET_EXTRA_OPTS --no-daemonize
 POLICY
 export OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
 /opt/puppetlabs/bin/puppet config set key_type mldsa44 --section main

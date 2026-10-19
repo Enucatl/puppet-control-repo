@@ -2,6 +2,22 @@ class profile::common::systemd (
   Hash $units         = {},
   Hash $user_services = {},
 ) {
+  if $trusted['certname'] == 'atlas.home.arpa' {
+    file { '/usr/local/libexec':
+      ensure => directory,
+      owner  => 'root',
+      group  => 'root',
+      mode   => '0755',
+    }
+    file { '/usr/local/libexec/openvox-child-policy.rb':
+      ensure => file,
+      source => 'puppet:///modules/profile/openvox-child-policy.rb',
+      owner  => 'root',
+      group  => 'root',
+      mode   => '0644',
+    }
+  }
+
   $units.each |String $unit_name, Hash $config| {
     systemd::unit_file { $unit_name:
       * => $config,

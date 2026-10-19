@@ -15,7 +15,7 @@ class profile::codex_plugins {
     command     => '/usr/local/sbin/puppet-codex-plugins-sync',
     user        => 'user',
     path        => ['/usr/local/sbin', '/usr/local/bin', '/usr/bin', '/bin'],
-    environment => ['HOME=/home/user', 'USER=user', 'LOGNAME=user', 'OPENSSL_CONF=/etc/ssl/openssl.cnf'],
+    environment => ['HOME=/home/user', 'USER=user', 'LOGNAME=user'],
     timeout     => 300,
     onlyif      => 'id user',
     require     => [

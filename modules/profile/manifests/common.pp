@@ -8,9 +8,4 @@ class profile::common {
   contain profile::common::udev
   contain profile::common::identity
   contain profile::common::acls
-
-  # Public downloads use system TLS; Puppet and Vault retain their strict policy.
-  Exec <| title == 'neovim-install' |> {
-    environment => ['OPENSSL_CONF=/etc/ssl/openssl.cnf'],
-  }
 }
