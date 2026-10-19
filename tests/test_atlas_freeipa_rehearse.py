@@ -145,7 +145,8 @@ elif args[0] == "run":
         assert args[-1] == "sha256:" + "a" * 64
         assert args[args.index("--runtime") + 1] == "sysbox-runc"
         assert args[args.index("--network") + 1] == "atlas-ipa-rehearsal"
-        assert args[args.index("--add-host") + 1] == "ipa.home.arpa:127.0.0.1"
+        assert "--add-host" not in args
+        assert args[args.index("--hostname") + 1] == "ipa.home.arpa"
         assert "IPA_SERVER_IP=no-update" in args
         assert (path / "directory.db").read_text() == "PRESERVED-PRIVATE-IDENTITIES"
         assert "dst=/bootstrap,readonly" in " ".join(args)
@@ -153,6 +154,10 @@ elif args[0] == "run":
         save()
 elif args[0] == "exec":
     assert args[1] == "atlas-ipa-rehearsal"
+    if args[2:4] == ["python3", "-c"]:
+        assert "socket.getfqdn()" in args[4] and '"server-show", "ipa.home.arpa"' in args[4]
+        if (root / "fail-admin-login").exists():
+            sys.exit(42)
     if (root / "fail-readiness").exists():
         sys.exit(42)
 else:
@@ -221,6 +226,7 @@ def test_restore_and_explicit_cleanup_preserve_snapshot_identity(
         "installed",
         "unlabelled",
         "readiness",
+        "admin-login",
     ],
 )
 def test_failed_preflight_and_cleanup_are_bounded(
@@ -262,6 +268,8 @@ def test_failed_preflight_and_cleanup_are_bounded(
         )
     elif failure == "readiness":
         (rehearsal / "fail-readiness").touch()
+    elif failure == "admin-login":
+        (rehearsal / "fail-admin-login").touch()
     result = run(rehearsal)
     assert result.returncode != 0
     assert "clone ready" not in result.stdout

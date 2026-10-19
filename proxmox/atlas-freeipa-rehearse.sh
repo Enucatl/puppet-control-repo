@@ -87,7 +87,7 @@ jq -e --arg root "$root" '.hostname == "ipa.home.arpa" and .root_sha256 == $root
      test -s /volume/etc/ipa/default.conf' sh "$identity"
 "${docker[@]}" run --detach --pull never --name "$name" --label "$label" \
     --label com.docker.compose.project=atlas-ipa-rehearsal --label com.docker.compose.service=ipa \
-    --hostname ipa.home.arpa --add-host ipa.home.arpa:127.0.0.1 --runtime sysbox-runc \
+    --hostname ipa.home.arpa --runtime sysbox-runc \
     --network "$network" --memory 2g --memory-swap 2g --pids-limit 512 \
     --env IPA_SERVER_IP=no-update --mount "type=volume,src=$volume,dst=/data" \
     --mount "type=bind,src=$state/container-inputs,dst=/bootstrap,readonly" "$image" >/dev/null
@@ -100,4 +100,22 @@ timeout 600 "${docker[@]}" exec "$name" bash -ec \
        --resolve ipa.home.arpa:443:127.0.0.1 https://ipa.home.arpa/ipa/ui/ > /dev/null
      LDAPTLS_CACERT=/bootstrap/root.pem ldapsearch -LLL -x -H ldaps://ipa.home.arpa \
        -b "" -s base namingContexts | grep -F "namingContexts: dc=home,dc=arpa" > /dev/null'
+timeout 60 "${docker[@]}" exec "$name" python3 -c '
+import json
+import socket
+import subprocess
+assert socket.getfqdn() == "ipa.home.arpa", "IPA canonical hostname changed"
+resolved = {item[4][0] for item in socket.getaddrinfo("ipa.home.arpa", None, socket.AF_INET)}
+local = set(subprocess.check_output(["hostname", "-I"], text=True).split())
+assert resolved and resolved <= local, "IPA hostname must resolve to its own interfaces"
+with open("/bootstrap/installer.json") as source:
+    password = json.load(source)["admin_password"]
+subprocess.run(["kinit", "admin"], input=password + "\n", text=True, check=True,
+               stdout=subprocess.DEVNULL)
+try:
+    subprocess.run(["ipa", "server-show", "ipa.home.arpa"], check=True,
+                   stdout=subprocess.DEVNULL)
+finally:
+    subprocess.run(["kdestroy"], check=True)
+'
 echo 'IPA rehearsal clone ready; no accounts imported. Cleanup explicitly with: atlas-freeipa-rehearse.sh cleanup'
