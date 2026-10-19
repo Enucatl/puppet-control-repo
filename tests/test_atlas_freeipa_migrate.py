@@ -92,6 +92,11 @@ def test_worker_requires_tls_and_retains_dryrun_evidence(migration: ModuleType) 
     assert "input=request['target_admin_password']" in migration.WORKER
     assert "env=environment" in migration.WORKER
     assert "--migrate-dns" not in migration.WORKER
+    assert "before['trust'] == after['trust']" in migration.WORKER
+    assert "before['schema'] == after['schema']" in migration.WORKER
+    assert "['kinit', 'puppet-enroller@HOME.ARPA']" in migration.WORKER
+    assert "assert not keys_before" in migration.WORKER
+    assert "assert keys_after" in migration.WORKER
 
 
 def test_failure_keeps_private_report(
@@ -120,3 +125,13 @@ def test_failure_keeps_private_report(
     command, payload = migration.infra.run.call_args.args
     assert "source-secret" not in repr(command)
     assert json.loads(payload)["source_password"] == "source-secret"
+
+
+def test_rehearsal_requires_password_login_proof(
+    migration: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rehearsal cannot skip proving the migrated account password works."""
+    monkeypatch.setattr(migration, "private_json", lambda _: {"dm_password": "private"})
+    with pytest.raises(RuntimeError, match="login-password-file"):
+        migration.migrate("rehearse", "atlas-ipa-rehearsal", Path("source"), Path("ca"))
+    migration.infra.run.assert_not_called()

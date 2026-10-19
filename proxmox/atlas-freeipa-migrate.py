@@ -39,7 +39,8 @@ config = configparser.ConfigParser()
 config.read('/etc/ipa/default.conf')
 assert config['global']['host'] == 'ipa.home.arpa'
 assert config['global']['realm'] == 'HOME.ARPA'
-local_addresses = set(subprocess.check_output(['hostname', '-I'], text=True).split())
+local_addresses = {'127.0.0.1', '::1'} | set(
+    subprocess.check_output(['hostname', '-I'], text=True).split())
 target_addresses = {entry[4][0] for entry in socket.getaddrinfo('ipa.home.arpa', 389)}
 assert target_addresses and target_addresses <= local_addresses, \
     'ipa.home.arpa must resolve exclusively to this container'
@@ -60,7 +61,7 @@ attributes = {
 bases = {'users': 'cn=users,cn=accounts', 'groups': 'cn=groups,cn=accounts',
          'hbac': 'cn=hbac', 'sudo': 'cn=sudo'}
 
-def snapshot(host, password, ca):
+def connection(host, password, ca):
     conn = ldap.initialize('ldap://' + host)
     conn.set_option(ldap.OPT_NETWORK_TIMEOUT, 20)
     conn.set_option(ldap.OPT_X_TLS_CACERTFILE, ca)
@@ -68,6 +69,10 @@ def snapshot(host, password, ca):
     conn.set_option(ldap.OPT_X_TLS_NEWCTX, 0)
     conn.start_tls_s()
     conn.simple_bind_s('cn=Directory Manager', password)
+    return conn
+
+def snapshot(host, password, ca):
+    conn = connection(host, password, ca)
     result = {}
     for kind, base in bases.items():
         entries = conn.search_s(base + ',dc=home,dc=arpa', ldap.SCOPE_SUBTREE,
@@ -77,6 +82,19 @@ def snapshot(host, password, ca):
                          for v in values) for attr, values in attrs.items()}
             for dn, attrs in entries if dn and attrs
         }
+    entries = conn.search_s('cn=certificates,cn=ipa,cn=etc,dc=home,dc=arpa',
+                            ldap.SCOPE_SUBTREE, '(objectClass=*)', ['*'])
+    result['trust'] = {
+        dn.lower(): {attr.lower(): sorted(base64.b64encode(v).decode()
+                     for v in values) for attr, values in attrs.items()}
+        for dn, attrs in entries if dn
+    }
+    result['schema'] = {
+        attr.lower(): sorted(base64.b64encode(v).decode() for v in values)
+        for _, attrs in conn.search_s('cn=schema', ldap.SCOPE_BASE,
+            '(objectClass=*)', ['attributeTypes', 'objectClasses'])
+        for attr, values in attrs.items()
+    }
     conn.unbind_s()
     return result
 
@@ -99,22 +117,67 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
                '--log-file', str(work / 'migration.log')]
     if request['action'] == 'dry-run':
         command += ['--dryrun', '--dryrun-record', str(work / 'proposed.ldif')]
-    environment = dict(os.environ, KRB5CCNAME='FILE:' + str(work / 'krb5cc'))
+    (work / 'krb5.conf').write_text('''[libdefaults]
+ default_realm = HOME.ARPA
+ dns_lookup_kdc = false
+ rdns = false
+ dns_canonicalize_hostname = false
+[realms]
+ HOME.ARPA = {
+  kdc = ipa.home.arpa
+ }
+''')
+    environment = dict(os.environ, KRB5CCNAME='FILE:' + str(work / 'krb5cc'),
+                       KRB5_CONFIG=str(work / 'krb5.conf'))
     subprocess.run(['kinit', 'admin@HOME.ARPA'],
                    input=request['target_admin_password'] + '\n',
                    text=True, capture_output=True, check=True, env=environment)
     process = subprocess.run(command, text=True, capture_output=True,
                              env=environment)
+    login = {}
+    if request['action'] == 'rehearse' and process.returncode == 0:
+        conn = connection('ipa.home.arpa', request['target_password'],
+                          str(work / 'target-ca.pem'))
+        enabled = conn.search_s('cn=ipaconfig,cn=etc,dc=home,dc=arpa',
+            ldap.SCOPE_BASE, '(objectClass=*)', ['ipaMigrationEnabled'])[0][1]
+        assert enabled.get('ipaMigrationEnabled', [b'FALSE'])[0].upper() == b'TRUE'
+        user_dn = 'uid=puppet-enroller,cn=users,cn=accounts,dc=home,dc=arpa'
+        keys_before = bool(conn.search_s(user_dn, ldap.SCOPE_BASE,
+            '(objectClass=*)', ['krbPrincipalKey'])[0][1].get('krbPrincipalKey'))
+        assert not keys_before, 'Migrated principal must regenerate its Kerberos keys'
+        conn.simple_bind_s(user_dn, request['login_password'])
+        conn.simple_bind_s('cn=Directory Manager', request['target_password'])
+        keys_after = bool(conn.search_s(user_dn, ldap.SCOPE_BASE,
+            '(objectClass=*)', ['krbPrincipalKey'])[0][1].get('krbPrincipalKey'))
+        assert keys_after, 'Password LDAP bind did not generate target Kerberos keys'
+        conn.unbind_s()
+        login_environment = dict(environment, KRB5CCNAME='FILE:' + str(work / 'login-cc'))
+        subprocess.run(['kinit', 'puppet-enroller@HOME.ARPA'],
+            input=request['login_password'] + '\n', text=True,
+            capture_output=True, check=True, env=login_environment)
+        subprocess.run(['kinit', 'admin@HOME.ARPA'],
+            input=request['target_admin_password'] + '\n', text=True,
+            capture_output=True, check=True, env=environment)
+        subprocess.run(['ipa', 'ping'], text=True, capture_output=True,
+                       check=True, env=environment)
+        login = {'migration_enabled': True, 'ldap_bind': True,
+                 'kerberos_login': True, 'keys_were_absent': not keys_before,
+                 'keys_generated': keys_after, 'target_admin_api': True}
     after = snapshot('ipa.home.arpa', request['target_password'],
                      str(work / 'target-ca.pem'))
     mismatches = {}
     for kind, entries in source.items():
+        if kind in {'trust', 'schema'}:
+            continue
         mismatches[kind] = sum(after[kind].get(dn) != values
                                for dn, values in entries.items())
     report = {'action': request['action'], 'returncode': process.returncode,
               'source_counts': {kind: len(values) for kind, values in source.items()},
               'target_counts': {kind: len(values) for kind, values in after.items()},
               'mismatches': mismatches, 'unchanged': before == after,
+              'trust_unchanged': before['trust'] == after['trust'],
+              'schema_unchanged': before['schema'] == after['schema'],
+              'login': login,
               'source': source, 'before': before, 'after': after,
               'proposed_ldif': (work / 'proposed.ldif').read_text()
                                if (work / 'proposed.ldif').exists() else '',
@@ -155,11 +218,21 @@ def target(action: str, container: str) -> None:
         raise RuntimeError("Rehearsal cannot mount the authoritative IPA volume")
 
 
-def migrate(action: str, container: str, source_file: Path, source_ca: Path) -> Path:
+def migrate(
+    action: str,
+    container: str,
+    source_file: Path,
+    source_ca: Path,
+    login_file: Path | None = None,
+) -> Path:
     """Keep migration evidence private and report only aggregate verification."""
     source = private_json(source_file)
     if set(source) != {"dm_password"} or not isinstance(source["dm_password"], str):
         raise RuntimeError("Source JSON requires only dm_password")
+    if action == "rehearse" and login_file is None:
+        raise RuntimeError(
+            "Rehearsal requires --login-password-file for puppet-enroller"
+        )
     settings = private_json(controller.STATE / "installer.json")
     target(action, container)
     request = {
@@ -170,6 +243,11 @@ def migrate(action: str, container: str, source_file: Path, source_ca: Path) -> 
         "target_admin_password": settings["admin_password"],
         "target_ca": (controller.STATE / "root.pem").read_text(),
     }
+    if login_file:
+        login = private_json(login_file)
+        if set(login) != {"password"} or not isinstance(login["password"], str):
+            raise RuntimeError("Login JSON requires only password")
+        request["login_password"] = login["password"]
     report = json.loads(
         infra.run(
             infra.DOCKER + ["exec", "-i", container, "python3", "-c", WORKER],
@@ -180,6 +258,8 @@ def migrate(action: str, container: str, source_file: Path, source_ca: Path) -> 
     infra.save(path, json.dumps(report))
     if report["returncode"]:
         raise RuntimeError(f"Migration failed; private evidence: {path}")
+    if not report["trust_unchanged"]:
+        raise RuntimeError(f"Migration changed target trust; private evidence: {path}")
     if action == "dry-run" and not report["unchanged"]:
         raise RuntimeError(f"Dry-run changed identity state; private evidence: {path}")
     if action == "rehearse" and any(report["mismatches"].values()):
@@ -196,6 +276,9 @@ def migrate(action: str, container: str, source_file: Path, source_ca: Path) -> 
                     "target_counts",
                     "mismatches",
                     "unchanged",
+                    "trust_unchanged",
+                    "schema_unchanged",
+                    "login",
                 )
             }
         )
@@ -210,6 +293,7 @@ def main() -> None:
     parser.add_argument("--container", default="infra-ipa-1")
     parser.add_argument("--source-password-file", type=Path, required=True)
     parser.add_argument("--source-ca", type=Path, required=True)
+    parser.add_argument("--login-password-file", type=Path)
     args = parser.parse_args()
     os.umask(0o077)
     if os.geteuid() != 0 or socket.getfqdn() != "atlas.home.arpa":
@@ -226,7 +310,11 @@ def main() -> None:
         raise RuntimeError("Refusing nonlocal Docker daemon")
     with infra.maintenance():
         evidence = migrate(
-            args.action, args.container, args.source_password_file, args.source_ca
+            args.action,
+            args.container,
+            args.source_password_file,
+            args.source_ca,
+            args.login_password_file,
         )
     print(f"Private migration evidence: {evidence}")
 
