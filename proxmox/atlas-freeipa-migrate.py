@@ -40,6 +40,7 @@ os.umask(0o077)
 config = configparser.ConfigParser()
 config.read('/etc/ipa/default.conf')
 assert config['global']['host'] == 'ipa.home.arpa'
+assert socket.getfqdn() == 'ipa.home.arpa', 'Container must have canonical IPA hostname'
 assert config['global']['realm'] == 'HOME.ARPA'
 local_addresses = {'127.0.0.1', '::1'} | set(
     subprocess.check_output(['hostname', '-I'], text=True).split())
