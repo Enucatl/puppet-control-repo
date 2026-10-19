@@ -27,7 +27,7 @@ for path in source.iterdir():
         (stage / path.name).chmod(0o644)
 prefix = f"openvox-infra-check-{os.getuid()}-{int(time.time())}"
 volumes = {name: prefix + "-" + name for name in ("ssl", "ca", "data", "trust")}
-image = "openvox-rehearsal-tools:18001"
+image = "openvox-rehearsal-tools:22001"
 
 
 def command(args, text=None, expected=0):

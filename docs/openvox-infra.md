@@ -8,7 +8,7 @@ Compose also permits explicit service selection to bypass a profile, so the
 profile prevents accidental inclusion in a whole-stack start, not deliberate
 activation by an operator.
 
-The accepted `18001` OpenVox image is pinned by digest in
+The accepted `22001` OpenVox image is pinned by digest in
 `docker/openvox/infra.Dockerfile`; the derived image adds Git and r10k 5.0.3.
 Provider/JDK/package policy remains owned by the accepted image. The service
 runs as UID/GID 999, with a read-only image, dropped capabilities, bounded JVM
@@ -122,10 +122,10 @@ docker --host unix:///var/run/docker.sock compose -f docker/docker-compose.yml \
   --entrypoint /opt/puppetlabs/puppet/bin/ruby openvox /infra/infra-pki.rb prepare
 ```
 
-Transfer only the CSR to the offline signer, sign the intermediate, then place
+Submit only the CSR to the Vault-held root signer, sign the intermediate, then place
 the public `root.pem`, `root.crl` and `openvox-chain.pem` (intermediate then root)
-in the trust volume through the separate operator ceremony. Obtain the
-SHA-256 fingerprint of the root certificate DER from the authenticated offline
+in the trust volume through authenticated bootstrap/import. Obtain the
+SHA-256 fingerprint of the root certificate DER from the authenticated root
 operator record, not from the same untrusted import media. Set `ROOT_DER_SHA256`
 to that 64-digit hexadecimal fingerprint, then run the one-time import:
 
@@ -193,7 +193,7 @@ the packaged admin API rules. A successful Git receive can hide a failed
 post-receive hook; check `/git/deploy.status` equals `0` and inspect the deployed
 environment's `.r10k-deploy.json` signature against the intended commit. The
 hook's cache refresh fails closed if the live server is unavailable. Initial
-offline deployment therefore uses the explicit preparation command above.
+Vault-rooted deployment therefore uses the explicit preparation command above.
 
 This wiring was checked by sanitized Compose rendering, activation/persistence
 assertions and the missing-state startup check. The fresh-import self-check
@@ -223,7 +223,7 @@ and command, and keeps the existing `vault_data:/vault/file` file backend and
 The new `infra-vault.hcl` requires TLS 1.3 for both minimum and maximum versions,
 serves `/certificates/vault_chain.crt` with `/certificates/vault.key`, and uses
 `/certificates/ca.crt` for client trust. The chain file contains the Vault leaf
-followed by its separate issuing intermediate and offline root. Client
+followed by its separate issuing intermediate and Vault-held root. Client
 certificates are requested when available but are optional at the TLS listener,
 so token-based enrollment can work before a node has its first certificate.
 Vault's certificate auth method must still validate and authorize presented
@@ -233,10 +233,10 @@ including the explicit protocol bounds. The raw storage endpoint stays disabled.
 
 Before activation, independently verify the public root pin, the signed Vault
 leaf/private-key pair, complete chain, validity and applicable CRLs. The files
-must be readable by the existing Vault UID/GID 100. The online storage must
-contain only the intended intermediate/service state; the offline root key and
-root recovery material must remain outside its volumes. Changing listener
-configuration does not remove an old online root key from stored PKI state.
+must be readable by the existing Vault UID/GID 100. The root signing key remains
+inside Vault's protected PKI storage; applications and the CRL publisher receive
+only public root material. Keep recovery inputs in separately protected custody.
+Changing listener configuration does not migrate or replace existing PKI state.
 Use verified, backed-up state prepared through the separate migration/restore
 procedure and review Vault-version compatibility before selecting this file.
 The override does not initialize, unseal, generate, import or delete any issuer.

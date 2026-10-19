@@ -19,7 +19,8 @@ restoration as appropriate.
 OpenVox #12 now has a [disposable rehearsal](docs/openvox-rehearsal.md),
 [prepared infra service](docs/openvox-infra.md), and
 [offline-root procedure](docs/openvox-offline-root.md). The new deployment uses
-a fresh ML-DSA-44 offline root and separate OpenVox/FreeIPA intermediates;
+a fresh ML-DSA-44 root retained inside Vault and separate OpenVox/FreeIPA
+intermediates. Vault stays available for automatic CRL rebuilding;
 production cutover remains #13. Read the [implementation report](docs/openvox-rehearsal-report.md)
 and [Vault configuration limits](docs/openvox-vault-limitations.md) before use.
 The host-service and legacy Vault bootstrap descriptions below describe the

@@ -9,8 +9,8 @@ case "$ID:$VERSION_ID:$(dpkg --print-architecture)" in
   debian:13:amd64) target=debian13 ;;
   *) echo 'No accepted OpenVox package for this OS/architecture; refusing installation.' >&2; exit 1 ;;
 esac
-release=https://github.com/Enucatl/openvox-packages/releases/download/resolute-18001
-version="9.1.0+homelab.18001-1+$target"
+release=https://github.com/Enucatl/openvox-packages/releases/download/resolute-22001
+version="9.1.0+homelab.22001-1+$target"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 systemctl mask --runtime --now puppet.service

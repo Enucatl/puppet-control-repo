@@ -1,5 +1,5 @@
 FROM hashicorp/vault@sha256:e0acd3c681bdf57f002d7214e5d050b876e1704678005c6b0406dd96a65be919 AS vault
-FROM ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185
+FROM ghcr.io/enucatl/openvox-server@sha256:7b28e8e6937c5e5d1550f86fa540d711adcd0e31e393ac1b2c50821fd598b12a
 
 USER root
 

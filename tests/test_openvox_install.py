@@ -45,7 +45,7 @@ def test_native_install_pins_supported_signed_package(
     replacements = {
         "id": "echo 0",
         "dpkg": f"echo {architecture}",
-        "dpkg-query": f"echo {'9.1.0+homelab.18001-1+' + target if installed else 'wrong-version'}",
+        "dpkg-query": f"echo {'9.1.0+homelab.22001-1+' + target if installed else 'wrong-version'}",
         "gpg": f"printf 'pub:::::::::\\nfpr:::::::::{fingerprint}:\\n'",
         "curl": 'while [ "$#" -gt 0 ]; do if [ "$1" = --output ]; then printf "fixture\\n" > "$2"; exit; fi; shift; done; exit 1',
         "apt-get": ":",
@@ -86,9 +86,9 @@ def test_native_install_pins_supported_signed_package(
         assert not (directory / "apt/sources.list.d/openvox-homelab.list").exists()
     else:
         assert (
-            f"apt-get install -y openvox-agent=9.1.0+homelab.18001-1+{target}" in calls
+            f"apt-get install -y openvox-agent=9.1.0+homelab.22001-1+{target}" in calls
         )
-        assert f"resolute-18001/{target}.pref" in calls
+        assert f"resolute-22001/{target}.pref" in calls
         source = (directory / "apt/sources.list.d/openvox-homelab.list").read_text()
         assert "signed-by=" in source
         if accepted:

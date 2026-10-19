@@ -1,4 +1,4 @@
-FROM ghcr.io/enucatl/openvox-server@sha256:cbba872ef4b71865a8f7aacf395e4ff4ec28865995c5a9cec8023afe9d15b185
+FROM ghcr.io/enucatl/openvox-server@sha256:7b28e8e6937c5e5d1550f86fa540d711adcd0e31e393ac1b2c50821fd598b12a
 
 USER root
 RUN apt-get update \

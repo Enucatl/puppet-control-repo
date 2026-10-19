@@ -317,32 +317,56 @@ need publisher validation, and why raw issuer-DN equality matters. The
 conditional expressions while preserving JDK defaults. Ten provider checks
 passed; this does not claim general conditional-policy support.
 
-## Remaining gates
+## Current closure gates (19 October follow-up)
 
-- Publish the local Vault Hiera CRL/protocol fix and record the deployed resolved
-  revision. The restored test server currently uses an explicit local overlay;
-  a fresh r10k fetch of the remote branch does not contain that fix yet.
-- BCJSSE still ignores conditional JDK `disabledAlgorithms` expressions.
-  ML-DSA-only certificate/handshake signature lists, TLS 1.3, hybrid-only groups
-  and pinned private trust compensate in this controlled profile. Broader
-  provider semantics and every affected JVM consumer are not established.
-- The CA library's generated CRL lifetime defaults to five years, beyond this
-  rehearsal intermediate's lifetime. Publisher checks validate current
-  issuer/signature/freshness, but do not claim to bound CRL `nextUpdate` by issuer
-  expiry. This is an owning CA-library limit, separate from Vault.
-- The initial native platform inventory maps to accepted Ubuntu 24.04 and
-  Debian 13 amd64 targets, with Ubuntu 26.04 accepted for replacements. Actual
-  disposable native guests and complete production role catalogs remain to be
-  exercised. Host installation was not performed.
-- Configure and test real public issuer/CRL routes, refresh monitoring and
-  independently protected updated root/state backups. The rehearsal's issuer
-  URL lists remain empty, and one-share local recovery is not independent media.
-- Full infra service activation, host reboot, cold bootstrap without the old
-  services, hosted CI, legacy-system rollback and independent Atlas recovery
-  remain unverified. #13 owns live enrollment/cutover, #14/#8 actual CA-less
-  FreeIPA compatibility, and #18 the later Atlas execution.
+- Hiera `9abf00d0ef0be71cf65fb97cf38eb9103da17fa6`, SSL-utils
+  `0a7921a2e1151487b3d5658cf369103319cf4b5b` and server
+  `6adb20ab52204275fd46fbaae52a11605a2b737b` are published. The control repo
+  pins Hiera and is published on GitHub `dev`; its production branch and the
+  original deployment checkout are unchanged. Coordinated build 22001 passed
+  full source tests and signed-package acceptance on Ubuntu 26.04, Ubuntu 24.04
+  and Debian 13 in
+  [run 39212625422](https://github.com/Enucatl/openvox-packages/actions/runs/39212625422).
+  The matching published image is pinned at
+  `sha256:7b28e8e6937c5e5d1550f86fa540d711adcd0e31e393ac1b2c50821fd598b12a`;
+  final operational acceptance is using these outputs without source overlays.
+- Hosted CI now runs on `dev` and installs the pinned Forge/Git modules before
+  catalog checks. Local combined regression passed 349 tests, with the 54
+  host-Ruby ML-DSA skips verified separately in the accepted runtime. The first
+  hosted runs exposed Actions context placement and Compose normalization/test
+  dependency differences. Corrected hosted run
+  [39214595019](https://github.com/Enucatl/puppet-control-repo/actions/runs/39214595019)
+  passed: enrollment 325 tests (57 host-runtime skips), generic profile checks
+  21 tests, and native profile checks 67 tests, including the required ML-DSA
+  cases.
+- Disposable Ubuntu 24.04 and Debian 13 guests have passed signed installation,
+  actual autosigner enrollment, real Vault-backed catalogs, convergence and
+  native OS reboot. Complete Docker/desktop/Proxmox catalogs compile from their
+  real Facter data with dummy secrets. Full production-role application and
+  the complete Proxmox provisioning entry points remain unverified; safe full
+  application requires isolated FreeIPA/NFS and related dependencies.
+- Actual hardened infra Compose now starts successfully with explicit executable
+  JRuby native-extraction tmpfs. The opt-in unsealer authenticates the exact
+  local TLS public-key pin; actual Vault restart/unseal preserves the root
+  identity. Wrong/missing pins transmit no shares, and an expired leaf with the
+  matching pin can recover a sealed Vault. A complete disposable Docker-host
+  reboot, final-image scheduled refresh and off-host restore are in progress.
+- Off-host fresh-test archives use a separate Proxmox host and protected root-only
+  storage. Restore must consume those archives and independently supplied recovery
+  inputs with the source stack stopped. This is not evidence of production
+  backup coverage/custody or the complete Atlas recovery owned by #11/#18.
+- Native OnFailure units emitted the expected root message to a local mail sink.
+  Actual external mailbox receipt is unverified. No human email was sent.
+- BCJSSE conditional `disabledAlgorithms` expressions remain unsupported;
+  explicit ML-DSA signatures, TLS 1.3, hybrid groups and private trust provide
+  the tested controlled profile. Vault's classical-only TLS exception is
+  explicitly accepted. Broad provider compatibility is not claimed.
 
-## Retained environment
+#13 owns live enrollment/cutover, #14/#8 actual CA-less FreeIPA compatibility,
+and #18 full Atlas execution. #12 stays open while its remaining acceptance
+items are incomplete; passing isolated tests does not activate production.
+
+## Historical retained environment (initial rehearsal)
 
 Three containers remain running in `openvox-rehearsal-restore`: OpenVox, online
 Vault and the test agent. The original stack and both offline-root containers

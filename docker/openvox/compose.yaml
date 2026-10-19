@@ -1,7 +1,7 @@
 name: openvox-rehearsal
 
 x-runtime: &runtime
-  image: openvox-rehearsal-tools:18001
+  image: openvox-rehearsal-tools:22001
   build:
     context: .
   user: "999:999"

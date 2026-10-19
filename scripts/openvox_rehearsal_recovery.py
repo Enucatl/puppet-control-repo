@@ -17,7 +17,7 @@ import tempfile
 
 PROJECT = "openvox-rehearsal"
 RESTORE = "openvox-rehearsal-restore"
-TOOLS = "openvox-rehearsal-tools:18001"
+TOOLS = "openvox-rehearsal-tools:22001"
 VOLUMES = (
     "root-state",
     "vault-state",
