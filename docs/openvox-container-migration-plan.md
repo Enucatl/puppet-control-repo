@@ -79,14 +79,14 @@ matching rollback artifacts independently.
 
 ## Completion boundaries
 
-The isolated chain, transport, catalog, lifecycle, archive restore, rollback,
-offline-root lifecycle and internal Vault key encoding have measured evidence.
-Prepared infra and native caller changes require their final integration checks.
-Puppetfile pins the published ML-DSA Vault Hiera transport and its small protocol-setting fix.
+The isolated #12 integration acceptance is complete: final signed 24001 native
+packages and the pinned image, actual Compose/enrollment/Hiera convergence,
+Docker-host reboot, protected archive-only recovery and image rollback passed.
+See the [implementation report](openvox-rehearsal-report.md) and
+[operational record](openvox-operational-acceptance.md) for measured evidence.
 
-Remaining operational inputs include independent root custody/backups, actual
-service endpoints, disposable native guest/full-role
-catalog runs, a host reboot and cold bootstrap without the old services, and
-hosted CI. #14/#8 own actual CA-less FreeIPA consumer compatibility; #18 owns
-the later independent Atlas execution. No production rollout is implied by
-the local rehearsal.
+#15 owns complete template-to-workload provisioning and full role application;
+#14/#8 own actual CA-less FreeIPA consumers. #11 owns production backup custody,
+#18 full Atlas execution and #13 production cutover. Native fixture catalogs and
+complete role compilation are distinct from full workload deployment. Production
+activation is not implied by the isolated acceptance.

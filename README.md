@@ -17,7 +17,7 @@ use the same infrastructure-first order, with identity initialization or state
 restoration as appropriate.
 
 OpenVox #12 now has a [disposable rehearsal](docs/openvox-rehearsal.md),
-[prepared infra service](docs/openvox-infra.md), and
+[tested infra service](docs/openvox-infra.md), and
 [offline-root procedure](docs/openvox-offline-root.md). The new deployment uses
 a fresh ML-DSA-44 root retained inside Vault and separate OpenVox/FreeIPA
 intermediates. Existing CRL behavior is retained without added refresh jobs;

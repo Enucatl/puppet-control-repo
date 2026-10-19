@@ -140,11 +140,12 @@ The prepared [infra profile](openvox-infra.md),
 [offline-root procedure](openvox-offline-root.md),
 [Vault limits](openvox-vault-limitations.md) and
 [BCJSSE audit](openvox-jvm-policy.md) document the next deployment boundaries.
-Inventoried native guests/full role catalogs, actual FreeIPA consumers (#14/#8),
-general BCJSSE conditional-policy support, independent protected recovery media,
-host reboot, Atlas execution (#18), hosted CI and production cutover (#13)
-remain unverified. Never mark #12 production-ready from image smoke tests or
-this report alone.
+Final native Ubuntu/Debian, hardened Compose, hosted CI, clean protected off-host
+recovery, Docker-host reboot and image rollback acceptance passed with release
+24001. See the [final report](openvox-rehearsal-report.md) for evidence.
+Full workload application/provisioning remains #15, FreeIPA consumers #14/#8,
+production recovery custody #11 and Atlas execution #18. Production cutover is
+#13. Broader BCJSSE conditional-policy compatibility is not claimed.
 
 The sandbox uses short-lived certificates (one day), so retained test services
 will expire unless renewed. It is intended for disposable verification rather

@@ -1,0 +1,415 @@
+{
+  "scope": "Issue12 baseline MLDSA migration; all added strict CRL checks/lifetime automation were removed at user request",
+  "production_configuration_or_existing_state_changed": false,
+  "manual_intervention_required_for_completed_lab_steps": false,
+  "native_guests": {
+    "ubuntu": {
+      "os": "Ubuntu 24.04.5 LTS",
+      "image": "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
+      "native_agent": "9.1.0+homelab.24001-1+ubuntu24.04",
+      "signed_installer": "passed",
+      "signed_upgrade_22001": "passed",
+      "native_private_key_preserved": true,
+      "enrollment": "passed actual configure-puppet.sh, real Vault autosigner and Hiera-backed catalog",
+      "second_convergence": "passed exit 0",
+      "reboot": "passed changed kernel boot ID, enabled Puppet active",
+      "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+      "firmware": "BIOS",
+      "signed_upgrade_24001": "passed; original MLDSA private key preserved",
+      "final24001_hiera_catalog_exit_code": 0,
+      "final_tls_handshakes": [
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 8140,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-ubuntu.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 8140,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-ubuntu.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        }
+      ],
+      "effective_revocation_mode": "leaf",
+      "legacy_provisioning_leaf_alignment": {
+        "hiera_catalog_exit_code": 0,
+        "tls_protocol": "TLSv1.3",
+        "tls_group": "X25519MLKEM768",
+        "server_signature": "mldsa44",
+        "log": "ubuntu-final24001-tls-catalog.log"
+      }
+    },
+    "debian": {
+      "os": "Debian 13",
+      "image": "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2",
+      "native_agent": "9.1.0+homelab.24001-1+debian13",
+      "signed_installer": "passed",
+      "signed_upgrade_22001": "passed",
+      "native_private_key_preserved": true,
+      "enrollment": "passed actual configure-puppet.sh, real Vault autosigner and Hiera-backed catalog",
+      "second_convergence": "passed exit 0",
+      "reboot": "passed changed kernel boot ID, enabled Puppet active",
+      "image_sha512": "62aa92aeff32cbf3fe6c01f410fef4035b1603a512f073c9f8889072168de9e49fa361ba48621359fc7608ad91225e823ea233feb33f612eb39e50aaf21957fe",
+      "firmware": "UEFI",
+      "signed_upgrade_24001": "passed; original MLDSA private key preserved",
+      "final24001_hiera_catalog_exit_code": 0,
+      "final_tls_handshakes": [
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        },
+        {
+          "program": "puppet",
+          "hostname": "docker.home.arpa",
+          "port": 28141,
+          "protocol": "TLSv1.3",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "group": "X25519MLKEM768",
+          "client_signature": "mldsa44",
+          "server_signature": "mldsa44",
+          "resumed": false,
+          "client_certificate": "/CN=native-debian.home.arpa",
+          "server_certificate": "/CN=docker.home.arpa"
+        }
+      ],
+      "effective_revocation_mode": "leaf",
+      "legacy_provisioning_leaf_alignment": {
+        "hiera_catalog_exit_code": 0,
+        "tls_protocol": "TLSv1.3",
+        "tls_group": "X25519MLKEM768",
+        "server_signature": "mldsa44",
+        "log": "debian-final24001-tls-catalog.log"
+      }
+    }
+  },
+  "full_role_catalogs": {
+    "facts_source": "real Ubuntu 24.04 KVM Facter output",
+    "docker_complex": {
+      "resources": 421,
+      "compile": "passed"
+    },
+    "desktop_forbearance": {
+      "resources": 418,
+      "compile": "passed"
+    },
+    "secret_overrides": "existing tests/test_profile_catalogs.py DUMMY_SECRETS",
+    "applied": false,
+    "proxmox": {
+      "resources": 306,
+      "compile": "passed",
+      "facts_source": "real Debian13 KVM guest Facter output"
+    }
+  },
+  "independent_recovery": {
+    "protected_offhost_transport": "SSH roundtrip to separate Proxmox host; root0700 directories and0600 archives; SHA256 manifest verified",
+    "original_authority_services": "Stopped and original bind staging renamed before restored stack startup",
+    "restored_namespace": "openvox-baseline-restore",
+    "exact_image_stream": "Verified offhost image archive streamed directly to docker load; original digest and filesystem-layer provenance verified",
+    "authority_public_fingerprints": {
+      "root_sha256": "72926f28c26f1c7d7af0453d375f7802ee8ea2112ea0317710166e8dd02f51cc",
+      "issuer_sha256": "4073bb9f06cda9020b31f6ebb5d8ab10618f404ec30b44f508179d409a605822",
+      "server_sha256": "83c1c6b83b061b4bebabde43219bd76c3a80b6245b2029091b62de42cff5d4c2"
+    },
+    "native_agent_key_preserved": true,
+    "postrestore_native_hiera_catalog_exit_code": 0,
+    "final_archive_only_standalone_restore": true,
+    "original_bind_root_absent": true,
+    "original_boot_unit_disabled": true,
+    "original_source_containers_stopped": true,
+    "final_protected_kit": {
+      "archive_location": "root@proxmox.home.arpa:/root/openvox-issue12-rehearsal/final-baseline-24001",
+      "manifest": {
+        "openvox-closure-recovery_code.tar.gz": "dacad49837fcd0c500b94eff65e40f64b13a871270c1fe0c1c2987a064301c45",
+        "harness.tar.gz": "037c5e76edb0649a408220d2af7bead37cce9c05cf6710d83089908f2349198d",
+        "images.json": "6903d5c5e19a9a72a926bf1cd2f560494c9bd7db28c45e4274a784edf017ac80",
+        "openvox-closure-recovery_trust.tar.gz": "2d025d2186c3812793d1497698a636a4e757f9b6e4823a2e1a117656b75c52f3",
+        "openvox-closure-recovery_git.tar.gz": "8c5b7498c8a453f362e5358257f9988759579dbf7832e0e24ba8ca9298b237b7",
+        "openvox-closure-recovery_vault-state.tar.gz": "7c9510cda8668750088ab7ec17b355b5c613a9b5f2972ce4dd8d81fb68154e10",
+        "images.tar.gz": "7c3cbb9f6eb1cced8a54ee70248e67e9b1e1c7b48ff24e80d011801c15fa2355",
+        "openvox-closure-recovery_server-gems.tar.gz": "cf7d488439054338e3cba88b28abeb5862dc0553b0d1c047e79f3d55335ba0ba",
+        "openvox-closure-recovery_server-ssl.tar.gz": "1741f29cc79733282de6c0673e15eaccfd18184f767d070d3fdf95af9f638a91",
+        "openvox-closure-recovery_server-data.tar.gz": "f75bfdbfe6135514bf7c4dcd665433a5de6aae1fa6dbe464a2187d95c73d0edc",
+        "openvox-closure-recovery_server-ca.tar.gz": "ca11b767d8e00be8ea4d0919a86a426e892aeaa12aac887ad69dbc8b4dba115f",
+        "recovery-inputs.tar.gz": "f6362e3c208a3eab9bba680fe04236d5adb5f51c9406207b6c2fbc3dcd59edce",
+        "image-provenance.json": "00fe53d089a05cd5f09a830440e26329021d22d70acff9995a5773a9130bb759",
+        "configuration.tar.gz": "32a0275b8d678bc942520007d023182d9dea92b82d0ed22d76db786dcba9c131",
+        "openvox-closure-recovery_r10k-cache.tar.gz": "b0cf9439243088ed5f9bf35b31b5ea21a1e0e7abcf945dbc6e6e32db564dbc99"
+      },
+      "image_provenance": {
+        "infra-openvox:24001": {
+          "original_reference": "infra-openvox:24001",
+          "repo_digests": [
+            "infra-openvox@sha256:a718f5212376773ee9497584d083aa1b7bc2bcb390baf83e3fee4d191d775f63"
+          ],
+          "rootfs_layers": [
+            "sha256:edf698db7561f9f53f2b22b9d417f9fde0be95175736b6954c7ef917c7114cb1",
+            "sha256:6be3abfee1446ddfb97160837ec6ea1edec87a006b73a02dca2bae5de070302e",
+            "sha256:520dac39ebfa02f6f894f4cb3eda2956b4cc39d8d658ab759cd58e493b5cbb16",
+            "sha256:856dcd327449f44e7ea4d11fb76aec3c8c1e7cea19b2e753493e1bca0d9a4cdd",
+            "sha256:881591b1a32e89b4a2f068367ff025138bb15bcb2d6b7fdeb49c4191c6c655e8",
+            "sha256:eb048c59848385b6d7c629a37891f9822cd9a30f905c1b89b69b8410a504f545",
+            "sha256:7a62b535c8c45c66d7499b794f95233dbbe020088880fe10ec288018024a8e97",
+            "sha256:732214bf911033355f1b073426ca21b18b3f8286ac177caaf9025988a14a4478",
+            "sha256:81963459d058b0720687c42b134308f48485d0dba847192c12bd6521812aa591",
+            "sha256:3f5e82e222c60fd5d9730f05e78ce1c47ddf188ac00c8916245c59114f57d64a"
+          ],
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "openvox-closure-vault:recovery": {
+          "original_reference": "openvox-closure-vault:recovery",
+          "repo_digests": [
+            "openvox-closure-vault@sha256:2e3318e21224d065b47c50e2643fd544babc42f8a237e7a7479bbd049556133f"
+          ],
+          "rootfs_layers": [
+            "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711",
+            "sha256:43adfba91109fb4e7c26b2bbd569af845222b789696b3cf02488dbc23e37b4f8",
+            "sha256:ba1280dee46cc4ee2fa9bc65ef63b0ebac11bd9f1b08b22a9e23bc5c28a683d1",
+            "sha256:ece3e92b8297e430d1ffa2d9b1f313cf7411d87a717cfd1e5f93e89a9ef34e5e",
+            "sha256:23f7fb53567af15c592ca27353700428dc43cea66abdacd2740427655e3f5588",
+            "sha256:eef437c2301285452727b2eaf705ea0e35c0ab3e906b4b82295847a1b023e725",
+            "sha256:7ca57e2edd896acf367f0947675c91115d35ab8a28cf9e30928c504b71794acd"
+          ],
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        "openvox-closure-unsealer": {
+          "original_reference": "openvox-closure-unsealer",
+          "repo_digests": [
+            "openvox-closure-unsealer@sha256:33999d1da7ba371b7b398cb3584bbfc18e2deaedf239860b37a5afe29c648030"
+          ],
+          "rootfs_layers": [
+            "sha256:e63b02c2b5c761df2cb95e657d744f27d95da4e051235a13c80b88cd68eab188",
+            "sha256:9127b89df2ef8d6345c7f85828ae23ebcd2184faf693493ed04a052396fedb69",
+            "sha256:6a222f21c6b2add6b348b96f53a2e7dc894d59ce3d3b7e9c002162a66d277a74"
+          ],
+          "architecture": "amd64",
+          "os": "linux"
+        }
+      },
+      "image_archive_local_copies": 0,
+      "directory_mode": "0700",
+      "file_mode": "0600",
+      "source": "stopped disposable Docker-host VM",
+      "services": [
+        "openvox",
+        "vault",
+        "vault-unsealer"
+      ]
+    }
+  },
+  "docker_host_reboot": {
+    "before_boot_id": "262cfd1c-b9dc-4933-9318-fb30e838bcc6",
+    "after_boot_id": "9f7ae8c7-1421-43d4-9dad-05454fc383f4",
+    "all_three_services_healthy": true,
+    "puppet_service_active": true,
+    "strict_native_crypto_environment_preserved": true,
+    "no_crl_jobs_or_timers": true,
+    "unattended_fresh_catalog": {
+      "status": "unchanged",
+      "cached_catalog_status": "not_used",
+      "time": 1792400766
+    }
+  },
+  "postboot_tls": [
+    {
+      "program": "puppet",
+      "hostname": "docker.home.arpa",
+      "port": 8140,
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_128_GCM_SHA256",
+      "group": "X25519MLKEM768",
+      "client_signature": "mldsa44",
+      "server_signature": "mldsa44",
+      "resumed": false,
+      "client_certificate": "/CN=native-ubuntu.home.arpa",
+      "server_certificate": "/CN=docker.home.arpa"
+    },
+    {
+      "program": "puppet",
+      "hostname": "docker.home.arpa",
+      "port": 8140,
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_128_GCM_SHA256",
+      "group": "X25519MLKEM768",
+      "client_signature": "mldsa44",
+      "server_signature": "mldsa44",
+      "resumed": false,
+      "client_certificate": "/CN=native-ubuntu.home.arpa",
+      "server_certificate": "/CN=docker.home.arpa"
+    }
+  ],
+  "baseline_image_only_rollback": {
+    "sequence": [
+      "24001",
+      "18001",
+      "24001"
+    ],
+    "crl_automation": false,
+    "steps": [
+      {
+        "image": "infra-openvox:18001",
+        "all_authority_identities_preserved": true,
+        "native_agent_key_preserved": true,
+        "hiera_catalog_exit_code": 0
+      },
+      {
+        "image": "infra-openvox:24001",
+        "all_authority_identities_preserved": true,
+        "native_agent_key_preserved": true,
+        "hiera_catalog_exit_code": 0
+      }
+    ]
+  },
+  "hiera_commit": "cbdbb59a424b69570f0c957689ddbf537a6866a0",
+  "crl_machinery": {
+    "added_services_timers_configs_removed": true,
+    "native_crypto_dropin_restored": true,
+    "agent_custom_revocation_overrides_removed": "Added strict CRL overrides removed; pre-existing provisioning certificate_revocation=leaf retained.",
+    "vault_auto_rebuild": false,
+    "publisher_approle_policy_auth_crls_removed": true,
+    "standard_puppet_revocation_retained": true,
+    "retired_runtime_code_or_cache_files": [],
+    "retired_publisher_trust_state_cache_and_outbound_bundle_removed": true,
+    "standard_agent_revocation_mode": "leaf (retained pre-existing configure-puppet.sh and FreeIPA provisioning setting)",
+    "upstream_default_revocation_mode": "chain",
+    "historical_default_chain_checks": "Earlier archive restore/reboot checks passed with cleared overrides and upstream chain default; final native Hiera/catalog0/TLS passed again with retained provisioning leaf."
+  },
+  "final_release24001_acceptance": {
+    "passed": true,
+    "pipeline": "https://github.com/Enucatl/openvox-packages/actions/runs/39219562955",
+    "base_image": "ghcr.io/enucatl/openvox-server:9.1.0-mldsa.24001@sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97",
+    "infra_image": "infra-openvox:24001",
+    "infra_image_source_config_id": "sha256:798d708e9be6447962e0875cb78abcc49595d9dcb09dfc57c5e6b0423b35a1f0",
+    "no_publisher_authorization_compatibility_environment": true,
+    "actual_server_and_native_package_version": "9.1.0+homelab.24001-1+OS",
+    "hiera_commit": "cbdbb59a424b69570f0c957689ddbf537a6866a0",
+    "actual_server_package_version": "9.1.0+homelab.24001-1+ubuntu26.04"
+  },
+  "limitations": [
+    "Complete production role catalogs were compiled, not applied; role/workload migration acceptance belongs to separate role/cutover issues.",
+    "The full Proxmox guest provisioning templates were not executed; official cloud images used cloud-init SSH bootstrap, followed by the actual signed installer and enrollment helper.",
+    "Lab authority offhost recovery proves the mechanism; production backup custody and full FreeIPA/NFS/application state recovery are separate work.",
+    "No human email was sent; alert machinery was removed with the reverted CRL feature.",
+    "Archive storage is outside the Docker-host VM; physical disk or physical host independence was not established by this lab test."
+  ],
+  "recovery_reproduction_contract": {
+    "path": "openvox-operational-acceptance.md#final-baseline-recovery-contract",
+    "archive_harness_sha256": "037c5e76edb0649a408220d2af7bead37cce9c05cf6710d83089908f2349198d",
+    "standalone_command": "sudo python3 /root/openvox-baseline-inputs/restore-baseline.py /root/openvox-baseline-inputs",
+    "restored_project": "openvox-baseline-restore",
+    "restored_root": "/opt/openvox-baseline-restore",
+    "source_original_stopped_and_bind_root_absent": true,
+    "image_archive_local_copies": 0
+  },
+  "verification": {
+    "control_repo_commit": "3ac07f4c8c6c87a079cd940d4313d5014cde8697",
+    "hosted_ci": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39225478175",
+    "hosted_ci_passed": true,
+    "local_regression_tests_passed": 322,
+    "isolated_pki_import_checks_passed": 8,
+    "artifact_pin_tests_passed": 40
+  }
+}

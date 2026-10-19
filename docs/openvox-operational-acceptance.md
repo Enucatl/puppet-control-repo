@@ -28,9 +28,14 @@ rebooting a disposable Docker host.
   containers stopped and their bind-mounted source directory unavailable.
 - Automatic Vault unsealing from the restored established identity.
 
-Final release pins and the disposable Docker host reboot result are recorded in
-the main rehearsal report after the baseline rollback is complete. Earlier
-strict-CRL acceptance is historical evidence and is not a remaining requirement.
+The final 24001 image and signed native packages passed service acceptance,
+protected archive-only fresh-namespace restore, exact `24001 -> 18001 -> 24001`
+rollback and Docker-host OS reboot. All three services recovered, Vault unsealed,
+and the agent obtained an unattended fresh unchanged catalog without a cached
+catalog. Authority and agent identities were preserved. Both native clients
+then passed TLS and catalog convergence. See the
+[sanitized results](openvox-acceptance-results.json) and
+[final report](openvox-rehearsal-report.md).
 
 ## Startup fixes retained
 
@@ -50,13 +55,14 @@ Every authenticated TLS key replacement must publish its matching public pin
 before Vault reloads. The existing 6.5-year Vault TLS issuance has no automatic
 renewal job in this repository; this work does not claim to add one.
 
-## Protected historical artifacts
+## Protected recovery artifacts
 
-Lab recovery inputs and archived harnesses are retained under
-`root@proxmox.home.arpa:/root/openvox-issue12-rehearsal`, with directory mode 0700
-and file mode 0600. Local copies are under
-`/tmp/openvox-closure-ops/private`. They contain sensitive **test** recovery
-inputs and must not be published.
+The final clean kit is retained at
+`root@proxmox.home.arpa:/root/openvox-issue12-rehearsal/final-baseline-24001`,
+with directory mode 0700 and file mode 0600. It contains sensitive **test**
+recovery inputs and must not be published. Its hashes and image provenance are
+included in the public sanitized results. The large image archive is retained
+only off-host and was streamed into Docker without duplicate local image files.
 
 Revisions 1–3 preserve the earlier strict-CRL rehearsal. They are historical
 snapshots, not the baseline deployment kit: restoring them also restores the
@@ -80,7 +86,106 @@ Vault recovery-file metadata with passwordless sudo; #11/#18 must establish that
 access before production cutover. Off-host filesystem and SSH independence do not
 by themselves establish independent physical disks.
 
-No human emails were sent. The retired CRL failure-mail test used a local capture
-sink and is not evidence of operational mailbox delivery. Full role catalog
-compilation is separate from applying infrastructure profiles against production
-dependencies.
+No human emails were sent; the custom CRL alert machinery was removed. Full
+role catalog compilation is separate from applying infrastructure profiles
+against production dependencies.
+
+## Provisioning and full-role boundary
+
+The native guests ran the real signed installer and
+[`configure-puppet.sh`](../proxmox/configure-puppet.sh), enrolled against the
+isolated Compose server, applied a marker catalog with a real Vault-backed Hiera
+lookup, and converged again. Complete Docker, desktop and Proxmox catalogs were
+also compiled with actual native Facter facts. **Compilation and the applied
+marker catalog are not full-role application.**
+
+Real roles come from [`manifests/site.pp`](../manifests/site.pp),
+[`data/common.yaml`](../data/common.yaml) and [`data/roles`](../data/roles).
+Common classes require `freeipa::client`, `freeipa_users`,
+[`profile::common::identity`](../modules/profile/manifests/common/identity.pp)
+and [`profile::common::certs`](../modules/profile/manifests/common/certs.pp): a
+complete apply therefore needs enrolled FreeIPA/SSSD identities and scoped Vault
+issuance. Docker/desktop roles add NFS and toolchains. The actual
+[`docker.home.arpa` node data](../data/nodes/docker.home.arpa.yaml) also activates
+Kerberos mounts, exports and Git deployment projects; it is not a generic lab
+fixture.
+
+[#15](https://github.com/Enucatl/puppet-control-repo/issues/15) owns complete
+Docker/desktop provisioning, repeated builds, occupied-ID safety and workload
+runs. It depends on #12; making its full outcome a prerequisite for #12 creates
+a dependency cycle. #12 explicitly assigns FreeIPA consumer compatibility to
+[#14](https://github.com/Enucatl/puppet-control-repo/issues/14)/#8. Production
+identity-state recovery remains #11/#18.
+
+The actual cloud-init sources are
+[`docker-cloud-init.yml.tmpl`](../proxmox/docker-cloud-init.yml.tmpl),
+[`desktop_cloud_init.py`](../proxmox/desktop_cloud_init.py) and
+[`ubuntu-cloud-init.yml.tmpl`](../proxmox/ubuntu-cloud-init.yml.tmpl). Rendering and
+enrollment have regression coverage; complete template-to-workload deployment
+remains #15. A future isolated test can boot their rendered output in a fresh
+local VM; full-role application additionally needs real isolated
+FreeIPA/Kerberos and configured NFS/service dependencies.
+
+Do not run [`docker-server.sh`](../proxmox/docker-server.sh) or
+[`ubuntu-server-template.sh`](../proxmox/ubuntu-server-template.sh) against an
+unreviewed Proxmox ID: both still stop/destroy occupied IDs. The Docker wrapper
+also issues its token before checking the ID. These existing #15 defects remain
+open; dummy dependencies or a successful compile do not resolve them.
+
+## Final baseline recovery contract
+
+Protected lab bundle: `root@proxmox.home.arpa:/root/openvox-issue12-rehearsal/final-baseline-24001`.
+Directory mode 0700; files mode 0600. It contains fresh test identities and sensitive
+recovery inputs; publish only `archive-summary.json` (checksums/provenance).
+
+The kit contains the clean three-service resolved Compose configuration, public
+bind inputs, consistent stopped named volumes, separate Vault recovery/unseal
+inputs, exact images with offline-loadable tags, image filesystem provenance,
+and the standalone restore harness. No retired CRL policy or cleanup is needed.
+The final image derives from published digest
+`sha256:b27583dfa1f3adc3f96bdcee192b783e0044cfb02837456d459b8ca6eca59b97`.
+Hiera is `cbdbb59a424b69570f0c957689ddbf537a6866a0` in archived code/cache.
+
+Prerequisites: a disposable Ubuntu Docker host with Docker/Compose already
+installed, enough disk space for restored layers/volumes, authenticated SSH access
+to the protected archive and target VM, and no existing baseline restore project.
+The actual restore uses no original Vault, GitHub, APT or registry access.
+
+The lab orchestration uses `/tmp/openvox-closure-baseline/transfer-baseline.py`:
+
+```bash
+# Native acceptance first stops/disables the original stack and its agent,
+# then archives its established state inside the VM (never reinitializes PKI):
+sudo python3 archive-baseline.py /opt/openvox-closure-recovery/infra.json /root/openvox-baseline-backup
+
+# On the control host, stream state and exact images into the new protected
+# off-host directory, then stream only those verified archives back into VM:
+python3 /tmp/openvox-closure-baseline/transfer-baseline.py upload
+python3 /tmp/openvox-closure-baseline/transfer-baseline.py download
+
+# Inside VM, original source stack remains stopped/disabled and its bind root
+# has been renamed. Execute the independently archived standalone harness:
+sudo python3 /root/openvox-baseline-inputs/restore-baseline.py /root/openvox-baseline-inputs
+```
+
+`harness.tar.gz` contains the scripts; its SHA256 is recorded in the protected
+manifest and sanitized summary. The orchestration's SSH destinations/identity-file
+paths are specific to this disposable lab. The standalone restore needs only its
+backup directory and ordinary local Docker access; it has no control-repo or
+source-host dependency.
+
+The restored project is `openvox-baseline-restore`, rooted at
+`/opt/openvox-baseline-restore`, with enabled `openvox-baseline-restore.service`
+after Docker. Its only services are OpenVox, Vault and the existing unsealer.
+Endpoints are loopback 8140/8200; the restored private Docker aliases are the
+established certificate hostnames. Numeric ownership 999/100 is preserved.
+Missing identities are not regenerated. Image filesystem layers are verified
+because engine image IDs can differ across Docker image stores.
+
+No large image archive is stored on the VM or control host: Docker save/load is
+streamed through authenticated SSH, and the compressed archive is retained only
+on the protected off-host target. The original configuration and source volumes
+are preserved separately. Subsequent evidence compares authority/native key
+fingerprints and real Hiera/TLS/catalog convergence, including disposable host
+reboot and image rollback. This proves fresh-lab recovery, not production backup
+custody or physical-disk independence.
