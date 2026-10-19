@@ -91,6 +91,7 @@ def test_worker_requires_tls_and_retains_dryrun_evidence(migration: ModuleType) 
     assert "['kinit', 'admin@HOME.ARPA']" in migration.WORKER
     assert "input=request['target_admin_password']" in migration.WORKER
     assert "env=environment" in migration.WORKER
+    assert "default_ccache_name = FILE:" in migration.WORKER
     assert "--migrate-dns" not in migration.WORKER
     assert "before['trust'] == after['trust']" in migration.WORKER
     assert "before['schema'] == after['schema']" in migration.WORKER

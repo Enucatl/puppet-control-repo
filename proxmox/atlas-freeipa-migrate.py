@@ -117,7 +117,8 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
                '--log-file', str(work / 'migration.log')]
     if request['action'] == 'dry-run':
         command += ['--dryrun', '--dryrun-record', str(work / 'proposed.ldif')]
-    (work / 'krb5.conf').write_text('''[libdefaults]
+    (work / 'krb5.conf').write_text('[libdefaults]\n default_ccache_name = FILE:' +
+        str(work / 'krb5cc') + '''
  default_realm = HOME.ARPA
  dns_lookup_kdc = false
  rdns = false
