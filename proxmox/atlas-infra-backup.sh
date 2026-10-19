@@ -153,12 +153,20 @@ for volume in "${volumes[@]}"; do
 done
 tar --numeric-owner --acls --xattrs -czf "$output/credentials.tar.gz" -C /root openvox-infra
 host_config=(etc/docker/daemon.json etc/subuid etc/subgid etc/openvox-infra/promoted)
-# Native agent identities must survive restoration alongside the server volumes.
-for config in etc/puppetlabs/puppet etc/facter/facts.d etc/ipa \
-    etc/krb5.conf etc/krb5.keytab etc/krb5.conf.d etc/sssd \
+# Preserve native enrollment and issued leaf keys with the server volumes.
+for config in etc/puppetlabs/puppet etc/puppetlabs/facter/facter.conf \
+    etc/facter/facts.d etc/ipa \
+    etc/krb5.conf etc/krb5.keytab etc/krb5.conf.d etc/sssd etc/ssl/vault-secrets \
     var/lib/ipa-client/sysrestore var/lib/ipa-client/pki \
     etc/systemd/system/puppet.service.d \
-    usr/local/share/ca-certificates/atlas-infrastructure.crt; do
+    usr/local/share/ca-certificates/atlas-infrastructure.crt \
+    usr/local/libexec/openvox-child-policy.rb \
+    usr/local/lib/facter-no-dhcpcd/dhcpcd \
+    opt/docker/traefik/data/certs/atlas_{fullchain,key}.pem \
+    opt/docker/airflow/secrets/{fullchain,key}.pem \
+    opt/docker/puppet-control-repo/docker/wolf/secrets/{fullchain,key}.pem \
+    opt/docker/browser-use/secrets/browser-use.{crt,key} \
+    home/user/.config/home-arpa/mtls/codex.{crt,key}; do
     if [[ -e /"$config" || -L /"$config" ]]; then host_config+=("$config"); fi
 done
 for key in /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub; do

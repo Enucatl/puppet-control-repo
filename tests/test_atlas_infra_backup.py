@@ -612,10 +612,24 @@ def test_backup_preserves_native_agent_identities_without_host_caches(
         "etc/ssh/ssh_host_ed25519_key.pub": "SSH-HOST-PUBLIC-KEY-CANARY",
         "etc/krb5.conf.d/ipa.conf": "default_realm = HOME.ARPA\n",
         "etc/sssd/sssd.conf": "SSSD-PRIVATE-CONFIG-CANARY",
+        "etc/ssl/vault-secrets/atlas.json": '{"private_key":"VAULT-CERT-PRIVATE-STATE-CANARY"}',
         "var/lib/ipa-client/sysrestore/sysrestore.state": "IPA-SYSRESTORE-CANARY",
         "var/lib/ipa-client/pki/ca-bundle.pem": "IPA-PKI-CA-CANARY",
         "etc/systemd/system/puppet.service.d/openssl.conf": "[Service]\nEnvironment=OPENSSL_CONF=/etc/ssl/openssl.cnf\n",
         "usr/local/share/ca-certificates/atlas-infrastructure.crt": "ATLAS-PUBLIC-CA-CANARY",
+        "usr/local/libexec/openvox-child-policy.rb": "NATIVE-CHILD-POLICY-CANARY",
+        "etc/puppetlabs/facter/facter.conf": "FACTER-BOOTSTRAP-CONFIG-CANARY",
+        "usr/local/lib/facter-no-dhcpcd/dhcpcd": "FACTER-DHCP-SHIM-CANARY",
+        "opt/docker/traefik/data/certs/atlas_fullchain.pem": "TRAEFIK-CERT-CANARY",
+        "opt/docker/traefik/data/certs/atlas_key.pem": "TRAEFIK-PRIVATE-KEY-CANARY",
+        "opt/docker/airflow/secrets/fullchain.pem": "AIRFLOW-CERT-CANARY",
+        "opt/docker/airflow/secrets/key.pem": "AIRFLOW-PRIVATE-KEY-CANARY",
+        "opt/docker/puppet-control-repo/docker/wolf/secrets/fullchain.pem": "WOLF-CERT-CANARY",
+        "opt/docker/puppet-control-repo/docker/wolf/secrets/key.pem": "WOLF-PRIVATE-KEY-CANARY",
+        "opt/docker/browser-use/secrets/browser-use.crt": "BROWSER-CERT-CANARY",
+        "opt/docker/browser-use/secrets/browser-use.key": "BROWSER-PRIVATE-KEY-CANARY",
+        "home/user/.config/home-arpa/mtls/codex.crt": "CODEX-CERT-CANARY",
+        "home/user/.config/home-arpa/mtls/codex.key": "CODEX-PRIVATE-KEY-CANARY",
     }
     omitted = {
         "var/lib/sss/db/cache_home.arpa.ldb": "SSSD-CACHE-CANARY",
@@ -623,22 +637,32 @@ def test_backup_preserves_native_agent_identities_without_host_caches(
         "etc/shadow": "SHADOW-CANARY",
         "etc/ssh/ssh_config": "UNRELATED-SSH-CONFIG-CANARY",
         "etc/ssh/ssh_known_hosts": "SSH-HOST-CACHE-CANARY",
+        "opt/docker/airflow/secrets/unrelated-secret": "UNRELATED-APP-SECRET-CANARY",
+        "opt/docker/traefik/data/acme.json": "ACME-STATE-CANARY",
+        "home/user/.ssh/id_ed25519": "USER-SSH-KEY-CANARY",
+        "usr/local/libexec/unrelated-helper": "UNRELATED-HELPER-CANARY",
     }
+    (authority / "opt/docker/puppet-control-repo/.git/info/exclude").write_text(
+        "docker/wolf/secrets/\n"
+    )
     for name, content in (files | omitted).items():
         path = authority / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
-        path.chmod(0o600)
+        path.chmod(0o755 if name == "usr/local/lib/facter-no-dhcpcd/dhcpcd" else 0o600)
+        if name.startswith("etc/ssl/vault-secrets/"):
+            path.parent.chmod(0o700)
     result = backup(authority)
     assert result.returncode == 0, result.stderr
     output = authority / "scratch/vault/snapshot"
     archive_path = output / "host-config.tar.gz"
     assert archive_path.stat().st_mode & 0o777 == 0o600
     with tarfile.open(archive_path) as archive:
+        assert archive.getmember("etc/ssl/vault-secrets").mode == 0o700
         for name, content in files.items():
             member = archive.getmember(name)
             source = (authority / name).stat()
-            assert member.mode == 0o600
+            assert member.mode == source.st_mode & 0o777
             assert (member.uid, member.gid) == (source.st_uid, source.st_gid)
             assert archive.extractfile(member).read() == content.encode()
         assert not (set(omitted) & set(archive.getnames()))
@@ -703,7 +727,7 @@ def test_failed_backup_restores_native_agent_only_after_authorities(
     )
 
 
-def test_backup_keeps_host_ssh_key_symlinks(authority: Path) -> None:
+def test_backup_keeps_optional_identity_symlinks(authority: Path) -> None:
     """Preserve existing key links without dereferencing or archiving other SSH state."""
     directory = authority / "etc/ssh"
     directory.mkdir()
@@ -711,6 +735,15 @@ def test_backup_keeps_host_ssh_key_symlinks(authority: Path) -> None:
     target.write_text("EXTERNAL-SSH-KEY-CANARY")
     (directory / "ssh_host_rsa_key").symlink_to(target)
     (directory / "ssh_host_rsa_key.pub").symlink_to("missing-public-key")
+    linked = {
+        "usr/local/libexec/openvox-child-policy.rb": "missing-child-policy",
+        "home/user/.config/home-arpa/mtls/codex.key": str(target),
+        "opt/docker/browser-use/secrets/browser-use.crt": "missing-public-cert",
+    }
+    for name, link in linked.items():
+        path = authority / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.symlink_to(link)
     result = backup(authority)
     assert result.returncode == 0, result.stderr
     output = authority / "scratch/vault/snapshot"
@@ -720,4 +753,7 @@ def test_backup_keeps_host_ssh_key_symlinks(authority: Path) -> None:
         public = archive.getmember("etc/ssh/ssh_host_rsa_key.pub")
         assert public.issym() and public.linkname == "missing-public-key"
         assert "external-ssh-key" not in archive.getnames()
+        for name, link in linked.items():
+            member = archive.getmember(name)
+            assert member.issym() and member.linkname == link
     assert "EXTERNAL-SSH-KEY-CANARY" not in result.stdout + result.stderr
