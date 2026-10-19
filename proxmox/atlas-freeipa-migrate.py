@@ -120,6 +120,7 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
     (work / 'krb5.conf').write_text('[libdefaults]\n default_ccache_name = FILE:' +
         str(work / 'krb5cc') + '''
  default_realm = HOME.ARPA
+ forwardable = true
  dns_lookup_kdc = false
  rdns = false
  dns_canonicalize_hostname = false
@@ -161,7 +162,7 @@ with tempfile.TemporaryDirectory(prefix='ipa-migrate-', dir='/run') as work:
             subprocess.run(['kinit', 'admin@HOME.ARPA'],
                 input=request['target_admin_password'] + '\n', text=True,
                 capture_output=True, check=True, env=environment)
-            subprocess.run(['ipa', 'ping'], text=True, capture_output=True,
+            subprocess.run(['ipa', 'server-show', 'ipa.home.arpa'], text=True, capture_output=True,
                            check=True, env=environment)
             login = {'migration_enabled': True, 'ldap_bind': True,
                      'kerberos_login': True, 'keys_were_absent': not keys_before,
