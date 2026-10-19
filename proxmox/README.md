@@ -101,6 +101,46 @@ scratch contents and transfer Docker's filesystem with its existing contents.
 Do not copy or merge the temporary cache or local Vault archives. Local disposable
 archives do not replace independently protected recovery backups.
 
+## Independent Atlas tooling bootstrap (#18 Stage A)
+
+After base creation, run [atlas-bootstrap.sh](atlas-bootstrap.sh) on Atlas as
+root, with the full published control-repository commit SHA as its only argument.
+It needs outbound Ubuntu/Docker APT and GitHub access, authenticated Atlas SSH
+trust, and an administrator's GitHub SSH credentials. From this repository on
+the administrator's machine:
+
+```bash
+CONTROL_REVISION=$(git rev-parse HEAD)
+ssh -A user_l@atlas.home.arpa \
+  "sudo --preserve-env=SSH_AUTH_SOCK bash -s -- '$CONTROL_REVISION'" \
+  < proxmox/atlas-bootstrap.sh
+```
+
+The SSH agent is forwarded for this invocation; private keys are not copied to
+the guest. Repository origins use SSH, and GitHub's published Ed25519 host key
+is pinned in the script. The script does not load `.env` or require Vault,
+FreeIPA, Puppet enrollment or a live configuration server.
+
+The bootstrap installs Git, curl, GPG, jq and OpenSSH, plus pinned versions of
+Docker Engine/CLI, containerd, Compose and Buildx from
+[Docker's signed Ubuntu repository](https://docs.docker.com/engine/install/ubuntu/).
+It checks out the declared control revision at `/opt/docker/puppet-control-repo`
+and the CI-pinned hardening revision at sibling
+`/opt/docker/compose-security-baseline`, matching the existing Compose paths.
+Reruns refuse modified/unrelated checkouts and incompatible Docker settings.
+
+Docker uses bounded JSON logs and `userns-remap=user_l`. The template already
+assigns `user_l:100000:65536` in both subordinate-ID files; the script validates
+that mapping before installation. This preserves the existing infrastructure's
+`100000:100000` container ownership without allocating overlapping ranges or
+depending on a FreeIPA account. Keep this account and mapping during recovery.
+
+The script starts Docker, verifies its API and namespace mapping, and checks
+Compose/Buildx and a sanitized Compose render. It leaves infrastructure service
+activation to #13: no Compose stack, authority initialization, enrollment or
+deployment watcher is started. Package versions and selected Git revisions are
+recorded under `/var/log/openvox-provisioning/atlas-bootstrap*`.
+
 ## Rebuilding a development VM
 
 Existing targets are refused unless recreation is explicit and the local VM's
