@@ -81,7 +81,7 @@ root=OpenSSL::X509::Certificate.new
 root.version=2;root.serial=1001
 root.subject=OpenSSL::X509::Name.parse('/CN=Disposable infra helper test root')
 root.issuer=root.subject;root.public_key=key
-root.not_before=Time.now-60;root.not_after=Time.now+7*86400
+root.not_before=Time.now-60;root.not_after=Time.now+180*86400
 factory=OpenSSL::X509::ExtensionFactory.new
 factory.subject_certificate=root;factory.issuer_certificate=root
 root.add_extension(factory.create_extension('basicConstraints','CA:TRUE,pathlen:1',true))
@@ -94,7 +94,7 @@ intermediate=OpenSSL::X509::Certificate.new
 intermediate.version=2;intermediate.serial=1002
 intermediate.subject=request.subject;intermediate.issuer=root.subject
 intermediate.public_key=mode=='wrong-intermediate-key' ? OpenSSL::PKey.generate_key('ML-DSA-44') : request.public_key
-intermediate.not_before=Time.now-60;intermediate.not_after=Time.now+(mode=='short-issuer' ? 3600 : 3*86400)
+intermediate.not_before=Time.now-60;intermediate.not_after=Time.now+(mode=='short-issuer' ? 59*86400 : 90*86400)
 factory.subject_certificate=intermediate;factory.issuer_certificate=root
 intermediate.add_extension(factory.create_extension('basicConstraints','CA:TRUE,pathlen:0',true))
 intermediate.add_extension(factory.create_extension('keyUsage','keyCertSign,cRLSign',true))
@@ -148,6 +148,18 @@ try:
     output = command(base + ["/infra/infra-pki.rb", "import", "--root-sha256", pin])
     assert "Imported pinned offline-root-signed" in output
     checks.append("actual packaged CA import and seed-only chain verification passed")
+    command(
+        base
+        + [
+            "-e",
+            "require 'openssl';"
+            "cert=OpenSSL::X509::Certificate.new(File.read(ARGV[0]));"
+            "raise 'Imported leaf does not last 60 days' unless "
+            "(cert.not_after-Time.now-60*86400).abs < 120",
+            "/etc/puppetlabs/puppet/ssl/certs/openvox.home.arpa.pem",
+        ]
+    )
+    checks.append("imported server leaf lasts 60 days")
     for operation in [("prepare",), ("import", "--root-sha256", pin)]:
         output = command(base + ["/infra/infra-pki.rb", *operation], expected=1)
         assert "Existing authority must be restored/renewed" in output

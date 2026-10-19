@@ -81,6 +81,7 @@ def authority(tmp_path: Path) -> Path:
     )
     bins = tmp_path / "bin"
     bins.mkdir()
+    (tmp_path / "run/lock").mkdir(parents=True)
     double = (
         "#!/bin/bash\nset -eu\nroot="
         + shlex.quote(str(tmp_path))
@@ -92,6 +93,10 @@ failure=$(cat "$root/failure")
 case "$name" in
     id) cat "$root/uid" ;;
     hostname) cat "$root/hostname" ;;
+    flock)
+        [[ "$*" == '-w 300 9' && $failure != lock ]] || exit 42
+        exec /usr/bin/flock "$@"
+        ;;
     tar)
         [[ $failure != credentials || "$*" != *credentials.tar.gz* ]] || exit 42
         arguments=()
@@ -171,12 +176,12 @@ case "$name" in
 esac
 """
     )
-    for name in ("id", "hostname", "docker", "tar"):
+    for name in ("id", "hostname", "docker", "tar", "flock"):
         path = bins / name
         path.write_text(double)
         path.chmod(0o755)
     source = SCRIPT.read_text()
-    for prefix in ("/scratch/vault", "/etc/", "/root", "/opt/"):
+    for prefix in ("/scratch/vault", "/etc/", "/root", "/opt/", "/run/lock/"):
         source = source.replace(prefix, str(tmp_path) + prefix)
     (tmp_path / "backup.sh").write_text(source)
     return tmp_path
@@ -233,12 +238,32 @@ def test_backup_preserves_private_state_numeric_ids_and_exact_images(
     assert commands.count(" stop openvox vault-unsealer vault\n") == 1
     assert commands.count(" start vault vault-unsealer openvox\n") == 1
     assert "image save " + " ".join(IMAGES) in commands
+    assert commands.index("flock -w 300 9\n") < commands.index("docker ")
     for forbidden in (
         "ROOT-TOKEN-CANARY",
         "PRIVATE-VOLUME-CANARY",
         "MUST-NOT-REACH-COMPOSE",
     ):
         assert forbidden not in result.stdout + result.stderr + json.dumps(manifest)
+
+
+def test_backup_preserves_installed_renewal_units(authority: Path) -> None:
+    """Restore kits retain scheduling alongside the established host configuration."""
+    units = authority / "etc/systemd/system"
+    units.mkdir(parents=True)
+    names = ("atlas-openvox-renew.service", "atlas-openvox-renew.timer")
+    for name in names:
+        (units / name).write_text((SCRIPT.parent / "systemd" / name).read_text())
+    result = backup(authority)
+    assert result.returncode == 0, result.stderr
+    with tarfile.open(
+        authority / "scratch/vault/snapshot/host-config.tar.gz"
+    ) as archive:
+        for name in names:
+            assert (
+                archive.extractfile(f"etc/systemd/system/{name}").read().decode()
+                == (units / name).read_text()
+            )
 
 
 @pytest.mark.parametrize(
@@ -270,6 +295,7 @@ def test_failed_backup_restores_services_and_never_claims_completion(
         "unmanaged-volume",
         "stopped",
         "image",
+        "lock",
         "dirty",
         "existing",
         "escape",

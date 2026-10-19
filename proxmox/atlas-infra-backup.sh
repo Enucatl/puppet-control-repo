@@ -19,6 +19,8 @@ output=$(realpath -m -- "$1")
 [[ $output == /scratch/vault/* && ! -e $output && ! -L $output ]] || {
     echo 'Backup output must be a new directory under /scratch/vault.' >&2; exit 1;
 }
+exec 9>/run/lock/atlas-openvox-maintenance.lock
+flock -w 300 9
 
 source=/opt/docker/puppet-control-repo
 baseline=/opt/docker/compose-security-baseline
@@ -87,8 +89,11 @@ for volume in "${volumes[@]}"; do
         --numeric-owner --acls --xattrs -czf - -C /volume . > "$output/$volume.tar.gz"
 done
 tar --numeric-owner --acls --xattrs -czf "$output/credentials.tar.gz" -C /root openvox-infra
-tar --numeric-owner --acls --xattrs -czf "$output/host-config.tar.gz" -C / \
-    etc/docker/daemon.json etc/subuid etc/subgid etc/openvox-infra/promoted
+host_config=(etc/docker/daemon.json etc/subuid etc/subgid etc/openvox-infra/promoted)
+for unit in atlas-openvox-renew.service atlas-openvox-renew.timer; do
+    if [[ -f /etc/systemd/system/$unit ]]; then host_config+=("etc/systemd/system/$unit"); fi
+done
+tar --numeric-owner --acls --xattrs -czf "$output/host-config.tar.gz" -C / "${host_config[@]}"
 tar --numeric-owner --acls --xattrs -czf "$output/control.git.tar.gz" -C /opt/git/openvox control.git
 git -c "safe.directory=$source" -C "$source" archive --format=tar.gz HEAD > "$output/control.tar.gz"
 git -c "safe.directory=$baseline" -C "$baseline" archive --format=tar.gz HEAD > "$output/hardening.tar.gz"

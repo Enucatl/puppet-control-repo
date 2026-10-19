@@ -78,7 +78,7 @@ services:
         read_only: true
         bind: {create_host_path: false}
       - type: bind
-        source: ./openvox/ca.conf
+        source: ./openvox/infra-ca.conf
         target: /etc/puppetlabs/puppetserver/conf.d/ca.conf
         read_only: true
         bind: {create_host_path: false}

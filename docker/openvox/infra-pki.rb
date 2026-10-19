@@ -75,7 +75,7 @@ when 'import'
     key.public_to_der != root.public_key.public_to_der &&
     host_key.public_to_der != root.public_key.public_to_der && host_key.public_to_der != key.public_to_der &&
     [root, intermediate].all? { |cert| cert.not_before <= now && now < cert.not_after } &&
-    intermediate.not_after > now + 86400 && intermediate.not_after <= root.not_after
+    intermediate.not_after > now + 60 * 86400 && intermediate.not_after <= root.not_after
   [[root, 1], [intermediate, 0]].each do |cert, path_length|
     constraints = cert.extensions.find { |ext| ext.oid == 'basicConstraints' }
     usage = cert.extensions.find { |ext| ext.oid == 'keyUsage' }

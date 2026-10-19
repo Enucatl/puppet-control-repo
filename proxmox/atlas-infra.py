@@ -552,6 +552,23 @@ def start() -> None:
         "vault-unsealer",
         "openvox",
     )
+    run(
+        [
+            "install",
+            "-o",
+            "root",
+            "-g",
+            "root",
+            "-m",
+            "0644",
+            str(SOURCE / "proxmox/systemd/atlas-openvox-renew.service"),
+            str(SOURCE / "proxmox/systemd/atlas-openvox-renew.timer"),
+            "/etc/systemd/system/",
+        ]
+    )
+    run(["systemctl", "daemon-reload"])
+    run(["systemctl", "start", "atlas-openvox-renew.service"])
+    run(["systemctl", "enable", "--now", "atlas-openvox-renew.timer"])
 
 
 def main() -> None:

@@ -33,9 +33,9 @@ check inside OpenVox with
 `/opt/puppetlabs/puppet/bin/ruby /infra/infra-vault-check.rb`; it prints no login
 token or secret contents.
 
-The initial OpenVox server leaf expires at **2026-10-20 16:23:10 UTC**.
-Automatic leaf renewal is not installed; renewal acceptance must precede that
-deadline. Authority recreation is not a renewal procedure.
+The initial activation recorded a one-day OpenVox server leaf. The scripted
+startup now replaces that policy with 60-day leaves and scheduled renewal;
+the activation evidence above retains its original certificate dates.
 
 ## Atlas endpoint requirements (#13)
 
@@ -92,7 +92,8 @@ internal ML-DSA-44 root (`pki`, ten years) and separate service intermediate
 imports only its signed public chain. A locally generated, authenticated
 bootstrap TLS identity protects Vault initialization; Vault then receives its
 exact-name root-signed leaf (thirty days). Both authorities enforce issuer
-lifetime limits. The server's existing one-day OpenVox leaf policy is unchanged.
+lifetime limits. Initial OpenVox leaves and renewed leaves use 60 days; the root
+and intermediate lifetimes remain ten and five years respectively.
 
 Recovery JSON, root token, intermediate request, listener key and initialization
 checkpoints live under root-only `/root/openvox-infra` (`0700`, files `0600`).
@@ -131,6 +132,38 @@ on Proxmox and verify its manifest. `/scratch` is temporary and its local copy
 alone does not satisfy independent recovery. Never overwrite the #12 test kit.
 A backup proves preservation only; restoration and unchanged-identity acceptance
 remain separate checks before issue closure.
+
+### Automated OpenVox leaf renewal
+
+Atlas startup installs `atlas-openvox-renew.service` and its systemd timer,
+completes the first renewal check, then enables checks five minutes after boot
+and every six hours afterward. Agents use OpenVox's built-in 30-day renewal
+window. Atlas's separate native agent is not needed to renew the container's
+`openvox.home.arpa` identity.
+
+The job uses `/opt/puppetlabs/bin/puppet ssl renew_cert --if-expiring-in 30d`,
+with an explicit staged `--hostcert` so the CLI's leaf-only write cannot replace
+the listener's full chain. Before requesting renewal, the intermediate must
+have more than 60 days remaining. The resulting certificate must retain the
+ML-DSA-44 key, subject, SANs and other identity extensions, verify against the
+existing issuer and stay within the issuer's lifetime. The validated leaf,
+intermediate and root are published atomically. No authority or private key is
+regenerated.
+
+Only a changed leaf, or an unfinished prior reload, restarts OpenVox. After
+readiness, a fresh exact-name TLS handshake must serve the same certificate as
+the file before the durable reload marker is cleared. This allows retry after
+an interrupted publish/restart; a no-op check does not restart the container.
+The maintenance lock shared with backup prevents those operations overlapping.
+The CLI uses the accepted `certificate_revocation=leaf` agent policy.
+
+Run `systemctl start atlas-openvox-renew.service` for an immediate check and
+`systemctl list-timers atlas-openvox-renew.timer` to inspect the schedule. A
+successful command alone is insufficient: the job verifies the served identity.
+Its logs contain certificate metadata, never tokens or private keys. A renewal
+causes one brief OpenVox restart; Vault and its unsealer keep running. This
+procedure requires an unexpired current leaf and does not renew Vault's own TLS
+certificate or the CA certificates.
 
 ## Service implementation
 
@@ -197,8 +230,8 @@ remaining recovery and migration acceptance is separate from its live status:
    `key_type=mldsa44` before an external CA import. The listener PEM contains
    the server leaf followed by intermediate and root certificates. The server
    leaf and all CRLs must still be valid, and signed leaf lifetimes must not
-   exceed their issuer. Initial import uses `ca_ttl=1d`; the issuer must have
-   more than one day remaining before import. The accepted CA CLI does not
+   exceed their issuer. Initial import uses `ca_ttl=60d`; the issuer must have
+   more than 60 days remaining before import. The accepted CA CLI does not
    enforce that lifetime cap itself.
 3. The eight external volumes below already exist, have been populated from
    verified state or explicit one-time setup, and are writable by UID/GID 999
@@ -239,8 +272,8 @@ Persistent volumes are external, so `docker compose down -v` does not delete
 them. Keep a verified backup of all eight volumes, exact images and matching
 configuration. Logs in the temporary log directory disappear on recreation;
 forward container logs to the existing centralized logging service. This
-profile does not introduce an automatic renewal/root ceremony: schedule and
-verify renewal before the configured one-day leaf expires.
+Atlas startup installs the leaf-renewal service and timer described above.
+CA renewal remains a separate operator operation before issuer expiry.
 
 ## Explicit preparation and activation commands
 

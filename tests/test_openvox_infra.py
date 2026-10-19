@@ -1,6 +1,7 @@
 """Validate the opt-in production model without contacting a Docker daemon."""
 
 import json
+import configparser
 import os
 from pathlib import Path
 import shutil
@@ -75,6 +76,26 @@ def test_openvox_activation_is_explicit_and_keeps_the_tls_boundary(compose_model
             "localhost",
         }
     assert "-Djdk.tls.namedGroups=X25519MLKEM768" in service["environment"]["JAVA_ARGS"]
+
+
+def test_atlas_leaf_lifetimes_and_renewal_window_are_scoped(compose_model):
+    mounts = {
+        mount["target"]: mount
+        for mount in compose_model["services"]["openvox"]["volumes"]
+    }
+    ca_mount = mounts["/etc/puppetlabs/puppetserver/conf.d/ca.conf"]
+    assert Path(ca_mount["source"]) == ROOT / "docker/openvox/infra-ca.conf"
+    assert ca_mount["read_only"] is True
+    ca = Path(ca_mount["source"]).read_text()
+    assert re.search(r"allow-auto-renewal:\s*true", ca)
+    assert re.search(r'auto-renewal-cert-ttl:\s*"60d"', ca)
+    puppet = configparser.ConfigParser()
+    puppet.read(mounts["/etc/puppetlabs/puppet/puppet.conf"]["source"])
+    assert puppet["server"]["ca_ttl"] == "60d"
+    assert puppet["agent"]["hostcert_renewal_interval"] == "30d"
+    assert not any("cert_ttl" in puppet[section] for section in puppet.sections())
+    rehearsal = (ROOT / "docker/openvox/ca.conf").read_text()
+    assert re.search(r'auto-renewal-cert-ttl:\s*"1d"', rehearsal)
 
 
 def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):

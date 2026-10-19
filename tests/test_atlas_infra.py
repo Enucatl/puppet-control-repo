@@ -12,7 +12,7 @@ import ssl
 import subprocess
 import sys
 from types import ModuleType
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
@@ -99,6 +99,56 @@ def test_start_only_starts_established_services(controller: ModuleType) -> None:
     controller.api.assert_not_called()
     controller.openvox.assert_not_called()
     controller.volume_file.assert_not_called()
+    controller.run.assert_has_calls(
+        [
+            call(
+                [
+                    "install",
+                    "-o",
+                    "root",
+                    "-g",
+                    "root",
+                    "-m",
+                    "0644",
+                    str(
+                        controller.SOURCE
+                        / "proxmox/systemd/atlas-openvox-renew.service"
+                    ),
+                    str(
+                        controller.SOURCE / "proxmox/systemd/atlas-openvox-renew.timer"
+                    ),
+                    "/etc/systemd/system/",
+                ]
+            ),
+            call(["systemctl", "daemon-reload"]),
+            call(["systemctl", "start", "atlas-openvox-renew.service"]),
+            call(["systemctl", "enable", "--now", "atlas-openvox-renew.timer"]),
+        ]
+    )
+
+
+def test_start_does_not_schedule_renewal_for_unhealthy_services(
+    controller: ModuleType,
+) -> None:
+    """Require healthy established infrastructure before installing renewal."""
+    (controller.STATE / "ready.json").write_text("{}")
+    controller.compose.side_effect = RuntimeError("services unhealthy")
+    with pytest.raises(RuntimeError, match="services unhealthy"):
+        controller.start()
+    controller.run.assert_not_called()
+
+
+def test_start_requires_successful_first_renewal_before_enabling_timer(
+    controller: ModuleType,
+) -> None:
+    """Surface first-run renewal failures instead of enabling an unverified timer."""
+    (controller.STATE / "ready.json").write_text("{}")
+    controller.run.side_effect = ["", "", RuntimeError("renewal failed")]
+    with pytest.raises(RuntimeError, match="renewal failed"):
+        controller.start()
+    assert controller.run.call_args == call(
+        ["systemctl", "start", "atlas-openvox-renew.service"]
+    )
 
 
 @pytest.mark.parametrize(
