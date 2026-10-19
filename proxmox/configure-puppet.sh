@@ -22,7 +22,8 @@ apply_catalog() {
   systemctl enable puppet
   /opt/puppetlabs/bin/puppet resource service puppet enable=true
   local puppet_status=0
-  /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || puppet_status=$?
+  /opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb \
+    /opt/puppetlabs/puppet/bin/puppet agent --test --waitforlock 300 || puppet_status=$?
   case "$puppet_status" in
     0|2) ;;
     *) return "$puppet_status" ;;

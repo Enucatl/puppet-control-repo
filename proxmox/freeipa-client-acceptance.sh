@@ -75,7 +75,8 @@ run_guest /bin/bash -lc '
   test -s /etc/krb5.keytab
   systemctl is-enabled sssd
   systemctl is-active sssd
-  /opt/puppetlabs/bin/puppet agent --test --tags freeipa --detailed-exitcodes
+  /opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb \
+    /opt/puppetlabs/puppet/bin/puppet agent --test --tags freeipa --detailed-exitcodes
 '
 
 passed=true

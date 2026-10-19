@@ -46,7 +46,8 @@ write_files:
       # The acceptance runner performs the authoritative Puppet run after
       # cloud-init.  Do not discard the VM's diagnostics if this bootstrap
       # catalog is temporarily unavailable.
-      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
+      /opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb \
+        /opt/puppetlabs/puppet/bin/puppet agent --test --waitforlock 300 || true
 
   - path: /etc/cloud/cloud.cfg.d/99-hostname.cfg
     permissions: '0644'

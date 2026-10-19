@@ -74,6 +74,19 @@ to protected `/root/openvox-infra/curl`. The enrollment script verifies and
 installs only the patched `curl` and `libcurl4t64` prerequisites before invoking
 Puppet. TLS certificate and hostname verification remain enabled.
 
+The matching IPA library backport avoids `cryptography.public_key()` when
+reading ML-DSA SubjectPublicKeyInfo. Build it with
+`proxmox/build-atlas-ipalib.sh OUTPUT_DIRECTORY` and deliver its checked artifact
+to `/root/openvox-infra/ipalib`. The bootstrap installs the patched library;
+Puppet still installs and enrolls the IPA client. An explicitly incomplete
+installation is recovered only after its configured identity matches Atlas.
+
+Manual and scheduled agent runs preload `openvox-child-policy.rb`: Puppet
+initializes its accepted strict TLS and key-writing policy, then gives spawned
+commands the operating system's TLS policy. This lets APT and public downloads
+work without changing Puppet's initialized TLS contexts. Atlas's managed
+systemd drop-in retains the same preload for scheduled runs.
+
 The script installs authenticated public CA trust, configures scoped ML-DSA-44
 runtime issuance in the new Vault, creates a single-use enrollment token and
 passes it through stdin to the shared helper. Atlas enrolls as `atlas.home.arpa`

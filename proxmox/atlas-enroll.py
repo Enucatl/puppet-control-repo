@@ -108,6 +108,23 @@ def enroll() -> None:
             str(infra.STATE / "curl"),
         ]
     )
+    infra.run(
+        [
+            "bash",
+            str(infra.SOURCE / "proxmox/install-atlas-ipalib.sh"),
+            str(infra.STATE / "ipalib"),
+        ]
+    )
+    infra.run(
+        [
+            "install",
+            "-D",
+            "-m",
+            "0644",
+            str(infra.SOURCE / "modules/profile/files/openvox-child-policy.rb"),
+            "/usr/local/libexec/openvox-child-policy.rb",
+        ]
+    )
     configure_runtime()
     if CERTIFICATE.exists():
         log = infra.run(["bash", helper, "--apply", CERTNAME, "openvox.home.arpa"])

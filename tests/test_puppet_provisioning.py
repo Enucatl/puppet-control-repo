@@ -347,21 +347,29 @@ def test_rendered_enrollment_configures_exact_identity(
     script = script.replace("/etc/puppetlabs/puppet", str(tmp_path / "puppet"))
     script = script.replace("/etc/facter/facts.d", str(tmp_path / "facts"))
     script = script.replace("/opt/puppetlabs/bin/puppet", "puppet")
+    script = script.replace(
+        "/opt/puppetlabs/puppet/bin/puppet", str(tmp_path / "bin" / "puppet")
+    )
     script = script.replace("/opt/puppetlabs/puppet/bin/ruby", shutil.which("ruby"))
+    preload = tmp_path / "child-policy.rb"
+    preload.write_text("# TLS initialization has its own focused checks.\n")
+    script = script.replace("/usr/local/libexec/openvox-child-policy.rb", str(preload))
     for command in ["puppet", "systemctl"]:
         executable = (
             tmp_path / command if command == "systemctl" else tmp_path / "bin" / command
         )
         executable.parent.mkdir(exist_ok=True)
-        executable.write_text(
-            '#!/bin/bash\nprintf "%s %s\\n" "${0##*/}" "$*" >> "$COMMAND_LOG"\n'
-            + (
-                'if [ "$1 $2 $3" = "config print key_type" ]; then echo mldsa44; fi\n'
-                'if [ "$1" = agent ]; then exit "$MOCK_PUPPET_STATUS"; fi\n'
-                if command == "puppet"
-                else ""
+        if command == "puppet":
+            executable.write_text(
+                "#!/usr/bin/env ruby\n"
+                'File.open(ENV.fetch("COMMAND_LOG"), "a") { |log| log.puts "puppet #{ARGV.join(\' \')}" }\n'
+                'puts "mldsa44" if ARGV.take(3) == ["config", "print", "key_type"]\n'
+                'exit ENV.fetch("MOCK_PUPPET_STATUS").to_i if ARGV.first == "agent"\n'
             )
-        )
+        else:
+            executable.write_text(
+                '#!/bin/bash\nprintf "%s %s\\n" "${0##*/}" "$*" >> "$COMMAND_LOG"\n'
+            )
         executable.chmod(0o755)
     (tmp_path / "puppet").mkdir()
     (tmp_path / "puppet" / "openssl.cnf").write_text("# installed policy\n")
