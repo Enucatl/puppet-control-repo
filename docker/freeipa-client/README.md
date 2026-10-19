@@ -41,7 +41,10 @@ DER output after installing the artifact in an isolated Ubuntu container.
 
 The Puppet FreeIPA provider accepts completed matching enrollments unchanged.
 An explicit incomplete installation marker requires a matching domain, server
-and configured hostname before Puppet cleans up and retries the installer.
+and configured hostname before Puppet retries the native installer with
+`--force-join`. FreeIPA's own installation check permits this incomplete state;
+its uninstaller refuses it as not configured. Existing sysrestore backups stay
+available. Completed or unassigned hosts do not receive forced enrollment.
 A successful installer exit must also leave its completion marker set to true.
 
 No apt holds are installed. Review or retire this backport when the distro

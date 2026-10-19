@@ -57,4 +57,4 @@ mod 'vault_secrets',
     commit: 'cbdbb59a424b69570f0c957689ddbf537a6866a0'
 mod 'freeipa',
     git: 'https://github.com/enucatl/puppet-freeipa.git',
-    commit: '9b0645c57a8ceaf4bf7cd99363c4d2e9b8e27380'
+    commit: '72d6da22650e7d8eec2e51c1ff05eb3b7fe44364'
