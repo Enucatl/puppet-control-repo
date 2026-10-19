@@ -42,4 +42,9 @@ node default {
       Class['freeipa::client'] -> Class[$profile]
     }
   }
+
+  if 'ssh' in $classes {
+    Class['freeipa::client'] -> Class['ssh::client']
+    Class['freeipa::client'] -> Class['ssh::server']
+  }
 }

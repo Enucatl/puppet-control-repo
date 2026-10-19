@@ -4,6 +4,7 @@ ssh::client_options:
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'
 
 freeipa::client::server: ipa.home.arpa
+freeipa::client::hostname: atlas.home.arpa
 freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
 
 profile::common::certs::directories:
@@ -58,3 +59,14 @@ profile::common::certs::vault_certs:
     key_owner: 101000
     key_group: 100000
     key_mode: '0400'
+
+# Keep the daemon on the same strict parent / system child policy as manual runs.
+systemd::dropin_files:
+  puppet-crypto.conf:
+    unit: puppet.service
+    content: |
+      [Service]
+      Environment=OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
+      ExecStart=
+      ExecStart=/opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb /opt/puppetlabs/puppet/bin/puppet agent $PUPPET_EXTRA_OPTS --no-daemonize
+    require: File[/usr/local/libexec/openvox-child-policy.rb]

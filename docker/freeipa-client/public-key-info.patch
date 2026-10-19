@@ -1,0 +1,21 @@
+--- a/usr/lib/python3/dist-packages/ipalib/x509.py
++++ b/usr/lib/python3/dist-packages/ipalib/x509.py
+@@ -43,7 +43,7 @@
+ from cryptography.hazmat.backends import default_backend
+ from cryptography.hazmat.primitives import serialization
+ from cryptography.hazmat.primitives.serialization import (
+-    Encoding, PublicFormat, PrivateFormat, load_pem_private_key
++    Encoding, PrivateFormat, load_pem_private_key
+ )
+ import pyasn1
+ import pyasn1.error
+@@ -319,8 +319,7 @@
+ 
+     @property
+     def public_key_info_bytes(self):
+-        return self._cert.public_key().public_bytes(
+-            encoding=Encoding.DER, format=PublicFormat.SubjectPublicKeyInfo)
++        return self.__get_der_field('subjectPublicKeyInfo')
+ 
+     @property
+     def extended_key_usage(self):
