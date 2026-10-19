@@ -293,7 +293,9 @@ After publishing and building `infra-openvox:24001`, run
 with UID/GID `999:999`, user remapping, no network, a read-only image/source and
 temporary writable deployment/cache/code directories. It checks the numeric
 mapping, denied source writes, writable deployment status and a real r10k
-checkout of `production`. It starts no OpenVox server and initializes no CA.
+checkout of `production`. A temporary r10k configuration skips Puppetfile
+processing for this offline code-access check; module installation is verified
+separately during activation. It starts no OpenVox server and initializes no CA.
 
 Before #13 activation, prepare the writable deployment volume and install a host
 receive hook that dispatches into the container. The container deployment helper
