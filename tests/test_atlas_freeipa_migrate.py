@@ -132,9 +132,9 @@ def test_failure_keeps_private_report(
     source_ca.write_text("old-ca")
     monkeypatch.setattr(migration, "private_json", lambda p: json.loads(p.read_text()))
     monkeypatch.setattr(migration, "target", Mock())
-    migration.infra.run.return_value = json.dumps(
-        {"returncode": 1, "stderr": "private"}
-    )
+    migration.infra.run.return_value = json.dumps(report)
+    login = tmp_path / "login.json"
+    login.write_text('{"password":"private"}')
     with pytest.raises(RuntimeError, match="private evidence"):
         migration.migrate(action, "target", source, source_ca, login)
     evidence = list(tmp_path.glob("migration-*.json"))
