@@ -121,6 +121,23 @@ The `rehearse` action permits an actual import only into the separately labelled
 `atlas-ipa-rehearsal` clone without published ports or the authoritative volume.
 It is not a client cutover or an import into the live IPA data volume.
 
+Create the rehearsal target from the protected post-initialization backup:
+
+```bash
+sudo bash proxmox/atlas-freeipa-rehearse.sh /scratch/vault/EXACT_BACKUP_DIRECTORY
+sudo python3 proxmox/atlas-freeipa-migrate.py rehearse \
+  --container atlas-ipa-rehearsal \
+  --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json \
+  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem
+```
+
+The clone restores the original initialized database from the verified archive;
+it never generates authorities or mounts the live IPA data. Its dedicated bridge
+allows source LDAP reads, but it publishes no ports or production DNS aliases.
+Failed or completed rehearsal state remains available until explicitly removed
+with `sudo bash proxmox/atlas-freeipa-rehearse.sh cleanup`. Cleanup checks all
+three resource labels before removing only the designated disposable names.
+
 Do not treat the image's successful certificate import or a healthy fresh server
 as proof of account preservation, renewal, client enrollment or recovery. #14
 also requires real HTTP/LDAP/Kerberos checks, unchanged required access, renewal
