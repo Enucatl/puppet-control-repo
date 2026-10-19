@@ -1,0 +1,241 @@
+{
+  "recorded_at": "2026-10-19T18:13:27.735629+00:00",
+  "implementation_revision": "60da9a9678914e9be9da6c28c5f24ac04d903566",
+  "image_build_revision": "96f093b92fb8bf28f2d361877fa1764bb52f206b",
+  "host": "atlas.home.arpa",
+  "passed": true,
+  "ci": {
+    "url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39297759697",
+    "conclusion": "success",
+    "enrollment_tests_passed": 568,
+    "profile_tests_passed": 21,
+    "production_url": "https://github.com/Enucatl/puppet-control-repo/actions/runs/39300280731",
+    "production_conclusion": "success"
+  },
+  "isolated_acceptance": {
+    "source_kit": "root@proxmox.home.arpa:/root/openvox-atlas-renewal-20261019T165202Z",
+    "assertion_count": 27,
+    "checks": {
+      "all_18_original_archives_checksum_verified": true,
+      "fresh_12_authority_volumes_restored": true,
+      "root_matches_original_manifest": true,
+      "authority_certificate_and_key_file_bytes_unchanged": true,
+      "services_intermediate_certificate_matches_original_archive": true,
+      "services_intermediate_key_id_matches_original_archived_csr": true,
+      "scoped_compiler_vault_cert_auth_and_unrelated_kv_denial": true,
+      "all_three_existing_services_healthy": true,
+      "automatic_unseal": true,
+      "actual_host_wrapper_noop_keeps_container_and_starttime": true,
+      "actual_host_wrapper_stopped_existing_container_recovery": true,
+      "actual_failed_restart_followed_by_successful_invocation": true,
+      "actual_host_wrapper_ignores_config_and_image_drift": true,
+      "backup_captured_12_volumes_18_verified_archives": true,
+      "backup_archives_match_captured_source_commits": true,
+      "backup_restored_all_three_healthy": true,
+      "unhealthy_backup_restoration_and_failed_cleanup_preserve_failure": true,
+      "manual_bounded_recovery_after_injected_backup_failure": true,
+      "archived_image_to_rebuilt_image": true,
+      "rebuilt_to_archived_and_archived_to_rebuilt_image_rollback": true,
+      "real_automatic_vm_reboot_changed_boot_id": true,
+      "same_qemu_process_survived_successful_automatic_reboot": true,
+      "pending_marker_and_authority_bytes_survived_reboot": true,
+      "pending_marker_cleared_only_after_verified_listener": true,
+      "no_guest_kernel_or_container_oom_after_repeat": true,
+      "real_runuser_preserves_maintenance_fd9": true,
+      "dynamic_oci_repair_original_config_ids_and_refreshed_manifest_ids": true
+    },
+    "isolation": {
+      "qemu_restrict": true,
+      "services": [
+        "openvox",
+        "vault",
+        "vault-unsealer"
+      ],
+      "docker_internal_network": true,
+      "ports_loopback_only": true,
+      "production_access": false,
+      "new_authorities_or_leaf_issuance": false
+    },
+    "boot_before": "c5fb5af0-f18b-4392-a66f-19ebaf4f783b",
+    "boot_after": "7017e5f8-a970-47f2-99fe-4de6a375386f",
+    "qemu_process_preserved_across_successful_reboot": true,
+    "guest_oom_kill_count_after_repeat": 0,
+    "adaptations": [
+      "A genuine OCI image-index repair was required for Docker containerd import; original image blobs and archive checksums were preserved.",
+      "The isolated model used the archived architecture-specific Vault manifest; the production multiarch pin was unchanged.",
+      "Backup Compose arguments selected an isolated three-service internal network; all other operations used real Docker.",
+      "Failure injection stopped real OpenVox containers; subsequent wrapper recovery used real Docker.",
+      "The guest used ordinary numeric ownership 999/100; production user namespace mapping was not reproduced.",
+      "Public Git bundles supplied final source and baseline Git metadata after archive-only authority restoration."
+    ],
+    "initial_reboot_attempt": {
+      "status": "host_oom_failure",
+      "host": "forbearance",
+      "timestamp_utc": "2026-10-19T17:59:09.441228Z",
+      "qemu_pid": 454477,
+      "anon_rss_kib": 3175340,
+      "resolution": "Relaunched same preserved child with2GB RAM, then repeated automatic reboot successfully with sameQEMU process and zero guestOOM."
+    },
+    "limits": [
+      "The combined restore script assembles demonstrated steps and was not rerun on a second fresh guest.",
+      "No production host reboot, native-agent enrollment or full-role catalog application was performed.",
+      "The refreshed post-deployment backup was checksum-verified, not restored again into another guest."
+    ],
+    "protected_evidence": {
+      "location": "root@proxmox.home.arpa:/root/openvox-atlas-maintenance-acceptance-20261019T180700Z-60da9a9",
+      "archive": "evidence.tar.gz",
+      "sha256": "73e1b7096b99ada289ed04165c4fc9fc36ebe62fc99fc954ac71c646544ee8a8",
+      "directory_mode": "0700",
+      "file_mode": "0600",
+      "hashes_verified_remotely": true
+    },
+    "disposable_vm_stopped_and_child_disk_removed": true,
+    "original_lab_backing_disks_preserved": true
+  },
+  "production": {
+    "checkout_revision": "60da9a9678914e9be9da6c28c5f24ac04d903566",
+    "bare_production_revision": "60da9a9678914e9be9da6c28c5f24ac04d903566",
+    "github_production_revision": "60da9a9678914e9be9da6c28c5f24ac04d903566",
+    "deployed_environment_revision": "60da9a9678914e9be9da6c28c5f24ac04d903566",
+    "deployment_receipt_commit": "60da9a9678914e9be9da6c28c5f24ac04d903566",
+    "deployment_receipt_status": 0,
+    "openvox_image_id": "sha256:c2f5ed3aef54f359786480db838cca0b513efa9ab93cbad11558110f0ff9aa5d",
+    "services": {
+      "openvox": "healthy",
+      "vault": "healthy",
+      "vault-unsealer": "healthy"
+    },
+    "identities_unchanged": {
+      "root_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+      "intermediate_sha256": "9491631ff50ab25854c938ebdb1192794ac95d8874a23221f2f0b70af1c27e92",
+      "leaf_sha256": "300947006bf908b36d74c7d1c544b56955b27f44b06868674f59d230ad427196",
+      "host_key_sha256": "9d649ef3f7db5fe89fd88476e33ce5b68d289b4098f7cc2e3e093c52b6f6c080",
+      "ca_key_sha256": "ac077fb1300bc6271ea4e14cf791e161639b427ae332f150ac9cd43733a9974c"
+    },
+    "services_intermediate": {
+      "services_certificate_sha256": "afc513f45a296ed7f02e2977fc28f676eccf0c87a66fae397fe26433148adbd0",
+      "issuer_id": "4a670444-cb6a-b79c-f669-856dfbc59371",
+      "key_id": "6491963d-9505-c1aa-1015-e38947535edd",
+      "archived_services_certificate_matches": true,
+      "archived_services_key_id_matches": true
+    },
+    "vault_recovery_identity_files_unchanged_after_backup": true,
+    "listener_verified_after_backup": {
+      "listener_verified": true,
+      "serial": "02",
+      "not_after": "2026-12-18 16:51:50 UTC",
+      "leaf_sha256": "300947006bf908b36d74c7d1c544b56955b27f44b06868674f59d230ad427196",
+      "root_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea"
+    },
+    "scoped_vault_access_after_backup": {
+      "compiler_cert_auth": true,
+      "hiera_kv_marker": true,
+      "unrelated_kv_denied": true
+    },
+    "renewal": {
+      "timer_enabled": true,
+      "timer_active": true,
+      "service_result": "success",
+      "service_exit_status": 0
+    },
+    "backup": {
+      "atlas_directory": "/scratch/vault/atlas-maintenance-20261019T181027Z",
+      "protected_location": "root@proxmox.home.arpa:/root/openvox-atlas-maintenance-20261019T181027Z",
+      "manifest_sha256": "c3b8d8320099e7b357111580069cf9e8b955e70f2287618ee444ecc900337cef",
+      "all_18_archives_verified_after_transfer": true,
+      "directory_mode": "0700",
+      "file_mode": "0600",
+      "manifest": {
+        "host": "atlas.home.arpa",
+        "control_revision": "60da9a9678914e9be9da6c28c5f24ac04d903566",
+        "baseline_revision": "41c57257d33d471e2ae7cc7264938944c67434fd",
+        "root_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+        "images": {
+          "openvox": "sha256:c2f5ed3aef54f359786480db838cca0b513efa9ab93cbad11558110f0ff9aa5d",
+          "vault": "sha256:da136525129b45de85e7e5affdf4342416e96632cc3488621f160eae6ac7c95d",
+          "unsealer": "sha256:a67e3128a302d2f173a09252bfde6c124b57673073925e7b30c0b1ff4709eed3"
+        },
+        "volume_count": 12,
+        "archive_count": 18,
+        "archives": [
+          {
+            "sha256": "9bde99f91624b2695a83d1700494059dacb2d267ba3badabf62bc500670d78af",
+            "file": "control.git.tar.gz"
+          },
+          {
+            "sha256": "d74ac489ab5f01bdd4fb07f3e0af64a4c795e9698fc7bdb79f093c691a1b0add",
+            "file": "control.tar.gz"
+          },
+          {
+            "sha256": "a0f2651d29e79132f5162273ed3ab8650249aec822710aa5a6cdfedace2e548e",
+            "file": "credentials.tar.gz"
+          },
+          {
+            "sha256": "4a4371ef3809ad2df9c9c84850082d349ca09902ac0313e197108839ad7254e7",
+            "file": "hardening.tar.gz"
+          },
+          {
+            "sha256": "dac4595b1c4774e913dae4628cacfed73e1a2cd4e380eb2b03c78cafecf194cf",
+            "file": "host-config.tar.gz"
+          },
+          {
+            "sha256": "83072d7ca299335544e6b6fb125b9380e72b4ceeb4bea8fb9f8b0dc5533aabe0",
+            "file": "images.tar.gz"
+          },
+          {
+            "sha256": "f4142a5b251eca60b850a17a82e6d818577942c890c701dd5601d67e19e00bb4",
+            "file": "infra_certificates.tar.gz"
+          },
+          {
+            "sha256": "98b9d08a8794449d8a0e65211478efd386dfadb718058a2883ca4b81aea3adca",
+            "file": "infra_openvox_ca.tar.gz"
+          },
+          {
+            "sha256": "36360f20f74670c1f71c5f0b655d228b27fd8fc984fe7fcbf6315a16e9f3deea",
+            "file": "infra_openvox_code.tar.gz"
+          },
+          {
+            "sha256": "2cf6ccce871db825a7df852a94d4eadc024c27ac9a21f2038b344d90f6c7a360",
+            "file": "infra_openvox_data.tar.gz"
+          },
+          {
+            "sha256": "0c8a631eb747bc1cfbf16fe5929afd2b4c0b746658735b1ea71637252a6a8f90",
+            "file": "infra_openvox_gems.tar.gz"
+          },
+          {
+            "sha256": "6f2a7918fea98bd7222ef9279abde7f26ef0b9742f5deb0da9c5095861031791",
+            "file": "infra_openvox_git.tar.gz"
+          },
+          {
+            "sha256": "a1f7d13931db01335ff1208fad3c0c560b970e1b28d8a174ca975f4754659ade",
+            "file": "infra_openvox_r10k_cache.tar.gz"
+          },
+          {
+            "sha256": "381b7e3a8559f73a8c724d542233b20236a5ff4fc8e05880372382ecbf4f3c85",
+            "file": "infra_openvox_ssl.tar.gz"
+          },
+          {
+            "sha256": "b328615c07b2fdba4a99f223baf4e54bcc72bd9071130caa1bb65c6273b4eb75",
+            "file": "infra_openvox_trust.tar.gz"
+          },
+          {
+            "sha256": "202eff95ccb170f6af1310ddd0dc1bc4f9d84967a9974b4e792b0f4e1cb9aa90",
+            "file": "infra_vault_data.tar.gz"
+          },
+          {
+            "sha256": "0b44ad0792d4685521f56e7da31dc7a3fe3e14ad39984dab5e977bb86b6c67c3",
+            "file": "infra_vault_logs.tar.gz"
+          },
+          {
+            "sha256": "ae9bcddae84f9d008322a1274f7390aeb29fa7f01c2f30b9a0a909fa3fea03ee",
+            "file": "infra_vault_unseal.tar.gz"
+          }
+        ]
+      }
+    }
+  },
+  "remaining_work": [
+    "Atlas native-agent enrollment and full host catalog application remain separate migration work.",
+    "Physical-disk independence and arbitrary replacement-hardware acceptance are not established by this isolated VM test."
+  ]
+}

@@ -286,6 +286,12 @@ The receiver rejects direct pushes without the inherited maintenance lock,
 including ordinary `git push`. Re-run publishing at the current revision to
 install the guard on an existing receiver before taking a backup.
 
+Maintenance release `60da9a9` passed production publication with a receipt
+matching the actual deployed commit. Its isolated restore, host reboot, image
+rollback and failure-recovery checks passed before release; all three Atlas
+services and the renewed identity remained healthy afterward. See the
+[maintenance acceptance and recovery notes](../docs/openvox-infra.md#maintenance-release-and-independent-recovery).
+
 This stage stores code without starting containers or generating authorities.
 Compose mounts only the public bare repository read-only at `/git/control.git`.
 The separate external volume at `/git` remains writable for deployment status.

@@ -2,7 +2,7 @@
 
 `docker/docker-compose.yml` contains an opt-in `openvox` service. Atlas now runs
 OpenVox, Vault and the Vault unsealer; all three services passed their health
-checks on 2026-10-19 at deployed control revision `145302c`.
+checks on 2026-10-19 at deployed control revision `60da9a9`.
 Ordinary `docker compose up` excludes OpenVox.
 Activation requires `--profile openvox` or explicitly selecting the service.
 Compose also permits explicit service selection to bypass a profile, so the
@@ -13,18 +13,21 @@ Atlas's independent Docker/tooling bootstrap and pinned repository checkouts
 have passed twice under #18 Stage A. See the
 [bootstrap runbook](../proxmox/README.md#independent-atlas-tooling-bootstrap-18-stage-a)
 and [live results](atlas-bootstrap-results.json). Explicit authority
-initialization is complete. Atlas's native agent is not yet enrolled, and an
-independent restore has not yet been tested. A production push at `483173f`
-verified the live host hook, r10k/module deployment, generated types and compiler
-cache refresh. [Sanitized activation evidence](atlas-infra-results.json) records
-the identities, TLS checks and remaining acceptance work.
+initialization is complete. Atlas's native agent is not yet enrolled.
+Independent restoration, isolated host reboot and image rollback passed before
+the maintenance release at `60da9a9`. Its production push verified the host hook,
+actual deployed commit, generated types and compiler cache refresh.
+[Maintenance acceptance evidence](atlas-maintenance-results.json) records the
+current deployment and recovery checks; [activation evidence](atlas-infra-results.json)
+retains the initial identities and TLS checks.
 
 The initialized Vault root certificate DER SHA-256 fingerprint is
 `9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea`.
 The initial recovery kit is stored off-VM at
 `root@proxmox.home.arpa:/root/openvox-atlas-initial-20261019T162722Z`.
 All 18 archives passed SHA-256 verification, including all twelve persistent
-volumes. This establishes an initial backup, not independent restore acceptance.
+volumes. This initial backup is retained as a historical snapshot; the later
+renewal kit supplied the independent restoration described below.
 Both service names passed exact-name verification over IPv4 and IPv6 with
 TLS 1.3, ML-DSA-44 signatures and `X25519MLKEM768`; OpenVox rejected an
 `X25519`-only connection. Compiler certificate authentication can read the
@@ -39,6 +42,52 @@ are active, checked by the enabled systemd timer every six hours. Root and
 intermediate certificates and private keys are unchanged. The actual renewal,
 served full chain, repeat no-op and refreshed off-VM kit are recorded in
 [renewal acceptance evidence](atlas-openvox-renewal-results.json).
+
+## Maintenance release and independent recovery
+
+The maintenance fixes and shared Vault ACL files were published as `60da9a9`.
+Both GitHub CI jobs passed: 568 enrollment/Atlas tests and 21 profile tests.
+Atlas's checkout, bare production ref, deployed environment HEAD and successful
+deployment receipt all matched that revision. The rebuilt derived image is
+`sha256:c2f5ed3aef54f359786480db838cca0b513efa9ab93cbad11558110f0ff9aa5d`.
+All three services are healthy; renewal remains enabled and successful. Root,
+intermediate, listener certificate and private-key identities are unchanged.
+
+Before publication, an isolated Docker host VM restored twelve authority
+volumes from the eighteen verified renewal-kit archives. QEMU blocked outbound
+access; Docker used an internal network and loopback service ports. The 27
+acceptance checks covered scoped Vault access, renewal no-op/stopped recovery,
+failed-restart retry, configuration/image drift, backup consistency and failed
+service restoration. Image rollback was archived → rebuilt → archived → rebuilt.
+A real VM reboot changed the boot ID while preserving the QEMU process,
+automatically restored healthy services and retained a pending reload marker
+until listener verification. Certificate/key bytes stayed unchanged throughout.
+The first reboot attempt hit controller-host OOM; the repeat passed with a
+2 GiB guest and zero guest OOM events. The disposable child disk was removed
+afterward; earlier lab disks and all evidence were retained.
+
+Protected transcripts, restore helpers and `RECOVERY-RUNBOOK.txt` are at
+`root@proxmox.home.arpa:/root/openvox-atlas-maintenance-acceptance-20261019T180700Z-60da9a9`.
+Its evidence archive SHA-256 is
+`73e1b7096b99ada289ed04165c4fc9fc36ebe62fc99fc954ac71c646544ee8a8`.
+Docker's containerd image store required repairing the saved OCI index to
+reference all three genuine archived manifests before import; original image
+blobs and archive checksums were preserved. The included `repair-oci.py`
+handles configuration or manifest IDs. The isolated Vault model used its
+archived architecture-specific manifest because the multiarch index was absent;
+production retains the original pin. Follow the protected runbook for import.
+
+The refreshed production kit is at
+`root@proxmox.home.arpa:/root/openvox-atlas-maintenance-20261019T181027Z`.
+All eighteen archives verified after transfer; its manifest SHA-256 is
+`c3b8d8320099e7b357111580069cf9e8b955e70f2287618ee444ecc900337cef`.
+Both protected directories are `0700`, with files `0600`. This latest kit was
+checksum-verified rather than restored into another VM. The combined restore
+script assembles demonstrated steps and was not rerun on a second fresh guest.
+The guest used ordinary numeric ownership 999/100; production Docker remapping
+was unchanged. Production host reboot, native-agent enrollment, full-role
+application and physical-disk independence are outside this acceptance.
+See [the sanitized results](atlas-maintenance-results.json) for adaptations.
 
 ## Atlas endpoint requirements (#13)
 
@@ -189,7 +238,8 @@ The updated kit at
 `root@proxmox.home.arpa:/root/openvox-atlas-renewal-20261019T165202Z`
 contains the renewed identity, unchanged authorities and installed unit files,
 with all eighteen archives verified after transfer. The older initial kit is
-retained. Independent restoration remains separate acceptance work.
+retained. This renewal kit supplied the independent restoration above; the
+latest post-maintenance kit and its verification are recorded there as well.
 
 ## Service implementation
 
@@ -277,7 +327,9 @@ remaining recovery and migration acceptance is separate from its live status:
 5. Production outbound crypto/consumer compatibility, independent offline
    recovery, and migration gates are signed off separately. The complete
    disposable rehearsal does not establish every production compatibility
-   requirement; independent Atlas restore acceptance is still outstanding.
+   requirement. Atlas authority restoration, isolated host reboot and image
+   rollback passed the maintenance acceptance above; consumer and migration
+   gates remain separate.
 6. Atlas uses a distinct address and direct port 8140 while Docker's existing
    `puppetserver.service` continues serving legacy agents. #13 enrolls Atlas,
    then Aperture and Cognition as they migrate; it does not retire the old
@@ -416,8 +468,9 @@ python3 docker/openvox/infra-pki-self-test.py
 ```
 
 Atlas's production runtime now starts and passes service health checks.
-Native-agent enrollment, actual host catalog application and independent
-restore acceptance remain outstanding.
+Native-agent enrollment and actual host catalog application remain outstanding.
+Independent authority restoration, isolated host reboot and image rollback
+passed the maintenance acceptance above.
 
 ## Separate opt-in Vault configuration
 
