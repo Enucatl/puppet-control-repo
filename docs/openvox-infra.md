@@ -20,7 +20,7 @@ initialization/enrollment belong to #13.
 The router reserves Atlas's current `10.0.0.158` address for MAC
 `bc:24:11:4e:a4:9e`, which the creation script retains on rebuild. The host and
 both new services use separate DNS identities at that same IPv4 address and
-the verified stable ULA `fd6b:d722:1738::be24:11ff:fe4e:a49e`:
+the verified stable ULA `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`:
 
 | Purpose | Identity / endpoint |
 | --- | --- |

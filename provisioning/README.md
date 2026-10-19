@@ -64,7 +64,7 @@ VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inven
 update both declarations together if the NIC reservation changes.
 The dnsmasq template publishes exact A and AAAA records for `atlas.home.arpa`,
 `vault.home.arpa` and `openvox.home.arpa` at this address and Atlas's verified
-EUI-64 ULA `fd6b:d722:1738::be24:11ff:fe4e:a49e`. The ULA is retained across
+EUI-64 ULA `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`. The ULA is retained across
 ISP prefix changes; the pinned NIC MAC preserves its interface identifier on
 rebuild. Reverse DNS remains
 `atlas.home.arpa`. Legacy Docker/FreeIPA/`hcv.home.arpa` records retain their
