@@ -438,6 +438,27 @@ def configure_access() -> None:
 
 def deploy_initial() -> None:
     """Populate both declared environments before fail-on-missing-state startup."""
+    run(
+        DOCKER
+        + [
+            "run",
+            "--rm",
+            "--network",
+            "none",
+            "--user",
+            "0:0",
+            "--mount",
+            "type=volume,src=infra_openvox_code,dst=/code",
+            "--mount",
+            f"type=bind,src={SOURCE / 'docker/openvox'},dst=/infra,readonly",
+            "--entrypoint",
+            "/bin/bash",
+            "infra-openvox:24001",
+            "/infra/infra-code-prepare.sh",
+            "/code",
+            "/etc/puppetlabs/code",
+        ]
+    )
     git("fetch", "origin", "dev")
     run(
         [

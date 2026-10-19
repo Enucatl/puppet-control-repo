@@ -146,6 +146,18 @@ def test_openvox_state_cannot_be_replaced_by_implicit_empty_volumes(compose_mode
     assert not any("docker.sock" in m.get("source", "") for m in service["volumes"])
 
 
+def test_code_volume_stays_empty_for_initial_r10k_clone(compose_model):
+    """Do not seed the volume with the image's root-owned production skeleton."""
+    mount = next(
+        mount
+        for mount in compose_model["services"]["openvox"]["volumes"]
+        if mount["target"] == "/etc/puppetlabs/code"
+    )
+    assert mount["type"] == "volume"
+    assert mount["source"] == "openvox_code"
+    assert mount["volume"]["nocopy"] is True
+
+
 def test_start_fails_before_launch_when_state_is_missing():
     result = subprocess.run(
         ["bash", str(ROOT / "docker/openvox/infra-start.sh")],

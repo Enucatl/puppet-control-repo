@@ -92,6 +92,10 @@ python3 proxmox/atlas-infra.py start
 Startup waits for health and has no initialization or signing operation.
 The script deploys production/dev, installs the scoped Hiera overlay, generates
 types and installs the host receive dispatcher before starting OpenVox.
+The code volume disables Docker's image-template copying so r10k starts with an
+empty environment directory. An older volume containing exactly the packaged
+template is preserved under `packaged-environments` before deployment; unknown
+code is refused rather than moved or removed.
 Subsequent receives repeat those deployment steps and invalidate compiler caches.
 An unchanged push does not replay a failed deployment: explicitly replay its
 ref-update input to the managed hook after correcting the scripted cause.

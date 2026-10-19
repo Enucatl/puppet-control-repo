@@ -89,7 +89,10 @@ services:
         bind: {create_host_path: false}
       - openvox_ssl:/etc/puppetlabs/puppet/ssl
       - openvox_ca:/etc/puppetlabs/puppetserver/ca
-      - openvox_code:/etc/puppetlabs/code
+      - type: volume
+        source: openvox_code
+        target: /etc/puppetlabs/code
+        volume: {nocopy: true}
       - openvox_data:/opt/puppetlabs/server/data/puppetserver/server_data
       - openvox_gems:/opt/puppetlabs/server/data/puppetserver/jruby-gems
       - openvox_git:/git
