@@ -230,6 +230,57 @@ These runs prove tooling installation and rerun behavior; complete infrastructur
 rebuild, authority activation/enrollment and independent state recovery remain
 under #13/#18.
 
+## Atlas production publishing and legacy separation
+
+Run the publishing handover after the independent tooling bootstrap, which pins
+a detached checkout. First disconnect the legacy checkout from GitHub, then
+publish the reviewed commit from Atlas:
+
+```bash
+bash proxmox/legacy-git-remotes.sh /export/docker/puppet-control-repo
+CONTROL_REVISION=$(git rev-parse HEAD)
+ssh -A user_l@atlas.home.arpa \
+  "sudo --preserve-env=SSH_AUTH_SOCK bash -s -- '$CONTROL_REVISION'" \
+  < proxmox/atlas-publish.sh
+```
+
+The legacy script changes only Git routing configuration. Its fetch URL and
+sole push URL become `user_l@docker.home.arpa:/opt/git/puppet-control-repo.git`,
+with an explicit `production:production` push mapping. It removes the legacy
+bare repository's unused GitHub remote without deleting its tracking refs.
+Dirty work, branches, deployment hooks and legacy authority state are preserved.
+This also prevents a GitHub fetch from changing the legacy `origin/production`
+reference watched by its existing deployment service.
+
+`atlas-publish.sh CONTROL_COMMIT_SHA` requires a clean Atlas control checkout
+and a commit already published on GitHub `dev`. It restores complete history
+when the bootstrap checkout is shallow, requires fast-forward ancestry for all
+existing production targets, checks out local `production`, and creates the
+private `user_l:docker` bare repository at `/opt/git/openvox/control.git`.
+The bare repository is created with an empty Git template and no deployment
+hook. Setup refuses an existing active hook; container activation owns that
+later transition.
+
+Atlas keeps GitHub's SSH URL for fetches. Ordinary `git push` from its checkout
+publishes only the local `production` branch to both:
+
+- `git@github.com:Enucatl/puppet-control-repo.git`, branch `production`.
+- `/opt/git/openvox/control.git`, branch `production`.
+
+GitHub `dev` remains available for development; the publishing setup promotes a
+declared commit rather than rewriting or deleting that branch. Git push to two
+URLs is not a cross-repository transaction. The script verifies both production
+hashes after publication; rerun the same revision if one target fails.
+
+This stage stores code without starting containers or generating authorities.
+Before #13 activation, connect `/opt/git/openvox` to the external OpenVox Git
+volume at `/git`, grant the remapped container user access, and install a host
+receive hook that dispatches into the container. The container deployment helper
+already runs r10k, generates Puppet types and refreshes the environment caches;
+it uses container paths and cannot run directly as the host's Git hook. Its
+startup hook check must match the dispatch arrangement. Initial code deployment
+must precede normal startup; root/CA initialization remains separate and explicit.
+
 ## Rebuilding a development VM
 
 Existing targets are refused unless recreation is explicit and the local VM's

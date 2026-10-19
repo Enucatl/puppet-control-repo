@@ -81,6 +81,15 @@ addition to the autosigner's environment variables. This configuration belongs
 to the new container deployment; keep it off the existing host server until
 cutover. Rehearsal-only Hiera configuration does not validate this wiring.
 
+Atlas's [publishing handover](../proxmox/README.md#atlas-production-publishing-and-legacy-separation)
+separates code publication from container deployment. Its host bare repository is
+`/opt/git/openvox/control.git`; the working checkout publishes `production` to
+GitHub and this receiver. Legacy Docker publishes and fetches only its own old
+bare repository. Before activation, bind the Atlas Git storage into `/git` and
+connect host receives to the container's r10k/types/cache-refresh helper, including
+the remapped UID permissions and startup hook validation. The publishing stage
+creates no active receive hook and starts no service.
+
 ## Activation prerequisites
 
 Do not activate this service until all of these conditions are met:
