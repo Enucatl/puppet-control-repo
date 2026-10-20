@@ -37,7 +37,8 @@ profile::docker_host::git_deploy_projects:
     build_command: 'YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build'
   echo-server:
     ensure: absent
-  grafana-loki: {}
+  grafana-loki:
+    deploy_command: 'docker compose up --force-recreate --wait --wait-timeout 300 loki'
   puppet-control-repo:
     branch: production
     build_command: "docker compose -f docker/docker-compose.yml build"
