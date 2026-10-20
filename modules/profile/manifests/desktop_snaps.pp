@@ -3,7 +3,7 @@ class profile::desktop_snaps {
   include snapd
 
   # Snapd handles background refreshes; installed avoids Store queries during catalogs.
-  package { ['telegram-desktop', 'moonlight']:
+  package { ['telegram-desktop', 'moonlight', 'chromium']:
     ensure          => installed,
     provider        => snap,
     install_options => ['--channel=latest/stable'],

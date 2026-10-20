@@ -7,6 +7,7 @@ classes:
   - profile::user_toolchain
   - profile::codex_plugins
   - profile::typst
+  - profile::desktop_snaps
 
 profile::common::cron::jobs:
   typst-update:

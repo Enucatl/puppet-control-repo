@@ -1,6 +1,6 @@
 class freeipa_firefox {
 
-  $source_dir      = '/usr/local/share/ca-certificates/ipa-ca'
+  $source_dir      = '/usr/local/share/ca-certificates'
   $policy_dir      = '/etc/firefox/policies'
   $cert_target_dir = "${policy_dir}/certs"
 
@@ -51,7 +51,7 @@ class freeipa_firefox {
       mv ${policy_dir}/policies.json.tmp ${policy_dir}/policies.json
     '",
     path        => ['/bin', '/usr/bin'],
-    refreshonly => true, # ONLY runs when a cert changes or the JSON is missing
+    unless       => "/usr/bin/grep -Fq '${cert_target_dir}/atlas-infrastructure.crt' ${policy_dir}/policies.json",
     require     => File[$cert_target_dir],
   }
 }
