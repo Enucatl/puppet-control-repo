@@ -134,7 +134,7 @@ profile::common::systemd::units:
       Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps exam
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps exam
       SyslogIdentifier=automation-exam
       StandardOutput=journal
       StandardError=journal
@@ -152,8 +152,8 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: false
-    active: false
+    enable: true
+    active: true
     require: Systemd::Unit_file[automation-exam.service]
   automation-cyber-analyst.service:
     content: |
@@ -169,7 +169,7 @@ profile::common::systemd::units:
       Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps cyber-analyst
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps cyber-analyst
       SyslogIdentifier=automation-cyber-analyst
       StandardOutput=journal
       StandardError=journal
@@ -187,8 +187,8 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: false
-    active: false
+    enable: true
+    active: true
     require: Systemd::Unit_file[automation-cyber-analyst.service]
   automation-operations-analyst.service:
     content: |
@@ -204,7 +204,7 @@ profile::common::systemd::units:
       Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps operations-analyst
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps operations-analyst
       SyslogIdentifier=automation-operations-analyst
       StandardOutput=journal
       StandardError=journal
@@ -239,7 +239,7 @@ profile::common::systemd::units:
       Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
       ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps podcast-statistics
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps podcast-statistics
       SyslogIdentifier=automation-podcast-statistics
       StandardOutput=journal
       StandardError=journal
@@ -257,6 +257,6 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: false
-    active: false
+    enable: true
+    active: true
     require: Systemd::Unit_file[automation-podcast-statistics.service]

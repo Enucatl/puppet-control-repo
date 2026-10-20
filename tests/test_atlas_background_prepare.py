@@ -217,8 +217,8 @@ def test_invalid_source_image_is_rejected(background):
     assert not list(root.rglob("atlas-compose.json"))
 
 
-def test_atlas_jobs_preserve_schedules_and_wait_for_handover():
-    """Keep native Atlas timers inactive and retire only matching source jobs."""
+def test_atlas_jobs_preserve_schedules_and_single_active_owner():
+    """Activate migrated timers while retaining disabled jobs and source downloader."""
     import yaml
 
     nodes = Path(__file__).parents[1] / "data/nodes"
@@ -237,14 +237,15 @@ def test_atlas_jobs_preserve_schedules_and_wait_for_handover():
     for name, schedule in schedules.items():
         for suffix in ("service", "timer"):
             unit = f"automation-{name}.{suffix}"
-            assert atlas[unit]["enable"] is False and atlas[unit]["active"] is False
+            enabled = suffix == "timer" and name != "operations-analyst"
+            assert atlas[unit]["enable"] is enabled and atlas[unit]["active"] is enabled
             assert source[unit]["ensure"] == "absent"
             assert source[unit]["enable"] is False and source[unit]["active"] is False
         service = atlas[f"automation-{name}.service"]["content"]
         assert "User=user\n" in service
         assert (
-            "ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner "
-            f"run --no-build --rm --no-deps {name}\n"
+            "ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner "
+            f"run --pull never --rm --no-deps {name}\n"
         ) in service
         assert (
             f"OnCalendar={schedule}\n" in atlas[f"automation-{name}.timer"]["content"]

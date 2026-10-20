@@ -23,6 +23,7 @@ profile::docker_host::git_deploy_projects:
     pull: true
     build_command: "docker compose build"
   airflow:
+    ensure: absent
     pull: true
     build_command: 'docker compose --profile runner build exam download-zanzara cyber-analyst operations-analyst podcast-statistics'
   authelia: {}
