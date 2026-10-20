@@ -297,3 +297,69 @@ def test_certificate_acls_survive_renewal():
             "permission": ["user:101000:r--", "mask::r--"],
             "subscribe": "Vault_cert[atlas]",
         }
+
+
+def test_compose_includes_requested_runtime_override(preparation):
+    """Load the actual merged source definition when a stack uses an override."""
+    module, root, calls = preparation
+    module.compose("traefik", override=True)
+    command = calls[-1][0]
+    assert command.count("-f") == 2
+    assert command[command.index("-f") + 1] == str(root / "traefik/docker-compose.yml")
+    assert command[-4:] == [
+        "-f",
+        str(root / "traefik/docker-compose.override.yml"),
+        "config",
+        "--format=json",
+    ]
+
+
+def test_real_compose_roundtrip_preserves_literal_dollars(tmp_path):
+    """Exercise Compose's actual second interpolation without a Docker engine."""
+    spec = importlib.util.spec_from_file_location(
+        "atlas_access_roundtrip",
+        Path(__file__).parents[1] / "proxmox/atlas-access-prepare.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    path = tmp_path / "atlas-compose.json"
+    expected = {
+        "image": "busybox:1",
+        "environment": {"EXAMPLE": "prefix-$UNSET-${UNSET}-$$-suffix"},
+        "command": ["sh", "-c", 'printf "%s" "$EXAMPLE"; echo ${OTHER:-default}'],
+        "labels": {"example.redirect": "https://${1}/$2/$$"},
+    }
+    source = tmp_path / "source-compose.json"
+    source.write_text(
+        json.dumps({"services": {"example": expected}}).replace("$", "$$")
+    )
+
+    def resolve(compose_path):
+        """Ask real Compose for canonical JSON without connecting to an engine."""
+        result = subprocess.run(
+            [
+                "docker",
+                "compose",
+                "--env-file",
+                "/dev/null",
+                "--project-name",
+                "literal-dollar-check",
+                "-f",
+                str(compose_path),
+                "config",
+                "--format=json",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return json.loads(result.stdout)
+
+    canonical_source = resolve(source)
+    module.write_compose(path, canonical_source)
+    assert resolve(path) == canonical_source
+    # Compose's canonical output itself doubles literal dollars for re-reading.
+    for key, value in expected.items():
+        escaped = json.loads(json.dumps(value).replace("$", "$$"))
+        assert canonical_source["services"]["example"][key] == escaped
+    assert path.stat().st_mode & 0o777 == 0o600

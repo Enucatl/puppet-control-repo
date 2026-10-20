@@ -52,21 +52,27 @@ def write_private(path: Path, text: str) -> None:
         Path(temporary).unlink(missing_ok=True)
 
 
-def compose(stack: str) -> dict:
+def write_compose(path: Path, config: dict) -> None:
+    """Save canonical Compose JSON, which already escapes its literal dollars."""
+    write_private(path, json.dumps(config, indent=2) + "\n")
+
+
+def compose(stack: str, *, override: bool = False) -> dict:
     """Resolve source Compose privately, including both environment files."""
+    command = [
+        "docker",
+        "compose",
+        "--env-file",
+        str(ROOT / ".env"),
+        "--env-file",
+        str(ROOT / stack / ".env"),
+        "-f",
+        str(ROOT / stack / "docker-compose.yml"),
+    ]
+    if override:
+        command.extend(["-f", str(ROOT / stack / "docker-compose.override.yml")])
     result = subprocess.run(
-        [
-            "docker",
-            "compose",
-            "--env-file",
-            str(ROOT / ".env"),
-            "--env-file",
-            str(ROOT / stack / ".env"),
-            "-f",
-            str(ROOT / stack / "docker-compose.yml"),
-            "config",
-            "--format=json",
-        ],
+        command + ["config", "--format=json"],
         capture_output=True,
         text=True,
     )
@@ -195,9 +201,7 @@ def prepare() -> None:
             )
             write_private(path, text)
             runtime_configs.append(path)
-        write_private(
-            ROOT / stack / "atlas-compose.json", json.dumps(config, indent=2) + "\n"
-        )
+        write_compose(ROOT / stack / "atlas-compose.json", config)
 
     # UID 1000 inside dockremap containers is host UID 101000.
     certs = ROOT / "traefik/data/certs"

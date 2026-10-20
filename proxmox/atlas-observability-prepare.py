@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import os
 from pathlib import Path
 import re
@@ -95,9 +94,7 @@ def prepare() -> None:
             raise RuntimeError(
                 "Cannot grant observability config ACL; diagnostics withheld"
             )
-        access.write_private(
-            root / stack / "atlas-compose.json", json.dumps(config, indent=2) + "\n"
-        )
+        access.write_compose(root / stack / "atlas-compose.json", config)
 
 
 if __name__ == "__main__":

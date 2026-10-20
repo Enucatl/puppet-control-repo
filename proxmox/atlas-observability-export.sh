@@ -44,8 +44,17 @@ root_partition="${loop}p1"
 [[ $(blkid -p -s TYPE -o value "$root_partition") == ext4 ]]
 mount -o ro,noload "$root_partition" "$work"
 volumes="$work/var/lib/docker/100000.100000/volumes"
-for name in grafana-loki_grafana_data grafana-loki_loki_data beszel_beszel_data; do
+if [[ $# == 0 ]]; then
+  set -- grafana-loki_grafana_data grafana-loki_loki_data beszel_beszel_data
+fi
+paths=()
+for name in "$@"; do
+  [[ $name =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]+$ ]]
   [[ -d "$volumes/$name/_data" && ! -L "$volumes/$name" ]]
+  paths+=("$name/_data")
 done
-tar --acls --xattrs --numeric-owner -C "$volumes" -cpf - \
-  grafana-loki_grafana_data/_data grafana-loki_loki_data/_data beszel_beszel_data/_data
+extra=()
+if [[ -d "$work/opt/paperless-consume" ]]; then
+  extra=(-C "$work" opt/paperless-consume)
+fi
+tar --acls --xattrs --numeric-owner -C "$volumes" -cpf - "${paths[@]}" "${extra[@]}"
