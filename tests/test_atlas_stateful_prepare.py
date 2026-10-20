@@ -104,6 +104,9 @@ def test_staging_keeps_data_settings_and_defers_handover(stateful, capsys):
             )
         if stack == "crabberbot":
             assert "cloudflared" not in config["services"]
+            assert config["services"]["crabberbot"]["profiles"] == [
+                "migration-handover"
+            ]
         if stack == "send-bills":
             assert config["services"]["scheduler"]["profiles"] == ["migration-handover"]
         if stack == "paperless-ai":

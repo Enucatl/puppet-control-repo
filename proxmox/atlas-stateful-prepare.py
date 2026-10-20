@@ -50,6 +50,8 @@ def prepare() -> None:
                     f"Expected exported source image ID for {stack}/{name}"
                 )
             service["image"] = image
+            if stack == "crabberbot" and name != "postgres":
+                service["profiles"] = ["migration-handover"]
             for key, value in service.get("labels", {}).items():
                 if key.startswith("traefik."):
                     service["labels"][key] = value.replace(
