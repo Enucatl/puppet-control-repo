@@ -34,6 +34,11 @@ def build_cloud_config(
         "packages": ["auto-apt-proxy", "gnupg"],
         "write_files": [
             {
+                "path": "/etc/apt/apt.conf.d/80-retries",
+                "permissions": "0644",
+                "content": 'Acquire::Retries "3";\n',
+            },
+            {
                 "path": "/etc/cloud/cloud.cfg.d/99-hostname.cfg",
                 "permissions": "0644",
                 "content": json.dumps(identity) + "\n",

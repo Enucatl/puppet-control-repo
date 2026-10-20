@@ -582,6 +582,13 @@ def test_cloud_config_preserves_short_and_fully_qualified_identity(
         "manage_etc_hosts": True,
     }
     assert {key: config[key] for key in expected} == expected
+    retries = next(
+        file
+        for file in config["write_files"]
+        if file["path"] == "/etc/apt/apt.conf.d/80-retries"
+    )
+    assert retries["content"] == 'Acquire::Retries "3";\n'
+    assert retries["permissions"] == "0644"
     persistent = next(
         file
         for file in config["write_files"]
