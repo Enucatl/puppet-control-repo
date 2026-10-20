@@ -13,6 +13,7 @@ dev = [
     "cryptography",
     "hvac",
     "pytest",
+    "pyyaml",
     "ruff",
 ]
 
