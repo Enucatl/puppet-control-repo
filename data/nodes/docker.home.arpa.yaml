@@ -43,17 +43,22 @@ profile::docker_host::git_deploy_projects:
     build_command: "docker compose -f docker/docker-compose.yml build"
     compose_file: docker/docker-compose.yml
     watch_dir: docker
-  kms: {}
+  kms:
+    ensure: absent
   monerod:
     ensure: absent # Run on demand; remove deploy watcher and scheduled refresh units.
     build_command: "docker compose build"
   paperless-ai:
+    ensure: absent
     build_command: "docker compose build"
+  paperless-ngx:
+    ensure: absent
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
   rss-to-telegram-bot: {}
   send-bills:
+    ensure: absent
     build_command: 'VERSION=$(uv run --with setuptools-git-versioning setuptools-git-versioning); docker compose build --build-arg VERSION="$VERSION"'
   teamspeak: {}
   tor-i2pd: {}
@@ -73,6 +78,7 @@ profile::common::services::resources:
 
 profile::common::systemd::units:
   paperless-snapshot.service:
+    ensure: absent
     content: |
       [Unit]
       Description=Export Paperless data and documents
@@ -90,6 +96,7 @@ profile::common::systemd::units:
     enable: false
     active: false
   paperless-snapshot.timer:
+    ensure: absent
     content: |
       [Unit]
       Description=Schedule weekly Paperless export
@@ -101,10 +108,11 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: true
-    active: true
+    enable: false
+    active: false
     require: Systemd::Unit_file[paperless-snapshot.service]
   paperless-correspondent-cleanup.service:
+    ensure: absent
     content: |
       [Unit]
       Description=Run weekly Paperless correspondent cleanup
@@ -125,6 +133,7 @@ profile::common::systemd::units:
     enable: false
     active: false
   paperless-correspondent-cleanup.timer:
+    ensure: absent
     content: |
       [Unit]
       Description=Schedule weekly Paperless correspondent cleanup
@@ -136,8 +145,8 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: true
-    active: true
+    enable: false
+    active: false
     require: Systemd::Unit_file[paperless-correspondent-cleanup.service]
   backrest-kinit.service:
     content: |
