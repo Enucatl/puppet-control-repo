@@ -2,7 +2,7 @@ class profile::common::systemd (
   Hash $units         = {},
   Hash $user_services = {},
 ) {
-  if $trusted['certname'] == 'atlas.home.arpa' {
+  if $trusted['certname'] in ['atlas.home.arpa', 'aperture.home.arpa'] {
     file { '/usr/local/libexec':
       ensure => directory,
       owner  => 'root',

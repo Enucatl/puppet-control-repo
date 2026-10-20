@@ -19,6 +19,9 @@ def test_infrastructure_dns_checks_preserve_names_and_canonical_addresses() -> N
         "{{ atlas_node_ip }},{{ atlas_node_ula }}"
     ) in dnsmasq
     assert "address=/freeipa.{{ dhcp_domain }}/{{ docker_node_ip }}" in dnsmasq
+    assert "address=/docker.{{ dhcp_domain }}/{{ docker_node_ip }}" in dnsmasq
+    assert "address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ip }}" in dnsmasq
+    assert "address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ula }}" in dnsmasq
     variables = dict(
         re.findall(
             r'^(\w+): "([^"\n]*)"$',
@@ -36,7 +39,9 @@ def test_infrastructure_dns_checks_preserve_names_and_canonical_addresses() -> N
     ).read_text()
     helpers = template.split('log "START router smoke checks"', 1)[0]
     loop = re.search(
-        r"for \w+ in atlas vault openvox ipa; do\n.*?\ndone", template, re.DOTALL
+        r"for \w+ in atlas vault openvox ipa traefik.atlas authelia.atlas; do\n.*?\ndone",
+        template,
+        re.DOTALL,
     )
     assert loop is not None
     checks = loop.group().replace("{{ atlas_node_ip }}", variables["atlas_node_ip"])
@@ -61,7 +66,7 @@ retry_line() {
         timeout=5,
     )
     queries = result.stdout.splitlines()
-    assert len(queries) == 24
+    assert len(queries) == 36
     actual = set()
     for query in queries:
         _description, expected, command = query.split("|", 2)
@@ -72,7 +77,14 @@ retry_line() {
             assert arguments[arguments.index("-p") + 1] == "5300"
     assert actual == {
         (f"{name}.home.arpa", record_type, server, address)
-        for name in ("atlas", "vault", "openvox", "ipa")
+        for name in (
+            "atlas",
+            "vault",
+            "openvox",
+            "ipa",
+            "traefik.atlas",
+            "authelia.atlas",
+        )
         for record_type, address in (
             ("A", variables["atlas_node_ip"]),
             ("AAAA", canonical_ipv6),

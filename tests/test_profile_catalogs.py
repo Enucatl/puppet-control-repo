@@ -26,6 +26,80 @@ DUMMY_SECRETS = {
 }
 
 
+def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
+    """Prepare the new desktop with native Atlas identity, storage and TLS."""
+    catalog = compile_catalog(
+        tmp_path,
+        (ROOT / "manifests/site.pp").read_text(),
+        DUMMY_SECRETS,
+        hostname="aperture",
+        node_type="desktop",
+        fact_overrides={
+            "os": {
+                "family": "Debian",
+                "name": "Ubuntu",
+                "architecture": "amd64",
+                "release": {"major": "26.04", "full": "26.04"},
+                "distro": {"codename": "resolute"},
+            }
+        },
+    )
+    result = resources(catalog)
+    documents = result["File[/home/user/Documents]"]
+    assert documents["ensure"] == "directory"
+    assert documents["owner"] == documents["group"] == "user"
+    assert documents["mode"] == "0750"
+    pairs = ordered_pairs(catalog)
+    assert ("File[/home/user]", "File[/home/user/Documents]") in pairs
+    assert (
+        "File[/home/user/Documents]",
+        "Posix_acl[/home/user/Documents]",
+    ) in pairs
+    documents_mount = next(
+        name
+        for name, parameters in result.items()
+        if name.startswith("Mount[")
+        and parameters.get("device") == "/home/user/Documents"
+    )
+    assert ("File[/home/user/Documents]", documents_mount) in pairs
+    shim = result["File[/usr/local/libexec/openvox-child-policy.rb]"]
+    assert shim["source"] == "puppet:///modules/profile/openvox-child-policy.rb"
+    assert shim["mode"] == "0644"
+    crypto = result["File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]"][
+        "content"
+    ]
+    assert "-r /usr/local/libexec/openvox-child-policy.rb" in crypto
+    assert "OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf" in crypto
+    enrollment = result["Freeipa_client_enrollment[default]"]
+    assert enrollment["server"] == "ipa.home.arpa"
+    assert enrollment["hostname"] == "aperture.home.arpa"
+    assert enrollment["ca_cert_file"] == (
+        "/usr/local/share/ca-certificates/atlas-infrastructure.crt"
+    )
+    certificate = result["Vault_cert[codex]"]
+    assert certificate["vault_uri"] == (
+        "https://vault.home.arpa:8200/v1/pki_int/issue/puppet"
+    )
+    assert certificate["ca_trust"] == "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
+    assert certificate["cert_data"]["common_name"] == "codex.aperture.home.arpa"
+    for share in ("scratch", "docker"):
+        mount = result[f"Nfs::Client::Mount[/export/{share}]"]
+        assert mount["server"] == "atlas.home.arpa"
+        assert mount["atboot"] is False
+        assert "sec=krb5p" in mount["options_nfsv4"]
+        assert "x-systemd.automount" in mount["options_nfsv4"]
+    export = result["Nfs::Server::Export[/home/user/Documents]"]
+    assert export["clients"] == (
+        "atlas.home.arpa(sec=krb5p,ro,sync,no_subtree_check,root_squash)"
+    )
+    assert result["Nfs_config::Ipa_service[nfs]"]["ipa_server"] == "ipa.home.arpa"
+    assert "loki.atlas.home.arpa" in result["File[/etc/alloy/config.alloy]"]["content"]
+    assert "Class[Profile::Codex_plugins]" in result
+    assert "Class[Profile::Docker_node]" not in result
+    assert "Class[Profile::Vault_login]" not in result
+    assert "Nfs::Client::Mount[/export/complex]" not in result
+
+
 def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     """Enroll IPA before user resources and issue Atlas certificates on new Vault."""
     catalog = compile_catalog(
@@ -88,6 +162,14 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         result["Vault_cert[atlas]"]["cert_data"]["common_name"] == "*.atlas.home.arpa"
     )
     assert "Class[Profile::Docker_node]" not in result
+    for name in ("airflow", "traefik", "paperless-ai", "grindr-api-dev-tool"):
+        directory = result[f"File[/opt/docker/{name}]"]
+        assert directory["ensure"] == "directory"
+        assert directory["owner"] == "user"
+        assert directory["group"] == "docker"
+        assert directory["mode"] == "2770"
+        assert not directory.get("recurse", False)
+    assert "File[/opt/docker/compose-security-baseline]" not in result
     pairs = ordered_pairs(catalog)
     assert result["Exec[sync-user-toolchain-user]"]["cwd"] == "/home/user"
     assert ("File[/home/user]", "Exec[sync-user-toolchain-user]") in pairs

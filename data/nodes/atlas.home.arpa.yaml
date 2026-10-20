@@ -9,17 +9,45 @@ freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastruc
 
 profile::common::certs::directories:
   - /opt/docker
-  - /opt/docker/traefik
   - /opt/docker/traefik/data
   - /opt/docker/traefik/data/certs
-  - /opt/docker/airflow
   - /opt/docker/airflow/secrets
   - /opt/docker/puppet-control-repo
   - /opt/docker/puppet-control-repo/docker
   - /opt/docker/puppet-control-repo/docker/wolf
   - /opt/docker/puppet-control-repo/docker/wolf/secrets
-  - /opt/docker/browser-use
   - /opt/docker/browser-use/secrets
+
+profile::docker_host::stack_directories:
+  - airflow
+  - ais
+  - authelia
+  - backrest
+  - barbero-scripts
+  - beszel
+  - browser-use
+  - camillo
+  - crabberbot
+  - echo-server
+  - fcm-service
+  - grafana-loki
+  - grindr-api-dev-tool
+  - iventoy
+  - kms
+  - monerod
+  - open-grind
+  - paperless-ai
+  - protonmail-bridge
+  - qbittorrent
+  - rclone
+  - rss-to-telegram-bot
+  - send-bills
+  - shared-inference
+  - teamspeak
+  - telegram-bot-api
+  - tor-i2pd
+  - traefik
+  - unifi-network-application
 
 profile::common::certs::vault_certs_default_location: /opt/docker/traefik/data/certs
 profile::common::certs::vault_certs_defaults:
@@ -70,3 +98,22 @@ systemd::dropin_files:
       ExecStart=
       ExecStart=/opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb /opt/puppetlabs/puppet/bin/puppet agent $PUPPET_EXTRA_OPTS --no-daemonize
     require: File[/usr/local/libexec/openvox-child-policy.rb]
+
+profile::common::acls::posix_acls:
+  "/opt/docker/traefik/data/certs":
+    action: set
+    permission:
+      - "user:101000:r-x"
+      - "mask::r-x"
+  "/opt/docker/traefik/data/certs/atlas_fullchain.pem":
+    action: set
+    permission:
+      - "user:101000:r--"
+      - "mask::r--"
+    subscribe: "Vault_cert[atlas]"
+  "/opt/docker/traefik/data/certs/atlas_key.pem":
+    action: set
+    permission:
+      - "user:101000:r--"
+      - "mask::r--"
+    subscribe: "Vault_cert[atlas]"

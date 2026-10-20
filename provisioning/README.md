@@ -70,6 +70,12 @@ rebuild. Reverse DNS remains
 `atlas.home.arpa`. Legacy Docker/FreeIPA/`hcv.home.arpa` records retain their
 existing address.
 
+The `atlas.home.arpa` suffix also resolves application subdomains such as
+`traefik.atlas.home.arpa` and `authelia.atlas.home.arpa` to Atlas over IPv4 and
+IPv6, using the same dnsmasq wildcard pattern as `docker.home.arpa`. Exact
+infrastructure records and Atlas's canonical PTR remain in place. Application
+certificates and Traefik routes must cover these names before use.
+
 Apply only DNS/DHCP and its smoke checks with:
 
 ```bash
@@ -82,7 +88,8 @@ installs the configuration and updated smoke script, then restarts dnsmasq and
 AdGuard to clear cached DNS answers. It does not apply the declarative router
 configuration or update other containers. Full `--tags apply` also includes
 these DNS declarations. Smoke checks verify all four names through AdGuard
-over IPv4/IPv6 and dnsmasq directly, plus Atlas's canonical PTR record.
+over IPv4/IPv6 and dnsmasq directly, plus the Traefik/Authelia application names
+and Atlas's canonical PTR record.
 
 These records prepare the migration service endpoints: `https://vault.home.arpa:8200`,
 direct TLS `openvox.home.arpa:8140` and FreeIPA at `ipa.home.arpa`. Service certificates must contain the

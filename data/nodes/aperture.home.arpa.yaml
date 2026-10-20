@@ -1,0 +1,58 @@
+---
+classes:
+  - profile::desktop
+
+ssh::client_options:
+  ProxyCommand: none
+  KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'
+
+freeipa::client::server: ipa.home.arpa
+freeipa::client::hostname: aperture.home.arpa
+freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
+
+profile::common::certs::vault_certs_defaults:
+  vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/puppet'
+  ca_trust: /etc/puppetlabs/puppet/ssl/certs/ca.pem
+
+profile::alloy::loki_url: 'https://loki.atlas.home.arpa/loki/api/v1/push'
+profile::beszel_agent::hub_url: 'https://beszel-agent.atlas.home.arpa'
+
+systemd::dropin_files:
+  puppet-crypto.conf:
+    unit: puppet.service
+    content: |
+      [Service]
+      Environment=OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
+      ExecStart=
+      ExecStart=/opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb /opt/puppetlabs/puppet/bin/puppet agent $PUPPET_EXTRA_OPTS --no-daemonize
+    require: File[/usr/local/libexec/openvox-child-policy.rb]
+
+profile::common::acls::posix_acls:
+  '/home/user':
+    action: set
+    permission:
+      - 'user:backrest:--x'
+  '/home/user/Documents':
+    action: set
+    permission:
+      - 'user:backrest:r-X'
+      - 'mask::r-X'
+      - 'default:user:backrest:r-X'
+      - 'default:mask::r-X'
+    recursive: true
+
+nfs_config::ipa_server: ipa.home.arpa
+nfs_config::server_exports:
+  '/home/user/Documents':
+    clients: 'atlas.home.arpa(sec=krb5p,ro,sync,no_subtree_check,root_squash)'
+    atboot: true
+
+nfs_config::client_mounts:
+  '/export/scratch':
+    server: 'atlas.home.arpa'
+    atboot: false
+    options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p'
+  '/export/docker':
+    server: 'atlas.home.arpa'
+    atboot: false
+    options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p'

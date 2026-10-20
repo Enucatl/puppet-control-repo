@@ -400,6 +400,18 @@ an explicit `-i VMID`; desktop recreation additionally requires
 `--rebuild -i VMID -n NAME`, while Docker uses `-r -i VMID -n NAME`.
 Desktop's `-n` sets a short hostname; `-l LETTER` instead selects a random name.
 Desktop provisioning reboots and verifies the short hostname/FQDN again.
+
+The prepared `aperture.home.arpa` node uses the desktop role with Atlas IPA,
+Vault, monitoring and Kerberos NFS endpoints. Its first catalog creates the
+user-owned Documents directory and exports it read-only to Atlas; no interim
+Forbearance-to-Atlas connection is required. Before provisioning, publish this
+node configuration, install the authenticated Atlas CA at
+`/usr/local/share/ca-certificates/atlas-infrastructure.crt` in the guest and its
+system trust, and admit Aperture's exact certificate identity in Atlas Vault's
+certificate-authentication policy (the current setup admits only Atlas).
+Use the existing exact-name, single-use OpenVox enrollment flow. Preparing this
+node does not allocate a VM or transfer Forbearance's unique user state.
+
 The FreeIPA acceptance fixture also loads optional `.env` settings: set
 `PUPPET_SERVER=openvox.home.arpa` there to test the new server. Its readiness check
 uses the shared 30-minute timeout and retains the failed VM/snippet for diagnosis.

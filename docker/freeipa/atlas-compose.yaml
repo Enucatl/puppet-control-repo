@@ -16,8 +16,6 @@ services:
     environment:
       IPA_SERVER_IP: no-update
     ports:
-      - "80:80"
-      - "443:443"
       - "88:88"
       - "88:88/udp"
       - "389:389"
@@ -27,6 +25,15 @@ services:
     networks:
       infra:
         aliases: [ipa.home.arpa]
+      traefik_proxy: {}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.tcp.routers.freeipa-secure.entrypoints=https"
+      - "traefik.tcp.routers.freeipa-secure.rule=HostSNI(`ipa.home.arpa`)"
+      - "traefik.tcp.routers.freeipa-secure.tls=true"
+      - "traefik.tcp.routers.freeipa-secure.tls.passthrough=true"
+      - "traefik.tcp.services.freeipa-secure.loadbalancer.server.port=443"
     volumes:
       - ipa_data:/data
       - type: bind
@@ -50,6 +57,7 @@ services:
 
 networks:
   infra: {external: true, name: infra}
+  traefik_proxy: {external: true, name: traefik_proxy}
 
 volumes:
   ipa_data: {external: true, name: infra_ipa_data}
