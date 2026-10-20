@@ -19,6 +19,16 @@ class profile::dotfiles (
     mode   => '0700',
   }
 
+  file { "${home}/.profile":
+    ensure  => file,
+    source  => '/etc/skel/.profile',
+    replace => false,
+    owner   => $username,
+    group   => $username,
+    mode    => '0644',
+    require => File[$home],
+  }
+
   vcsrepo { $repo_dir:
     ensure   => latest,
     provider => git,
