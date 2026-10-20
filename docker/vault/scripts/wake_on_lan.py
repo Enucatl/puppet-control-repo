@@ -87,7 +87,7 @@ def main(
         return
 
     vault_env = os.environ.copy()
-    vault_env.setdefault("VAULT_ADDR", "https://hcv.home.arpa:8200")
+    vault_env.setdefault("VAULT_ADDR", "https://vault.home.arpa:8200")
     vault_env.setdefault("VAULT_CACERT", "/etc/ssl/certs/ca-certificates.crt")
 
     # 1. Retrieve Password from Vault (with cert auth fallback)

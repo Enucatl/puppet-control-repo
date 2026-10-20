@@ -32,7 +32,7 @@ class Config:
     broadcast: str = "10.0.0.255"
     vault_path: str = "kv/wolf"
     vault_field: str = "proxmox-cortex"
-    vault_addr: str = "https://hcv.home.arpa:8200"
+    vault_addr: str = "https://vault.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
     vault_cert_role: str = "puppet-wolf"
     certname: str = "proxmox.home.arpa"

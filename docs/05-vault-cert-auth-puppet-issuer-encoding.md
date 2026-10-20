@@ -215,7 +215,7 @@ sudo /opt/puppetlabs/bin/puppetserver ca sign --certname proxmox.home.arpa
 Then validate from `proxmox.home.arpa`:
 
 ```sh
-VAULT_ADDR=https://hcv.home.arpa:8200 \
+VAULT_ADDR=https://vault.home.arpa:8200 \
 VAULT_CLIENT_CERT=/etc/puppetlabs/puppet/ssl/certs/proxmox.home.arpa.pem \
 VAULT_CLIENT_KEY=/etc/puppetlabs/puppet/ssl/private_keys/proxmox.home.arpa.pem \
 vault login -method=cert -no-store name=puppet
@@ -509,7 +509,7 @@ described in the enrollment scripts before running `puppet ssl bootstrap`.
 After each agent receives a new cert, verify Vault cert auth on that host:
 
 ```sh
-VAULT_ADDR=https://hcv.home.arpa:8200 \
+VAULT_ADDR=https://vault.home.arpa:8200 \
 VAULT_CLIENT_CERT=/etc/puppetlabs/puppet/ssl/certs/$(hostname -f).pem \
 VAULT_CLIENT_KEY=/etc/puppetlabs/puppet/ssl/private_keys/$(hostname -f).pem \
 vault login -method=cert -no-store name=puppet
@@ -519,7 +519,7 @@ For `proxmox.home.arpa`, explicitly verify that the workaround is no longer
 needed:
 
 ```sh
-VAULT_ADDR=https://hcv.home.arpa:8200 \
+VAULT_ADDR=https://vault.home.arpa:8200 \
 VAULT_CLIENT_CERT=/etc/puppetlabs/puppet/ssl/certs/proxmox.home.arpa.pem \
 VAULT_CLIENT_KEY=/etc/puppetlabs/puppet/ssl/private_keys/proxmox.home.arpa.pem \
 vault login -method=cert -no-store name=puppet

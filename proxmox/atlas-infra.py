@@ -557,11 +557,6 @@ def deploy_initial() -> None:
             "/infra/infra-r10k.yaml",
         )
         openvox(
-            "/bin/cp",
-            "/infra/infra-hiera.yaml",
-            f"/etc/puppetlabs/code/environments/{environment}/hiera.yaml",
-        )
-        openvox(
             PUPPET,
             "generate",
             "types",

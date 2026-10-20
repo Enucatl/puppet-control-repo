@@ -374,7 +374,7 @@ docker compose -f docker/docker-compose.yml run --rm --no-deps \
 sudo install -m 0644 "$vault_ca" /usr/local/share/ca-certificates/vault-ca.crt
 sudo update-ca-certificates
 rm "$vault_ca"
-export VAULT_ADDR=https://hcv.home.arpa:8200
+export VAULT_ADDR=https://vault.home.arpa:8200
 export VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
 docker compose -f docker/docker-compose.yml up -d --wait --wait-timeout 180 vault vault-unsealer
 ```

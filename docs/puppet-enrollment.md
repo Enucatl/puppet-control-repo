@@ -113,7 +113,7 @@ create another enrollment token.
 On the provisioning administrator's trusted shell, from the repository root:
 
 ```bash
-export VAULT_ADDR=https://hcv.home.arpa:8200
+export VAULT_ADDR=https://vault.home.arpa:8200
 export VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
 # Use an existing administrator login; do not use the enrollment token here.
 export VAULT_TOKEN="$(vault print token)"

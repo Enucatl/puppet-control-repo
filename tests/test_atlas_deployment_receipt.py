@@ -29,7 +29,6 @@ def deployment(tmp_path: Path) -> Path:
         checkout.parent.mkdir(parents=True, exist_ok=True)
         git(tmp_path, "clone", "-q", "--branch", environment, str(bare), str(checkout))
     (tmp_path / "infra").mkdir()
-    (tmp_path / "infra/infra-hiera.yaml").write_text("Atlas Hiera settings\n")
     for name in (
         "opt/puppetlabs/puppet/bin/r10k",
         "opt/puppetlabs/bin/puppet",

@@ -9,7 +9,7 @@ source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/lib.sh"
 [[ ! -f .env ]] || load_env
 
-export VAULT_ADDR="${VAULT_ADDR:-https://hcv.home.arpa:8200}"
+export VAULT_ADDR="${VAULT_ADDR:-https://vault.home.arpa:8200}"
 
 VMID="${1:-$(pvesh get /cluster/nextid)}"
 VMNAME="freeipa-acceptance-${VMID}"

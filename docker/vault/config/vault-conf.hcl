@@ -1,4 +1,4 @@
-api_addr = "https://hcv.home.arpa:8200"
+api_addr = "https://vault.home.arpa:8200"
 ui = "false"
 
 storage "file" {

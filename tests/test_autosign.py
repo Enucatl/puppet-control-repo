@@ -51,6 +51,8 @@ def make_csr(
 @pytest.fixture
 def vault(monkeypatch: pytest.MonkeyPatch) -> Mock:
     """Replace only the Vault transport while exercising real CSR parsing."""
+    monkeypatch.delenv("VAULT_ADDR", raising=False)
+    monkeypatch.delenv("VAULT_CACERT", raising=False)
     client = Mock()
     client.return_value.auth.token.lookup_self.return_value = {
         "data": {"policies": ["puppet-enrollment"], "meta": {"certname": CERTNAME}}
@@ -84,7 +86,7 @@ def test_matching_csr_uses_exactly_one_lookup(
     )
     assert result.exit_code == 0, result.output
     vault.assert_called_once_with(
-        url="https://hcv.home.arpa:8200",
+        url="https://vault.home.arpa:8200",
         token=TOKEN,
         verify="/etc/ssl/certs/ca-certificates.crt",
         timeout=10,

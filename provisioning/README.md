@@ -67,8 +67,8 @@ The dnsmasq template publishes exact A and AAAA records for `atlas.home.arpa`,
 EUI-64 ULA `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`. The ULA is retained across
 ISP prefix changes; the pinned NIC MAC preserves its interface identifier on
 rebuild. Reverse DNS remains
-`atlas.home.arpa`. Legacy Docker/FreeIPA/`hcv.home.arpa` records retain their
-existing address.
+`atlas.home.arpa`. Legacy Docker/FreeIPA records retain their existing address. Vault uses
+`vault.home.arpa` on Atlas.
 
 The `atlas.home.arpa` suffix also resolves application subdomains such as
 `traefik.atlas.home.arpa` and `authelia.atlas.home.arpa` to Atlas over IPv4 and

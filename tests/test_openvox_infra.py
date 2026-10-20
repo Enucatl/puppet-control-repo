@@ -99,7 +99,7 @@ def test_atlas_leaf_lifetimes_and_renewal_window_are_scoped(compose_model):
 
 
 def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):
-    """Keep Atlas lookups on its endpoint without redirecting the legacy compiler."""
+    """Use the repository Hiera configuration with the mounted Vault trust."""
     ruby = shutil.which("ruby")
     if ruby is None:
         pytest.skip("Ruby is required to parse the deployed Hiera configuration")
@@ -110,14 +110,13 @@ def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):
             "-rjson",
             "-e",
             "puts JSON.generate(ARGV.map { |path| YAML.safe_load_file(path) })",
-            str(ROOT / "docker/openvox/infra-hiera.yaml"),
             str(ROOT / "hiera.yaml"),
         ],
         capture_output=True,
         text=True,
         check=True,
     )
-    deployed, legacy = json.loads(result.stdout)
+    (deployed,) = json.loads(result.stdout)
     backend = next(
         level
         for level in deployed["hierarchy"]
@@ -127,14 +126,6 @@ def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):
     assert backend["options"]["ca_trust"] == environment["VAULT_CACERT"]
     assert backend["options"]["fail_hard"] is True
     assert backend["uris"] == [environment["VAULT_ADDR"] + "/v1/kv/data/puppet"]
-    legacy_backend = next(
-        level
-        for level in legacy["hierarchy"]
-        if level.get("data_hash") == "vault_hiera_hash"
-    )
-    assert legacy_backend["uris"] == ["https://hcv.home.arpa:8200/v1/kv/data/puppet"]
-    legacy_backend["uris"] = backend["uris"]
-    assert deployed == legacy
 
 
 def test_openvox_state_cannot_be_replaced_by_implicit_empty_volumes(compose_model):

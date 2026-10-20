@@ -384,7 +384,7 @@ profile::common::cron::jobs:
 profile::common::certs::vault_certs_default_location: /opt/docker/traefik/data/certs
 
 profile::common::certs::vault_certs_defaults:
-  vault_uri: 'https://hcv.home.arpa:8200/v1/pki_int/issue/puppet-docker.home.arpa'
+  vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/puppet-docker.home.arpa'
 
 profile::common::certs::vault_certs:
   docker:

@@ -46,7 +46,7 @@ class Config:
     vault_path: str = "kv/wolf"
     vault_field: str = "proxmox-cortex"
     vault_api_token_field: str = "proxmox-cortex-api-token"
-    vault_addr: str = "https://hcv.home.arpa:8200"
+    vault_addr: str = "https://vault.home.arpa:8200"
     vault_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
     vault_cert_role: str = "wolf"
     vault_client_cert: str = "/run/secrets/wolf_cert"

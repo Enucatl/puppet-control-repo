@@ -24,8 +24,6 @@ while read -r _old new ref; do
           "$environment" "$actual_revision" "$new" >&2
         exit 1
       }
-      install -m 0644 /infra/infra-hiera.yaml \
-        "/etc/puppetlabs/code/environments/$environment/hiera.yaml"
       /opt/puppetlabs/bin/puppet generate types --environment "$environment" \
         --config /etc/puppetlabs/puppet/puppet.conf \
         --codedir /etc/puppetlabs/code \

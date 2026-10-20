@@ -473,6 +473,7 @@ def test_container_handler_records_commit_only_after_deploy_types_and_flush(
         (tmp_path / directory).mkdir(parents=True)
     deployed = tmp_path / "etc/puppetlabs/code/environments/production"
     git(deployed, "init", "-q", "--initial-branch=production")
+    (deployed / "hiera.yaml").write_text("Repository Hiera settings\n")
     revision = commit(deployed, "deployed production")
     git(
         tmp_path,
@@ -482,7 +483,6 @@ def test_container_handler_records_commit_only_after_deploy_types_and_flush(
         str(deployed),
         str(tmp_path / "git/control.git"),
     )
-    (tmp_path / "infra/infra-hiera.yaml").write_text("Atlas Hiera settings\n")
     for command in (
         "opt/puppetlabs/puppet/bin/r10k",
         "opt/puppetlabs/bin/puppet",
@@ -497,7 +497,7 @@ name=${0##*/}
 printf '%s\n' "$name" >> "$TEST_ROOT/steps"
 [[ -z ${GIT_DIR:-} && -z ${GIT_WORK_TREE:-} && -z ${GIT_INDEX_FILE:-} && -z ${GIT_COMMON_DIR:-} ]]
 if [[ $name == puppet ]]; then
-    cmp "$TEST_ROOT/infra/infra-hiera.yaml" "$TEST_ROOT/etc/puppetlabs/code/environments/production/hiera.yaml"
+    grep -qx "Repository Hiera settings" "$TEST_ROOT/etc/puppetlabs/code/environments/production/hiera.yaml"
 fi
 [[ $name != "$FAILURE" ]] || exit 42
 """

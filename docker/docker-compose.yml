@@ -271,7 +271,7 @@ services:
       - /tmp:rw,noexec,nosuid,size=32m
       - /run:rw,noexec,nosuid,size=16m,uid=1000,gid=1000
     environment:
-      - VAULT_ADDR=https://hcv.home.arpa:8200
+      - VAULT_ADDR=https://vault.home.arpa:8200
       - VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
       - WOLF_GUEST_HOST=cognition.home.arpa
       - WOLF_VM_ID=220

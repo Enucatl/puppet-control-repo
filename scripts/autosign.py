@@ -60,7 +60,9 @@ def validate_csr(
 @click.command()
 @click.argument("certname")
 @click.argument("input_file", type=click.File("rb"), default="-")
-@click.option("--vault_addr", envvar="VAULT_ADDR", default="https://hcv.home.arpa:8200")
+@click.option(
+    "--vault_addr", envvar="VAULT_ADDR", default="https://vault.home.arpa:8200"
+)
 @click.option(
     "--verify", envvar="VAULT_CACERT", default="/etc/ssl/certs/ca-certificates.crt"
 )

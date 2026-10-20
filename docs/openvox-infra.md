@@ -110,9 +110,8 @@ the verified stable ULA `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`:
 
 The [router provisioning](../provisioning/README.md#atlas-infrastructure-dns-and-dhcp)
 declares these exact DNS records and the DHCP reservation. Reverse DNS identifies
-the host as Atlas. Legacy `docker.home.arpa` and `hcv.home.arpa` continue to reach
-the existing Docker host; existing agents and service consumers keep their old
-endpoints until their migrations.
+the host as Atlas. Legacy `docker.home.arpa` continues to reach the existing Docker host.
+Vault consumers use `vault.home.arpa` on Atlas.
 
 The OpenVox Compose hostname, Puppet certname/server and certificate paths,
 PKI preparation, readiness and cache-flush helpers use `openvox.home.arpa`.
@@ -276,11 +275,9 @@ clients under the operator-approved exception; capable clients must negotiate
 the hybrid group. The existing infra Vault service is not upgraded or
 reinitialized by selecting OpenVox.
 
-The deployed `infra-hiera.yaml` overlay uses `/trust/root.pem` explicitly and fails catalog compilation if
-Vault authentication or lookup fails. These Hiera options are required in
-addition to the autosigner's environment variables. This configuration belongs
-to the new container deployment; keep it off the existing host server until
-cutover. Rehearsal-only Hiera configuration does not validate this wiring.
+The repository `hiera.yaml` uses `vault.home.arpa` and `/trust/root.pem` explicitly
+and fails catalog compilation if Vault authentication or lookup fails. Deployment
+uses this file directly; no container-specific Hiera overlay is needed.
 
 Atlas's [publishing handover](../proxmox/README.md#atlas-production-publishing-and-legacy-separation)
 separates code publication from container deployment. Its host bare repository is
