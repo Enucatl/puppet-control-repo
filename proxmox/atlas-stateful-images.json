@@ -22,8 +22,8 @@
     "cloudflared": "sha256:08f1d1bdeb589c853ed8cf38de0bc9027eefbbc5f49bb31933e3f54560e0aea1"
   },
   "send-bills": {
-    "bills": "sha256:7f5238441cbe3e573ee7bbecfdc1bd43e8611f8a594be027fcac02a2afc5433e",
-    "scheduler": "sha256:7f5238441cbe3e573ee7bbecfdc1bd43e8611f8a594be027fcac02a2afc5433e",
+    "bills": "sha256:ae464380ccf7110355cb0383a64ccd474e90945596778da37f5c7a434c651200",
+    "scheduler": "sha256:ae464380ccf7110355cb0383a64ccd474e90945596778da37f5c7a434c651200",
     "db": "sha256:662db3da228c2ea2649b3ae04db4b4479e85fea5979f6a917a7f6d5cb1e7ec39"
   }
 }
