@@ -5,6 +5,7 @@ import importlib.util
 import os
 from pathlib import Path
 import socket
+from urllib.parse import urlsplit
 
 SPEC = importlib.util.spec_from_file_location(
     "atlas_infra", Path(__file__).with_name("atlas-infra.py")
@@ -42,9 +43,14 @@ path "kv/data/airflow/variables/*" {
     assert role["token_policies"] == ["airflow"]
     connection = infra.api("GET", "kv/data/airflow/connections/djangodev")["data"]
     values = connection["data"]
-    assert values["host"] in ("postgres.docker.home.arpa", "postgres-outputs")
-    if values["host"] != "postgres-outputs":
-        values["host"] = "postgres-outputs"
+    uri = urlsplit(values["uri"])
+    assert uri.hostname in ("postgres.docker.home.arpa", "postgres-outputs")
+    if uri.hostname != "postgres-outputs":
+        credentials = uri.netloc.rsplit("@", 1)[0] + "@" if "@" in uri.netloc else ""
+        port = ":" + str(uri.port) if uri.port is not None else ""
+        values["uri"] = uri._replace(
+            netloc=credentials + "postgres-outputs" + port
+        ).geturl()
         infra.api(
             "POST",
             "kv/data/airflow/connections/djangodev",
