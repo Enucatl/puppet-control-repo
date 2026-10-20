@@ -1,6 +1,9 @@
 ---
 classes:
   - profile::desktop
+  - profile::desktop_archives
+  - profile::desktop_snaps
+  - profile::desktop_printing
 
 ssh::client_options:
   ProxyCommand: none
@@ -56,3 +59,10 @@ nfs_config::client_mounts:
     server: 'atlas.home.arpa'
     atboot: false
     options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p,proto=tcp'
+
+profile::desktop_archives::reaper_version: '7.82'
+profile::desktop_archives::reaper_source: 'https://www.reaper.fm/files/7.x/reaper782_linux_x86_64.tar.xz'
+profile::desktop_archives::reaper_checksum: 'a4aa961534f22ae5ae910e4ec0c200dcb4476c9f7556806fe09a9743cd582563'
+profile::desktop_archives::teamspeak_version: '6.0.0-beta5'
+profile::desktop_archives::teamspeak_source: 'https://files.teamspeak-services.com/pre_releases/client/6.0.0-beta5/teamspeak-client.tar.xz'
+profile::desktop_archives::teamspeak_checksum: '394472a25ee9c2419c44a5e71a401c21bffecf2fdcb27fbe2173d0fffd1875a4'

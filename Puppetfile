@@ -3,6 +3,7 @@ forge 'https://forge.puppet.com'
 # Modules discovered by generate-puppetfile
 #
 mod 'camptocamp/augeas',                '1.9.0'
+mod 'ethanhs/snapd',                    '1.4.0'
 mod 'jmckenzie/netplan',                '2.0.0'
 mod 'lwf/remote_file',                  '1.1.3'
 mod 'puppet/alternatives',              '6.0.0'
