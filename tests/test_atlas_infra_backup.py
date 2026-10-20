@@ -60,6 +60,14 @@ def authority(tmp_path: Path) -> Path:
         repository.mkdir(parents=True)
         git(repository, "init", "-q", "--initial-branch=production")
         (repository / "configuration").write_text(name)
+        if name == "puppet-control-repo":
+            hook = repository / "docker/openvox/infra-host-post-receive"
+            hook.parent.mkdir(parents=True)
+            hook.write_text(
+                (
+                    SCRIPT.parent.parent / "docker/openvox/infra-host-post-receive"
+                ).read_text()
+            )
         git(repository, "add", ".")
         git(
             repository,
