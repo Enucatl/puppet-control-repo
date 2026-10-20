@@ -80,6 +80,22 @@ def build_cloud_config(
                 "vault",
             ],
             ["bash", "/usr/local/bin/install-openvox.sh"],
+            [
+                "/opt/puppetlabs/puppet/bin/ruby",
+                "-ropenssl",
+                "-e",
+                "certificates = File.read(ARGV.fetch(0)).scan("
+                "/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m)"
+                ".map { |pem| OpenSSL::X509::Certificate.new(pem) }; "
+                "roots = certificates.select { |cert| cert.subject == cert.issuer && "
+                "cert.verify(cert.public_key) && cert.extensions.any? { |extension| "
+                "extension.oid == 'basicConstraints' && extension.value.include?('CA:TRUE') } }; "
+                "abort 'Authenticated bundle must contain exactly one root CA' unless roots.one?; "
+                "File.write(ARGV.fetch(1), roots.first.to_pem)",
+                "/etc/puppetlabs/puppet/ssl/certs/ca.pem",
+                "/usr/local/share/ca-certificates/atlas-infrastructure.crt",
+            ],
+            ["update-ca-certificates"],
             ["apt-get", "install", "-y", "--install-recommends", "ubuntu-desktop"],
             ["systemctl", "mask", "systemd-networkd-wait-online.service"],
             [

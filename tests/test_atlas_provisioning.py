@@ -475,7 +475,7 @@ def test_atlas_base_deployment_and_owned_failure_cleanup(
             for call in calls
             if call.startswith("qm set 210 ") and "--cores" in call
         )
-        assert "--memory 8192" in settings
+        assert "--memory 12288" in settings
     if not failure:
         network = "qm set 210 --net0 virtio=bc:24:11:4e:a4:9e,bridge=vmbr0,firewall=1,tag=12,mtu=1450"
         assert network in calls

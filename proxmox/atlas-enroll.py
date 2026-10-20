@@ -65,8 +65,8 @@ path "auth/token/lookup-self" {{
         "auth/cert/certs/puppet",
         {
             "certificate": infra.openvox("/bin/cat", "/trust/openvox-chain.pem"),
-            "allowed_common_names": [CERTNAME],
-            "allowed_dns_sans": [CERTNAME],
+            "allowed_common_names": [CERTNAME, "aperture.home.arpa"],
+            "allowed_dns_sans": [CERTNAME, "aperture.home.arpa"],
             "token_policies": ["puppet"],
             "token_no_default_policy": True,
             "token_ttl": "15m",

@@ -319,7 +319,7 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
             "--cpu",
             "host",
         )
-        run("qm", "set", vmid, "--machine", "q35", "--bios", "ovmf")
+        run("qm", "set", vmid, "--machine", "q35", "--bios", "ovmf", "--vga", "virtio")
         run(
             "qm",
             "set",

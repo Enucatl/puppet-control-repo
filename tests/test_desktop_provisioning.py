@@ -380,7 +380,20 @@ def test_provision_lifecycle_and_cleanup(
         "--cpu",
         "host",
     ) in commands
-    assert ("qm", "set", "123", "--machine", "q35", "--bios", "ovmf") in commands
+    assert (
+        "qm",
+        "set",
+        "123",
+        "--machine",
+        "q35",
+        "--bios",
+        "ovmf",
+        "--vga",
+        "virtio",
+    ) in commands
+    assert not any(
+        "--hostpci" in argument for command in commands for argument in command
+    )
     assert (
         "qm",
         "set",
@@ -568,6 +581,42 @@ def test_cloud_config_preserves_short_and_fully_qualified_identity(
         "atlas.home.arpa",
         "docker.home.arpa",
     ] in config["runcmd"]
+
+
+@pytest.mark.parametrize("root_count", [0, 1, 2])
+def test_cloud_config_installs_only_one_authenticated_root(
+    desktop: ModuleType, tmp_path: Path, root_count: int
+) -> None:
+    """Install the supplied public root before IPA enrollment and reject ambiguity."""
+    config = desktop.build_cloud_config(
+        "token", "aperture.home.arpa", "openvox.home.arpa", "home.arpa", "ca"
+    )
+    command = next(
+        command
+        for command in config["runcmd"]
+        if isinstance(command, list) and command[0] == "/opt/puppetlabs/puppet/bin/ruby"
+    )
+    root = (PROXMOX.parent / "docker/wolf/proxmox-cortex-pve-root-ca.pem").read_text()
+    bundle = tmp_path / "ca.pem"
+    bundle.write_text(root * root_count)
+    installed = tmp_path / "infrastructure.crt"
+    result = subprocess.run(
+        [*command[:-2], str(bundle), str(installed)], capture_output=True, text=True
+    )
+    if root_count == 1:
+        assert result.returncode == 0, result.stderr
+        assert installed.read_text() == root
+    else:
+        assert result.returncode != 0
+        assert not installed.exists()
+    install = config["runcmd"].index(command)
+    update = config["runcmd"].index(["update-ca-certificates"])
+    enroll = next(
+        index
+        for index, step in enumerate(config["runcmd"])
+        if isinstance(step, list) and step[0] == "/usr/local/bin/configure-puppet.sh"
+    )
+    assert install < update < enroll
 
 
 def test_hostname_verification_rejects_fqdn_as_short_name(

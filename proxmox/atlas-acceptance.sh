@@ -41,7 +41,7 @@ fi
 check_atlas() {
     local run="$1" address host_key
     qm config 210 > "$EVIDENCE/run-$run-config.txt"
-    grep -qx 'memory: 8192' "$EVIDENCE/run-$run-config.txt"
+    grep -qx 'memory: 12288' "$EVIDENCE/run-$run-config.txt"
     grep -qx 'name: atlas' "$EVIDENCE/run-$run-config.txt"
     grep -Eq '^scsi0: .*[, ]size=300G(,|$)' "$EVIDENCE/run-$run-config.txt"
     [[ $(grep -c '^scsi[0-9]' "$EVIDENCE/run-$run-config.txt") == 1 ]]
