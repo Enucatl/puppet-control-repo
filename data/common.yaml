@@ -189,7 +189,7 @@ systemd::dropin_files:
       Environment="GOMEMLIMIT=512MiB"
       Environment="CUSTOM_ARGS=--disable-reporting"
       ExecStart=
-      ExecStart=/usr/bin/alloy run --disable-reporting --storage.path=/var/lib/alloy/data $CONFIG_FILE
+      ExecStart=/usr/bin/alloy run --disable-reporting --stability.level=experimental --storage.path=/var/lib/alloy/data $CONFIG_FILE
     notify: "Service[alloy]"
   puppet-facter-dhcpcd-path.conf:
     unit: "puppet.service"

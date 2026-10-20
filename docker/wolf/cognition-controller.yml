@@ -1,0 +1,6 @@
+# Add this override only after Cognition owns the GPU and final source state.
+services:
+  wolf:
+    environment:
+      WOLF_GUEST_HOST: cognition.home.arpa
+      WOLF_VM_ID: '220'

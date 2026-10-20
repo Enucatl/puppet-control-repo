@@ -82,6 +82,7 @@ def render_cloud_template(
             "VM_FQDN": CERTNAME,
             "NEW_VM_NAME": "test-vm",
             "NODE_TYPE": "docker" if kind == "docker" else "freeipa_acceptance",
+            "DOCKER_USERNS_REMAP": os.environ.get("DOCKER_USERNS_REMAP", "default"),
             "PUPPET_SERVER": server,
             "DOMAIN_SUFFIX": "home.arpa",
             "IPV6_POOL": "fd00:1234:5678:a000::/56",

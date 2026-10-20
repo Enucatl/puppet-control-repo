@@ -13,15 +13,20 @@ CORES=8
 MEMORY=16384
 DISK_SIZE="50G"
 MAC_ADDRESS=""
+VGA=""
 NODE_TYPE="docker"
+DOCKER_USERNS_REMAP="${DOCKER_USERNS_REMAP-default}"
+[[ $DOCKER_USERNS_REMAP == default || -z $DOCKER_USERNS_REMAP ]] || {
+    echo 'DOCKER_USERNS_REMAP must be default or empty.' >&2; exit 1;
+}
 BASE_ONLY=false
 REBUILD=false
 
 usage() {
-    echo "Usage: $0 [-b] [-r] [-n NAME | -l LETTER] [-i VMID] [-t TEMPLATE_ID] [-s PUPPET_SERVER] [-c CORES] [-m MEMORY_MB] [-d DISK_SIZE] [-a MAC_ADDRESS]"
+    echo "Usage: $0 [-b] [-r] [-n NAME | -l LETTER] [-i VMID] [-t TEMPLATE_ID] [-s PUPPET_SERVER] [-c CORES] [-m MEMORY_MB] [-d DISK_SIZE] [-a MAC_ADDRESS] [-v virtio|serial0]"
     echo '  -b: infrastructure base without Vault/Puppet enrollment; -r: rebuild an owned development VM'
 }
-while getopts "brl:n:i:t:s:c:m:d:a:h" opt; do
+while getopts "brl:n:i:t:s:c:m:d:a:v:h" opt; do
     case $opt in
         b) BASE_ONLY=true ;;
         r) REBUILD=true ;;
@@ -33,6 +38,12 @@ while getopts "brl:n:i:t:s:c:m:d:a:h" opt; do
         c) CORES="$OPTARG" ;;
         m) MEMORY="$OPTARG" ;;
         d) DISK_SIZE="$OPTARG" ;;
+        v)
+            [[ $OPTARG == virtio || $OPTARG == serial0 ]] || {
+                echo 'VGA must be virtio or serial0.' >&2; exit 1;
+            }
+            VGA="$OPTARG"
+            ;;
         a)
             if ! [[ $OPTARG =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ && $OPTARG != 00:00:00:00:00:00 ]] ||
                 (( (16#${OPTARG:0:2} & 1) != 0 )); then
@@ -78,7 +89,7 @@ else
     }
     IPV6_POOL="${IPV6_PREFIX}:${VM_LETTER}000::/56"
     IPV6_FIXED="${IPV6_PREFIX}:${VM_LETTER}100::/64"
-    export IPV6_POOL IPV6_FIXED PUPPET_SERVER NODE_TYPE
+    export IPV6_POOL IPV6_FIXED PUPPET_SERVER NODE_TYPE DOCKER_USERNS_REMAP
     TEMPLATE_SRC="$SCRIPT_DIR/docker-cloud-init.yml.tmpl"
     # Reject missing trust before issuing a single-use enrollment token.
     test -s "${OPENVOX_CA_CERT:?Set authenticated OpenVox CA bundle path}"
@@ -93,7 +104,7 @@ else
       '["/usr/local/bin/configure-puppet.sh", $type, $token, $certname, $server]')
     export PUPPET_ENROLLMENT_COMMAND
     install -m 0600 /dev/null "$GENERATED_YAML"
-    envsubst '${NEW_VM_NAME}${VM_FQDN}${IPV6_POOL}${IPV6_FIXED}${DOMAIN_SUFFIX}${CONFIGURE_PUPPET_SCRIPT}${INSTALL_OPENVOX_SCRIPT}${OPENVOX_CA_BUNDLE}${PUPPET_ENROLLMENT_COMMAND}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
+    envsubst '${NEW_VM_NAME}${VM_FQDN}${IPV6_POOL}${IPV6_FIXED}${DOMAIN_SUFFIX}${CONFIGURE_PUPPET_SCRIPT}${INSTALL_OPENVOX_SCRIPT}${OPENVOX_CA_BUNDLE}${PUPPET_ENROLLMENT_COMMAND}${DOCKER_USERNS_REMAP}' < "$TEMPLATE_SRC" > "$GENERATED_YAML"
 fi
 
 # 2. Only remove a previously designated development guest; recheck ownership.
@@ -103,7 +114,9 @@ cleanup() {
     trap - EXIT
     rm -f "$GENERATED_YAML"
     if [[ $status != 0 && $CLONED == true ]]; then
-        remove_target "$VMID" || echo 'Retaining VM: cleanup could not verify ownership.' >&2
+        # Enrollment may already have created an identity; retain it for diagnosis.
+        (umask 077; mkdir -p "$LOG_DIR"; guest_exec "$VMID" cat /var/log/cloud-init-output.log > "$LOG_DIR/docker-$VMID-failure.log" 2>&1) || true
+        echo "Retaining failed VM $VMID; private diagnostics in $LOG_DIR/docker-$VMID-failure.log." >&2
     fi
     exit "$status"
 }
@@ -124,6 +137,7 @@ qm set "$VMID" --cores "$CORES" --memory "$MEMORY" --agent 1 --cpu host \
     --bios ovmf --machine q35 \
     --efidisk0 "${STORAGE}:0,efitype=4m,pre-enrolled-keys=0" --scsihw virtio-scsi-single
 qm resize "$VMID" scsi0 "$DISK_SIZE"
+if [[ -n $VGA ]]; then qm set "$VMID" --vga "$VGA"; fi
 qm set "$VMID" \
     --cicustom "vendor=${SNIPPET_STORAGE}:snippets/$(basename "$GENERATED_YAML")" \
     --ipconfig0 ip=dhcp --searchdomain "$DOMAIN_SUFFIX" --ciuser user_l --sshkey ~/.ssh/id_ed25519.pub

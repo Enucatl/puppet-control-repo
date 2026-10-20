@@ -106,6 +106,10 @@ fi
 rm -f "$new_claude_catalog"
 trap - EXIT
 
+if ! codex plugin marketplace list --json | jq -e --arg dir "$marketplace_dir" \
+  '.marketplaces[] | select(.name == "ponytail" and .root == $dir)' >/dev/null; then
+  codex plugin marketplace add "$marketplace_dir" --json >/dev/null
+fi
 current="$(codex plugin list --marketplace ponytail --json)"
 installed_version="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .version // empty' <<< "$current")"
 enabled="$(jq -r '.installed[]? | select(.pluginId == "ponytail@ponytail") | .enabled' <<< "$current")"

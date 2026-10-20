@@ -390,7 +390,7 @@ bash proxmox/desktop.sh -n aperture -t 9001 --puppet-server openvox.home.arpa
 
 # On proxmox-cortex.home.arpa; build its separate local template first.
 bash proxmox/ubuntu-server-template.sh
-bash proxmox/desktop.sh -n cognition -t 9001 --puppet-server openvox.home.arpa
+bash proxmox/cognition-server.sh
 
 # An enrolled Docker workload host, separate from the Atlas base.
 bash proxmox/docker-server.sh -n app1 -t 9001 -s openvox.home.arpa -c 8 -m 16384 -d 50G
@@ -401,6 +401,19 @@ an explicit `-i VMID`; desktop recreation additionally requires
 `--rebuild -i VMID -n NAME`, while Docker uses `-r -i VMID -n NAME`.
 Desktop's `-n` sets a short hostname; `-l LETTER` instead selects a random name.
 Desktop provisioning reboots and verifies the short hostname/FQDN again.
+
+Cognition uses the Docker workload path: VM 220, eight cores, 16384 MiB RAM,
+1000 GiB disk and virtio graphics, with MAC `bc:24:11:4e:c0:22` reserved as
+`10.0.40.134`. It enrolls against Atlas and installs authenticated system CA
+trust before FreeIPA enrollment. The GPU stays with Complex throughout staging;
+Cognition's node data configures the NVIDIA runtime but disables Wolf/vLLM
+deployment. Its daemon retains Complex's disabled user namespace remapping to
+preserve numeric ownership during state transfer; other Docker builds retain
+their existing `default` remapping. The Docker provisioning failure path retains
+the guest and writes private diagnostics so an enrolled identity can be repaired
+in place.
+See [Cognition state transfer and cutover](cognition-migration.md) for the guarded
+copy/GPU tools, networking, controllers and rollback.
 
 The prepared `aperture.home.arpa` node uses the desktop role with Atlas IPA,
 Vault, monitoring and Kerberos NFS endpoints. Its first catalog creates the

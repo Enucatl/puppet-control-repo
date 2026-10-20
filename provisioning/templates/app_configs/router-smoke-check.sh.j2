@@ -172,5 +172,13 @@ for infra_name in atlas vault openvox ipa traefik.atlas authelia.atlas; do
     retry_line "dnsmasq $infra_name A" "{{ atlas_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "$infra_name.$DHCP_DOMAIN" A +short
 done
 check_dns_exact "Atlas canonical PTR" "$ADGUARD_V4" PTR "{{ atlas_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "atlas.$DHCP_DOMAIN." 60
+check_dns_exact "AdGuard IPv4 cognition A" "$ADGUARD_V4" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
+check_dns_exact "AdGuard IPv6 cognition A" "$ADGUARD_V6" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
+check_dns_exact "AdGuard IPv4 cognition AAAA" "$ADGUARD_V4" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
+check_dns_exact "AdGuard IPv6 cognition AAAA" "$ADGUARD_V6" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
+retry_line "dnsmasq cognition A" "{{ cognition_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "cognition.$DHCP_DOMAIN" A +short
+retry_line "dnsmasq cognition AAAA" "{{ cognition_node_ula }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "cognition.$DHCP_DOMAIN" AAAA +short
+check_dns_exact "Cognition canonical PTR" "$ADGUARD_V4" PTR "{{ cognition_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cognition.$DHCP_DOMAIN." 60
+retry_line "Cognition IPv6 canonical PTR" "cognition.$DHCP_DOMAIN." 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 "@$ADGUARD_V4" -x "{{ cognition_node_ula }}" +short
 
 log "DONE router smoke checks"

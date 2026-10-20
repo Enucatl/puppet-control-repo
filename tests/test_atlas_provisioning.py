@@ -453,10 +453,10 @@ esac
 
 
 @pytest.mark.parametrize("failure", ["", "clone", "set", "net0"])
-def test_atlas_base_deployment_and_owned_failure_cleanup(
+def test_atlas_base_deployment_retains_failed_clone(
     tmp_path: Path, failure: str
 ) -> None:
-    """Deploy the requested Atlas shape and clean only successfully claimed clones."""
+    """Deploy the requested Atlas shape and retain failed clones for diagnosis."""
     result, calls = run_atlas(tmp_path, failure=failure)
     assert (result.returncode == 0) == (failure == ""), result.stderr
     assert "unexpected-token" not in calls
@@ -466,9 +466,12 @@ def test_atlas_base_deployment_and_owned_failure_cleanup(
     if failure == "":
         assert any("--searchdomain home.arpa" in call for call in calls)
     destroys = [call for call in calls if call.startswith("qm destroy ")]
-    assert destroys == (
-        ["qm destroy 210 --purge"] if failure in ("set", "net0") else []
-    )
+    assert destroys == []
+    if failure in ("set", "net0"):
+        assert "Retaining failed VM 210" in result.stderr
+        diagnostics = tmp_path / "logs/docker-210-failure.log"
+        assert diagnostics.is_file()
+        assert diagnostics.stat().st_mode & 0o077 == 0
     if failure not in ("clone", "net0"):
         settings = next(
             call

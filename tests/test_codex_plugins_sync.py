@@ -71,13 +71,24 @@ printf '%s' "$status"
         """#!/usr/bin/env bash
 set -euo pipefail
 state="$HOME/codex-state.json"
-if [ "$1 $2" = 'plugin list' ]; then
+if [ "$1 $2" = 'plugin marketplace' ] && [ "$3" = add ]; then
+  touch "$HOME/codex-marketplace-added"
+  printf 'marketplace add\\n' >> "$HOME/codex-actions"
+elif [ "$1 $2" = 'plugin marketplace' ] && [ "$3" = list ]; then
+  if [ -f "$HOME/codex-marketplace-added" ]; then
+    jq -n --arg root "$HOME/.local/share/codex/ponytail-marketplace" \\
+      '{marketplaces: [{name: "ponytail", root: $root}]}'
+  else
+    printf '{"marketplaces":[]}\\n'
+  fi
+elif [ "$1 $2" = 'plugin list' ]; then
   if [ -s "$state" ]; then
     jq -n --slurpfile plugin "$state" '{installed: $plugin, available: []}'
   else
     printf '{"installed":[],"available":[]}\\n'
   fi
 elif [ "$1 $2" = 'plugin add' ]; then
+  test -f "$HOME/codex-marketplace-added" || { echo 'plugin ponytail not found in marketplace ponytail' >&2; exit 1; }
   catalog="$HOME/.local/share/codex/ponytail-marketplace/.agents/plugins/marketplace.json"
   version="$(jq -r '.plugins[0].source.ref | ltrimstr("v")' "$catalog")"
   jq -n --arg version "$version" \
@@ -177,6 +188,9 @@ def test_fast_path_and_reenable(plugin_home: Path) -> None:
     assert claude_catalog_ref(plugin_home) == "v1.0.0"
     assert (plugin_home / "curl-count").read_text().strip() == "1"
     assert (plugin_home / "add-count").read_text().strip() == "1"
+    assert (plugin_home / "codex-actions").read_text().splitlines() == [
+        "marketplace add"
+    ]
     assert (plugin_home / "claude-actions").read_text().splitlines() == [
         "marketplace add",
         "install",
@@ -185,6 +199,9 @@ def test_fast_path_and_reenable(plugin_home: Path) -> None:
     assert sync(plugin_home).returncode == 0
     assert (plugin_home / "curl-count").read_text().strip() == "1"
     assert (plugin_home / "add-count").read_text().strip() == "1"
+    assert (plugin_home / "codex-actions").read_text().splitlines() == [
+        "marketplace add"
+    ]
     assert (plugin_home / "claude-actions").read_text().splitlines() == [
         "marketplace add",
         "install",

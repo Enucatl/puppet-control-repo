@@ -1,4 +1,13 @@
 ---
+nfs_config::ipa_server: ipa.home.arpa
+nfs_config::server_exports:
+  '/scratch':
+    clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
+    atboot: true
+  '/opt/docker':
+    clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,root_squash)'
+    atboot: true
+
 ssh::client_options:
   ProxyCommand: none
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'

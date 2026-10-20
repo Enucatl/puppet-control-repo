@@ -63,7 +63,7 @@ ${OPENVOX_CA_BUNDLE}
           "max-size": "10m",
           "max-file": "3"
         },
-        "userns-remap": "default",
+        "userns-remap": "${DOCKER_USERNS_REMAP}",
         "userland-proxy": false
       }
 
@@ -82,12 +82,21 @@ runcmd:
   - |
     echo "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"${UBUNTU_CODENAME:-$VERSION_CODENAME}\") stable" > /etc/apt/sources.list.d/docker.list
 
-  - wget -O - https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  - wget -O - https://apt.releases.hashicorp.com/gpg | gpg --batch --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
   - echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
 
   - apt update
   - apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin vault
   - bash /usr/local/bin/install-openvox.sh
+
+  - |
+    /opt/puppetlabs/puppet/bin/ruby -ropenssl -e '
+      certificates = File.read(ARGV.fetch(0)).scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m).map { |pem| OpenSSL::X509::Certificate.new(pem) }
+      roots = certificates.select { |cert| cert.subject == cert.issuer && cert.verify(cert.public_key) && cert.extensions.any? { |extension| extension.oid == "basicConstraints" && extension.value.include?("CA:TRUE") } }
+      abort "Authenticated bundle must contain exactly one root CA" unless roots.one?
+      File.write(ARGV.fetch(1), roots.first.to_pem)
+    ' /etc/puppetlabs/puppet/ssl/certs/ca.pem /usr/local/share/ca-certificates/atlas-infrastructure.crt
+  - update-ca-certificates
 
   - mkdir -p /home/user/docker
   - ${PUPPET_ENROLLMENT_COMMAND}

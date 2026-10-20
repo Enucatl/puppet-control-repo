@@ -8,11 +8,11 @@
 #     (persistence mode always; power cap, clock cap, temp target all optional)
 #
 # Prerequisites managed elsewhere:
-#   - nvidia headless drivers: installed via ubuntu-drivers (run manually once)
+#   - NVIDIA driver packages: packages::list in node data
 #   - nvidia-container-toolkit package: packages::list in node data
 #   - NVIDIA CTK apt source + key: packages::sources in node data
 #   - uinput kernel module: kmod::list_of_loads in node data
-#   - /etc/docker/daemon.json: managed by hand (nvidia default runtime + IPv6 config)
+# NVIDIA CTK preserves existing daemon settings while adding its runtime.
 #
 class profile::nvidia_docker (
   Optional[Integer] $power_limit_watts    = undef,
@@ -21,6 +21,13 @@ class profile::nvidia_docker (
 ) {
 
   require profile::common
+
+  exec { 'configure-nvidia-container-runtime':
+    command => '/usr/bin/nvidia-ctk runtime configure --runtime=docker --set-as-default',
+    unless  => '/usr/bin/python3 -c \'import json; c=json.load(open("/etc/docker/daemon.json")); assert c.get("default-runtime") == "nvidia" and "nvidia" in c.get("runtimes", {})\'',
+    require => Package['nvidia-container-toolkit'],
+    notify  => Service['docker'],
+  }
 
   file { '/etc/modprobe.d/nvidia.conf':
     ensure  => file,
@@ -61,6 +68,8 @@ class profile::nvidia_docker (
       [Service]
       Type=oneshot
       RemainAfterExit=yes
+      # The replacement guest converges before PCI handover.
+      ExecCondition=/usr/bin/nvidia-smi -L
       ExecStart=/usr/bin/nvidia-smi -pm 1
       ${power_limit_exec}
       ${clock_exec}

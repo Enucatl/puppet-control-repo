@@ -99,8 +99,16 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
     assert "kv/" not in policy
     assert "{{identity.entity.aliases.cert_accessor.name}}" in policy
     auth = calls[-1].args[2]
-    assert auth["allowed_common_names"] == ["atlas.home.arpa", "aperture.home.arpa"]
-    assert auth["allowed_dns_sans"] == ["atlas.home.arpa", "aperture.home.arpa"]
+    assert auth["allowed_common_names"] == [
+        "atlas.home.arpa",
+        "aperture.home.arpa",
+        "cognition.home.arpa",
+    ]
+    assert auth["allowed_dns_sans"] == [
+        "atlas.home.arpa",
+        "aperture.home.arpa",
+        "cognition.home.arpa",
+    ]
     assert auth["token_policies"] == ["puppet"]
 
 

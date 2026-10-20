@@ -122,10 +122,13 @@ address=/docker.{{ dhcp_domain }}/{{ docker_node_ip }}
 address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ip }}
 address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ula }}
 address=/complex.{{ dhcp_domain }}/{{ complex_node_ip }}
+address=/cognition.{{ dhcp_domain }}/{{ cognition_node_ip }}
+address=/cognition.{{ dhcp_domain }}/{{ cognition_node_ula }}
 address=/freeipa.{{ dhcp_domain }}/{{ docker_node_ip }}
 address=/hcv.{{ dhcp_domain }}/{{ docker_node_ip }}
 # Exact names, with Atlas first for canonical reverse DNS.
 host-record=atlas.{{ dhcp_domain }},vault.{{ dhcp_domain }},openvox.{{ dhcp_domain }},ipa.{{ dhcp_domain }},{{ atlas_node_ip }},{{ atlas_node_ula }}
+host-record=cognition.{{ dhcp_domain }},{{ cognition_node_ip }},{{ cognition_node_ula }}
 host-record=remarkable.{{ dhcp_domain }},{{ remarkable_ip }},{{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 host-record=remarkable.{{ dhcp_domain }},{{ ipv6_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 
@@ -140,6 +143,7 @@ ptr-record={{ docker_node_ip.split('.')[3] }}.{{ docker_node_ip.split('.')[2] }}
 dhcp-host={{ docker_node_mac }},{{ docker_node_ip }},infinite
 dhcp-host={{ atlas_node_mac }},{{ atlas_node_ip }},atlas,infinite
 dhcp-host={{ complex_node_mac }},{{ complex_node_ip }},infinite
+dhcp-host={{ cognition_node_mac }},{{ cognition_node_ip }},cognition,infinite
 dhcp-host={{ printer_mac }},{{ printer_ip }},printer,infinite
 dhcp-host={{ proxmox_mac }},proxmox,{{ proxmox_ip }},infinite
 dhcp-host={{ chronicle_mac }},{{ chronicle_ip }},infinite
