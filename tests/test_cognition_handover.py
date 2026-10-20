@@ -3,6 +3,7 @@
 import importlib.util
 from pathlib import Path
 import subprocess
+import shutil
 
 import pytest
 
@@ -139,10 +140,39 @@ def test_home_copy_preserves_new_host_identity(tmp_path, monkeypatch):
     )
     module.sync("/home", tmp_path / "home", final=True)
     assert "--exclude=/*/.config/home-arpa/mtls/" in commands[0]
+    assert "--sparse" in commands[0]
     assert "--exclude=/user_l/.ssh/" in commands[0]
     assert "--delete-excluded" not in commands[0]
     assert "--rsync-path=sudo -n rsync" in commands[0]
     assert "user_l@complex.home.arpa:/home/" in commands[0]
+
+
+def test_sparse_roundtrip_preserves_contents_without_allocating_holes(
+    tmp_path, monkeypatch
+):
+    """Actual rsync flags preserve a game image's contents and sparse allocation."""
+    if shutil.which("rsync") is None:
+        pytest.skip("rsync is required for the sparse-file roundtrip")
+    module = load("cognition_copy_state")
+    source = tmp_path / "source"
+    source.mkdir()
+    image = source / "game.img"
+    with image.open("wb") as stream:
+        stream.write(b"header")
+        stream.seek(16 * 1024 * 1024)
+        stream.write(b"tail")
+    run = subprocess.run
+
+    def local_transfer(command, **kwargs):
+        command[-2] = command[-2].removeprefix(module.SOURCE + ":")
+        return run(command, **kwargs)
+
+    monkeypatch.setattr(module.subprocess, "run", local_transfer)
+    destination = tmp_path / "destination"
+    module.sync(str(source), destination, final=False)
+    copied = destination / image.name
+    assert copied.read_bytes() == image.read_bytes()
+    assert copied.stat().st_blocks * 512 < 1024 * 1024
 
 
 def test_vllm_wrapper_passes_cognition_target(tmp_path):

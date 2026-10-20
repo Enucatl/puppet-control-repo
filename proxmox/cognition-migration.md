@@ -55,10 +55,17 @@ Complex's corresponding SSH state is copied separately to
 Source `/root` is retained separately under
 `/root/cognition-migration/source-root`, preserving credentials and unmanaged
 administrator files without overwriting Cognition's root account.
+The source `/etc` (excluding separately restored Wolf data), `/opt/vault`,
+`/opt/gow`, `/var/backups` and `/var/spool` are retained privately under
+`/root/cognition-migration/source-system`, preserving old host configuration,
+TLS material and queued mail for review without applying old host identities.
 
 The source contains roughly 350 GiB in `/home/user` and 176 GiB in `/etc/wolf`;
 allow enough time for the first copy. Copies go directly to their destination,
 so restoring does not require a second complete copy on the 1000 GiB disk.
+Wolf's game files contain over 2 TiB of sparse logical data; rsync preserves
+sparse allocation so these files fit in their existing physical footprint.
+The transfer compresses sparse zero regions to avoid sending terabytes of zeros.
 
 Pause Puppet and any deploy watchers on Cognition while copying, keep its
 containers stopped, and run the initial copy when wanted:

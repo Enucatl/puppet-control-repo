@@ -12,6 +12,7 @@ import subprocess
 
 SOURCE = "user_l@complex.home.arpa"
 TREES = ("/opt/docker", "/home", "/etc/wolf", "/var/lib/wolf")
+RECOVERY_TREES = ("/etc", "/opt/vault", "/opt/gow", "/var/backups", "/var/spool")
 
 
 def remote(*args: str) -> str:
@@ -61,10 +62,19 @@ def sync(source: str, target: Path, final: bool) -> None:
     if any(path.is_symlink() for path in (target, *target.parents)):
         raise ValueError(f"Refusing symlink destination {target}")
     target.mkdir(parents=True, exist_ok=True)
-    command = ["rsync", "-aHAXx", "--numeric-ids", "--protect-args"]
+    command = [
+        "rsync",
+        "-aHAXxz",
+        "--skip-compress=",
+        "--sparse",
+        "--numeric-ids",
+        "--protect-args",
+    ]
     if source == "/home":
         command.append("--exclude=/*/.config/home-arpa/mtls/")
         command.append("--exclude=/user_l/.ssh/")
+    if source == "/etc":
+        command.append("--exclude=/wolf/")
     if final:
         command.append("--delete")
     print(f"Copying {source} to {target}", flush=True)
@@ -93,6 +103,12 @@ def main() -> None:
     lock = open("/run/lock/cognition-copy-state.lock", "w")
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     check_idle(args.final)
+    for path in (
+        Path("/root/cognition-migration"),
+        Path("/root/cognition-migration/source-system"),
+    ):
+        path.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path.chmod(0o700)
     containers = remote("docker", "ps", "-aq").splitlines()
     inventory = (
         json.loads(remote("docker", "inspect", *containers)) if containers else []
@@ -125,6 +141,15 @@ def main() -> None:
         ).strip():
             sync(source, Path(source), args.final)
     sync("/root", Path("/root/cognition-migration/source-root"), args.final)
+    for source in RECOVERY_TREES:
+        if remote(
+            "sh", "-c", f"test ! -d {shlex.quote(source)} || echo present"
+        ).strip():
+            sync(
+                source,
+                Path("/root/cognition-migration/source-system") / source.lstrip("/"),
+                args.final,
+            )
     if remote("sh", "-c", "test ! -d /home/user_l/.ssh || echo present").strip():
         sync(
             "/home/user_l/.ssh",
