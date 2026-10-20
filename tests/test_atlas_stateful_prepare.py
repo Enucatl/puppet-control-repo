@@ -111,10 +111,8 @@ def test_staging_keeps_data_settings_and_defers_handover(stateful, capsys):
             assert config["services"]["scheduler"]["profiles"] == ["migration-handover"]
         if stack == "paperless-ai":
             assert (
-                config["services"]["webserver"]["environment"][
-                    "PAPERLESS_EMAIL_TASK_CRON"
-                ]
-                == "disable"
+                "PAPERLESS_EMAIL_TASK_CRON"
+                not in config["services"]["webserver"]["environment"]
             )
     assert capsys.readouterr().out == ""
 

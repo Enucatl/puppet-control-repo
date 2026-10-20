@@ -193,6 +193,7 @@ def test_prepare_defers_shared_identities_and_preserves_source(background, capsy
         ("airflow", "postgres-outputs"),
         ("rclone", "rclone"),
         ("rss-to-telegram-bot", "main"),
+        ("protonmail-bridge", "protonmail-bridge"),
         ("tor-i2pd", "i2pd"),
     }
 

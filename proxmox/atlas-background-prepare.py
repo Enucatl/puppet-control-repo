@@ -30,7 +30,6 @@ STACKS = (
     "barbero-scripts",
 )
 DEFERRED = {
-    "protonmail-bridge",
     "backrest",
     "qbittorrent",
     "barbero-scripts",

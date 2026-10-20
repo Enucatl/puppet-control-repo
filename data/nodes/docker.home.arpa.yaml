@@ -56,7 +56,8 @@ profile::docker_host::git_deploy_projects:
     build_command: "docker compose build"
   paperless-ngx:
     ensure: absent
-  protonmail-bridge: {}
+  protonmail-bridge:
+    ensure: absent
   qbittorrent: {}
   rclone: {}
   rss-to-telegram-bot:

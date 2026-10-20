@@ -59,11 +59,6 @@ def prepare() -> None:
                 )
         if stack == "send-bills":
             services["scheduler"]["profiles"] = ["migration-handover"]
-        if stack == "paperless-ai":
-            # Source mail accounts remain active until the explicit handover.
-            services["webserver"]["environment"]["PAPERLESS_EMAIL_TASK_CRON"] = (
-                "disable"
-            )
         access.write_compose(root / stack / "atlas-compose.json", config)
 
 
