@@ -25,11 +25,11 @@ The four original assignments (09:00.0, .1, .3, .4) move with their exact option
 functions .2, .5 and .6 remain on the host. Aperture uses `vga=none` with the
 existing `x-vga=1` primary GPU flag and `startup=order=3`.
 
-Rollback, from Atlas with its independent local administrative key:
+Rollback, using the operator's normal SSH key (available locally or through
+the forwarded SSH agent on Atlas):
 
 ```bash
-ssh -o IdentityAgent=none -o ForwardAgent=no -o StrictHostKeyChecking=yes \
-  -i /home/user/.ssh/aperture-proxmox root@proxmox.home.arpa \
+ssh -o ForwardAgent=no -o StrictHostKeyChecking=yes root@proxmox.home.arpa \
   'qm shutdown 310 --timeout 180 && qm set 310 --ide2 local-zfs:vm-310-cloudinit,media=cdrom && python3 /root/aperture-handover.py rollback && qm start 300'
 ```
 
@@ -40,12 +40,11 @@ stopped until rollback has restored its assignments. The saved original
 Aperture configuration restores virtual graphics and 8192 MiB; Forbearance
 regains its original memory, autostart, and hardware. Neither VM is deleted.
 
-Administrative access uses an Atlas-local Ed25519 key authorized on Proxmox
-root and Atlas user_l, and works with `IdentityAgent=none`; it does not depend
-on Forbearance's forwarded agent. The private key and original VM records stay
-outside Git. GitHub publication during the cutover uses a preauthenticated
-Atlas user_l SSH control connection. It can expire; recovery access does not
-depend on that connection.
+During the cutover, an Atlas-local Ed25519 key provided administrative access
+independent of Forbearance. After successful desktop login, normal-key access
+to Proxmox root and Atlas user_l with sudo was verified. The temporary key was
+then retired; recovery now uses the operator's normal key. Original VM records
+remain outside Git. The temporary GitHub SSH control connection was closed.
 
 Physical monitor, keyboard/mouse, audio and interactive login require operator
 confirmation. Application preferences and licences are not comprehensively
@@ -97,11 +96,16 @@ returned no matching entries; the reset warning above comes from the captured
 startup output. Exact selectors, time range and sanitized results are in
 [the cutover evidence](../docs/aperture-cutover-results.json).
 
-After shutdown, Forbearance's forwarded agent disappeared as expected. Atlas
-administration still works with the local key and `IdentityAgent=none`. The
-final results commit is signed with that Atlas-local key rather than the
-unavailable forwarded personal signer; persistent Git signing settings are
-unchanged. Publication uses the preauthenticated GitHub control connection.
+After shutdown, Forbearance's forwarded agent disappeared as expected. The
+temporary local key maintained access until Aperture's normal key was usable.
+The three commits initially signed with the temporary key were subsequently
+re-signed with the normal key and production history was force-published using
+exact leases. Persistent Git signing settings are unchanged.
+
+The temporary key's authorizations on Atlas user_l and Proxmox root, and its
+private/public files on Atlas, were removed. The separately authorized
+`u0_a287@localhost` entry was also removed from Proxmox. The normal personal key,
+Proxmox cluster key, guest identities and rollback records were retained.
 
 The operator subsequently confirmed a working physical desktop and successful
 interactive login. The migrated `user` password hash initially lacked Kerberos
