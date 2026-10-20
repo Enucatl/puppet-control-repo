@@ -5,6 +5,10 @@ classes:
   - profile::desktop_snaps
   - profile::desktop_printing
 
+freeipa_users::user_groups:
+  user:
+    - docker
+
 ssh::client_options:
   ProxyCommand: none
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'
