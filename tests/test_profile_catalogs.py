@@ -87,6 +87,7 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
         assert mount["server"] == "atlas.home.arpa"
         assert mount["atboot"] is False
         assert "sec=krb5p" in mount["options_nfsv4"]
+        assert "proto=tcp" in mount["options_nfsv4"]
         assert "x-systemd.automount" in mount["options_nfsv4"]
     export = result["Nfs::Server::Export[/home/user/Documents]"]
     assert export["clients"] == (
