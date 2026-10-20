@@ -1,6 +1,6 @@
 # Cognition staging and cutover
 
-Cognition is VM **220** on `proxmox-cortex.home.arpa`, with **16384 MiB**
+Cognition is VM **220** on `proxmox-cortex.home.arpa`, with **32768 MiB**
 RAM, a **1000 GiB** disk and virtual graphics. Complex VM **200** remains the
 GPU owner and production service host during staging. Keep Cognition's Docker
 deploy project list empty until the final state and GPU handover. The cutover
@@ -11,8 +11,9 @@ because its Compose project has no default services.
 
 Cognition is now the active guest. Complex is stopped, with its root and EFI
 snapshots named `pre-cognition-20261020` held by `cognition-rollback`.
-Cognition retains the requested 16 GiB RAM and 1000 GiB disk; serial graphics
-replace virtual graphics after transferring both RTX 5090 PCI functions.
+Cognition was initially staged with 16 GiB RAM, then increased to 32 GiB after
+cutover; its disk remains 1000 GiB. Serial graphics replace virtual graphics
+after transferring both RTX 5090 PCI functions.
 
 The final frozen-source copy includes application bind mounts, homes, Wolf
 pairing/game state and all 11 local Docker volumes. A final rsync comparison
@@ -41,10 +42,13 @@ Verified acceptance:
 - Cloud-init, native administrative SSH/TLS identity, authenticated Atlas NFS,
   Alloy ingestion, and routed Docker bridge IPv6 reachability passed.
 
-Final idle state has only Qdrant running, about 359 GiB free disk and 13.8 GiB
-available RAM. Wolf and extraction remain on demand. Actual Moonlight streaming still requires a client
-check. Retain Complex and its held snapshots until the rollback retention gate
-below is satisfied; they share Cortex's storage and are not an independent
+The initial 16 GiB idle state had only Qdrant running, about 359 GiB free disk
+and 13.8 GiB available RAM. After the increase to 32 GiB, the guest has about
+30 GiB available RAM. Wolf, extraction and the entire Zanzara/Qdrant stack are
+on demand; leave the complete Zanzara Compose project down between uses,
+preserving its volumes and bind-mounted data. Actual Moonlight streaming still
+requires a client check. Retain Complex and its held snapshots until the
+rollback retention gate below is satisfied; they share Cortex's storage and are not an independent
 backup.
 
 ## Resume an interrupted first boot

@@ -402,7 +402,7 @@ an explicit `-i VMID`; desktop recreation additionally requires
 Desktop's `-n` sets a short hostname; `-l LETTER` instead selects a random name.
 Desktop provisioning reboots and verifies the short hostname/FQDN again.
 
-Cognition uses the Docker workload path: VM 220, eight cores, 16384 MiB RAM,
+Cognition uses the Docker workload path: VM 220, eight cores, 32768 MiB RAM,
 1000 GiB disk and virtio graphics, with MAC `bc:24:11:4e:c0:22` reserved as
 `10.0.40.134`. It enrolls against Atlas and installs authenticated system CA
 trust before FreeIPA enrollment. The GPU stays with Complex throughout staging;

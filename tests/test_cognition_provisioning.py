@@ -45,7 +45,7 @@ def test_cognition_resources(tmp_path: Path) -> None:
         "-i": "220",
         "-t": "9001",
         "-s": "openvox.home.arpa",
-        "-m": "16384",
+        "-m": "32768",
         "-d": "1000G",
         "-a": "bc:24:11:4e:c0:22",
         "-v": "virtio",
