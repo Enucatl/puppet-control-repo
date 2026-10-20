@@ -16,7 +16,7 @@ assert SPEC and SPEC.loader
 access = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(access)
 IMAGES = {
-    "grafana": "grafana/grafana@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f",
+    "grafana": "sha256:62ded2143ad839ed656476b68592849fc76144d4a52af90d752492a7f45fdc7d",
     "loki": "grafana/loki@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193",
     "beszel": "henrygd/beszel@sha256:fefb27166f5e1611ebf67f8697ea928a23f44efdb00af922e2ac3b5faa2efd5c",
 }
