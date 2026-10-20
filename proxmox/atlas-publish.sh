@@ -33,14 +33,14 @@ chown user_l:docker "$known_hosts"
 chmod 0644 "$known_hosts"
 export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ProxyCommand=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known_hosts"
 "${control_git[@]}" config --local core.sshCommand "$GIT_SSH_COMMAND"
+fetch_options=()
 if [[ $("${control_git[@]}" rev-parse --is-shallow-repository) == true ]]; then
-    "${control_git[@]}" fetch --unshallow origin
+    fetch_options+=(--unshallow)
 fi
-"${control_git[@]}" fetch origin \
-    +refs/heads/dev:refs/remotes/origin/dev \
+"${control_git[@]}" fetch "${fetch_options[@]}" origin \
     +refs/heads/production:refs/remotes/origin/production
-"${control_git[@]}" merge-base --is-ancestor "$revision" origin/dev || {
-    echo 'The requested commit must already be published on GitHub dev.' >&2; exit 1;
+"${control_git[@]}" merge-base --is-ancestor "$revision" origin/production || {
+    echo 'The requested commit must already be published on GitHub production.' >&2; exit 1;
 }
 for ref in HEAD refs/heads/production refs/remotes/origin/production; do
     if "${control_git[@]}" show-ref --verify --quiet "$ref" || [[ $ref == HEAD ]]; then

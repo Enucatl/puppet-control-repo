@@ -52,7 +52,6 @@ def publishing(tmp_path: Path) -> Path:
     )
     git(seed, "add", str(reference))
     base = commit(seed, "production base")
-    git(seed, "switch", "-qc", "dev")
     guard = reference.with_name("infra-host-pre-receive")
     guard.write_text(
         (PROXMOX.parent / "docker/openvox/infra-host-pre-receive")
@@ -60,7 +59,7 @@ def publishing(tmp_path: Path) -> Path:
         .replace("/run/lock/", str(tmp_path / "run/lock") + "/")
     )
     git(seed, "add", str(guard))
-    revision = commit(seed, "published dev target")
+    revision = commit(seed, "published production target")
     github = tmp_path / "github.git"
     git(tmp_path, "clone", "-q", "--bare", str(seed), str(github))
     checkout = tmp_path / "opt/docker/puppet-control-repo"
@@ -70,7 +69,7 @@ def publishing(tmp_path: Path) -> Path:
         tmp_path,
         "clone",
         "-q",
-        "--depth=1",
+        "--depth=2",
         "--branch=production",
         github.as_uri(),
         str(checkout),
@@ -178,12 +177,12 @@ def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> No
         if attempt:
             for path in [bare, *bare.rglob("*")]:
                 path.chmod(path.stat().st_mode & ~0o007)
-            revision = commit(publishing / "seed", "next published dev target")
+            revision = commit(publishing / "seed", "next published production target")
             git(
                 publishing / "seed",
                 "push",
                 str(publishing / "github.git"),
-                "HEAD:refs/heads/dev",
+                "HEAD:refs/heads/production",
             )
         result = run_script(publishing, "atlas-publish.sh", revision)
         assert result.returncode == 0, result.stderr
@@ -240,7 +239,7 @@ def test_atlas_preserves_dirty_checkout_without_publishing(publishing: Path) -> 
     assert (checkout / "untracked").read_text() == "operator notes"
     assert (
         git(publishing / "github.git", "rev-parse", "production")
-        == (publishing / "base").read_text()
+        == (publishing / "revision").read_text()
     )
     assert not (publishing / "opt/git/openvox/control.git").exists()
 
@@ -265,6 +264,7 @@ def test_atlas_refuses_divergent_production_history(
             "push",
             str(publishing / "github.git"),
             f"{other}:refs/heads/production",
+            "--force",
         )
     else:
         bare = publishing / "opt/git/openvox/control.git"
@@ -277,7 +277,12 @@ def test_atlas_refuses_divergent_production_history(
         publishing, "atlas-publish.sh", (publishing / "revision").read_text()
     )
     assert result.returncode != 0
-    assert "Refusing to replace commits" in result.stderr
+    expected_error = (
+        "must already be published on GitHub production"
+        if divergent == "github"
+        else "Refusing to replace commits"
+    )
+    assert expected_error in result.stderr
     assert git(checkout, "rev-parse", "HEAD") == old_head
     assert git(publishing / "github.git", "rev-parse", "production") == old_remote
     if divergent == "bare":
@@ -301,21 +306,31 @@ def test_atlas_rejects_invalid_invocation_before_publishing(
     assert not (publishing / "opt/git/openvox/control.git").exists()
     assert (
         git(publishing / "github.git", "rev-parse", "production")
-        == (publishing / "base").read_text()
+        == (publishing / "revision").read_text()
     )
 
 
-def test_atlas_requires_revision_published_on_dev(publishing: Path) -> None:
-    """Reject a known local commit that GitHub dev does not contain."""
+def test_atlas_requires_revision_published_on_production(publishing: Path) -> None:
+    """Reject a commit published only on a different GitHub branch."""
     checkout = publishing / "opt/docker/puppet-control-repo"
-    revision = commit(publishing / "seed", "unpublished local commit")
+    revision = commit(publishing / "seed", "commit published only on another branch")
+    git(
+        publishing / "seed",
+        "push",
+        str(publishing / "github.git"),
+        f"{revision}:refs/heads/dev",
+    )
     git(checkout, "fetch", str(publishing / "seed"), revision)
     result = run_script(publishing, "atlas-publish.sh", revision)
     assert result.returncode != 0
-    assert "must already be published on GitHub dev" in result.stderr
+    assert "must already be published on GitHub production" in result.stderr
+    assert (
+        git(checkout, "for-each-ref", "--format=%(refname)", "refs/remotes/origin/dev")
+        == ""
+    )
     assert (
         git(publishing / "github.git", "rev-parse", "production")
-        == (publishing / "base").read_text()
+        == (publishing / "revision").read_text()
     )
     assert not (publishing / "opt/git/openvox/control.git").exists()
 
@@ -340,7 +355,7 @@ def test_atlas_refuses_existing_active_receiver_hook(
     assert not marker.exists()
     assert (
         git(publishing / "github.git", "rev-parse", "production")
-        == (publishing / "base").read_text()
+        == (publishing / "revision").read_text()
     )
 
 
@@ -617,7 +632,7 @@ def test_publisher_repairs_root_private_index_without_discarding_edits(
         assert (checkout / "fixture").read_text() == "operator edits"
         assert (
             git(publishing / "github.git", "rev-parse", "production")
-            == (publishing / "base").read_text()
+            == (publishing / "revision").read_text()
         )
 
 
