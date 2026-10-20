@@ -228,6 +228,7 @@ def test_provision_lifecycle_and_cleanup(
     tmp_path: Path,
     failure: str | None,
     rebuild: bool,
+    keep_failed: bool = False,
 ) -> None:
     """Clean failed clones while preserving configured VMs after reboot failures."""
     commands: list[tuple[str, ...]] = []
@@ -334,7 +335,9 @@ def test_provision_lifecycle_and_cleanup(
     monkeypatch.setattr(desktop, "wait_for_cloudinit", wait)
     monkeypatch.setattr(desktop.time, "sleep", lambda _: None)
     args = desktop.parse_args(
-        ["-i", "123"] + (["-n", "desktop", "--rebuild"] if rebuild else [])
+        ["-i", "123"]
+        + (["-n", "desktop", "--rebuild"] if rebuild else [])
+        + (["--keep-failed"] if keep_failed else [])
     )
     if failure:
         with pytest.raises(RuntimeError, match=f"{failure} failed"):
@@ -418,19 +421,25 @@ def test_provision_lifecycle_and_cleanup(
         diagnostic = diagnostics / "cloud-init-output.json"
         assert diagnostic.stat().st_mode & 0o077 == 0
         assert "provisioned guest log" in json.loads(diagnostic.read_text())["stdout"]
-        assert commands.index(
-            (
-                "qm",
-                "guest",
-                "exec",
-                "123",
-                "--",
-                "tail",
-                "-n",
-                "300",
-                "/var/log/cloud-init-output.log",
+        assert (
+            commands.index(
+                (
+                    "qm",
+                    "guest",
+                    "exec",
+                    "123",
+                    "--",
+                    "cat",
+                    "/var/log/cloud-init-output.log",
+                )
             )
-        ) < commands.index(("qm", "stop", "123"), clone)
+            > clone
+        )
+        if keep_failed:
+            assert ("qm", "stop", "123") not in commands
+            assert ("qm", "destroy", "123", "--purge") not in commands
+            assert commands[-1] == ("qm", "set", "123", "--delete", "cicustom")
+            return
         assert commands[-2:] == [
             ("qm", "stop", "123"),
             ("qm", "destroy", "123", "--purge"),
@@ -454,6 +463,15 @@ def test_provision_lifecycle_and_cleanup(
                 "-f",
             )
         assert "provisioned guest log" in (logs / "cloud-init-output.log").read_text()
+
+
+def test_keep_failed_desktop_preserves_installed_guest(
+    desktop: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Keep the owned guest for repair without retaining its secret snippet."""
+    test_provision_lifecycle_and_cleanup(
+        desktop, monkeypatch, tmp_path, "wait", False, keep_failed=True
+    )
 
 
 @pytest.mark.parametrize(

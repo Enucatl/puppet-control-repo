@@ -59,6 +59,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("-t", dest="template_id", metavar="TEMPLATE_ID")
     parser.add_argument("--puppet-server", metavar="HOSTNAME")
     parser.add_argument("--rebuild", action="store_true")
+    parser.add_argument("--keep-failed", action="store_true")
     parser.add_argument("-c", dest="cores", type=int, default=8, metavar="CORES")
     parser.add_argument(
         "-m", dest="memory", type=int, default=8000, metavar="MEMORY_MB"
@@ -195,7 +196,11 @@ def save_failure_diagnostics(vmid: str, log_dir: Path) -> None:
     destination = log_dir / f"desktop-{vmid}-failure-{time.time_ns()}"
     destination.mkdir(mode=0o700)
     for name, command in (
-        ("cloud-init-output", ("tail", "-n", "300", "/var/log/cloud-init-output.log")),
+        ("cloud-init-output", ("cat", "/var/log/cloud-init-output.log")),
+        (
+            "puppet-report",
+            ("cat", "/opt/puppetlabs/puppet/cache/state/last_run_report.yaml"),
+        ),
         ("cloud-init", ("tail", "-n", "100", "/var/log/cloud-init.log")),
         ("cloud-final", ("journalctl", "-u", "cloud-final", "--no-pager", "-n", "100")),
     ):
@@ -382,11 +387,20 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
                     f"Could not save failure diagnostics: {diagnostic_error}",
                     file=sys.stderr,
                 )
-            print(f"Provisioning failed; removing VM {vmid}...", file=sys.stderr)
             try:
                 require_owned_vm(vmid, name, marker)
-                run("qm", "stop", vmid)
-                run("qm", "destroy", vmid, "--purge")
+                if args.keep_failed:
+                    run("qm", "set", vmid, "--delete", "cicustom")
+                    print(
+                        f"Provisioning failed; retaining VM {vmid} for repair.",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"Provisioning failed; removing VM {vmid}...", file=sys.stderr
+                    )
+                    run("qm", "stop", vmid)
+                    run("qm", "destroy", vmid, "--purge")
             except (ValueError, subprocess.CalledProcessError) as cleanup_error:
                 print(f"VM cleanup refused or failed: {cleanup_error}", file=sys.stderr)
         raise
