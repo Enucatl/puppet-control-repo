@@ -5,6 +5,17 @@ class profile::common::identity (
     ensure => installed,
   }
 
+  # sudo-rs does not read FreeIPA sudo rules through SSSD.
+  if $facts['os']['name'] == 'Ubuntu' and versioncmp($facts['os']['release']['full'], '25.10') >= 0 {
+    ensure_packages(['sudo'])
+
+    alternatives { 'sudo':
+      path    => '/usr/bin/sudo.ws',
+      mode    => 'manual',
+      require => Package['sudo'],
+    }
+  }
+
   exec { 'restart_sssd_after_identity_configuration':
     command     => '/bin/systemctl restart sssd',
     refreshonly => true,
