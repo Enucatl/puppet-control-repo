@@ -13,6 +13,13 @@ import tempfile
 ROOT = Path("/opt/docker")
 SUBUID = Path("/etc/subuid")
 DOCKER_SOCKET = Path("/var/run/docker.sock")
+# Approved local segments from provisioning/host_vars/router.yml.
+LOCAL_ULA_NETWORKS = (
+    "fd6b:d722:1738:0::/64",
+    "fd6b:d722:1738:a::/64",
+    "fd6b:d722:1738:28::/64",
+    "fd6b:d722:1738:c8::/64",
+)
 AUTHELIA_IMAGES = {
     "authelia": "authelia/authelia@sha256:bd97cff4fcbf715b5ff1f9ae286afbe6033afce385302520b0368122d43a6f54",
     "postgres": "postgres@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336",
@@ -128,6 +135,14 @@ def prepare() -> None:
                 text = path.read_text().replace("docker.home.arpa", "atlas.home.arpa")
                 if path == ROOT / stack / "data/config.yml":
                     dynamic = yaml.safe_load(text)
+                    ranges = dynamic["http"]["middlewares"]["default-allowlist"][
+                        "ipAllowList"
+                    ]["sourceRange"]
+                    ranges.extend(
+                        network
+                        for network in LOCAL_ULA_NETWORKS
+                        if network not in ranges
+                    )
                     for store in dynamic.get("tls", {}).get("stores", {}).values():
                         certificate = store.get("defaultCertificate", {})
                         for key in ("certFile", "keyFile"):
@@ -155,12 +170,30 @@ def prepare() -> None:
                 "AUTHELIA_AUTHENTICATION_BACKEND_LDAP_ADDRESS"
             ] = "ldaps://ipa.home.arpa"
             path = ROOT / stack / "config/configuration.yml"
-            write_private(
-                path,
+            text = (
                 path.read_text()
                 .replace("docker.home.arpa", "atlas.home.arpa")
-                .replace("freeipa.home.arpa", "ipa.home.arpa"),
+                .replace("freeipa.home.arpa", "ipa.home.arpa")
             )
+            # Parse only access rules; other sections contain unquoted Go templates.
+            section = re.search(r"(?ms)^access_control:\n.*?(?=^\S|\Z)", text)
+            if section is None:
+                raise RuntimeError("Authelia access control section is missing")
+            access = yaml.safe_load(section.group())
+            local = next(
+                network
+                for network in access["access_control"]["networks"]
+                if network["name"] == "local"
+            )["networks"]
+            local.extend(
+                network for network in LOCAL_ULA_NETWORKS if network not in local
+            )
+            text = (
+                text[: section.start()]
+                + yaml.safe_dump(access, sort_keys=False)
+                + text[section.end() :]
+            )
+            write_private(path, text)
             runtime_configs.append(path)
         write_private(
             ROOT / stack / "atlas-compose.json", json.dumps(config, indent=2) + "\n"

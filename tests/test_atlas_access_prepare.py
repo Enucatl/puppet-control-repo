@@ -33,12 +33,14 @@ def preparation(tmp_path, monkeypatch):
             "traefik",
             "data",
             "config.yml",
+            'http:\n  middlewares:\n    default-allowlist:\n      ipAllowList:\n        sourceRange: [10.0.0.0/24, "{{ env \\"IPV6_LAN_SUBNET\\" }}"]\n'
             "tls:\n  stores:\n    default:\n      defaultCertificate:\n        certFile: /certs/docker_fullchain.pem\n        keyFile: /certs/docker_key.pem\n  options:\n    default:\n      clientAuth:\n        clientAuthType: RequireAndVerifyClientCert\n        caFiles: [old-root, old-intermediate]\n",
         ),
         (
             "authelia",
             "config",
             "configuration.yml",
+            'access_control:\n  default_policy: deny\n  networks:\n    - name: local\n      networks: [10.0.0.0/24, \'{{ env "IPV6_LAN_SUBNET" }}\']\n  rules:\n    - domain: "*.docker.home.arpa"\n      networks: [local]\n      subject: ["group:admins"]\n      policy: one_factor\n'
             "url: https://auth.docker.home.arpa\nldap: ldaps://freeipa.home.arpa\nsecret: keep-me\n",
         ),
     ):
@@ -187,6 +189,46 @@ def test_compose_error_does_not_disclose_secrets(preparation, monkeypatch):
     with pytest.raises(RuntimeError, match="diagnostic output withheld") as error:
         module.compose("authelia")
     assert "private" not in str(error.value)
+
+
+def test_local_ula_rules_match_router_and_preserve_policies(preparation):
+    """Allow approved ULA segments once while keeping existing access controls."""
+    import yaml
+
+    module, root, _ = preparation
+    router = yaml.safe_load(
+        (Path(__file__).parents[1] / "provisioning/host_vars/router.yml").read_text()
+    )
+    segments = (
+        0,
+        int(router["trusted_wifi_vlan"]),
+        int(router["cortex_vlan"]),
+        int(router["wg_subnet"].split(".")[2]),
+    )
+    expected = [f"{router['ula_prefix']}:{segment:x}::/64" for segment in segments]
+    assert list(module.LOCAL_ULA_NETWORKS) == expected
+    module.prepare()
+    module.prepare()
+    dynamic = yaml.safe_load((root / "traefik/data/config.yml").read_text())
+    ranges = dynamic["http"]["middlewares"]["default-allowlist"]["ipAllowList"][
+        "sourceRange"
+    ]
+    access = yaml.safe_load((root / "authelia/config/configuration.yml").read_text())[
+        "access_control"
+    ]
+    local = access["networks"][0]["networks"]
+    for networks in (ranges, local):
+        assert networks[:2] == ["10.0.0.0/24", '{{ env "IPV6_LAN_SUBNET" }}']
+        assert networks[2:] == expected
+    assert access["default_policy"] == "deny"
+    assert access["rules"] == [
+        {
+            "domain": "*.atlas.home.arpa",
+            "networks": ["local"],
+            "subject": ["group:admins"],
+            "policy": "one_factor",
+        }
+    ]
 
 
 def test_owner_preserved_and_runtime_acl_is_scoped(preparation, monkeypatch):
