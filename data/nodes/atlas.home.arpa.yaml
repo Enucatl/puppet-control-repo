@@ -117,3 +117,146 @@ profile::common::acls::posix_acls:
       - "user:101000:r--"
       - "mask::r--"
     subscribe: "Vault_cert[atlas]"
+
+# Timers remain disabled until their source jobs complete the explicit handover.
+profile::common::systemd::units:
+  automation-exam.service:
+    content: |
+      [Unit]
+      Description=Run exam automation pipeline
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      User=user
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      WorkingDirectory=/opt/docker/airflow
+      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
+      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps exam
+      SyslogIdentifier=automation-exam
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  automation-exam.timer:
+    content: |
+      [Unit]
+      Description=Run exam automation hourly outside quiet hours
+
+      [Timer]
+      OnCalendar=*-*-* 00,05..23:00:00 UTC
+      Persistent=false
+      Unit=automation-exam.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: false
+    active: false
+    require: Systemd::Unit_file[automation-exam.service]
+  automation-cyber-analyst.service:
+    content: |
+      [Unit]
+      Description=Run monthly cyber analyst pipeline
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      User=user
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      WorkingDirectory=/opt/docker/airflow
+      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
+      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps cyber-analyst
+      SyslogIdentifier=automation-cyber-analyst
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  automation-cyber-analyst.timer:
+    content: |
+      [Unit]
+      Description=Run cyber analyst monthly
+
+      [Timer]
+      OnCalendar=*-*-01 03:00:00 UTC
+      Persistent=false
+      Unit=automation-cyber-analyst.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: false
+    active: false
+    require: Systemd::Unit_file[automation-cyber-analyst.service]
+  automation-operations-analyst.service:
+    content: |
+      [Unit]
+      Description=Run weekly operations analyst pipeline
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      User=user
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      WorkingDirectory=/opt/docker/airflow
+      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
+      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps operations-analyst
+      SyslogIdentifier=automation-operations-analyst
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  automation-operations-analyst.timer:
+    content: |
+      [Unit]
+      Description=Run operations analyst weekly
+
+      [Timer]
+      OnCalendar=Fri *-*-* 02:00:00 UTC
+      Persistent=false
+      Unit=automation-operations-analyst.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: false
+    active: false
+    require: Systemd::Unit_file[automation-operations-analyst.service]
+  automation-podcast-statistics.service:
+    content: |
+      [Unit]
+      Description=Run podcast statistics importer
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      User=user
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      WorkingDirectory=/opt/docker/airflow
+      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
+      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps podcast-statistics
+      SyslogIdentifier=automation-podcast-statistics
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  automation-podcast-statistics.timer:
+    content: |
+      [Unit]
+      Description=Run podcast statistics importer every 15 minutes
+
+      [Timer]
+      OnCalendar=*-*-* *:00/15:00 UTC
+      Persistent=false
+      Unit=automation-podcast-statistics.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: false
+    active: false
+    require: Systemd::Unit_file[automation-podcast-statistics.service]

@@ -57,7 +57,9 @@ def write_compose(path: Path, config: dict) -> None:
     write_private(path, json.dumps(config, indent=2) + "\n")
 
 
-def compose(stack: str, *, override: bool = False) -> dict:
+def compose(
+    stack: str, *, override: bool = False, profiles: tuple[str, ...] = ()
+) -> dict:
     """Resolve source Compose privately, including both environment files."""
     command = [
         "docker",
@@ -71,6 +73,8 @@ def compose(stack: str, *, override: bool = False) -> dict:
     ]
     if override:
         command.extend(["-f", str(ROOT / stack / "docker-compose.override.yml")])
+    for profile in profiles:
+        command.extend(["--profile", profile])
     result = subprocess.run(
         command + ["config", "--format=json"],
         capture_output=True,

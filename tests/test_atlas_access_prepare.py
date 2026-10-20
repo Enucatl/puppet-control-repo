@@ -299,6 +299,14 @@ def test_certificate_acls_survive_renewal():
         }
 
 
+def test_compose_preserves_explicit_runner_profile(preparation):
+    """Include inactive runner definitions only when explicitly requested."""
+    module, _, calls = preparation
+    module.compose("authelia", profiles=("runner",))
+    arguments = calls[-1][0]
+    assert arguments[arguments.index("--profile") + 1] == "runner"
+
+
 def test_compose_includes_requested_runtime_override(preparation):
     """Load the actual merged source definition when a stack uses an override."""
     module, root, calls = preparation

@@ -58,12 +58,14 @@ profile::docker_host::git_deploy_projects:
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
-  rss-to-telegram-bot: {}
+  rss-to-telegram-bot:
+    ensure: absent
   send-bills:
     ensure: absent
     build_command: 'VERSION=$(uv run --with setuptools-git-versioning setuptools-git-versioning); docker compose build --build-arg VERSION="$VERSION"'
   teamspeak: {}
-  tor-i2pd: {}
+  tor-i2pd:
+    ensure: absent
   traefik: {}
 profile::docker_host::scheduled_refresh: true
 
@@ -180,6 +182,7 @@ profile::common::systemd::units:
     active: true
     require: Systemd::Unit_file[backrest-kinit.service]
   automation-exam.service:
+    ensure: absent
     content: |
       [Unit]
       Description=Run exam automation pipeline
@@ -200,6 +203,7 @@ profile::common::systemd::units:
     enable: false
     active: false
   automation-exam.timer:
+    ensure: absent
     content: |
       [Unit]
       Description=Run exam automation hourly outside quiet hours
@@ -211,8 +215,8 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: true
-    active: true
+    enable: false
+    active: false
     require: Systemd::Unit_file[automation-exam.service]
   automation-download-zanzara.service:
     content: |
@@ -250,6 +254,7 @@ profile::common::systemd::units:
     active: true
     require: Systemd::Unit_file[automation-download-zanzara.service]
   automation-cyber-analyst.service:
+    ensure: absent
     content: |
       [Unit]
       Description=Run monthly cyber analyst pipeline
@@ -270,6 +275,7 @@ profile::common::systemd::units:
     enable: false
     active: false
   automation-cyber-analyst.timer:
+    ensure: absent
     content: |
       [Unit]
       Description=Run cyber analyst monthly
@@ -281,10 +287,11 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: true
-    active: true
+    enable: false
+    active: false
     require: Systemd::Unit_file[automation-cyber-analyst.service]
   automation-operations-analyst.service:
+    ensure: absent
     content: |
       [Unit]
       Description=Run weekly operations analyst pipeline
@@ -305,6 +312,7 @@ profile::common::systemd::units:
     enable: false
     active: false
   automation-operations-analyst.timer:
+    ensure: absent
     content: |
       [Unit]
       Description=Run operations analyst weekly
@@ -320,6 +328,7 @@ profile::common::systemd::units:
     active: false
     require: Systemd::Unit_file[automation-operations-analyst.service]
   automation-podcast-statistics.service:
+    ensure: absent
     content: |
       [Unit]
       Description=Run podcast statistics importer
@@ -340,6 +349,7 @@ profile::common::systemd::units:
     enable: false
     active: false
   automation-podcast-statistics.timer:
+    ensure: absent
     content: |
       [Unit]
       Description=Run podcast statistics importer every 15 minutes
@@ -351,8 +361,8 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: true
-    active: true
+    enable: false
+    active: false
     require: Systemd::Unit_file[automation-podcast-statistics.service]
 
 profile::common::cron::jobs:

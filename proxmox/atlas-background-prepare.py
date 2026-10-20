@@ -31,11 +31,14 @@ STACKS = (
 )
 DEFERRED = {
     "protonmail-bridge",
-    "rss-to-telegram-bot",
-    "tor-i2pd",
     "backrest",
     "qbittorrent",
     "barbero-scripts",
+}
+AIRFLOW_ENDPOINTS = {
+    "VAULT_ADDR": "https://vault.home.arpa:8200",
+    "LOKI_READ_URL": "https://loki-read.atlas.home.arpa",
+    "PHOENIX_COLLECTOR_ENDPOINT": "https://phoenix-otlp.atlas.home.arpa/v1/traces",
 }
 
 
@@ -70,7 +73,11 @@ def prepare() -> None:
     manifest = json.loads(MANIFEST.read_text())
     unseal = atlas_unseal_key()
     for stack in STACKS:
-        config = access.compose(stack)
+        config = (
+            access.compose(stack, profiles=("runner",))
+            if stack == "airflow"
+            else access.compose(stack)
+        )
         for name, service in config["services"].items():
             image = manifest[stack]["images"].get(name)
             if image is not None:
@@ -82,11 +89,26 @@ def prepare() -> None:
                     service["labels"][key] = value.replace(
                         "docker.home.arpa", "atlas.home.arpa"
                     )
-            if stack in DEFERRED or name == "cloudflared":
+            if (
+                stack in DEFERRED
+                or name == "cloudflared"
+                or (stack == "tor-i2pd" and name == "cloudflare-ddns")
+            ):
                 service["profiles"] = ["migration-handover"]
             if stack == "rclone" and name == "rclone":
                 # The source tunnel stays authoritative until its explicit handover.
                 service.get("depends_on", {}).pop("cloudflared", None)
+            if stack == "airflow" and "runner" in service.get("profiles", []):
+                environment = service.setdefault("environment", {})
+                for key in AIRFLOW_ENDPOINTS.keys() & environment.keys():
+                    environment[key] = AIRFLOW_ENDPOINTS[key]
+                if name != "download-zanzara":
+                    # Only the downloader reads or writes the archive filesystem.
+                    service["volumes"] = [
+                        volume
+                        for volume in service.get("volumes", [])
+                        if volume.get("target") != "/scratch/archive"
+                    ]
             for volume in service.get("volumes", []):
                 if stack == "protonmail-bridge" and volume.get("type") == "bind":
                     for old, new in (

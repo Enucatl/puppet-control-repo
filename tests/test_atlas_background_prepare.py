@@ -23,7 +23,15 @@ def background(tmp_path, monkeypatch):
     names = {
         "kms": ["server", "gui"],
         "teamspeak": ["teamspeak"],
-        "airflow": ["postgres-outputs", "exam"],
+        "airflow": [
+            "postgres-outputs",
+            "exam",
+            "download-zanzara",
+            "cyber-analyst",
+            "operations-analyst",
+            "podcast-statistics",
+            "puppet-release-watch",
+        ],
         "protonmail-bridge": ["protonmail-bridge"],
         "rss-to-telegram-bot": ["main"],
         "tor-i2pd": ["i2pd", "cloudflare-ddns"],
@@ -62,7 +70,15 @@ def background(tmp_path, monkeypatch):
             "images": {services[0]: "sha256:" + "a" * 64},
             "volumes": [],
         }
-    configs["airflow"]["services"]["exam"]["profiles"] = ["runner"]
+    for name in names["airflow"][1:]:
+        runner = configs["airflow"]["services"][name]
+        runner["profiles"] = ["runner"]
+        runner["environment"].update(
+            {key: "https://source.docker.home.arpa" for key in module.AIRFLOW_ENDPOINTS}
+        )
+        runner["volumes"].append(
+            {"type": "bind", "source": "/scratch/archive", "target": "/scratch/archive"}
+        )
     configs["rclone"]["services"]["rclone"]["depends_on"] = {
         "cloudflared": {"condition": "service_healthy"}
     }
@@ -95,9 +111,13 @@ def background(tmp_path, monkeypatch):
     manifestfile = tmp_path / "source-state.json"
     manifestfile.write_text(json.dumps(manifest))
     monkeypatch.setattr(module, "MANIFEST", manifestfile)
-    monkeypatch.setattr(
-        module.access, "compose", lambda stack: copy.deepcopy(configs[stack])
-    )
+
+    def compose(stack, *, profiles=()):
+        """Require runner selection to retain all source Airflow services."""
+        assert profiles == (("runner",) if stack == "airflow" else ())
+        return copy.deepcopy(configs[stack])
+
+    monkeypatch.setattr(module.access, "compose", compose)
     return module, tmp_path, names
 
 
@@ -122,21 +142,37 @@ def test_prepare_defers_shared_identities_and_preserves_source(background, capsy
                 "sha256:" + "a" * 64 if name == services[0] else "source:latest"
             )
             assert service["read_only"] and service["cap_drop"] == ["ALL"]
-            assert service["environment"] == {
+            expected_environment = {
                 "SECRET": "secret-docker.home.arpa",
                 "MAIL_HOST": "docker.home.arpa",
             }
+            if stack == "airflow" and name != "postgres-outputs":
+                expected_environment.update(module.AIRFLOW_ENDPOINTS)
+            assert service["environment"] == expected_environment
             assert service["labels"]["other"] == "docker.home.arpa"
             assert (
                 "app.atlas.home.arpa"
                 in service["labels"]["traefik.http.routers.app.rule"]
             )
-            if stack in module.DEFERRED or name == "cloudflared":
+            if (
+                stack in module.DEFERRED
+                or name == "cloudflared"
+                or (stack == "tor-i2pd" and name == "cloudflare-ddns")
+            ):
                 assert service["profiles"] == ["migration-handover"]
         if stack == "rclone":
             assert not config["services"]["rclone"]["depends_on"]
         if stack == "airflow":
-            assert config["services"]["exam"]["profiles"] == ["runner"]
+            for name in services[1:]:
+                assert config["services"][name]["profiles"] == ["runner"]
+                volumes = config["services"][name]["volumes"]
+                scratch = [v for v in volumes if v["target"] == "/scratch/archive"]
+                assert bool(scratch) == (name == "download-zanzara")
+                assert volumes[0] == {
+                    "type": "volume",
+                    "source": "data",
+                    "target": "/data",
+                }
         if stack == "backrest":
             for service in config["services"].values():
                 assert service["volumes"][-1]["source"] == str(
@@ -156,6 +192,8 @@ def test_prepare_defers_shared_identities_and_preserves_source(background, capsy
         ("teamspeak", "teamspeak"),
         ("airflow", "postgres-outputs"),
         ("rclone", "rclone"),
+        ("rss-to-telegram-bot", "main"),
+        ("tor-i2pd", "i2pd"),
     }
 
 
@@ -177,3 +215,39 @@ def test_invalid_source_image_is_rejected(background):
     with pytest.raises(RuntimeError, match="Expected source image ID"):
         module.prepare()
     assert not list(root.rglob("atlas-compose.json"))
+
+
+def test_atlas_jobs_preserve_schedules_and_wait_for_handover():
+    """Keep native Atlas timers inactive and retire only matching source jobs."""
+    import yaml
+
+    nodes = Path(__file__).parents[1] / "data/nodes"
+    atlas = yaml.safe_load((nodes / "atlas.home.arpa.yaml").read_text())[
+        "profile::common::systemd::units"
+    ]
+    source = yaml.safe_load((nodes / "docker.home.arpa.yaml").read_text())[
+        "profile::common::systemd::units"
+    ]
+    schedules = {
+        "exam": "*-*-* 00,05..23:00:00 UTC",
+        "cyber-analyst": "*-*-01 03:00:00 UTC",
+        "operations-analyst": "Fri *-*-* 02:00:00 UTC",
+        "podcast-statistics": "*-*-* *:00/15:00 UTC",
+    }
+    for name, schedule in schedules.items():
+        for suffix in ("service", "timer"):
+            unit = f"automation-{name}.{suffix}"
+            assert atlas[unit]["enable"] is False and atlas[unit]["active"] is False
+            assert source[unit]["ensure"] == "absent"
+            assert source[unit]["enable"] is False and source[unit]["active"] is False
+        service = atlas[f"automation-{name}.service"]["content"]
+        assert "User=user\n" in service
+        assert (
+            "ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner "
+            f"run --no-build --rm --no-deps {name}\n"
+        ) in service
+        assert (
+            f"OnCalendar={schedule}\n" in atlas[f"automation-{name}.timer"]["content"]
+        )
+    assert "automation-download-zanzara.service" not in atlas
+    assert source["automation-download-zanzara.timer"]["enable"] is True
