@@ -131,10 +131,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
-      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps exam
+      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps exam
       SyslogIdentifier=automation-exam
       StandardOutput=journal
       StandardError=journal
@@ -166,10 +166,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
-      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps cyber-analyst
+      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps cyber-analyst
       SyslogIdentifier=automation-cyber-analyst
       StandardOutput=journal
       StandardError=journal
@@ -201,10 +201,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
-      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps operations-analyst
+      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps operations-analyst
       SyslogIdentifier=automation-operations-analyst
       StandardOutput=journal
       StandardError=journal
@@ -236,10 +236,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
+      Environment=COMPOSE_DISABLE_ENV_FILE=true
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose -f atlas-compose.json --profile runner up -d postgres-outputs
-      ExecStart=/usr/bin/docker compose -f atlas-compose.json --profile runner run --no-build --rm --no-deps podcast-statistics
+      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --no-build --rm --no-deps podcast-statistics
       SyslogIdentifier=automation-podcast-statistics
       StandardOutput=journal
       StandardError=journal

@@ -40,7 +40,22 @@ path "kv/data/airflow/variables/*" {
     assert role["allowed_dns_sans"] == ["airflow.atlas.home.arpa"]
     assert role["allowed_common_names"] == ["airflow.atlas.home.arpa"]
     assert role["token_policies"] == ["airflow"]
-    print("Atlas Airflow certificate role and scoped KV read policy configured")
+    connection = infra.api("GET", "kv/data/airflow/connections/djangodev")["data"]
+    values = connection["data"]
+    assert values["host"] in ("postgres.docker.home.arpa", "postgres-outputs")
+    if values["host"] != "postgres-outputs":
+        values["host"] = "postgres-outputs"
+        infra.api(
+            "POST",
+            "kv/data/airflow/connections/djangodev",
+            {
+                "options": {"cas": connection["metadata"]["version"]},
+                "data": values,
+            },
+        )
+    print(
+        "Atlas Airflow certificate role, scoped KV policy and outputs endpoint configured"
+    )
 
 
 if __name__ == "__main__":

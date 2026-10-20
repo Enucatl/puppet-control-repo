@@ -14,6 +14,17 @@ for suffix in deploy.path deploy.service refresh.timer refresh.service; do
     > "/etc/systemd/system/$unit.d/90-migrated.conf"
   units+=("$unit")
 done
+if [[ $stack == airflow ]]; then
+  for job in exam cyber-analyst operations-analyst podcast-statistics; do
+    for suffix in service timer; do
+      unit="automation-$job.$suffix"
+      install -d -m 0755 "/etc/systemd/system/$unit.d"
+      printf '[Unit]\nConditionPathExists=!/etc/docker-stack-retired/airflow\n' \
+        > "/etc/systemd/system/$unit.d/90-migrated.conf"
+      units+=("$unit")
+    done
+  done
+fi
 systemctl daemon-reload
 systemctl disable --now "${units[@]}"
 compose=(docker --host unix:///var/run/docker.sock compose \
