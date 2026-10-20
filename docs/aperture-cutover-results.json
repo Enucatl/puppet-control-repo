@@ -94,8 +94,18 @@
     "Physical monitor image",
     "Physical keyboard and mouse operation",
     "Audible audio",
-    "Interactive login",
     "Comprehensive personal application preferences and licences",
     "Future GPU reset/reboot reliability"
-  ]
+  ],
+  "post_cutover": {
+    "checked_at_utc": "2026-10-20T17:08:12.103836+00:00",
+    "operator_confirmed_interactive_login": true,
+    "password_migration": "Successful existing-password LDAP bind generated missing user Kerberos keys; no reset",
+    "cloud_init_status": "done; no errors",
+    "cidata": "Unmounted and ejected live; QEMU reports ide2 not inserted; guest reports no medium",
+    "pending_change": "Delete empty IDE2 slot at next shutdown",
+    "boot": "order=scsi0",
+    "retained_seed_volume": "local-zfs:vm-310-cloudinit",
+    "active_desktop_session_preserved": true
+  }
 }

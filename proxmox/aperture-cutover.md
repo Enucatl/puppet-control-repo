@@ -30,10 +30,12 @@ Rollback, from Atlas with its independent local administrative key:
 ```bash
 ssh -o IdentityAgent=none -o ForwardAgent=no -o StrictHostKeyChecking=yes \
   -i /home/user/.ssh/aperture-proxmox root@proxmox.home.arpa \
-  'qm shutdown 310 --timeout 180 && python3 /root/aperture-handover.py rollback && qm start 300'
+  'qm shutdown 310 --timeout 180 && qm set 310 --ide2 local-zfs:vm-310-cloudinit,media=cdrom && python3 /root/aperture-handover.py rollback && qm start 300'
 ```
 
-If Aperture is already stopped, omit `qm shutdown 310`. Forbearance must remain
+If Aperture is already stopped, omit `qm shutdown 310`. Reattaching the retained
+cloud-init volume restores the saved configuration required by the rollback
+guard; it does not change the system disk. Forbearance must remain
 stopped until rollback has restored its assignments. The saved original
 Aperture configuration restores virtual graphics and 8192 MiB; Forbearance
 regains its original memory, autostart, and hardware. Neither VM is deleted.
@@ -101,6 +103,16 @@ final results commit is signed with that Atlas-local key rather than the
 unavailable forwarded personal signer; persistent Git signing settings are
 unchanged. Publication uses the preauthenticated GitHub control connection.
 
-Physical monitor, keyboard/mouse, audio and interactive login await operator
-confirmation. Personal settings and licences have not been comprehensively
-verified; no whole-home synchronization was introduced.
+The operator subsequently confirmed a working physical desktop and successful
+interactive login. The migrated `user` password hash initially lacked Kerberos
+keys; one verified TLS LDAP bind with the existing password generated them.
+No password reset or authentication policy change was needed. Audible audio,
+personal settings and licences have not been comprehensively verified.
+
+After cloud-init reported `done` without errors, the operator requested removal
+of `cidata`. Its mounted filesystem was unmounted and the media ejected without
+interrupting the active desktop session. QEMU reports `ide2: [not inserted]`,
+and guest reads of `/dev/sr0` report no medium. IDE slot deletion is pending the
+next shutdown; boot remains `order=scsi0`. The 4 MiB seed volume is retained for
+rollback, along with `/root/aperture-cutover/310-before-cidata-removal.conf`.
+Do not delete that seed volume while the documented rollback still uses it.
