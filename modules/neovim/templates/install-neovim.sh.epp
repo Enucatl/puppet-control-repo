@@ -62,7 +62,7 @@ fi
 echo "🔧 Installing to <%= $install_dir %>"
 
 # Copy binaries to <%= $install_bin %>
-cp /tmp/nvim-linux-x86_64/bin/* "<%= $install_bin %>/" || { echo "❌ Failed to copy bin" >&2; exit 1; }
+install -m 0755 /tmp/nvim-linux-x86_64/bin/* "<%= $install_bin %>/" || { echo "❌ Failed to copy bin" >&2; exit 1; }
 
 # Copy lib to <%= $install_lib %>
 rm -rf "<%= $install_lib %>"

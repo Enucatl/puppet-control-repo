@@ -56,4 +56,12 @@ class neovim (
     logoutput => true,
     require   => File['/usr/local/bin/install-neovim.sh'],
   }
+
+  file { "${install_bin}/nvim":
+    ensure  => file,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    require => Exec['neovim-install'],
+  }
 }
