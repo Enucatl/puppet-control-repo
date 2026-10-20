@@ -32,7 +32,7 @@ def test_driverless_printing_orders_cups_queue_and_default(tmp_path: Path) -> No
     )
     duplex = result["Exec[brother-long-edge-duplex]"]
     assert duplex["command"] == (
-        "/usr/sbin/lpadmin -p Brother_MFC_L2750DW -o sides-default=two-sided-long-edge"
+        "/usr/sbin/lpadmin -p Brother_MFC_L2750DW -o sides-default=two-sided-long-edge -o Duplex=DuplexNoTumble"
     )
     assert "lpoptions -p Brother_MFC_L2750DW" in duplex["unless"]
     assert "sides=two-sided-long-edge" in duplex["unless"]

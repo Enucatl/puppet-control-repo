@@ -18,7 +18,7 @@ class profile::desktop_printing {
   }
 
   exec { 'brother-long-edge-duplex':
-    command     => '/usr/sbin/lpadmin -p Brother_MFC_L2750DW -o sides-default=two-sided-long-edge',
+    command     => '/usr/sbin/lpadmin -p Brother_MFC_L2750DW -o sides-default=two-sided-long-edge -o Duplex=DuplexNoTumble',
     unless      => "/usr/bin/lpoptions -p Brother_MFC_L2750DW | /usr/bin/grep -Eq '(^|[[:space:]])sides=two-sided-long-edge([[:space:]]|$)'",
     provider    => shell,
     environment => ['LC_ALL=C'],
