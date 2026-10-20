@@ -2,8 +2,10 @@
 
 Cognition is VM **220** on `proxmox-cortex.home.arpa`, with **16384 MiB**
 RAM, a **1000 GiB** disk and virtual graphics. Complex VM **200** remains the
-GPU owner and production service host during staging. Cognition's Docker deploy
-project list is empty so Puppet does not activate Wolf or vLLM before cutover.
+GPU owner and production service host during staging. Keep Cognition's Docker
+deploy project list empty until the final state and GPU handover. The cutover
+configuration enables Wolf and vLLM watchers; vLLM explicitly selects extraction
+because its Compose project has no default services.
 
 ## Resume an interrupted first boot
 
@@ -107,6 +109,7 @@ On Cortex, shut down Complex and Cognition, then run:
 
 ```bash
 python3 /path/to/proxmox/cognition-gpu-handover.py to-cognition
+qm set 220 --vga serial0
 qm start 220
 ```
 
@@ -114,6 +117,8 @@ The helper verifies guest names, stopped state and an OVMF/q35 target. It record
 both original VM configurations privately under `/root/cognition-migration`,
 moves all `hostpci` assignments and restores the source assignment if the target
 configuration fails. Both guests remain stopped until explicitly started.
+Serial graphics replace virtio at cutover so the RTX keeps the `/dev/dri/renderD128`
+path expected by the preserved Wolf configuration.
 
 Move the six existing GUA/ULA container routes using the commands in
 [Cognition staging and IPv6 route handover](../provisioning/README.md#cognition-staging-and-ipv6-route-handover).
@@ -162,3 +167,7 @@ Cognition before reverting application state.
 The GPU recovery record deliberately prevents accidentally repeating the same
 direction. After a completed rollback, archive the existing recovery records
 before another planned attempt. No script deletes either VM or old source data.
+
+Forbearance's legacy `/export/complex` automount uses the old Kerberos authority.
+Its identity and mount transition remain part of the planned desktop migration;
+do not import old host keytabs over Cognition's new identity to enable it.

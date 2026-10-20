@@ -1,4 +1,4 @@
-"""Verify the GPU replacement can converge against Atlas before PCI handover."""
+"""Verify the GPU replacement's Atlas identity and workload configuration."""
 
 from pathlib import Path
 
@@ -7,7 +7,7 @@ from test_profile_catalogs import DUMMY_SECRETS
 
 
 def test_cognition_catalog(tmp_path: Path) -> None:
-    """Prepare identity and runtime without starting production GPU workloads."""
+    """Use native Atlas services and explicit GPU workload deployment profiles."""
     result = resources(
         compile_catalog(
             tmp_path,
@@ -60,5 +60,9 @@ def test_cognition_catalog(tmp_path: Path) -> None:
     ]
     assert "ExecCondition=/usr/bin/nvidia-smi -L" in power
     for project in ("vllm", "wolf"):
-        assert f"File[/etc/systemd/system/{project}-deploy.service]" not in result
+        assert f"File[/etc/systemd/system/{project}-deploy.service]" in result
+    deploy = result["File[/etc/systemd/system/vllm-deploy.service]"]["content"]
+    assert "--profile extraction up" in deploy
+    assert "--wait --wait-timeout 600" in deploy
+    assert "ExecStart=/usr/bin/docker compose pull" not in deploy
     assert "Class[Profile::Docker_node]" not in result

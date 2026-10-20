@@ -48,8 +48,11 @@ packages::list:
   - rsync
   - ubuntu-drivers-common
 
-# Enable workload deployment only after the GPU and final state handover.
-profile::docker_host::git_deploy_projects: {}
+profile::docker_host::git_deploy_projects:
+  wolf: {}
+  vllm:
+    pull: false
+    deploy_command: '/usr/bin/docker compose --profile extraction up --pull always --force-recreate --wait --wait-timeout 600'
 
 kmod::list_of_loads:
   'uinput': {}
