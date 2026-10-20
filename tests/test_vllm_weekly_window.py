@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 
 FILES_DIR = Path(__file__).parents[1] / "modules" / "proxmox_workflows" / "files"
@@ -67,6 +70,11 @@ def run_case(responses: list[tuple[str, int, str]]) -> tuple[int, list[str]]:
     return result, runner.commands
 
 
+def guest_output(output: str = "", exitcode: int = 0) -> str:
+    """Return the QGA envelope even when the host SSH command succeeds."""
+    return json.dumps({"exited": 1, "exitcode": exitcode, "out-data": output})
+
+
 class TestVllmWeeklyWindow:
     def test_hosts_already_on_starts_and_cleans_up_vllm(self) -> None:
         result, commands = run_case(
@@ -78,24 +86,25 @@ class TestVllmWeeklyWindow:
                     "status: running\n",
                 ),
                 ("nc -z -w 1 complex.home.arpa 22", 0, ""),
-                ("nc -z -w 2 complex.home.arpa 8100", 1, ""),
+                ("ps --services --filter status=running", 0, guest_output()),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
                     0,
-                    "",
+                    guest_output(),
                 ),
-                ("nc -z -w 1 complex.home.arpa 8100", 0, ""),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
                     0,
-                    "",
+                    guest_output(),
                 ),
             ]
         )
 
         assert result == 0
         assert any(
-            "docker compose --profile extraction up -d" in cmd for cmd in commands
+            "docker compose --profile extraction up --wait --wait-timeout 600 --no-recreate"
+            in cmd
+            for cmd in commands
         )
         assert any(
             "docker compose --profile extraction down" in cmd for cmd in commands
@@ -113,12 +122,22 @@ class TestVllmWeeklyWindow:
                     "status: running\n",
                 ),
                 ("nc -z -w 1 complex.home.arpa 22", 0, ""),
-                ("nc -z -w 2 complex.home.arpa 8100", 0, ""),
+                (
+                    "ps --services --filter status=running",
+                    0,
+                    guest_output("bge\npaddleocr-gateway\n"),
+                ),
+                ("up --wait --wait-timeout 600 --no-recreate", 0, guest_output()),
             ]
         )
 
         assert result == 0
-        assert all("docker compose" not in cmd for cmd in commands)
+        assert all(
+            "docker compose --profile extraction down" not in cmd for cmd in commands
+        )
+        assert any(
+            "up --wait --wait-timeout 600 --no-recreate" in cmd for cmd in commands
+        )
         assert all("qm shutdown 200" not in cmd for cmd in commands)
 
     def test_full_sequence_cleans_up_started_layers(self) -> None:
@@ -137,13 +156,13 @@ class TestVllmWeeklyWindow:
                 ),
                 ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 200", 0, ""),
                 ("nc -z -w 1 complex.home.arpa 22", 0, ""),
-                ("nc -z -w 2 complex.home.arpa 8100", 1, ""),
+                ("ps --services --filter status=running", 0, guest_output()),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
                     0,
-                    "",
+                    guest_output(),
                 ),
-                ("nc -z -w 1 complex.home.arpa 8100", 0, ""),
+                ("docker compose --profile extraction down", 0, guest_output()),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 200",
                     0,
@@ -160,7 +179,9 @@ class TestVllmWeeklyWindow:
         assert result == 0
         assert "qm start 200" in " ".join(commands)
         assert any(
-            "docker compose --profile extraction up -d" in cmd for cmd in commands
+            "docker compose --profile extraction up --wait --wait-timeout 600 --no-recreate"
+            in cmd
+            for cmd in commands
         )
         assert any(
             "docker compose --profile extraction down" in cmd for cmd in commands
@@ -184,16 +205,16 @@ class TestVllmWeeklyWindow:
                 ),
                 ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 200", 0, ""),
                 ("nc -z -w 1 complex.home.arpa 22", 0, ""),
-                ("nc -z -w 2 complex.home.arpa 8100", 1, ""),
+                ("ps --services --filter status=running", 0, guest_output()),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
-                    1,
-                    "",
+                    "up --wait --wait-timeout 600 --no-recreate",
+                    0,
+                    guest_output(exitcode=1),
                 ),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
                     0,
-                    "",
+                    guest_output(),
                 ),
                 (
                     "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 200",
@@ -222,3 +243,29 @@ class TestVllmWeeklyWindow:
             result = vllm.main(["--lock-file", lock_path, "--dry-run"])
 
         assert result == 75
+
+    def test_unhealthy_existing_stack_is_not_torn_down(self) -> None:
+        """A failed Compose health check must preserve another operator's services."""
+        result, commands = run_case(
+            [
+                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
+                ("qm status 200", 0, "status: running\n"),
+                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("ps --services --filter status=running", 0, guest_output("bge\n")),
+                (
+                    "up --wait --wait-timeout 600 --no-recreate",
+                    0,
+                    guest_output(exitcode=1),
+                ),
+            ]
+        )
+        assert result == 1
+        assert all(" down" not in command for command in commands)
+        assert all("qm shutdown" not in command for command in commands)
+
+    def test_guest_command_must_finish_before_success(self) -> None:
+        """A QGA PID alone is not a successful model startup."""
+        runner = FakeRunner([("qm guest exec 200 --timeout 0", 0, '{"pid":123}')])
+        controller = vllm.Orchestrator(FastConfig(), runner)
+        with pytest.raises(RuntimeError, match="did not complete"):
+            controller.guest_exec("docker compose up --wait", timeout=630)

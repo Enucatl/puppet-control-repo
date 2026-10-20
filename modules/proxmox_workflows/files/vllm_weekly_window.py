@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 import shlex
 import subprocess
 import sys
@@ -70,24 +71,16 @@ class Orchestrator:
 
             self.ensure_vm_running()
             proxmox_orchestration.wait_for_port(
-                self.runner, self.config.vm_host, 22, "complex SSH", 300, 5
+                self.runner, self.config.vm_host, 22, "guest SSH", 300, 5
             )
-            if proxmox_orchestration.port_open(
-                self.runner, self.config.vm_host, 8100, timeout=2
-            ):
-                print("vLLM is already reachable")
-                if not (self.woke_host or self.started_vm):
-                    return 0
-            else:
-                self.compose_up()
-                proxmox_orchestration.wait_for_port(
-                    self.runner,
-                    self.config.vm_host,
-                    8100,
-                    "vLLM",
-                    self.config.model_start_timeout,
-                    5,
-                )
+            already_running = self.guest_exec(
+                self.compose_command("ps --services --filter status=running")
+            ).stdout.strip()
+            self.compose_up_attempted = not already_running
+            self.compose_up()
+            if already_running and not (self.woke_host or self.started_vm):
+                print("Existing vLLM services are healthy; leaving them running")
+                return 0
             time.sleep(self.config.window_seconds)
             return 0
         except Exception as error:
@@ -105,8 +98,13 @@ class Orchestrator:
         self.started_vm = True
 
     def compose_up(self) -> None:
-        self.compose_up_attempted = True
-        self.guest_exec(self.compose_command("up -d"), timeout=300)
+        """Wait for the selected profile's own healthchecks without recreating services."""
+        self.guest_exec(
+            self.compose_command(
+                f"up --wait --wait-timeout {self.config.model_start_timeout} --no-recreate"
+            ),
+            timeout=self.config.model_start_timeout + 30,
+        )
 
     def cleanup(self) -> None:
         if self.compose_up_attempted:
@@ -155,14 +153,28 @@ class Orchestrator:
         self, command: str, *, timeout: int | None = None, check: bool = True
     ) -> subprocess.CompletedProcess[str]:
         guest_command = (
-            f"qm guest exec {self.config.vm_id} -- /bin/su - "
+            f"qm guest exec {self.config.vm_id} --timeout 0 -- /bin/su - "
             f"{shlex.quote(self.config.guest_user)} -c {shlex.quote(command)}"
         )
-        return self.proxmox_ssh(
+        result = self.proxmox_ssh(
             [guest_command],
             timeout=timeout,
             check=check,
         )
+        if result.returncode != 0 or self.config.dry_run:
+            return result
+        payload = json.loads(result.stdout)
+        if not payload.get("exited"):
+            raise RuntimeError("Guest command did not complete")
+        completed = subprocess.CompletedProcess(
+            result.args,
+            payload.get("exitcode", 1),
+            payload.get("out-data", ""),
+            payload.get("err-data", ""),
+        )
+        if check and completed.returncode != 0:
+            raise CommandError(result.args, completed)
+        return completed
 
 
 def parse_args(argv: Sequence[str]) -> Config:
