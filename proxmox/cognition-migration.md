@@ -7,6 +7,46 @@ deploy project list empty until the final state and GPU handover. The cutover
 configuration enables Wolf and vLLM watchers; vLLM explicitly selects extraction
 because its Compose project has no default services.
 
+## Cutover record — 2026-10-20
+
+Cognition is now the active guest. Complex is stopped, with its root and EFI
+snapshots named `pre-cognition-20261020` held by `cognition-rollback`.
+Cognition retains the requested 16 GiB RAM and 1000 GiB disk; serial graphics
+replace virtual graphics after transferring both RTX 5090 PCI functions.
+
+The final frozen-source copy includes application bind mounts, homes, Wolf
+pairing/game state and all 11 local Docker volumes. A final rsync comparison
+found no differences. Source administrator and OS configuration are retained in
+private recovery trees rather than applied over Cognition's native identities.
+Docker image layers and runtime caches were recreated. Sparse game files retain
+their sparse allocation.
+
+All six existing container IPv6 routes now use Cognition's link-local next hop
+on `eth3`. Atlas's Wolf controller targets `cognition.home.arpa`, VM 220; its
+existing resolved Compose project is `wolf` despite the `infra-wolf-1` container
+name. The weekly vLLM controller also targets VM 220, and its timer is restored.
+OpenVox is enabled and converged; Wolf and vLLM deploy watchers are waiting.
+
+Verified acceptance:
+
+- Qdrant uses the original pinned image, with all six collections green and
+  3,829 points retained. A disposable point write/read/delete check passed.
+- NVIDIA container CUDA computation passed. Wolf retained its server UUID and
+  both paired clients, and selected NVIDIA H.264/H.265/AV1 encoding.
+- All four extraction services passed their health checks. BGE returned a
+  1024-dimensional embedding, and PaddleOCR recognized text from a test image
+  through the port 8108 gateway within the 16 GiB RAM budget. The actual weekly
+  controller completed a zero-length window, waited for healthy extraction
+  services and removed them afterward while retaining Cognition and Qdrant.
+- Cloud-init, native administrative SSH/TLS identity, authenticated Atlas NFS,
+  Alloy ingestion, and routed Docker bridge IPv6 reachability passed.
+
+Final idle state has only Qdrant running, about 359 GiB free disk and 13.8 GiB
+available RAM. Wolf and extraction remain on demand. Actual Moonlight streaming still requires a client
+check. Retain Complex and its held snapshots until the rollback retention gate
+below is satisfied; they share Cortex's storage and are not an independent
+backup.
+
 ## Resume an interrupted first boot
 
 The workload provisioner retains a failed guest and its private diagnostics.
@@ -96,6 +136,12 @@ recovery copy. After the final copy, update copied application environment and
 Compose files to Cognition/Atlas endpoints and regenerate host certificates.
 Retain private backups of changed environment files.
 
+Review copied Codex provider URLs as well. The optional `ollama-complex`
+provider must use `http://cognition.home.arpa:8111/v1`; retain its provider ID.
+Update `dotfiles/codex/config.toml` in the upstream dotfiles repository, since
+`profile::dotfiles` tracks its latest revision and can overwrite guest-only
+edits. Preserve existing local dotfiles changes before updating that checkout.
+
 The helper also refuses different Docker user-namespace modes. When namespaces
 are enabled, it checks dockremap UID/GID ranges. Dormant mappings do not affect
 the current migration with namespaces disabled on both guests. If active modes
@@ -152,15 +198,24 @@ profile::vllm_weekly_window::vm_id: 220
 
 Apply Puppet there before reenabling the timer. These parameters retain Complex
 defaults until explicitly changed. Confirm Wolf pairing/game state and a vLLM
-request, plus authentication, NFS, observability and a successful backup.
+request, plus authentication, NFS, observability and protected recovery copies.
+Routine Cortex backup automation remains tracked in
+[issue #22](https://github.com/Enucatl/puppet-control-repo/issues/22), as agreed
+in the migration plan; local rollback snapshots do not provide an independent
+backup.
 
 ## Rollback
 
 Stop controllers and Cognition containers and preserve new writes before
-rollback. Shut down both guests, then run the GPU helper with `to-complex` and
-reverse the router commands. Remove the Wolf override and revert the vLLM Hiera
-settings before restarting Complex and its controllers. Never run the original
-GPU/container networks on both guests. Keep Complex's disk intact for at least
+rollback. Disable Cognition's Puppet agent and Wolf/vLLM deploy watchers, and
+restore its `profile::docker_host::git_deploy_projects` to `{}` before allowing
+future convergence. Shut down both guests, then run the GPU helper with
+`to-complex` and reverse the router commands using `eth3` for Complex as well.
+Restore Atlas's saved resolved Wolf Compose configuration from
+`/root/cognition-preparation/wolf-atlas-compose-before-cognition.json`, then
+recreate only `wolf` with Compose project `wolf`. Revert the vLLM Hiera settings
+and the live weekly service's VM host/ID before restarting Complex and its
+controllers. Never run the original GPU/container networks on both guests. Keep Complex's disk intact for at least
 14 days and one successful weekly backup cycle; reconcile any writes made on
 Cognition before reverting application state.
 
