@@ -17,6 +17,14 @@ class profile::desktop_printing {
     require     => Service['cups'],
   }
 
+  exec { 'brother-long-edge-duplex':
+    command     => '/usr/sbin/lpadmin -p Brother_MFC_L2750DW -o sides-default=two-sided-long-edge',
+    unless      => "/usr/bin/lpoptions -p Brother_MFC_L2750DW | /usr/bin/grep -Eq '(^|[[:space:]])sides=two-sided-long-edge([[:space:]]|$)'",
+    provider    => shell,
+    environment => ['LC_ALL=C'],
+    require     => Exec['configure-brother-printer'],
+  }
+
   exec { 'default-brother-printer':
     command     => '/usr/sbin/lpadmin -d Brother_MFC_L2750DW',
     unless      => '/usr/bin/lpstat -d | /usr/bin/grep -Fxq "system default destination: Brother_MFC_L2750DW"',
