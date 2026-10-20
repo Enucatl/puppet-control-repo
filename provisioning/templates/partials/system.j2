@@ -15,8 +15,8 @@ set system flow-accounting netflow interface {{ lan_interface }}.{{ iot_vlan }}
 set system flow-accounting netflow interface {{ lan_interface }}.{{ guest_vlan }}
 set system flow-accounting netflow version 10
 set system flow-accounting netflow sampling-rate 10
-set system flow-accounting netflow server {{ docker_node_ip }} port 2055
-set system flow-accounting netflow server {{ docker_node_ip }} source-address {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
+set system flow-accounting netflow server {{ atlas_node_ip }} port 2055
+set system flow-accounting netflow server {{ atlas_node_ip }} source-address {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}
 set system flow-accounting netflow inactive-timeout 60
 set system task-scheduler task rotate-suricata-logs crontab-spec '0 3 * * *'
 set system task-scheduler task rotate-suricata-logs executable arguments /config/logrotate.d/suricata

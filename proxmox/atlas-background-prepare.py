@@ -88,6 +88,10 @@ def prepare() -> None:
                     service["labels"][key] = value.replace(
                         "docker.home.arpa", "atlas.home.arpa"
                     )
+            if stack == "tor-i2pd" and name == "cloudflare-ddns":
+                service.setdefault("environment", {})["DOMAINS"] = (
+                    "teamspeak.enucatl.com,torrent.enucatl.com"
+                )
             if (
                 stack in DEFERRED
                 or name == "cloudflared"

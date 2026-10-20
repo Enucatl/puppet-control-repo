@@ -69,6 +69,15 @@ def prepare() -> None:
                         "docker.home.arpa", "atlas.home.arpa"
                     )
         if stack == "grafana-loki":
+            # Native Alloy cannot negotiate the ML-DSA HTTPS ingress.
+            services["loki"]["ports"] = [
+                {
+                    "target": 3100,
+                    "published": "3100",
+                    "host_ip": "127.0.0.1",
+                    "protocol": "tcp",
+                }
+            ]
             path = root / stack / "grafana/grafana.ini"
             access.write_private(path, grafana_endpoints(path.read_text()))
             uid = 100472

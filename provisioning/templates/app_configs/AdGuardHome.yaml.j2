@@ -123,8 +123,8 @@ filters:
     id: 2
 whitelist_filters: []
 user_rules:
-  # 1. Define the IP of the Proxy Server (Change 10.0.0.128 if needed)
-  - '||apt-cacher-ng.home.arpa^$dnsrewrite=NOERROR;A;{{ docker_node_ip }}'
+  # 1. Define the IP of the Proxy Server
+  - '||apt-cacher-ng.home.arpa^$dnsrewrite=NOERROR;A;{{ atlas_node_ip }}'
   # 2. Define the SRV Record pointing to port 3142
   - '||_apt_proxy._tcp.home.arpa^$dnsrewrite=NOERROR;SRV;0 0 3142 apt-cacher-ng.home.arpa'
   # Block all .icu TLD resolutions after Suricata flagged suspicious DNS

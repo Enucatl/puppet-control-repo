@@ -3,7 +3,7 @@
 set -euo pipefail
 [[ $(id -u) == 0 && $(hostname -f) == docker.home.arpa && $# == 1 ]] || exit 1
 stack=$1
-case "$stack" in protonmail-bridge|rss-to-telegram-bot|tor-i2pd|airflow) ;; *) exit 1 ;; esac
+case "$stack" in protonmail-bridge|rss-to-telegram-bot|tor-i2pd|airflow|teamspeak) ;; *) exit 1 ;; esac
 install -d -m 0755 /etc/docker-stack-retired
 touch "/etc/docker-stack-retired/$stack"
 units=()
@@ -30,18 +30,9 @@ systemctl disable --now "${units[@]}"
 compose=(docker --host unix:///var/run/docker.sock compose \
   --env-file /opt/docker/.env --env-file "/opt/docker/$stack/.env" \
   -f "/opt/docker/$stack/docker-compose.yml")
-if [[ $stack == tor-i2pd ]]; then
-  # DDNS still serves TeamSpeak and torrents on Docker.
-  "${compose[@]}" stop i2pd
-  "${compose[@]}" rm -f i2pd
-  [[ -z $(docker --host unix:///var/run/docker.sock ps -q \
-    --filter "label=com.docker.compose.project=$stack" \
-    --filter label=com.docker.compose.service=i2pd) ]]
-else
-  "${compose[@]}" down
-  [[ -z $(docker --host unix:///var/run/docker.sock ps -q \
-    --filter "label=com.docker.compose.project=$stack") ]]
-fi
+"${compose[@]}" down
+[[ -z $(docker --host unix:///var/run/docker.sock ps -q \
+  --filter "label=com.docker.compose.project=$stack") ]]
 systemctl start "$stack-deploy.service"
 [[ $(systemctl show "$stack-deploy.service" -p ConditionResult --value) == no ]]
 printf '%s stopped; deployment guard verified; volumes preserved.\n' "$stack"

@@ -48,6 +48,7 @@ class profile::alloy (
   $router_config = if $enable_router_enrichment and $geoip_credentials_available {
     epp('profile/alloy/router.config.epp', {
       'listen_address'    => $router_listen_address,
+      'host'              => $facts['networking']['fqdn'],
       'local_ipv6_prefix' => $local_ipv6_geoip_skip_prefix,
     })
   } else {

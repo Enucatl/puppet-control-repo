@@ -129,6 +129,39 @@ Add `delete ...` lines to `templates/partials/deletes.j2` for stale nodes that t
 
 The rolling upgrade workflow uses the official nightly-builds page and verifies images with minisign before installation.
 
+### TeamSpeak forwarding
+
+UDP 9987 targets Atlas in NAT rule 30 and IPv4/IPv6 firewall rules 49/50.
+Apply only those rules and the router smoke checks with:
+
+```bash
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags teamspeak,healthcheck
+```
+
+Atlas's `tor-i2pd` DDNS updater owns `teamspeak.enucatl.com` and
+`torrent.enucatl.com`; Docker's updater is stopped and guarded. Atlas's updater remains behind the
+`migration-handover` Compose profile during preparation; its explicit cutover
+activation prevents two hosts from updating the same DNS record.
+
+### qBittorrent forwarding
+
+TCP/UDP 6881 and 9000 target Atlas in NAT rule 10 and IPv4/IPv6 firewall
+rules 29/30. Apply only those rules and router smoke checks with:
+
+```bash
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags qbittorrent,healthcheck
+```
+
+### NetFlow collector
+
+IPFIX exports from the IoT/guest interfaces go to Atlas UDP 2055. Apply only
+the collector destination and router smoke checks with `--tags netflow,healthcheck`.
+The isolated collector definition is `../docker/goflow2-compose.json`; its
+pinned image matches the source collector and it has no persistent state.
+Atlas's dedicated Alloy pipeline enriches flow records with GeoIP. Its local
+Loki write URL uses the loopback-only published port 3100 because Alloy's Go
+TLS client cannot negotiate the ML-DSA ingress; HTTPS reads retain mTLS.
+
 ### Cognition staging and IPv6 route handover
 
 Cognition VM 220 on Cortex reserves `10.0.40.134` for

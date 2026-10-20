@@ -148,6 +148,10 @@ def test_prepare_defers_shared_identities_and_preserves_source(background, capsy
             }
             if stack == "airflow" and name != "postgres-outputs":
                 expected_environment.update(module.AIRFLOW_ENDPOINTS)
+            if stack == "tor-i2pd" and name == "cloudflare-ddns":
+                expected_environment["DOMAINS"] = (
+                    "teamspeak.enucatl.com,torrent.enucatl.com"
+                )
             assert service["environment"] == expected_environment
             assert service["labels"]["other"] == "docker.home.arpa"
             assert (
@@ -219,7 +223,7 @@ def test_invalid_source_image_is_rejected(background):
 
 
 def test_atlas_jobs_preserve_schedules_and_single_active_owner():
-    """Activate migrated timers while retaining disabled jobs and source downloader."""
+    """Preserve timer schedules while giving migrated jobs one active owner."""
     import yaml
 
     nodes = Path(__file__).parents[1] / "data/nodes"
@@ -234,6 +238,7 @@ def test_atlas_jobs_preserve_schedules_and_single_active_owner():
         "cyber-analyst": "*-*-01 03:00:00 UTC",
         "operations-analyst": "Fri *-*-* 02:00:00 UTC",
         "podcast-statistics": "*-*-* *:00/15:00 UTC",
+        "download-zanzara": "*-*-* 00:00:00 UTC",
     }
     for name, schedule in schedules.items():
         for suffix in ("service", "timer"):
@@ -251,5 +256,7 @@ def test_atlas_jobs_preserve_schedules_and_single_active_owner():
         assert (
             f"OnCalendar={schedule}\n" in atlas[f"automation-{name}.timer"]["content"]
         )
-    assert "automation-download-zanzara.service" not in atlas
-    assert source["automation-download-zanzara.timer"]["enable"] is True
+    assert (
+        "RequiresMountsFor=/scratch"
+        in atlas["automation-download-zanzara.service"]["content"]
+    )

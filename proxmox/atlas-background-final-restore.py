@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 VOLUMES = {
+    "teamspeak": "teamspeak_ts3server",
     "protonmail-bridge": "protonmail-bridge_bridge-state",
     "rss-to-telegram-bot": "rss-to-telegram-bot_config",
     "tor-i2pd": "tor-i2pd_i2pd",

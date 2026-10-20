@@ -1,4 +1,8 @@
 ---
+classes:
+  - profile::paperless_scans
+  - profile::scratch
+
 nfs_config::ipa_server: ipa.home.arpa
 nfs_config::server_exports:
   '/scratch':
@@ -8,6 +12,33 @@ nfs_config::server_exports:
     clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,root_squash)'
     atboot: true
 
+samba::workgroup: 'WORKGROUP'
+samba::server_string: 'atlas'
+samba::netbios_name: 'ATLAS'
+samba::security: 'user'
+samba::map_to_guest: 'Bad User'
+samba::package_ensure: 'installed'
+samba::extra_global_options:
+  'ntlm auth': 'ntlmv2-only'
+samba::hosts_allow:
+  - '10.0.20.189'
+  - '10.0.0.'
+  - '10.0.40.'
+  - 'fd6b:d722:1738:0::/64'
+  - 'fd6b:d722:1738:28::/64'
+samba::hosts_deny:
+  - 'ALL'
+samba::shares:
+  'shared_pictures':
+    comment: 'Shared Pictures'
+    path: '/scratch/shared_pictures'
+    browseable: true
+    writable: true
+    force_user: 'user'
+    force_group: 'user'
+    create_mask: '0660'
+    directory_mask: '0770'
+    valid_users: ['pictures']
 ssh::client_options:
   ProxyCommand: none
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'
@@ -99,6 +130,11 @@ profile::common::certs::vault_certs:
 
 # Keep the daemon on the same strict parent / system child policy as manual runs.
 systemd::dropin_files:
+  scratch.conf:
+    unit: docker.service
+    content: |
+      [Unit]
+      RequiresMountsFor=/scratch
   puppet-crypto.conf:
     unit: puppet.service
     content: |
@@ -269,3 +305,43 @@ profile::common::systemd::units:
     enable: true
     active: true
     require: Systemd::Unit_file[automation-podcast-statistics.service]
+
+  automation-download-zanzara.service:
+    content: |
+      [Unit]
+      Description=Download archive programme
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+      RequiresMountsFor=/scratch
+
+      [Service]
+      Type=oneshot
+      User=user
+      Environment=COMPOSE_DISABLE_ENV_FILE=true
+      WorkingDirectory=/opt/docker/airflow
+      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps download-zanzara
+      SyslogIdentifier=automation-download-zanzara
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  automation-download-zanzara.timer:
+    content: |
+      [Unit]
+      Description=Download archive programme daily
+
+      [Timer]
+      OnCalendar=*-*-* 00:00:00 UTC
+      Persistent=false
+      Unit=automation-download-zanzara.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[automation-download-zanzara.service]
+
+profile::alloy::enable_router_enrichment: true
+profile::alloy::router_listen_address: '10.0.0.158'
+profile::alloy::loki_url: 'http://127.0.0.1:3100/loki/api/v1/push'

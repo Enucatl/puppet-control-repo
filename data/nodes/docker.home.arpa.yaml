@@ -6,9 +6,6 @@ classes:
 profile::beszel_agent::enable_docker_metrics: true
 
 nfs_config::server_exports:
-  '/scratch':
-    clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
-    atboot: true
   '/opt/docker':
     clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,root_squash)'
     atboot: true
@@ -27,12 +24,15 @@ profile::docker_host::git_deploy_projects:
     pull: true
     build_command: 'docker compose --profile runner build exam download-zanzara cyber-analyst operations-analyst podcast-statistics'
   authelia: {}
-  backrest: {}
-  barbero-scripts: {}
+  backrest:
+    ensure: absent
+  barbero-scripts:
+    ensure: absent
   beszel:
     build_command: "docker compose build alerts-init"
     deploy_command: "docker compose up -d --force-recreate --wait --wait-timeout 300 beszel && docker compose run --rm alerts-init"
   browser-use:
+    ensure: absent
     build_command: "docker compose build"
   crabberbot:
     ensure: absent
@@ -58,14 +58,17 @@ profile::docker_host::git_deploy_projects:
     ensure: absent
   protonmail-bridge:
     ensure: absent
-  qbittorrent: {}
-  rclone: {}
+  qbittorrent:
+    ensure: absent
+  rclone:
+    ensure: absent
   rss-to-telegram-bot:
     ensure: absent
   send-bills:
     ensure: absent
     build_command: 'VERSION=$(uv run --with setuptools-git-versioning setuptools-git-versioning); docker compose build --build-arg VERSION="$VERSION"'
-  teamspeak: {}
+  teamspeak:
+    ensure: absent
   tor-i2pd:
     ensure: absent
   traefik: {}
@@ -221,6 +224,7 @@ profile::common::systemd::units:
     active: false
     require: Systemd::Unit_file[automation-exam.service]
   automation-download-zanzara.service:
+    ensure: absent
     content: |
       [Unit]
       Description=Run La Zanzara download pipeline
@@ -241,6 +245,7 @@ profile::common::systemd::units:
     enable: false
     active: false
   automation-download-zanzara.timer:
+    ensure: absent
     content: |
       [Unit]
       Description=Run La Zanzara download daily
@@ -252,8 +257,8 @@ profile::common::systemd::units:
 
       [Install]
       WantedBy=timers.target
-    enable: true
-    active: true
+    enable: false
+    active: false
     require: Systemd::Unit_file[automation-download-zanzara.service]
   automation-cyber-analyst.service:
     ensure: absent
@@ -370,6 +375,7 @@ profile::common::systemd::units:
 profile::common::cron::jobs:
   # backup the hashicorp vault to a location that is picked up by duplicati
   vault-snapshot:
+    ensure: absent
     minute: 0
     hour: 1
     weekday: 'Monday'
@@ -816,24 +822,4 @@ samba::hosts_allow:
    - '10.0.40.'
 samba::hosts_deny:
    - 'ALL'
-samba::shares:
-  'scans':
-    comment: 'Printer Uploads'
-    path: '/opt/paperless-consume'
-    browseable: true
-    writable: true
-    valid_users: ['printer']
-    force_user: 'printer'
-    create_mask: '0666'
-    directory_mask: '0777'
-
-  'shared_pictures':
-    comment: 'Shared Pictures'
-    path: '/scratch/shared_pictures'
-    browseable: true
-    writable: true
-    force_user: 'user'
-    force_group: 'user'
-    create_mask: '0660'
-    directory_mask: '0770'
-    valid_users: ['pictures']
+samba::shares: {}

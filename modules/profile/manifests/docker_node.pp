@@ -4,7 +4,7 @@ class profile::docker_node (
 ) {
 
   require profile::common
-  require ::samba
+  include ::samba
 
   # Trigger Traefik reload when certs change
   exec { 'trigger_traefik_reload':
@@ -17,24 +17,15 @@ class profile::docker_node (
   # Samba Configuration
   # ------------------------------------------------------------------
 
-  # Create 'printer' samba user
-  exec { 'create_samba_user_printer':
-    command => Sensitive("/usr/bin/printf '%s\\n%s\\n' ${stdlib::shell_escape($printer_smb_password.unwrap)} ${stdlib::shell_escape($printer_smb_password.unwrap)} | /usr/bin/smbpasswd -a -s printer"),
-    unless  => '/usr/bin/pdbedit -L -u printer',
+  class { 'profile::paperless_scans':
+    printer_smb_password => $printer_smb_password,
   }
 
   # Create 'pictures' samba user
   exec { 'create_samba_user_pictures':
     command => Sensitive("/usr/bin/printf '%s\\n%s\\n' ${stdlib::shell_escape($pictures_smb_password.unwrap)} ${stdlib::shell_escape($pictures_smb_password.unwrap)} | /usr/bin/smbpasswd -a -s pictures"),
     unless  => '/usr/bin/pdbedit -L -u pictures',
-  }
-
-  # Paperless consumption directory
-  file { '/opt/paperless-consume':
-    ensure => directory,
-    owner  => 'printer',
-    group  => 'printer',
-    mode   => '0777',
+    require => Class['samba::install'],
   }
 
   # ------------------------------------------------------------------

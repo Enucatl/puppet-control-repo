@@ -1,0 +1,8 @@
+---
+- name: Move only the NetFlow collector to Atlas
+  vyos.vyos.vyos_config:
+    lines:
+      - "delete system flow-accounting netflow server {{ docker_node_ip }}"
+      - "set system flow-accounting netflow server {{ atlas_node_ip }} port 2055"
+      - "set system flow-accounting netflow server {{ atlas_node_ip }} source-address {{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+    save: true

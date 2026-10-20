@@ -1,0 +1,50 @@
+{
+  "name": "goflow2",
+  "services": {
+    "goflow2": {
+      "restart": "unless-stopped",
+      "cap_drop": [
+        "ALL"
+      ],
+      "cpu_shares": 512,
+      "command": [
+        "-listen",
+        "netflow://:2055"
+      ],
+      "entrypoint": null,
+      "image": "sha256:8ed89ef034fff5d68ca264ef256c93d3f56c0990e1284627686b332f13c6e1de",
+      "mem_limit": "1073741824",
+      "memswap_limit": "1073741824",
+      "networks": {
+        "default": null
+      },
+      "pids_limit": 128,
+      "read_only": true,
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:8080/__health"
+        ],
+        "timeout": "5s",
+        "interval": "30s",
+        "retries": 3,
+        "start_period": "10s"
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 2055,
+          "published": "2055",
+          "protocol": "udp"
+        }
+      ]
+    }
+  }
+}

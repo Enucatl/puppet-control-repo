@@ -94,8 +94,8 @@ set firewall ipv4 name IOT-FORWARD rule 20 action accept
 set firewall ipv4 name IOT-FORWARD rule 20 description 'IoT to WAN'
 set firewall ipv4 name IOT-FORWARD rule 20 outbound-interface group WAN
 set firewall ipv4 name IOT-FORWARD rule 30 action accept
-set firewall ipv4 name IOT-FORWARD rule 30 description 'Printer to Samba on docker'
-set firewall ipv4 name IOT-FORWARD rule 30 destination address {{ docker_node_ip }}
+set firewall ipv4 name IOT-FORWARD rule 30 description 'Printer to Samba on Atlas'
+set firewall ipv4 name IOT-FORWARD rule 30 destination address {{ atlas_node_ip }}
 set firewall ipv4 name IOT-FORWARD rule 30 destination port 445,139
 set firewall ipv4 name IOT-FORWARD rule 30 protocol tcp
 set firewall ipv4 name IOT-LOCAL default-action drop
@@ -178,7 +178,7 @@ set firewall ipv4 name WAN-FORWARD rule 20 description 'Allow ICMP ping from WAN
 set firewall ipv4 name WAN-FORWARD rule 20 protocol icmp
 set firewall ipv4 name WAN-FORWARD rule 29 action drop
 set firewall ipv4 name WAN-FORWARD rule 29 description 'DDoS prevention qBittorrent'
-set firewall ipv4 name WAN-FORWARD rule 29 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 29 destination address {{ atlas_node_ip }}
 set firewall ipv4 name WAN-FORWARD rule 29 destination port 6881,9000
 set firewall ipv4 name WAN-FORWARD rule 29 protocol tcp_udp
 set firewall ipv4 name WAN-FORWARD rule 29 recent count 100
@@ -186,7 +186,7 @@ set firewall ipv4 name WAN-FORWARD rule 29 recent time minute
 set firewall ipv4 name WAN-FORWARD rule 29 state new
 set firewall ipv4 name WAN-FORWARD rule 30 action accept
 set firewall ipv4 name WAN-FORWARD rule 30 description 'Allow qBittorrent'
-set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 30 destination address {{ atlas_node_ip }}
 set firewall ipv4 name WAN-FORWARD rule 30 destination port 6881,9000
 set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
 set firewall ipv4 name WAN-FORWARD rule 39 action drop
@@ -217,7 +217,7 @@ set firewall ipv4 name WAN-FORWARD rule 42 destination port 11001
 set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
 set firewall ipv4 name WAN-FORWARD rule 49 action drop
 set firewall ipv4 name WAN-FORWARD rule 49 description 'DDoS prevention TeamSpeak'
-set firewall ipv4 name WAN-FORWARD rule 49 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 49 destination address {{ atlas_node_ip }}
 set firewall ipv4 name WAN-FORWARD rule 49 destination port 9987
 set firewall ipv4 name WAN-FORWARD rule 49 protocol udp
 set firewall ipv4 name WAN-FORWARD rule 49 recent count 100
@@ -225,7 +225,7 @@ set firewall ipv4 name WAN-FORWARD rule 49 recent time minute
 set firewall ipv4 name WAN-FORWARD rule 49 state new
 set firewall ipv4 name WAN-FORWARD rule 50 action accept
 set firewall ipv4 name WAN-FORWARD rule 50 description 'Allow teamspeak'
-set firewall ipv4 name WAN-FORWARD rule 50 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 50 destination address {{ atlas_node_ip }}
 set firewall ipv4 name WAN-FORWARD rule 50 destination port 9987
 set firewall ipv4 name WAN-FORWARD rule 50 protocol udp
 set firewall ipv4 name WAN-LOCAL default-action drop
@@ -319,8 +319,8 @@ set firewall ipv6 name IOT-FORWARD6 rule 20 action accept
 set firewall ipv6 name IOT-FORWARD6 rule 20 description 'IoT to WAN'
 set firewall ipv6 name IOT-FORWARD6 rule 20 outbound-interface group WAN
 set firewall ipv6 name IOT-FORWARD6 rule 30 action accept
-set firewall ipv6 name IOT-FORWARD6 rule 30 description 'Printer to Samba on docker'
-set firewall ipv6 name IOT-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name IOT-FORWARD6 rule 30 description 'Printer to Samba on Atlas'
+set firewall ipv6 name IOT-FORWARD6 rule 30 destination address {{ atlas_node_ipv6_suffix }}
 set firewall ipv6 name IOT-FORWARD6 rule 30 destination address-mask ::ffff:ffff:ffff:ffff
 set firewall ipv6 name IOT-FORWARD6 rule 30 destination port 445,139
 set firewall ipv6 name IOT-FORWARD6 rule 30 protocol tcp
@@ -402,7 +402,7 @@ set firewall ipv6 name WAN-FORWARD6 rule 20 description 'Allow ICMPv6 from WAN'
 set firewall ipv6 name WAN-FORWARD6 rule 20 protocol icmpv6
 set firewall ipv6 name WAN-FORWARD6 rule 29 action drop
 set firewall ipv6 name WAN-FORWARD6 rule 29 description 'DDoS prevention qBittorrent'
-set firewall ipv6 name WAN-FORWARD6 rule 29 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 29 destination address {{ atlas_node_ipv6_suffix }}
 set firewall ipv6 name WAN-FORWARD6 rule 29 destination address-mask ::ffff:ffff:ffff:ffff
 set firewall ipv6 name WAN-FORWARD6 rule 29 destination port 6881,9000
 set firewall ipv6 name WAN-FORWARD6 rule 29 protocol tcp_udp
@@ -411,7 +411,7 @@ set firewall ipv6 name WAN-FORWARD6 rule 29 recent time minute
 set firewall ipv6 name WAN-FORWARD6 rule 29 state new
 set firewall ipv6 name WAN-FORWARD6 rule 30 action accept
 set firewall ipv6 name WAN-FORWARD6 rule 30 description 'Allow qBittorrent'
-set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 30 destination address {{ atlas_node_ipv6_suffix }}
 set firewall ipv6 name WAN-FORWARD6 rule 30 destination address-mask ::ffff:ffff:ffff:ffff
 set firewall ipv6 name WAN-FORWARD6 rule 30 destination port 6881,9000
 set firewall ipv6 name WAN-FORWARD6 rule 30 protocol tcp_udp
@@ -447,7 +447,7 @@ set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 11001
 set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
 set firewall ipv6 name WAN-FORWARD6 rule 49 action drop
 set firewall ipv6 name WAN-FORWARD6 rule 49 description 'DDoS prevention TeamSpeak'
-set firewall ipv6 name WAN-FORWARD6 rule 49 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 49 destination address {{ atlas_node_ipv6_suffix }}
 set firewall ipv6 name WAN-FORWARD6 rule 49 destination address-mask ::ffff:ffff:ffff:ffff
 set firewall ipv6 name WAN-FORWARD6 rule 49 destination port 9987
 set firewall ipv6 name WAN-FORWARD6 rule 49 protocol udp
@@ -455,7 +455,7 @@ set firewall ipv6 name WAN-FORWARD6 rule 49 recent count 100
 set firewall ipv6 name WAN-FORWARD6 rule 49 recent time minute
 set firewall ipv6 name WAN-FORWARD6 rule 49 state new
 set firewall ipv6 name WAN-FORWARD6 rule 50 action accept
-set firewall ipv6 name WAN-FORWARD6 rule 50 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 50 destination address {{ atlas_node_ipv6_suffix }}
 set firewall ipv6 name WAN-FORWARD6 rule 50 destination address-mask ::ffff:ffff:ffff:ffff
 set firewall ipv6 name WAN-FORWARD6 rule 50 destination port 9987
 set firewall ipv6 name WAN-FORWARD6 rule 50 protocol udp

@@ -87,6 +87,10 @@ def test_pinned_render_retains_settings_and_secrets(observability, capsys):
     assert first == {
         path: path.read_bytes() for path in root.rglob("*") if path.is_file()
     }
+    config = json.loads((root / "grafana-loki/atlas-compose.json").read_text())
+    assert config["services"]["loki"]["ports"] == [
+        {"target": 3100, "published": "3100", "host_ip": "127.0.0.1", "protocol": "tcp"}
+    ]
     grafana = (root / "grafana-loki/grafana/grafana.ini").read_text()
     assert "domain = grafana.atlas.home.arpa" in grafana
     assert "https://authelia.atlas.home.arpa/token" in grafana

@@ -1,0 +1,23 @@
+---
+- name: Protect local router configuration backups
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backup"
+    state: directory
+    mode: "0700"
+
+- name: Apply only TeamSpeak forwarding and abuse limits
+  vars:
+    teamspeak_rule_pattern: '^set (nat destination rule 30 |firewall (ipv4 name WAN-FORWARD|ipv6 name WAN-FORWARD6) rule (49|50) )'
+  vyos.vyos.vyos_config:
+    lines: >-
+      {{
+        (lookup('ansible.builtin.template', 'templates/partials/nat_routing.j2') ~ '\n' ~
+         lookup('ansible.builtin.template', 'templates/partials/firewall.j2')).splitlines()
+        | select('match', teamspeak_rule_pattern) | list
+      }}
+    backup: true
+    backup_options:
+      dir_path: "{{ playbook_dir }}/backup"
+    save: true
+  no_log: true

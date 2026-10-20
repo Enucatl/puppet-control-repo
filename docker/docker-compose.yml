@@ -111,6 +111,7 @@ services:
       start_period: 90s
 
   goflow2:
+    profiles: [migration-retired]
     extends:
       file: ../../compose-security-baseline/hardening.yml
       service: hardened-small
@@ -258,6 +259,7 @@ services:
       - apt_cache
 
   wolf:
+    profiles: [migration-retired]
     extends:
       file: ../../compose-security-baseline/hardening.yml
       service: hardened-small

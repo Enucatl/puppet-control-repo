@@ -119,6 +119,10 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         },
     )
     result = resources(catalog)
+    alloy_config = result["File[/etc/alloy/config.alloy]"]["content"]
+    assert 'loki.source.docker "goflow2_logs"' in alloy_config
+    assert 'listen_address = "10.0.0.158"' in alloy_config
+    assert 'host = "atlas.home.arpa"' in alloy_config
     ssh_config = result["Concat::Fragment[ssh_config global config]"]["content"]
     assert "ProxyCommand none\n" in ssh_config
     assert "KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H\n" in ssh_config
@@ -163,6 +167,37 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         result["Vault_cert[atlas]"]["cert_data"]["common_name"] == "*.atlas.home.arpa"
     )
     assert "Class[Profile::Docker_node]" not in result
+    assert "Class[Profile::Paperless_scans]" in result
+    share = result["Samba::Share[scans]"]
+    assert share["path"] == "/opt/paperless-consume"
+    assert share["writable"] is True
+    assert share["valid_users"] == ["printer"]
+    assert share["force_user"] == "printer"
+    samba = result["Class[Samba]"]
+    assert "10.0.20.189" in samba["hosts_allow"]
+    assert "fd6b:d722:1738:0::/64" in samba["hosts_allow"]
+    assert "fd6b:d722:1738:28::/64" in samba["hosts_allow"]
+    scratch = result["Mount[/scratch]"]
+    assert scratch["ensure"] == "mounted"
+    assert scratch["device"] == "UUID=99b387e9-afd5-4e15-bcbe-b471275fbb07"
+    assert scratch["fstype"] == "ext4"
+    assert scratch["atboot"] is True
+    assert result["Nfs::Server::Export[/scratch]"]["atboot"] is True
+    assert result["Samba::Share[shared_pictures]"]["path"] == "/scratch/shared_pictures"
+    assert (
+        "RequiresMountsFor=/scratch"
+        in result["File[/etc/systemd/system/docker.service.d/scratch.conf]"]["content"]
+    )
+    assert samba["hosts_deny"] == ["ALL"]
+    consume = result["File[/opt/paperless-consume]"]
+    assert consume["ensure"] == "directory"
+    assert consume["owner"] == consume["group"] == "printer"
+    printer = result["Exec[create_samba_user_printer]"]
+    assert str(printer["command"]).startswith("/usr/bin/printf '%s\\n%s\\n'")
+    assert "fixture-printer" in str(printer["command"])
+    assert "smbpasswd -a -s printer" in str(printer["command"])
+    assert printer["unless"] == "/usr/bin/pdbedit -L -u printer"
+    assert printer["require"] == "Class[Samba::Install]"
     for name in ("airflow", "traefik", "paperless-ai", "grindr-api-dev-tool"):
         directory = result[f"File[/opt/docker/{name}]"]
         assert directory["ensure"] == "directory"
