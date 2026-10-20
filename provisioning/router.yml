@@ -32,6 +32,10 @@
       ansible.builtin.import_tasks: tasks/07_dns.yml
       tags: [dns, never]
 
+    - name: Move only I2P forwarding to Atlas
+      ansible.builtin.import_tasks: tasks/08_i2p.yml
+      tags: [i2p, never]
+
     - name: Prepare file system and persistent directories
       ansible.builtin.import_tasks: tasks/01_setup_dirs.yml
       tags: [apply]

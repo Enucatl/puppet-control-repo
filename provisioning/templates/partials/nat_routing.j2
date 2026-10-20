@@ -12,7 +12,7 @@ set nat destination rule 22 description 'I2Pd Node'
 set nat destination rule 22 destination port 11001
 set nat destination rule 22 inbound-interface name {{ wan_interface }}
 set nat destination rule 22 protocol tcp_udp
-set nat destination rule 22 translation address {{ docker_node_ip }}
+set nat destination rule 22 translation address {{ atlas_node_ip }}
 set nat destination rule 30 description teamspeak
 set nat destination rule 30 destination port 9987
 set nat destination rule 30 inbound-interface name {{ wan_interface }}

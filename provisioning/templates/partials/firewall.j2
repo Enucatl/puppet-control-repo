@@ -192,7 +192,7 @@ set firewall ipv4 name WAN-FORWARD rule 30 protocol tcp_udp
 set firewall ipv4 name WAN-FORWARD rule 39 action drop
 set firewall ipv4 name WAN-FORWARD rule 39 description 'DDOS prevention'
 set firewall ipv4 name WAN-FORWARD rule 39 destination address {{ docker_node_ip }}
-set firewall ipv4 name WAN-FORWARD rule 39 destination port 9001,9030,11001
+set firewall ipv4 name WAN-FORWARD rule 39 destination port 9001,9030
 set firewall ipv4 name WAN-FORWARD rule 39 protocol tcp_udp
 set firewall ipv4 name WAN-FORWARD rule 39 recent count 50
 set firewall ipv4 name WAN-FORWARD rule 39 recent time minute
@@ -202,9 +202,17 @@ set firewall ipv4 name WAN-FORWARD rule 40 description 'Tor ORPort'
 set firewall ipv4 name WAN-FORWARD rule 40 destination address {{ docker_node_ip }}
 set firewall ipv4 name WAN-FORWARD rule 40 destination port 9001,9030
 set firewall ipv4 name WAN-FORWARD rule 40 protocol tcp
+set firewall ipv4 name WAN-FORWARD rule 41 action drop
+set firewall ipv4 name WAN-FORWARD rule 41 description 'DDoS prevention I2Pd'
+set firewall ipv4 name WAN-FORWARD rule 41 destination address {{ atlas_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 41 destination port 11001
+set firewall ipv4 name WAN-FORWARD rule 41 protocol tcp_udp
+set firewall ipv4 name WAN-FORWARD rule 41 recent count 50
+set firewall ipv4 name WAN-FORWARD rule 41 recent time minute
+set firewall ipv4 name WAN-FORWARD rule 41 state new
 set firewall ipv4 name WAN-FORWARD rule 42 action accept
 set firewall ipv4 name WAN-FORWARD rule 42 description 'Allow I2Pd Node'
-set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ docker_node_ip }}
+set firewall ipv4 name WAN-FORWARD rule 42 destination address {{ atlas_node_ip }}
 set firewall ipv4 name WAN-FORWARD rule 42 destination port 11001
 set firewall ipv4 name WAN-FORWARD rule 42 protocol tcp_udp
 set firewall ipv4 name WAN-FORWARD rule 49 action drop
@@ -411,7 +419,7 @@ set firewall ipv6 name WAN-FORWARD6 rule 39 action drop
 set firewall ipv6 name WAN-FORWARD6 rule 39 description 'DDOS prevention'
 set firewall ipv6 name WAN-FORWARD6 rule 39 destination address {{ docker_node_ipv6_suffix }}
 set firewall ipv6 name WAN-FORWARD6 rule 39 destination address-mask ::ffff:ffff:ffff:ffff
-set firewall ipv6 name WAN-FORWARD6 rule 39 destination port 9001,9030,11001
+set firewall ipv6 name WAN-FORWARD6 rule 39 destination port 9001,9030
 set firewall ipv6 name WAN-FORWARD6 rule 39 protocol tcp_udp
 set firewall ipv6 name WAN-FORWARD6 rule 39 recent count 50
 set firewall ipv6 name WAN-FORWARD6 rule 39 recent time minute
@@ -422,9 +430,18 @@ set firewall ipv6 name WAN-FORWARD6 rule 40 destination address {{ docker_node_i
 set firewall ipv6 name WAN-FORWARD6 rule 40 destination address-mask ::ffff:ffff:ffff:ffff
 set firewall ipv6 name WAN-FORWARD6 rule 40 destination port 9001,9030
 set firewall ipv6 name WAN-FORWARD6 rule 40 protocol tcp
+set firewall ipv6 name WAN-FORWARD6 rule 41 action drop
+set firewall ipv6 name WAN-FORWARD6 rule 41 description 'DDoS prevention I2Pd'
+set firewall ipv6 name WAN-FORWARD6 rule 41 destination address {{ atlas_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 41 destination address-mask ::ffff:ffff:ffff:ffff
+set firewall ipv6 name WAN-FORWARD6 rule 41 destination port 11001
+set firewall ipv6 name WAN-FORWARD6 rule 41 protocol tcp_udp
+set firewall ipv6 name WAN-FORWARD6 rule 41 recent count 50
+set firewall ipv6 name WAN-FORWARD6 rule 41 recent time minute
+set firewall ipv6 name WAN-FORWARD6 rule 41 state new
 set firewall ipv6 name WAN-FORWARD6 rule 42 action accept
 set firewall ipv6 name WAN-FORWARD6 rule 42 description 'Allow I2Pd Node'
-set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ docker_node_ipv6_suffix }}
+set firewall ipv6 name WAN-FORWARD6 rule 42 destination address {{ atlas_node_ipv6_suffix }}
 set firewall ipv6 name WAN-FORWARD6 rule 42 destination address-mask ::ffff:ffff:ffff:ffff
 set firewall ipv6 name WAN-FORWARD6 rule 42 destination port 11001
 set firewall ipv6 name WAN-FORWARD6 rule 42 protocol tcp_udp
