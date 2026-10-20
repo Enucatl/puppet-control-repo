@@ -60,14 +60,6 @@ def authority(tmp_path: Path) -> Path:
         repository.mkdir(parents=True)
         git(repository, "init", "-q", "--initial-branch=production")
         (repository / "configuration").write_text(name)
-        if name == "puppet-control-repo":
-            guard = repository / "docker/openvox/infra-host-pre-receive"
-            guard.parent.mkdir(parents=True)
-            guard.write_text(
-                (
-                    SCRIPT.parent.parent / "docker/openvox/infra-host-pre-receive"
-                ).read_text()
-            )
         git(repository, "add", ".")
         git(
             repository,
@@ -89,11 +81,11 @@ def authority(tmp_path: Path) -> Path:
         str(tmp_path / "opt/docker/puppet-control-repo"),
         str(bare),
     )
-    guard = bare / "hooks/pre-receive"
-    guard.write_text(
-        (SCRIPT.parent.parent / "docker/openvox/infra-host-pre-receive").read_text()
+    dispatcher = bare / "hooks/post-receive"
+    dispatcher.write_text(
+        (SCRIPT.parent.parent / "docker/openvox/infra-host-post-receive").read_text()
     )
-    guard.chmod(0o755)
+    dispatcher.chmod(0o755)
     bins = tmp_path / "bin"
     bins.mkdir()
     (tmp_path / "run/lock").mkdir(parents=True)
@@ -460,12 +452,12 @@ def test_backup_archives_captured_commits_even_if_checkout_advances(
             assert archive.extractfile("configuration").read().decode() == repository
 
 
-def test_backup_refuses_unprotected_git_receiver(authority: Path) -> None:
-    """A legacy receiver must install the guard before stopped-state capture."""
-    (authority / "opt/git/openvox/control.git/hooks/pre-receive").unlink()
+def test_backup_refuses_receiver_without_deployment_dispatcher(authority: Path) -> None:
+    """Require the post-receive dispatcher, not a pre-receive push guard."""
+    (authority / "opt/git/openvox/control.git/hooks/post-receive").unlink()
     result = backup(authority)
     assert result.returncode != 0
-    assert "managed receive guard" in result.stderr
+    assert "managed deployment dispatcher" in result.stderr
     assert " stop " not in (authority / "commands").read_text()
 
 

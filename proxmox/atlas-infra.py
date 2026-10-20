@@ -600,19 +600,7 @@ def deploy_initial() -> None:
             "/opt/git/openvox/control.git/hooks/post-receive",
         ]
     )
-    run(
-        [
-            "install",
-            "-o",
-            "user_l",
-            "-g",
-            "docker",
-            "-m",
-            "0755",
-            str(SOURCE / "docker/openvox/infra-host-pre-receive"),
-            "/opt/git/openvox/control.git/hooks/pre-receive",
-        ]
-    )
+    run(["rm", "-f", "/opt/git/openvox/control.git/hooks/pre-receive"])
 
 
 def start() -> None:
@@ -622,6 +610,7 @@ def start() -> None:
             "Missing initialized state; explicitly initialize or restore it"
         )
     with maintenance():
+        run(["rm", "-f", "/opt/git/openvox/control.git/hooks/pre-receive"])
         compose(
             "up",
             "-d",

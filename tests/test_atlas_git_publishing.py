@@ -52,13 +52,6 @@ def publishing(tmp_path: Path) -> Path:
     )
     git(seed, "add", str(reference))
     base = commit(seed, "production base")
-    guard = reference.with_name("infra-host-pre-receive")
-    guard.write_text(
-        (PROXMOX.parent / "docker/openvox/infra-host-pre-receive")
-        .read_text()
-        .replace("/run/lock/", str(tmp_path / "run/lock") + "/")
-    )
-    git(seed, "add", str(guard))
     revision = commit(seed, "published production target")
     github = tmp_path / "github.git"
     git(tmp_path, "clone", "-q", "--bare", str(seed), str(github))
@@ -159,7 +152,7 @@ def run_script(
             "PATH": f"{root / 'bin'}:{os.environ['PATH']}",
             "TEST_ROOT": str(root),
             "GIT_CONFIG_GLOBAL": "/dev/null",
-            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_SYSTEM": str(root / "gitconfig-system"),
         },
         text=True,
         capture_output=True,
@@ -169,7 +162,7 @@ def run_script(
 
 
 def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> None:
-    """Publish a shallow detached checkout with only the managed receive guard."""
+    """Publish a shallow checkout without installing a receive gate."""
     revision = (publishing / "revision").read_text()
     checkout = publishing / "opt/docker/puppet-control-repo"
     bare = publishing / "opt/git/openvox/control.git"
@@ -213,15 +206,23 @@ def test_atlas_publishes_both_targets_and_repeats_safely(publishing: Path) -> No
         assert bare.parent.stat().st_mode & 0o7777 == 0o2775
         assert bare.stat().st_mode & 0o7777 == 0o2775
         assert git(bare, "config", "core.sharedRepository") == "0664"
+        assert subprocess.check_output(
+            [
+                "git",
+                "config",
+                "--file",
+                str(publishing / "gitconfig-system"),
+                "--get-all",
+                "safe.directory",
+            ],
+            text=True,
+        ).splitlines() == [str(bare)]
         for path in bare.rglob("*"):
             assert path.stat().st_mode & 0o004, path
             assert not path.stat().st_mode & 0o002, path
             if path.is_dir():
                 assert path.stat().st_mode & 0o001, path
-        assert sorted(path.name for path in (bare / "hooks").glob("*")) == [
-            "pre-receive"
-        ]
-        assert (bare / "hooks/pre-receive").stat().st_mode & 0o111
+        assert sorted(path.name for path in (bare / "hooks").glob("*")) == []
 
 
 def test_atlas_preserves_dirty_checkout_without_publishing(publishing: Path) -> None:
@@ -335,7 +336,7 @@ def test_atlas_requires_revision_published_on_production(publishing: Path) -> No
     assert not (publishing / "opt/git/openvox/control.git").exists()
 
 
-@pytest.mark.parametrize("name", ["pre-receive", "post-receive"])
+@pytest.mark.parametrize("name", ["post-receive"])
 def test_atlas_refuses_existing_active_receiver_hook(
     publishing: Path, name: str
 ) -> None:

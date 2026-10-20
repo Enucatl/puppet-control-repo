@@ -15,6 +15,9 @@ checkout=/opt/docker/puppet-control-repo
 bare=/opt/git/openvox/control.git
 control_git=(runuser -u user_l -- git -C "$checkout")
 bare_git=(runuser -u user_l -- git --git-dir="$bare")
+if ! git config --system --get-all safe.directory 2>/dev/null | grep -Fxq "$bare"; then
+    git config --system --add safe.directory "$bare"
+fi
 # Earlier root backup checks could replace this public index with a private one.
 index="$checkout/.git/index"
 if [[ -f $index && ! -L $index && $(stat -c %u "$index") == 0 ]]; then
@@ -68,14 +71,15 @@ fi
     echo 'Publishing setup requires an unhooked Atlas bare repository.' >&2; exit 1;
 }
 managed_hook=false
+rm -f "$bare/hooks/pre-receive"
 for hook in "$bare"/hooks/*; do
     if [[ -x $hook && $hook != *.sample ]]; then
         case "${hook##*/}" in
-            pre-receive|post-receive)
+            post-receive)
                 cmp -s "$checkout/docker/openvox/infra-host-${hook##*/}" "$hook" || {
                     echo 'Publishing setup permits only managed host receive hooks.' >&2; exit 1;
                 }
-                [[ ${hook##*/} != post-receive ]] || managed_hook=true
+                managed_hook=true
                 ;;
             *) echo 'Publishing setup permits only managed host receive hooks.' >&2; exit 1 ;;
         esac
@@ -94,7 +98,6 @@ if "${control_git[@]}" show-ref --verify --quiet refs/heads/production; then
 else
     "${control_git[@]}" switch --create production "$revision"
 fi
-install -o user_l -g docker -m 0755 "$checkout/docker/openvox/infra-host-pre-receive" "$bare/hooks/pre-receive"
 "${control_git[@]}" config --local --replace-all remote.origin.pushurl "$github"
 "${control_git[@]}" config --local --add remote.origin.pushurl "$bare"
 "${control_git[@]}" config --local --replace-all remote.origin.push refs/heads/production:refs/heads/production

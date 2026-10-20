@@ -88,9 +88,9 @@ for repository in "$source" "$baseline"; do
     }
 done
 [[ $(git -c "safe.directory=$bare" --git-dir="$bare" rev-parse --is-bare-repository) == true ]]
-if [[ ! -x $bare/hooks/pre-receive ]] ||
-    ! cmp -s "$source/docker/openvox/infra-host-pre-receive" "$bare/hooks/pre-receive"; then
-    echo 'Install the managed receive guard through publishing before backup.' >&2; exit 1;
+if [[ ! -x $bare/hooks/post-receive ]] ||
+    ! cmp -s "$source/docker/openvox/infra-host-post-receive" "$bare/hooks/post-receive"; then
+    echo 'Install the managed deployment dispatcher before backup.' >&2; exit 1;
 fi
 control_revision=$(git -c "safe.directory=$source" -C "$source" rev-parse HEAD)
 baseline_revision=$(git -c "safe.directory=$baseline" -C "$baseline" rev-parse HEAD)

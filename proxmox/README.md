@@ -272,26 +272,29 @@ This receiver contains public committed code: its directory and parent use
 `core.sharedRepository=0664` keeps future objects and refs readable even under
 a restrictive umask. Other users cannot write. The working checkout under
 `/opt/docker` retains mode `2770` because it can contain deployment secrets.
-The bare repository is created with an empty Git template and a managed
-pre-receive guard. Setup permits only the managed receive hooks; container
-activation installs the deployment dispatcher.
+The bare repository is created with an empty Git template. The publisher removes
+the old maintenance-lock pre-receive guard; container activation installs the
+post-receive deployment dispatcher. It also marks this exact receiver safe in
+system Git config so local group writers can push to it.
 
 Atlas keeps GitHub's SSH URL for fetches and pins GitHub's public host key in
 the checkout's Git metadata. GitHub authentication uses the administrator's
-forwarded SSH agent; private keys are not copied to Atlas. Use
-`atlas-publish.sh` for every publication: it holds the maintenance lock before
-changing the checkout or receiver refs and publishes local `production` to both:
+forwarded SSH agent; private keys are not copied to Atlas. The publisher holds
+the maintenance lock while it prepares and publishes the Atlas checkout. Once
+routing is configured, ordinary `git push` publishes from a working checkout to
+both:
 
 - `git@github.com:Enucatl/puppet-control-repo.git`, branch `production`.
 - `/opt/git/openvox/control.git`, branch `production`.
 
 GitHub `dev` remains available for development; the publishing setup promotes a
-declared commit rather than rewriting or deleting that branch. Git push to two
-URLs is not a cross-repository transaction. The script verifies both production
-hashes after publication; rerun the same revision if one target fails.
-The receiver rejects direct pushes without the inherited maintenance lock,
-including ordinary `git push`. Re-run publishing at the current revision to
-install the guard on an existing receiver before taking a backup.
+declared commit rather than rewriting or deleting that branch. Once routing is
+configured, ordinary `git push` updates GitHub and the Atlas receiver; its
+post-receive hook deploys the pushed branch. Pushes are no longer gated by the
+maintenance lock. The publisher still uses that lock when coordinating its
+GitHub promotion and Atlas receiver update with backups and service operations.
+Git push to two URLs is not a cross-repository transaction, so verify both refs
+if a push reports an error after updating one target.
 
 Maintenance release `60da9a9` passed production publication with a receipt
 matching the actual deployed commit. Its isolated restore, host reboot, image

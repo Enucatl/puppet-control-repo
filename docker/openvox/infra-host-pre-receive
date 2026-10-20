@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-# The publisher holds this inherited descriptor throughout receive-pack and deployment.
-if [[ ! -e /proc/self/fd/9 || ! /proc/self/fd/9 -ef /run/lock/atlas-openvox-maintenance.lock ]] ||
-    ! flock -n 9; then
-    echo 'Atlas receives require the maintenance lock; use atlas-publish.sh.' >&2
-    exit 1
-fi

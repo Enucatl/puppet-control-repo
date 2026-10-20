@@ -178,7 +178,7 @@ python3 proxmox/atlas-infra.py start
 
 Startup waits for health and has no initialization or signing operation.
 The script deploys production/dev, installs the scoped Hiera overlay, generates
-types and installs the host receive guard and dispatcher before starting OpenVox.
+types and installs the host post-receive dispatcher before starting OpenVox.
 The code volume disables Docker's image-template copying so r10k starts with an
 empty environment directory. An older volume containing exactly the packaged
 template is preserved under `packaged-environments` before deployment; unknown
@@ -230,9 +230,9 @@ readiness, a fresh exact-name TLS handshake must serve the same certificate as
 the file before the durable reload marker is cleared. This allows retry after
 an interrupted publish/restart; a no-op check does not restart the container.
 The maintenance lock shared with backup, startup and publishing prevents those
-operations overlapping. Publishing acquires it before Git refs can change;
-the receiver guard rejects receives without its inherited lock. Startup releases
-the lock before synchronously starting renewal. Renewal recovers a stopped
+operations overlapping. The lock does not gate Git receives; direct pushes
+update refs and their post-receive deployments serialize separately. Startup
+releases the lock before synchronously starting renewal. Renewal recovers a stopped
 existing OpenVox container and waits for its health without reconciling Compose
 configuration or image changes.
 The CLI uses the accepted `certificate_revocation=leaf` agent policy.
@@ -292,9 +292,9 @@ The private `/opt/docker` tree retains mode `2770`. The remapped OpenVox user
 (`999:999` inside, `100999:100999` on Atlas) can read public Git data; writable
 deployment status remains on the separate `/git` volume. r10k uses the file URL
 `file:///git/control.git`, with Git trust scoped to that exact repository in the
-image. The managed host pre-receive guard requires the publisher's maintenance
-lock before accepting ref updates. The host post-receive hook dispatches to the container's
-r10k/types/cache-refresh helper. The initialization script installs it after
+image. Direct pushes update the receiver without a pre-receive lock gate. The
+host post-receive hook dispatches to the container's r10k/types/cache-refresh
+helper. The initialization script installs it after
 the first deployment; startup verifies its exact content. Publisher checks the
 deployment status and verified deployed commit after an updated production receive,
 because Git itself can accept refs even when post-receive deployment fails.
