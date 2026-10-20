@@ -1,6 +1,10 @@
 class profile::common::identity (
   String $server = lookup('freeipa::client::server'),
 ) {
+  package { 'sssd-tools':
+    ensure => installed,
+  }
+
   exec { 'restart_sssd_after_identity_configuration':
     command     => '/bin/systemctl restart sssd',
     refreshonly => true,
