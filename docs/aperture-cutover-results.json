@@ -1,0 +1,101 @@
+{
+  "checked_at_utc": "2026-10-20T16:07:31.369869+00:00",
+  "handover_revision": "451316b7635e50b79ca11f5f11a1684cc6d257e8",
+  "hypervisor": "proxmox.home.arpa",
+  "vms": {
+    "300": {
+      "name": "forbearance",
+      "status": "stopped",
+      "memory_mib": 4096,
+      "onboot": 0,
+      "vga": "none",
+      "startup": "order=3",
+      "pci": {}
+    },
+    "310": {
+      "name": "aperture",
+      "status": "running",
+      "memory_mib": 16384,
+      "onboot": 1,
+      "vga": "none",
+      "startup": "order=3",
+      "pci": {
+        "hostpci0": "0000:09:00.0,pcie=1,x-vga=1",
+        "hostpci1": "0000:09:00.1,pcie=1",
+        "hostpci2": "0000:09:00.3,pcie=1,rombar=0",
+        "hostpci3": "0000:09:00.4,pcie=1,rombar=0"
+      }
+    }
+  },
+  "disks_network_identities_preserved": true,
+  "pending_changes": false,
+  "other_vm_configuration_hashes_unchanged": [
+    "100",
+    "200",
+    "210",
+    "1000",
+    "9000",
+    "9001"
+  ],
+  "recovery_directory": "root@proxmox.home.arpa:/root/aperture-cutover",
+  "guest": {
+    "hostname": "aperture.home.arpa",
+    "kernel": "7.0.0-38-generic",
+    "dmi_memory": "16 GB",
+    "qemu_maxmem_bytes": 17179869184,
+    "memtotal_mib": 15407,
+    "active_services": [
+      "qemu-guest-agent",
+      "display-manager (gdm)",
+      "sssd",
+      "puppet"
+    ],
+    "failed_units": 0,
+    "pci_drivers": {
+      "1002:13c0": "amdgpu",
+      "1002:1640": "snd_hda_intel",
+      "1022:15b6": "xhci_hcd",
+      "1022:15b7": "xhci_hcd"
+    },
+    "detected_usb": [
+      "Logitech USB Receiver 046d:c547",
+      "HyperX Cloud III S Wireless 03f0:06be",
+      "Logitech Webcam C925e 046d:085b",
+      "Keychron Link 3434:d030"
+    ],
+    "drm_hdmi_a_1": "connected",
+    "gdm_seat0": "greeter on tty1",
+    "ipa_user_lookup": "user UID 175200003",
+    "kerberos": "Host keytab TGT and host/atlas.home.arpa service ticket obtained",
+    "nfs": {
+      "/export/docker": "atlas.home.arpa:/docker; NFS 4.2 sec=krb5p; successful metadata read; root directory listing denied by existing 2770 permissions",
+      "/export/scratch": "atlas.home.arpa:/scratch; NFS 4.2 sec=krb5p; directory read successful"
+    },
+    "openvox_configuration_version": "openvox-production-451316b7635",
+    "openvox_failed_resources": 0,
+    "openvox_failed_events": 0,
+    "default_printer": "Brother_MFC_L2750DW"
+  },
+  "logs": {
+    "url": "https://loki-read.atlas.home.arpa/loki/api/v1/query_range",
+    "start_utc": "2026-10-20T16:04:00Z",
+    "end_utc": "2026-10-20T16:12:00Z",
+    "guest_selector": "{job=\"systemd-journal\",host=\"aperture.home.arpa\"} |~ \"(?i)amdgpu|firmware|drm|reset|xhci|snd_hda\"",
+    "host_selector": "{job=\"systemd-journal\",host=\"proxmox.home.arpa\"} |~ \"(?i)vfio|09:00|reset|aer|iommu\"",
+    "host_matching_entries": 0,
+    "guest_result": "AMD SMU, Display Core, DMUB, amdgpu framebuffer and GDM atomic modesetting initialized; no observed GPU hang, reset failure in guest, or required firmware load failure",
+    "nonfatal_warnings": [
+      "Proxmox startup attempted reset of 09:00.0: Inappropriate ioctl for device; continued successfully. Only bus reset method is exposed. No unsafe reset workaround applied.",
+      "Optional RAS/RAP/SECUREDISPLAY TA firmware unavailable; graphics initialized.",
+      "Emulated Intel audio 00:1b.0 reported no codecs; transferred AMD audio and USB headset detected."
+    ]
+  },
+  "unverified": [
+    "Physical monitor image",
+    "Physical keyboard and mouse operation",
+    "Audible audio",
+    "Interactive login",
+    "Comprehensive personal application preferences and licences",
+    "Future GPU reset/reboot reliability"
+  ]
+}
