@@ -94,7 +94,8 @@ cloud-init through the QEMU agent, verify names and append guest output to
 `LOG_DIR/cloud-init-output.log`. The shared shell wait expires after 30 minutes.
 
 Atlas gets disposable `/scratch` on its system disk. Scripted ownership and
-tmpfiles cleanup cover `/scratch/apt-cacher-ng` (cache account, 0755, two days)
+tmpfiles cleanup cover `/scratch/apt-cacher-ng` (100101:100101, 0755, two days;
+Docker's remapped container UID/GID 101)
 and `/scratch/backup/vault` (root only, 0700, seven days). Temporary `/scratch`
 requires no enforced size limit: its contents are discarded at disk cutover.
 No Vault recovery material is supplied

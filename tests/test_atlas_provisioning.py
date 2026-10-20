@@ -498,7 +498,7 @@ def test_atlas_base_deployment_and_owned_failure_cleanup(
     )
     scratch = files["/etc/tmpfiles.d/atlas-scratch.conf"]
     assert "d /scratch 0755 root root -" in scratch
-    assert "d /scratch/apt-cacher-ng 0755 apt-cacher-ng apt-cacher-ng 2d" in scratch
+    assert "d /scratch/apt-cacher-ng 0755 100101 100101 2d" in scratch
     assert "d /scratch/backup/vault 0700 root root 7d" in scratch
     assert "systemctl enable --now systemd-tmpfiles-clean.timer" in config["runcmd"]
     assert not config.get("mounts")

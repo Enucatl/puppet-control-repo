@@ -51,7 +51,7 @@ check_atlas() {
         . /etc/os-release
         test "$VERSION_ID" = 26.04
         test "$(stat -c %d /scratch)" = "$(stat -c %d /)"
-        test "$(stat -c %U /scratch/apt-cacher-ng)" = apt-cacher-ng
+        test "$(stat -c %u:%g /scratch/apt-cacher-ng)" = 100101:100101
         test "$(stat -c %a /scratch/backup/vault)" = 700
         test ! -e /etc/puppetlabs/puppet/ssl/private_keys
         test ! -e /etc/puppetlabs/puppet/csr_attributes.yaml
