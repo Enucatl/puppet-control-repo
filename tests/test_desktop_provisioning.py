@@ -413,6 +413,24 @@ def test_provision_lifecycle_and_cleanup(
         "home.arpa",
     ) in commands
     if failure == "wait":
+        diagnostics = next(logs.glob("desktop-123-failure-*"))
+        assert diagnostics.stat().st_mode & 0o077 == 0
+        diagnostic = diagnostics / "cloud-init-output.json"
+        assert diagnostic.stat().st_mode & 0o077 == 0
+        assert "provisioned guest log" in json.loads(diagnostic.read_text())["stdout"]
+        assert commands.index(
+            (
+                "qm",
+                "guest",
+                "exec",
+                "123",
+                "--",
+                "tail",
+                "-n",
+                "300",
+                "/var/log/cloud-init-output.log",
+            )
+        ) < commands.index(("qm", "stop", "123"), clone)
         assert commands[-2:] == [
             ("qm", "stop", "123"),
             ("qm", "destroy", "123", "--purge"),

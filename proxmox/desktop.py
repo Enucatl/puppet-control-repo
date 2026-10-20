@@ -190,6 +190,29 @@ def require_owned_vm(vmid: str, name: str, marker: str) -> None:
         raise ValueError(f"VMID {vmid} is a template")
 
 
+def save_failure_diagnostics(vmid: str, log_dir: Path) -> None:
+    """Preserve private guest diagnostics before deleting a failed clone."""
+    destination = log_dir / f"desktop-{vmid}-failure-{time.time_ns()}"
+    destination.mkdir(mode=0o700)
+    for name, command in (
+        ("cloud-init-output", ("tail", "-n", "300", "/var/log/cloud-init-output.log")),
+        ("cloud-init", ("tail", "-n", "100", "/var/log/cloud-init.log")),
+        ("cloud-final", ("journalctl", "-u", "cloud-final", "--no-pager", "-n", "100")),
+    ):
+        result = run("qm", "guest", "exec", vmid, "--", *command, check=False)
+        with (destination / f"{name}.json").open("w") as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            json.dump(
+                {
+                    "status": result.returncode,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                },
+                stream,
+            )
+    print(f"Private failure diagnostics: {destination}", file=sys.stderr)
+
+
 def verify_guest_hostname(vmid: str, name: str, certname: str) -> None:
     """Check the guest's short and fully qualified names through its agent."""
     for command, expected in ((("hostname",), name), (("hostname", "-f"), certname)):
@@ -352,6 +375,13 @@ def provision(args: argparse.Namespace, settings: dict[str, str]) -> str:
         run("qm", "set", vmid, "--delete", "cicustom")
     except Exception, KeyboardInterrupt:
         if cloned:
+            try:
+                save_failure_diagnostics(vmid, log_dir)
+            except (OSError, subprocess.SubprocessError) as diagnostic_error:
+                print(
+                    f"Could not save failure diagnostics: {diagnostic_error}",
+                    file=sys.stderr,
+                )
             print(f"Provisioning failed; removing VM {vmid}...", file=sys.stderr)
             try:
                 require_owned_vm(vmid, name, marker)
