@@ -103,10 +103,10 @@ def test_staging_keeps_data_settings_and_defers_handover(stateful, capsys):
                 in service["labels"]["traefik.http.routers.app.rule"]
             )
         if stack == "crabberbot":
-            assert "cloudflared" not in config["services"]
-            assert config["services"]["crabberbot"]["profiles"] == [
-                "migration-handover"
-            ]
+            assert "cloudflared" in config["services"]
+            assert all(
+                "profiles" not in service for service in config["services"].values()
+            )
         if stack == "send-bills":
             assert config["services"]["scheduler"]["profiles"] == ["migration-handover"]
         if stack == "paperless-ai":

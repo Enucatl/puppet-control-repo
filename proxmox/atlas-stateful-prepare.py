@@ -40,9 +40,6 @@ def prepare() -> None:
     for stack in ("paperless-ai", "browser-use", "crabberbot", "send-bills"):
         config = access.compose(stack, override=stack == "crabberbot")
         services = config["services"]
-        if stack == "crabberbot":
-            # The existing public tunnel continues serving the source database.
-            services.pop("cloudflared", None)
         for name, service in services.items():
             image = images[stack][name]
             if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
@@ -50,8 +47,6 @@ def prepare() -> None:
                     f"Expected exported source image ID for {stack}/{name}"
                 )
             service["image"] = image
-            if stack == "crabberbot" and name != "postgres":
-                service["profiles"] = ["migration-handover"]
             for key, value in service.get("labels", {}).items():
                 if key.startswith("traefik."):
                     service["labels"][key] = value.replace(
