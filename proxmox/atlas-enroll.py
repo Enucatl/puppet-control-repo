@@ -101,30 +101,7 @@ def enroll() -> None:
     helper = str(infra.SOURCE / "proxmox/configure-puppet.sh")
     infra.run(["bash", helper, "--preflight", CERTNAME])
     install_trust()
-    infra.run(
-        [
-            "bash",
-            str(infra.SOURCE / "proxmox/install-atlas-curl.sh"),
-            str(infra.STATE / "curl"),
-        ]
-    )
-    infra.run(
-        [
-            "bash",
-            str(infra.SOURCE / "proxmox/install-atlas-ipalib.sh"),
-            str(infra.STATE / "ipalib"),
-        ]
-    )
-    infra.run(
-        [
-            "install",
-            "-D",
-            "-m",
-            "0644",
-            str(infra.SOURCE / "modules/profile/files/openvox-child-policy.rb"),
-            "/usr/local/libexec/openvox-child-policy.rb",
-        ]
-    )
+    infra.run(["bash", str(infra.SOURCE / "proxmox/install-openvox.sh")])
     configure_runtime()
     if CERTIFICATE.exists():
         log = infra.run(["bash", helper, "--apply", CERTNAME, "openvox.home.arpa"])

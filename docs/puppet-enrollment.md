@@ -67,19 +67,27 @@ After the verified final IPA import, run from Atlas's clean published checkout:
 sudo python3 proxmox/atlas-enroll.py
 ```
 
-Atlas's Ubuntu curl 8.18 backport handles digestless ML-DSA signatures in
-Kerberos HTTPS negotiation using curl's upstream fix. Build it with
-`proxmox/build-atlas-curl.sh OUTPUT_DIRECTORY` and deliver the checked artifacts
-to protected `/root/openvox-infra/curl`. The enrollment script verifies and
-installs only the patched `curl` and `libcurl4t64` prerequisites before invoking
-Puppet. TLS certificate and hostname verification remain enabled.
+The shared `proxmox/install-openvox.sh` provisions the accepted OpenVox agent
+and applicable native curl/IPA library fixes from signed APT repositories.
+Package builds, patches and release instructions live in
+[openvox-packages](https://github.com/Enucatl/openvox-packages/blob/main/docs/native-client.md). No local `.deb`
+artifact directory or manual package copying is required. Ubuntu 26.04 and
+Debian 13 use the signed [native-client-2-1 release](https://github.com/Enucatl/openvox-packages/releases/tag/native-client-2-1).
+Ubuntu 24.04 retains its existing OpenVox installation path and is outside this
+native-client backport matrix. The OpenVox agent remains the accepted 24001
+build; the companion archive does not replace the server image.
+Fresh and repeated shared-installer runs passed in isolated Ubuntu 26.04 and
+Debian 13 containers, using both public signed repositories, the exact package
+versions and ML-DSA/RSA/ECDSA checks. Only `systemctl` was stubbed because these
+containers do not run systemd; actual new-host enrollment remains a separate
+step. See [compatibility and provisioning evidence](https://github.com/Enucatl/openvox-packages/blob/main/tests/debian-ipa-compat/results.json).
 
-The matching IPA library backport avoids `cryptography.public_key()` when
-reading ML-DSA SubjectPublicKeyInfo. Build it with
-`proxmox/build-atlas-ipalib.sh OUTPUT_DIRECTORY` and deliver its checked artifact
-to `/root/openvox-infra/ipalib`. The bootstrap installs the patched library;
-Puppet still installs and enrolls the IPA client. An explicitly incomplete
-installation is recovered only after its configured identity matches Atlas.
+The curl fix handles digestless ML-DSA signatures in Kerberos HTTPS negotiation;
+the IPA library fix reads ML-DSA SubjectPublicKeyInfo without asking
+`cryptography.public_key()` to decode the algorithm. TLS certificate and
+hostname verification remain enabled. Puppet still installs and enrolls the IPA
+client. An explicitly incomplete installation is recovered only after its
+configured identity matches Atlas.
 
 Documented helper runs and scheduled agent runs preload `openvox-child-policy.rb`: Puppet
 initializes its accepted strict TLS and key-writing policy, then gives spawned
@@ -87,7 +95,8 @@ commands the operating system's TLS policy. This lets APT and public downloads
 work without changing Puppet's initialized TLS contexts. Atlas's managed
 systemd drop-in retains the same preload for scheduled runs.
 
-The script installs authenticated public CA trust, configures scoped ML-DSA-44
+The script checks enrollment state, installs authenticated public CA trust, runs
+the shared package installer, configures scoped ML-DSA-44
 runtime issuance in the new Vault, creates a single-use enrollment token and
 passes it through stdin to the shared helper. Atlas enrolls as `atlas.home.arpa`
 against `openvox.home.arpa`. Its catalog installs the FreeIPA client and runs
@@ -112,6 +121,12 @@ source proxmox/lib.sh
 create_vault_token node.home.arpa
 # VM_TOKEN now contains the fresh token. Do not echo it or test lookup-self.
 ```
+
+Standard VM and host provisioning already runs `proxmox/install-openvox.sh`
+before enrollment. For a separately prepared host, run that shared installer
+first with authenticated public CA trust available. It installs the accepted
+OpenVox agent and native prerequisites for the supported OS, keeping Puppet
+masked until enrollment.
 
 Pass that token securely to the intended host's enrollment script, with the
 same certname (and the correct node type):

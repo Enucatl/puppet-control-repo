@@ -65,8 +65,14 @@ The checksum is published in Canonical's
 [SHA256SUMS](https://cloud-images.ubuntu.com/releases/resolute/release-20260927/SHA256SUMS).
 The template installs QEMU guest agent and the signed, accepted
 `9.1.0+homelab.24001-1+ubuntu26.04` OpenVox agent through
-[install-openvox.sh](install-openvox.sh). It leaves Puppet disabled and removes
-cloud-init instance state, machine identity and SSH host keys before conversion.
+[install-openvox.sh](install-openvox.sh). The same installer provisions applicable
+native curl and IPA library fixes from the signed companion APT repository;
+[openvox-packages](https://github.com/Enucatl/openvox-packages/blob/main/docs/native-client.md) owns their builds
+and release instructions. VM, host and Atlas enrollment use this shared path,
+without manually copying `.deb` artifacts. Puppet installs and enrolls the
+FreeIPA client later when its catalog applies. The template leaves Puppet
+disabled and removes cloud-init instance state, machine identity and SSH host
+keys before conversion.
 It contains no enrolled host identity or reusable enrollment credential.
 Package versions and image/control-repository provenance are written under
 `LOG_DIR`; package updates still depend on the upstream repositories.

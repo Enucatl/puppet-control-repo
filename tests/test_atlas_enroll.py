@@ -153,3 +153,68 @@ def test_existing_certificate_resumes_catalog(
         "atlas.home.arpa",
         "openvox.home.arpa",
     ]
+
+
+@pytest.mark.parametrize("already_enrolled", [False, True])
+def test_shared_installer_precedes_enrollment(
+    enrollment: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    already_enrolled: bool,
+) -> None:
+    """Both enrollment paths provision through signed APT after trust checks."""
+    (enrollment.infra.STATE / "freeipa").mkdir()
+    (enrollment.infra.STATE / "freeipa/imported.json").write_text('{"success":true}')
+    if already_enrolled:
+        enrollment.CERTIFICATE.write_text("existing certificate")
+    events = []
+
+    def command(argv: list[str], payload: str | None = None) -> str:
+        del payload
+        events.append(argv)
+        return "catalog applied"
+
+    def token(*args: object) -> dict:
+        events.append(list(args))
+        return {
+            "auth": {
+                "client_token": "private-token",
+                "policies": ["puppet-enrollment"],
+                "metadata": {"certname": "atlas.home.arpa"},
+                "num_uses": 1,
+                "orphan": True,
+                "renewable": False,
+                "token_type": "service",
+                "lease_duration": 7200,
+            }
+        }
+
+    enrollment.infra.run.side_effect = command
+    enrollment.infra.api.side_effect = token
+    monkeypatch.setattr(
+        enrollment, "install_trust", lambda: events.append(["trust"])
+    )
+    monkeypatch.setattr(
+        enrollment, "configure_runtime", lambda: events.append(["runtime"])
+    )
+    enrollment.enroll()
+    helper = str(enrollment.infra.SOURCE / "proxmox/configure-puppet.sh")
+    assert events[:4] == [
+        ["bash", helper, "--preflight", "atlas.home.arpa"],
+        ["trust"],
+        ["bash", str(enrollment.infra.SOURCE / "proxmox/install-openvox.sh")],
+        ["runtime"],
+    ]
+    assert all("install-atlas-" not in repr(event) for event in events)
+    assert not (enrollment.infra.STATE / "curl").exists()
+    assert not (enrollment.infra.STATE / "ipalib").exists()
+    if already_enrolled:
+        assert enrollment.CERTIFICATE.read_text() == "existing certificate"
+        enrollment.infra.api.assert_not_called()
+        assert events[4:] == [
+            ["bash", helper, "--apply", "atlas.home.arpa", "openvox.home.arpa"]
+        ]
+    else:
+        assert events[4][0:2] == ["POST", "auth/token/create-orphan"]
+        assert events[5] == [
+            "bash", helper, "docker", "-", "atlas.home.arpa", "openvox.home.arpa"
+        ]

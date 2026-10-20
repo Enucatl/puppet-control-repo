@@ -11,6 +11,20 @@ case "$ID:$VERSION_ID:$(dpkg --print-architecture)" in
 esac
 release=https://github.com/Enucatl/openvox-packages/releases/download/resolute-24001
 version="9.1.0+homelab.24001-1+$target"
+packages=("openvox-agent=$version")
+native_release=https://github.com/Enucatl/openvox-packages/releases/download/native-client-2-1
+case "$target" in
+  ubuntu26.04)
+    packages+=(curl=8.18.0-1ubuntu2.8+homelab.1+ubuntu26.04
+      libcurl4t64=8.18.0-1ubuntu2.8+homelab.1+ubuntu26.04
+      python3-ipalib=4.13.1-1+homelab.1+ubuntu26.04)
+    ;;
+  debian13)
+    packages+=(curl=8.14.1-2+deb13u7+homelab.1+debian13
+      libcurl4t64=8.14.1-2+deb13u7+homelab.1+debian13
+      python3-ipalib=4.12.4-1+homelab.1+debian13)
+    ;;
+esac
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 systemctl mask --runtime --now puppet.service
@@ -30,11 +44,21 @@ install -m 0644 "$work/key.asc" /etc/apt/keyrings/openvox-archive-keyring.asc
 install -m 0644 "$work/preferences" /etc/apt/preferences.d/openvox-homelab
 printf 'deb [arch=amd64 signed-by=/etc/apt/keyrings/openvox-archive-keyring.asc] %s/ ./\n' "$release" \
   > /etc/apt/sources.list.d/openvox-homelab.list
+if (( ${#packages[@]} > 1 )); then
+  curl --fail --silent --show-error --location "$native_release/native-client-$target.pref" --output "$work/native-preferences"
+  install -m 0644 "$work/native-preferences" /etc/apt/preferences.d/openvox-native-client
+  printf 'deb [arch=amd64 signed-by=/etc/apt/keyrings/openvox-archive-keyring.asc] %s/ ./\n' "$native_release" \
+    > /etc/apt/sources.list.d/openvox-native-client.list
+fi
 apt-get update
-apt-get install -y "openvox-agent=$version"
-[[ $(dpkg-query -W -f='${Version}' openvox-agent) == "$version" ]] || {
-  echo 'Installed OpenVox version differs from accepted package.' >&2; exit 1;
-}
+# No downgrade override: a newer installed security revision requires review.
+apt-get install -y "${packages[@]}"
+for specification in "${packages[@]}"; do
+  package=${specification%%=*}
+  [[ $(dpkg-query -W -f='${Version}' "$package") == "${specification#*=}" ]] || {
+    echo "Installed $package version differs from accepted package." >&2; exit 1;
+  }
+done
 install -d -m 0755 /etc/puppetlabs/puppet /etc/systemd/system/puppet.service.d
 cat > /etc/puppetlabs/puppet/openssl.cnf <<'POLICY'
 config_diagnostics = 1

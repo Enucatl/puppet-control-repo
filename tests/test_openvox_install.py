@@ -12,15 +12,18 @@ FINGERPRINT = "775661C709ACE6F7C1CF0FF6C4B7528F03E0BB94"
 
 
 @pytest.mark.parametrize(
-    "system,target,fingerprint,installed,accepted",
+    "system,target,fingerprint,wrong_package,accepted",
     [
-        ("ubuntu:24.04:amd64", "ubuntu24.04", FINGERPRINT, True, True),
-        ("ubuntu:26.04:amd64", "ubuntu26.04", FINGERPRINT, True, True),
-        ("debian:13:amd64", "debian13", FINGERPRINT, True, True),
-        ("debian:12:amd64", "", FINGERPRINT, True, False),
-        ("ubuntu:26.04:arm64", "", FINGERPRINT, True, False),
-        ("ubuntu:24.04:amd64", "ubuntu24.04", "UNTRUSTED", True, False),
-        ("ubuntu:24.04:amd64", "ubuntu24.04", FINGERPRINT, False, False),
+        ("ubuntu:24.04:amd64", "ubuntu24.04", FINGERPRINT, "", True),
+        ("ubuntu:26.04:amd64", "ubuntu26.04", FINGERPRINT, "", True),
+        ("debian:13:amd64", "debian13", FINGERPRINT, "", True),
+        ("ubuntu:26.04:amd64", "ubuntu26.04", FINGERPRINT, "curl", False),
+        ("ubuntu:26.04:amd64", "ubuntu26.04", FINGERPRINT, "libcurl4t64", False),
+        ("debian:13:amd64", "debian13", FINGERPRINT, "python3-ipalib", False),
+        ("debian:12:amd64", "", FINGERPRINT, "", False),
+        ("ubuntu:26.04:arm64", "", FINGERPRINT, "", False),
+        ("ubuntu:24.04:amd64", "ubuntu24.04", "UNTRUSTED", "", False),
+        ("ubuntu:24.04:amd64", "ubuntu24.04", FINGERPRINT, "openvox-agent", False),
     ],
 )
 def test_native_install_pins_supported_signed_package(
@@ -28,7 +31,7 @@ def test_native_install_pins_supported_signed_package(
     system: str,
     target: str,
     fingerprint: str,
-    installed: bool,
+    wrong_package: str,
     accepted: bool,
 ) -> None:
     """Reject unsupported machines, wrong signing keys and mismatched packages."""
@@ -42,10 +45,30 @@ def test_native_install_pins_supported_signed_package(
     commands = tmp_path / "commands"
     binaries = tmp_path / "bin"
     binaries.mkdir()
+    versions = {"openvox-agent": f"9.1.0+homelab.24001-1+{target}"}
+    if target in {"ubuntu26.04", "debian13"}:
+        curl_version, ipa_version = (
+            ("8.18.0-1ubuntu2.8", "4.13.1-1")
+            if target == "ubuntu26.04"
+            else ("8.14.1-2+deb13u7", "4.12.4-1")
+        )
+        versions.update(
+            curl=f"{curl_version}+homelab.1+{target}",
+            libcurl4t64=f"{curl_version}+homelab.1+{target}",
+            **{"python3-ipalib": f"{ipa_version}+homelab.1+{target}"},
+        )
+    queries = (
+        'case "${@: -1}" in '
+        + " ".join(
+            f"{name}) echo {'wrong-version' if name == wrong_package else version} ;;"
+            for name, version in versions.items()
+        )
+        + " *) exit 1 ;; esac"
+    )
     replacements = {
         "id": "echo 0",
         "dpkg": f"echo {architecture}",
-        "dpkg-query": f"echo {'9.1.0+homelab.24001-1+' + target if installed else 'wrong-version'}",
+        "dpkg-query": queries,
         "gpg": f"printf 'pub:::::::::\\nfpr:::::::::{fingerprint}:\\n'",
         "curl": 'while [ "$#" -gt 0 ]; do if [ "$1" = --output ]; then printf "fixture\\n" > "$2"; exit; fi; shift; done; exit 1',
         "apt-get": ":",
@@ -89,6 +112,19 @@ def test_native_install_pins_supported_signed_package(
         assert (
             f"apt-get install -y openvox-agent=9.1.0+homelab.24001-1+{target}" in calls
         )
+        if target in {"ubuntu26.04", "debian13"}:
+            assert f"native-client-2-1/native-client-{target}.pref" in calls
+            native_source = (
+                directory / "apt/sources.list.d/openvox-native-client.list"
+            ).read_text()
+            assert "signed-by=" in native_source
+            for name, version in versions.items():
+                assert f"{name}={version}" in calls
+        else:
+            assert not (
+                directory / "apt/sources.list.d/openvox-native-client.list"
+            ).exists()
+        assert "--allow-downgrades" not in calls
         assert f"resolute-24001/{target}.pref" in calls
         source = (directory / "apt/sources.list.d/openvox-homelab.list").read_text()
         assert "signed-by=" in source
