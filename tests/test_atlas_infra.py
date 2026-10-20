@@ -136,7 +136,9 @@ def test_start_does_not_schedule_renewal_for_unhealthy_services(
     controller.compose.side_effect = RuntimeError("services unhealthy")
     with pytest.raises(RuntimeError, match="services unhealthy"):
         controller.start()
-    controller.run.assert_not_called()
+    controller.run.assert_called_once_with(
+        ["rm", "-f", "/opt/git/openvox/control.git/hooks/pre-receive"]
+    )
 
 
 def test_start_requires_successful_first_renewal_before_enabling_timer(
@@ -144,7 +146,7 @@ def test_start_requires_successful_first_renewal_before_enabling_timer(
 ) -> None:
     """Surface first-run renewal failures instead of enabling an unverified timer."""
     (controller.STATE / "ready.json").write_text("{}")
-    controller.run.side_effect = ["", "", RuntimeError("renewal failed")]
+    controller.run.side_effect = ["", "", "", RuntimeError("renewal failed")]
     with pytest.raises(RuntimeError, match="renewal failed"):
         controller.start()
     assert controller.run.call_args == call(
