@@ -16,10 +16,8 @@ loki.write "remote_loki" {
   endpoint {
     url = "{{ loki_url }}"
 
-    // VyOS is not a FreeIPA client so its container trust store does not
-    // include the internal CA. Safe to skip on a non-routable address.
     tls_config {
-      insecure_skip_verify = true
+      ca_file = "/etc/alloy/atlas-infrastructure.crt"
     }
 
     batch_wait = "1s"

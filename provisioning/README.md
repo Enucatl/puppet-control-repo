@@ -67,8 +67,9 @@ The dnsmasq template publishes exact A and AAAA records for `atlas.home.arpa`,
 EUI-64 ULA `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`. The ULA is retained across
 ISP prefix changes; the pinned NIC MAC preserves its interface identifier on
 rebuild. Reverse DNS remains
-`atlas.home.arpa`. Legacy Docker/FreeIPA records retain their existing address. Vault uses
-`vault.home.arpa` on Atlas.
+`atlas.home.arpa`. Legacy service aliases `freeipa.home.arpa` and
+`hcv.home.arpa` now resolve to Atlas over IPv4 and IPv6; the retired Docker
+host's own record remains unchanged. Vault uses `vault.home.arpa` on Atlas.
 
 The `atlas.home.arpa` suffix also resolves application subdomains such as
 `traefik.atlas.home.arpa` and `authelia.atlas.home.arpa` to Atlas over IPv4 and
@@ -162,7 +163,51 @@ Atlas's dedicated Alloy pipeline enriches flow records with GeoIP. Its local
 Loki write URL uses the loopback-only published port 3100 because Alloy's Go
 TLS client cannot negotiate the ML-DSA ingress; HTTPS reads retain mTLS.
 
-### Cognition staging and IPv6 route handover
+### Completed migration residuals
+
+The current template routes `a000::/56` and `a100::/64` through Atlas, and
+`a200::/56` and `a300::/64` through Aperture's verified link-local address
+`fe80::be24:11ff:fe60:9e28` on `eth1`, for both the current ISP prefix and ULA.
+The delete partial removes the previous next hops before installing these
+routes. Review `show configuration commands | match 'a[0123]00'` before applying:
+any retained previous ISP prefixes need the same next-hop replacement while
+preserving their prefixes. The Cognition `c000`/`c100` routes remain on `eth3`.
+
+Router logs use verified HTTPS to `loki.atlas.home.arpa`. Alloy is pinned to
+v1.21.0, built with Go 1.27.2 and native ML-DSA TLS support. The deployment copies
+the controller's trusted `/usr/local/share/ca-certificates/atlas-infrastructure.crt`
+into Alloy's configuration mount; certificate verification remains enabled.
+Suricata still uses its existing enrichment API on port 12345.
+The explicit Alloy command enables the stability level required by the existing
+write-ahead logs; `CUSTOM_ARGS` is not consumed by the official image. Smoke checks
+verify Alloy's HTTP readiness as well as the container state.
+Router Loki/Alloy static mappings now use Atlas. FreeIPA and
+HCV aliases follow Atlas, and the PXE boot server points at Atlas without
+activating iVentoy. Tor NAT rule 20 and IPv4/IPv6 rules 39/40 are removed because
+no Tor relay was migrated; I2P forwarding remains active on Atlas.
+
+Use the full `--tags apply` workflow above to install DNS and Alloy configuration,
+apply route/rule deletes and sets, restart the containers, and run smoke checks.
+Route-only `--tags vyos_config` does not update DNS or Alloy configuration.
+
+Applied on **2026-10-21**, preserving all twelve routes across the current ISP
+prefix, retained `2a02:168:6271` prefix and ULA. All **86 router smoke checks**
+passed. The official Alloy v1.21.0 image reports Go 1.27.2, whose
+[TLS implementation supports ML-DSA](https://go.dev/doc/go1.27).
+Verified HTTPS delivery through the deployed pipeline in Loki with
+`{job="vyos-syslog",host="router.home.arpa"}`: the fixed acceptance message
+arrived at **14:01:15 UTC**, following native TLS probes from Aperture and the
+router. The container remained ready with zero restarts and no new warnings.
+
+Replaying the existing WAL produced historical ingress rejections (HTTP 418/400
+and rate limiting), with 127,503 dropped entries reported before new delivery
+settled. The counter then stayed unchanged while successful sends increased.
+No WAL or position files were deleted or manually truncated. The remaining WAL
+was preserved before its normal retention cleanup in root-only router archive
+`/config/containers/alloy/migration-wal-replay-20261021.tar.gz`; rejected history
+is not confirmed complete in Loki and the archive has not been replayed.
+
+### Cognition cutover record
 
 Cognition VM 220 on Cortex reserves `10.0.40.134` for
 `bc:24:11:4e:c0:22`; `cognition.home.arpa` and its reverse record use that

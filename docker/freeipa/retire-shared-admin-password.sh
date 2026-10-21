@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Legacy Docker authority only; Atlas uses independent installer credentials and
+# must not run this old shared-password rotation/container recreation workflow.
 # Run after deploying and verifying delegated provisioning. Requires admin Vault
 # access. Replacement passwords are saved before either account is changed, so
 # a rerun can recover from an interrupted rotation without losing credentials.

@@ -1,0 +1,16 @@
+delete nat destination rule 20
+delete container name alloy environment CUSTOM_ARGS
+delete firewall ipv4 name WAN-FORWARD rule 39
+delete firewall ipv4 name WAN-FORWARD rule 40
+delete firewall ipv6 name WAN-FORWARD6 rule 39
+delete firewall ipv6 name WAN-FORWARD6 rule 40
+delete system static-host-mapping host-name alloy.docker.home.arpa
+delete system static-host-mapping host-name loki.docker.home.arpa
+delete protocols static route6 {{ ipv6_prefix }}:a000::/56 next-hop fe80{{ docker_node_ipv6_suffix }}
+delete protocols static route6 {{ ipv6_prefix }}:a100::/64 next-hop fe80{{ docker_node_ipv6_suffix }}
+delete protocols static route6 {{ ipv6_prefix }}:a200::/56 next-hop fe80{{ desktop_node_ipv6_suffix }}
+delete protocols static route6 {{ ipv6_prefix }}:a300::/64 next-hop fe80{{ desktop_node_ipv6_suffix }}
+delete protocols static route6 {{ ula_prefix }}:a000::/56 next-hop fe80{{ docker_node_ipv6_suffix }}
+delete protocols static route6 {{ ula_prefix }}:a100::/64 next-hop fe80{{ docker_node_ipv6_suffix }}
+delete protocols static route6 {{ ula_prefix }}:a200::/56 next-hop fe80{{ desktop_node_ipv6_suffix }}
+delete protocols static route6 {{ ula_prefix }}:a300::/64 next-hop fe80{{ desktop_node_ipv6_suffix }}

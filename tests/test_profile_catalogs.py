@@ -82,9 +82,12 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     )
     assert certificate["ca_trust"] == "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
     assert certificate["cert_data"]["common_name"] == "codex.aperture.home.arpa"
-    for share in ("scratch", "docker"):
+    for share in ("scratch", "atlas", "cognition"):
         mount = result[f"Nfs::Client::Mount[/export/{share}]"]
-        assert mount["server"] == "atlas.home.arpa"
+        server = "cognition" if share == "cognition" else "atlas"
+        assert mount["server"] == f"{server}.home.arpa"
+        if share != "scratch":
+            assert mount["share"] == "docker"
         assert mount["atboot"] is False
         assert "sec=krb5p" in mount["options_nfsv4"]
         assert "proto=tcp" in mount["options_nfsv4"]
@@ -97,8 +100,49 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     assert "loki.atlas.home.arpa" in result["File[/etc/alloy/config.alloy]"]["content"]
     assert "Class[Profile::Codex_plugins]" in result
     assert "Class[Profile::Docker_node]" not in result
-    assert "Class[Profile::Vault_login]" not in result
+    assert "Class[Profile::Vault_login]" in result
+    assert result["File[/usr/local/bin/vault-pam-login.sh]"]["mode"] == "0755"
+    assert (
+        "pam_exec.so seteuid expose_authtok"
+        in result["File[/usr/share/pam-configs/vault-login]"]["content"]
+    )
+    assert result["Nfs::Client::Mount[/export/docker]"]["ensure"] == "absent"
     assert "Nfs::Client::Mount[/export/complex]" not in result
+    assert result["Nfs::Client::Mount[/export/cognition]"]["ensure"] == "present"
+    assert result["Systemd::Unit_file[export-cognition.automount]"]["active"] is True
+    for scope in ("all", "default"):
+        for setting, value in (
+            ("accept_redirects", 0),
+            ("forwarding", 1),
+            ("accept_ra", 2),
+            ("proxy_ndp", 1),
+        ):
+            assert result[f"Sysctl[net.ipv6.conf.{scope}.{setting}]"]["value"] == value
+    assert (
+        result["File[/etc/systemd/user/gpg-agent-ssh.socket]"]["target"] == "/dev/null"
+    )
+    assert result["Service[docker-prune.timer]"]["enable"] is True
+    assert result["Service[docker-prune.timer]"]["ensure"] is True
+    assert (
+        "until=24h"
+        in result["File[/etc/systemd/system/docker-prune.service]"]["content"]
+    )
+    assert "Package[alsa-utils]" in result
+    for unit in (
+        "hyperx-headset-volume-user.service",
+        "hyperx-headset-volume-user.timer",
+    ):
+        assert result[f"Systemd::User_service[{unit}]"]["enable"] is True
+    assert (
+        "amixer -c Wireless sset PCM 100%"
+        in result["File[/etc/systemd/user/hyperx-headset-volume-user.service]"][
+            "content"
+        ]
+    )
+    webcam = result["File[/etc/udev/rules.d/99-logitech-c925e-disable-audio.rules]"][
+        "content"
+    ]
+    assert 'ATTRS{idVendor}=="046d", ATTRS{idProduct}=="085b"' in webcam
 
 
 def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
@@ -168,6 +212,64 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     )
     assert "Class[Profile::Docker_node]" not in result
     assert "Class[Profile::Paperless_scans]" in result
+    assert "Class[Freeipa_users::Provision]" in result
+    assert "Exec[ipa-user-provision-backrest]" in result
+    assert result["File[/etc/krb5-backrest.keytab]"]["mode"] == "0400"
+    assert (
+        result["Nfs::Client::Mount[/export/Documents]"]["server"]
+        == "aperture.home.arpa"
+    )
+    for job in (
+        "paperless-snapshot",
+        "paperless-correspondent-cleanup",
+        "backrest-kinit",
+        "vault-snapshot",
+    ):
+        timer = result[f"Systemd::Unit_file[{job}.timer]"]
+        assert timer["enable"] is True and timer["active"] is True
+    vault_backup = result["File[/etc/systemd/system/vault-snapshot.service]"]["content"]
+    assert "RequiresMountsFor=/scratch" in vault_backup
+    assert "backup.sh" in vault_backup
+    assert "Cron[vault-snapshot]" not in result
+    for stack in (
+        "ais",
+        "airflow",
+        "authelia",
+        "backrest",
+        "barbero-scripts",
+        "beszel",
+        "browser-use",
+        "crabberbot",
+        "grafana-loki",
+        "kms",
+        "paperless-ai",
+        "protonmail-bridge",
+        "qbittorrent",
+        "rclone",
+        "rss-to-telegram-bot",
+        "send-bills",
+        "teamspeak",
+        "tor-i2pd",
+        "traefik",
+        "puppet-control-repo",
+    ):
+        assert result[f"Systemd::Unit_file[{stack}-deploy.path]"]["active"] is True
+        assert result[f"Systemd::Unit_file[{stack}-refresh.timer]"]["active"] is True
+        unit = result[f"File[/etc/systemd/system/{stack}-deploy.service]"]["content"]
+        assert "atlas-compose.json" not in unit
+    assert (
+        "--profile cleanup build"
+        in result["File[/etc/systemd/system/paperless-ai-deploy.service]"]["content"]
+    )
+    assert result["Exec[trigger_traefik_reload]"]["subscribe"] == "Vault_cert[atlas]"
+    bills_deploy = result["File[/etc/systemd/system/send-bills-deploy.service]"][
+        "content"
+    ]
+    assert "/home/user/.local/bin/uv run" in bills_deploy
+    assert '--build-arg VERSION="$$VERSION"' in bills_deploy
+    beszel_unit = result["File[/etc/systemd/system/beszel-agent.service]"]["content"]
+    assert "HUB_URL=https://beszel-agent.atlas.home.arpa" in beszel_unit
+    assert "DOCKER_HOST=unix:///var/run/docker.sock" in beszel_unit
     share = result["Samba::Share[scans]"]
     assert share["path"] == "/opt/paperless-consume"
     assert share["writable"] is True
@@ -277,8 +379,8 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     assert result["Exec[dotfiles-rake-links]"]["cwd"] == "/home/user/.vim"
     if node_type == "proxmox":
         assert result["Package[sudo]"]["ensure"] == "installed"
-    assert ("Class[Freeipa_users::Provision]" in result) == (hostname == "docker")
-    assert ("Exec[ipa-user-provision-backrest]" in result) == (hostname == "docker")
+    assert "Class[Freeipa_users::Provision]" not in result
+    assert "Exec[ipa-user-provision-backrest]" not in result
     assert result["File[/run/puppet-ipa-admin-pass]"]["ensure"] == "absent"
     assert "kinit admin" not in str(catalog)
     docker_role = node_type == "docker"
@@ -378,22 +480,23 @@ def test_os_hierarchy_rejects_fact_path_traversal(tmp_path: Path, field: str) ->
     ("certname", "authenticated"),
     [
         ("complex.home.arpa", "remote"),
-        ("docker.example.org", "remote"),
-        ("docker.home.arpa", "local"),
-        ("docker.home.arpa", "false"),
+        ("docker.home.arpa", "remote"),
+        ("atlas.example.org", "remote"),
+        ("atlas.home.arpa", "local"),
+        ("atlas.home.arpa", "false"),
     ],
 )
-def test_freeipa_provision_requires_docker_certificate(
+def test_freeipa_provision_requires_atlas_certificate(
     tmp_path: Path, certname: str, authenticated: str
 ) -> None:
-    """Reject provisioning despite Docker hostname and role facts."""
+    """Reject provisioning despite Atlas hostname and role facts."""
     with pytest.raises(
-        AssertionError, match="authenticated docker.home.arpa certificate"
+        AssertionError, match="authenticated atlas.home.arpa certificate"
     ):
         compile_catalog(
             tmp_path,
             "include freeipa_users::provision",
-            hostname="docker",
+            hostname="atlas",
             node_type="docker",
             certname=certname,
             authenticated=authenticated,
@@ -416,6 +519,7 @@ def test_freeipa_provision_command_arguments(tmp_path: Path) -> None:
                 }
             }
         },
+        hostname="atlas",
     )
     result = resources(catalog)
     command = result["Exec[ipa-user-provision-backrest]"]

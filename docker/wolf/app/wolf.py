@@ -35,9 +35,9 @@ class Config:
     proxmox_api_base_url: str = "https://proxmox-cortex.home.arpa:8006/api2/json"
     proxmox_api_cacert: str = "/etc/ssl/certs/ca-certificates.crt"
     proxmox_api_node: str = "proxmox-cortex"
-    guest_host: str = "complex.home.arpa"
+    guest_host: str = "cognition.home.arpa"
     guest_user: str = "user"
-    vm_id: int = 200
+    vm_id: int = 220
     mac: str = "30:56:0f:5e:a9:de"
     broadcast: str = "10.0.0.255"
     compose_dir: str = "/opt/docker/wolf"

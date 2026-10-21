@@ -67,6 +67,7 @@ def test_sealed_bootstrap_checks_local_key_before_transmitting_unseal_share(
         def do_GET(self):
             body = json.dumps({"initialized": True, "sealed": True}).encode()
             self.send_response(503)
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
@@ -75,6 +76,7 @@ def test_sealed_bootstrap_checks_local_key_before_transmitting_unseal_share(
                 json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             )
             self.send_response(200)
+            self.send_header("Content-Length", str(len(b'{"sealed":false}')))
             self.end_headers()
             self.wfile.write(b'{"sealed":false}')
 

@@ -8,7 +8,7 @@
 
 - name: Apply only I2P forwarding and abuse limits
   vars:
-    i2p_rule_pattern: '^set (nat destination rule 22 |firewall (ipv4 name WAN-FORWARD|ipv6 name WAN-FORWARD6) rule (39|41|42) )'
+    i2p_rule_pattern: '^set (nat destination rule 22 |firewall (ipv4 name WAN-FORWARD|ipv6 name WAN-FORWARD6) rule (41|42) )'
   vyos.vyos.vyos_config:
     lines: >-
       {{

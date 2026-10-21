@@ -5,7 +5,7 @@ set -euo pipefail
 export VAULT_CACERT="${VAULT_CACERT:-/etc/ssl/certs/ca-certificates.crt}"
 
 WOLF_CERT_AUTH_ROLE="${WOLF_CERT_AUTH_ROLE:-wolf}"
-WOLF_CERT_COMMON_NAME="${WOLF_CERT_COMMON_NAME:-wolf.docker.home.arpa}"
+WOLF_CERT_COMMON_NAME="${WOLF_CERT_COMMON_NAME:-wolf.atlas.home.arpa}"
 WOLF_CERT_CA="${WOLF_CERT_CA:-/usr/local/share/ca-certificates/home-arpa/vault_intermediate.crt}"
 
 vault policy write wolf - <<'EOF'

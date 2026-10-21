@@ -86,46 +86,45 @@ class FakeHttp:
 
 
 def test_start_runs_fixed_wolf_sequence(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 1, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 1, ""),
-            ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
             ("wakeonlan -i 10.0.0.255 30:56:0f:5e:a9:de", 0, ""),
             ("nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222", 0, ""),
             ("expect -", 0, ""),
             ("nc -z -w 1 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "stopped"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/start",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/start",
                 0,
                 '{"data": {}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
@@ -138,6 +137,7 @@ def test_start_runs_fixed_wolf_sequence(
     )
     controller = wolf.WolfController(config, runner, http)
     controller._proxmox_api_token = API_TOKEN
+    monkeypatch.setattr(controller, "read_vault_secret", lambda: "secret")
 
     audit = wolf.AuditContext("friend", "10.0.0.136", "req-1", "start")
 
@@ -154,11 +154,11 @@ def test_start_runs_fixed_wolf_sequence(
         for _, _, data in http.requests
     )
     assert all(API_TOKEN not in command for command in runner.commands)
-    assert runner.inputs[5] is not None
-    assert "log_user 0" in runner.inputs[5]
+    assert runner.inputs[4] is not None
+    assert "log_user 0" in runner.inputs[4]
     assert (
         "ssh -i /run/secrets/wolf_dropbear_key -p 2222 -o UserKnownHostsFile=/run/secrets/wolf_dropbear_known_hosts -o StrictHostKeyChecking=yes root@dropbear.proxmox-cortex.home.arpa"
-        in runner.inputs[5]
+        in runner.inputs[4]
     )
     events = [
         json.loads(line)
@@ -178,29 +178,29 @@ def test_stop_uses_fixed_shutdown_path(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 1, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/shutdown",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/shutdown",
                 0,
                 '{"data": {}}',
             ),
@@ -230,28 +230,28 @@ def test_stop_reports_host_shutdown_api_failure(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/shutdown",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/shutdown",
                 0,
                 '{"data": {}}',
             ),
@@ -283,24 +283,24 @@ def test_failed_start_transitions_to_failed(
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
@@ -329,18 +329,18 @@ def test_status_reports_external_wolf_without_claiming_ownership(
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
@@ -364,30 +364,30 @@ def test_start_claims_already_running_external_wolf(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
@@ -417,18 +417,18 @@ def test_status_reconciles_lost_app_session(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
@@ -474,7 +474,7 @@ def test_port_open_returns_false_on_timeout(tmp_path: Path) -> None:
 
     controller.runner.run = timeout_run  # type: ignore[method-assign]
 
-    assert controller.port_open("complex.home.arpa", 22) is False
+    assert controller.port_open("cognition.home.arpa", 22) is False
 
 
 def test_guest_exec_polls_proxmox_agent_status(tmp_path: Path) -> None:
@@ -482,12 +482,12 @@ def test_guest_exec_polls_proxmox_agent_status(tmp_path: Path) -> None:
     http = FakeHttp(
         [
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
                 0,
                 '{"data": {"pid": 123}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/200/agent/exec-status?pid=123",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec-status?pid=123",
                 0,
                 '{"data": {"exited": 1, "exitcode": 0, "out-data": "ok\\n"}}',
             ),

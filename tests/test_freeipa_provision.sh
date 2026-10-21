@@ -23,7 +23,7 @@ case $command in
     printf '%s\n' "${cache%/*}" >> "$TEST_WORK/caches"
     touch "$cache"
     if [[ $1 != -c ]]; then
-      [[ $* == '-k -t /etc/puppet-ipa-provisioner.keytab puppet-provisioner/docker.home.arpa@HOME.ARPA' ]]
+      [[ $* == '-k -t /etc/puppet-ipa-provisioner.keytab puppet-provisioner/atlas.home.arpa@HOME.ARPA' ]]
       [[ $TEST_CASE != auth-fail ]]
     else
       [[ ${*: -1} == backrest@HOME.ARPA ]]
@@ -51,6 +51,7 @@ case $command in
     esac ;;
   ipa-getkeytab)
     [[ $TEST_CASE != retrieve-fail ]]
+    [[ $* == *'-s ipa.home.arpa '* ]]
     [[ ${*: -1} == "$TMPDIR/"*/keytab ]]
     printf 'new-key\n' > "${*: -1}" ;;
   install)
@@ -150,3 +151,50 @@ run 2 '-invalid' Back Rest /bin/bash
 run 2 backrest Back Rest /bin/bash relative.keytab
 [[ ! -s $work/argv ]]
 printf '%s\n' 'PASS: delegated provisioning errors, argument integrity, key preservation/retrieval, checks, and private cache cleanup'
+
+# Exercise the bootstrap's recovery without its root/host/authentication setup.
+source <(sed -n '/^ensure_object() {/,/^}/p' "$repo/docker/freeipa/bootstrap-puppet-provisioner.sh")
+basedn=dc=home,dc=arpa
+ipa() {
+  printf '%s\n' "$1" >> "$work/bootstrap-calls"
+  case $1 in
+    permission-show)
+      if [[ -f $work/aci-restored ]]; then return; fi
+      if [[ $TEST_CASE == aci-network ]]; then
+        echo 'ipa: ERROR: cannot connect to server' >&2
+      else
+        printf 'ipa: ERROR: The ACI for permission %s was not found in cn=users,cn=accounts,%s \n' "$2" "$basedn" >&2
+      fi
+      return 2 ;;
+    permission-mod)
+      [[ $2 == "$permission" && $3 == "--right=$right" && $4 == "--attrs=$attribute" ]]
+      [[ $5 == "--subtree=cn=users,cn=accounts,$basedn" ]]
+      [[ $6 == "--target=uid=backrest,cn=users,cn=accounts,$basedn" ]]
+      [[ $7 == --setattr='description=Restored scoped Puppet ACI '* && $# == 7 ]]
+      touch "$work/aci-restored" ;;
+    *) return 99 ;;
+  esac
+}
+for permission in 'Puppet Retrieve Backrest Keys' 'Puppet Create Backrest Keys' 'Puppet Check Backrest Keys'; do
+  case $permission in
+    *Retrieve*) right=read attribute='ipaProtectedOperation;read_keys' ;;
+    *Create*) right=write attribute='ipaProtectedOperation;write_keys' ;;
+    *Check*) right=search attribute=krbPrincipalKey ;;
+  esac
+  TEST_CASE=aci-missing
+  rm -f "$work/aci-restored"
+  ensure_object permission "$permission" "--right=$right" "--attrs=$attribute" \
+    "--subtree=cn=users,cn=accounts,$basedn" "--target=uid=backrest,cn=users,cn=accounts,$basedn"
+  [[ -f $work/aci-restored ]]
+done
+for TEST_CASE in aci-network aci-unrelated; do
+  rm -f "$work/aci-restored"
+  : > "$work/bootstrap-calls"
+  permission='Unrelated Permission'
+  if [[ $TEST_CASE == aci-network ]]; then permission='Puppet Check Backrest Keys'; fi
+  status=0
+  ensure_object permission "$permission" >"$work/output" 2>&1 || status=$?
+  [[ $status == 1 && ! -f $work/aci-restored ]]
+  [[ $(cat "$work/bootstrap-calls") == permission-show ]]
+done
+printf '%s\n' 'PASS: only named missing Puppet ACIs repair with exact scope; transport/unrelated failures stop'

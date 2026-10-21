@@ -250,7 +250,7 @@ def test_atlas_jobs_preserve_schedules_and_single_active_owner():
         service = atlas[f"automation-{name}.service"]["content"]
         assert "User=user\n" in service
         assert (
-            "ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner "
+            "ExecStart=/usr/bin/docker compose --profile runner "
             f"run --pull never --rm --no-deps {name}\n"
         ) in service
         assert (

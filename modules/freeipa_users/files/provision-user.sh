@@ -21,7 +21,7 @@ fi
 work=$(mktemp -d)
 trap 'kdestroy -c "FILE:$work/provisioner" 2>/dev/null || :; kdestroy -c "FILE:$work/user" 2>/dev/null || :; rm -rf -- "$work"' EXIT
 export KRB5CCNAME="FILE:$work/provisioner"
-kinit -k -t /etc/puppet-ipa-provisioner.keytab 'puppet-provisioner/docker.home.arpa@HOME.ARPA'
+kinit -k -t /etc/puppet-ipa-provisioner.keytab 'puppet-provisioner/atlas.home.arpa@HOME.ARPA'
 
 # Only FreeIPA's explicit NotFound response permits creation. A failed lookup
 # (including an authentication or network error) must never mean "absent".
@@ -45,9 +45,9 @@ $check && exit 1
 
 # Never rekey an existing principal to recover a missing/stale local file.
 if grep -Eq '^  has_keytab: (TRUE|True)$' "$work/user-info"; then
-  ipa-getkeytab -r -s freeipa.home.arpa -p "$username@HOME.ARPA" -k "$work/keytab"
+  ipa-getkeytab -r -s ipa.home.arpa -p "$username@HOME.ARPA" -k "$work/keytab"
 elif grep -Eq '^  has_keytab: (FALSE|False)$' "$work/user-info"; then
-  ipa-getkeytab -s freeipa.home.arpa -p "$username@HOME.ARPA" -k "$work/keytab"
+  ipa-getkeytab -s ipa.home.arpa -p "$username@HOME.ARPA" -k "$work/keytab"
 else
   echo "Cannot determine whether $username has Kerberos keys; refusing to rekey." >&2
   exit 2

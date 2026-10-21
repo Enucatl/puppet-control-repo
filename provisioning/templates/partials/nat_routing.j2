@@ -3,11 +3,6 @@ set nat destination rule 10 destination port 6881,9000
 set nat destination rule 10 inbound-interface name {{ wan_interface }}
 set nat destination rule 10 protocol tcp_udp
 set nat destination rule 10 translation address {{ atlas_node_ip }}
-set nat destination rule 20 description 'Tor Ports'
-set nat destination rule 20 destination port 9001,9030
-set nat destination rule 20 inbound-interface name {{ wan_interface }}
-set nat destination rule 20 protocol tcp
-set nat destination rule 20 translation address {{ docker_node_ip }}
 set nat destination rule 22 description 'I2Pd Node'
 set nat destination rule 22 destination port 11001
 set nat destination rule 22 inbound-interface name {{ wan_interface }}
@@ -36,15 +31,15 @@ set nat source rule 140 translation address masquerade
 set nat source rule 150 outbound-interface name {{ wan_interface }}
 set nat source rule 150 source address {{ cortex_subnet }}
 set nat source rule 150 translation address masquerade
-set protocols static route6 {{ ipv6_prefix }}:a000::/56 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:a100::/64 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:a200::/56 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:a300::/64 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a000::/56 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a100::/64 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a200::/56 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a300::/64 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}
 set protocols static route6 {{ ipv6_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}
-set protocols static route6 {{ ula_prefix }}:a000::/56 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ula_prefix }}:a100::/64 next-hop fe80{{ docker_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ula_prefix }}:a200::/56 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ula_prefix }}:a300::/64 next-hop fe80{{ desktop_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ula_prefix }}:a000::/56 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ula_prefix }}:a100::/64 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ula_prefix }}:a200::/56 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ula_prefix }}:a300::/64 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ula_prefix }}:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}
 set protocols static route6 {{ ula_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}

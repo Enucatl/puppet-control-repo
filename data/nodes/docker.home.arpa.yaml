@@ -1,7 +1,6 @@
 ---
 classes:
   - profile::docker_node
-  - freeipa_users::provision
 
 profile::beszel_agent::enable_docker_metrics: true
 
@@ -170,7 +169,6 @@ profile::common::systemd::units:
       ExecStart=/bin/chown backrest:backrest /tmp/krb5cc_175200010
     enable: false
     active: false
-    require: File[/etc/krb5-backrest.keytab]
   backrest-kinit.timer:
     content: |
       [Unit]
@@ -787,24 +785,6 @@ puppet_configuration::settings:
     section: server
     setting: external_nodes
     value: /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py
-
-freeipa_users::provision::users:
-  backrest:
-    first: Backrest
-    last: Backup
-    keytab: /etc/krb5-backrest.keytab
-  ldap_ro:
-    first: ldap
-    last: ro
-  printer:
-    first: printer
-    last: printer
-  airflow:
-    first: airflow
-    last: airflow
-  beszel:
-    first: Beszel
-    last: Agent
 
 samba::workgroup: 'WORKGROUP'
 samba::server_string: 'docker'

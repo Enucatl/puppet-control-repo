@@ -79,7 +79,7 @@ dhcp-option=tag:lan,option:dns-server,{{ vyos_lan_ip | ansible.utils.ipaddr('add
 dhcp-option=tag:lan,option:domain-name,{{ dhcp_domain }}
 
 # PXE boot for iVentoy — offered to all LAN clients; non-PXE devices ignore it
-dhcp-boot=tag:lan,iventoy_loader_16000_uefi,,{{ docker_node_ip }}
+dhcp-boot=tag:lan,iventoy_loader_16000_uefi,,{{ atlas_node_ip }}
 
 # ---- Trusted WiFi (VLAN {{ trusted_wifi_vlan }}) ----
 dhcp-range=set:trusted-wifi,{{ trusted_wifi_dhcp_start }},{{ trusted_wifi_dhcp_end }},255.255.255.0,86400s
@@ -124,16 +124,17 @@ address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ula }}
 address=/complex.{{ dhcp_domain }}/{{ complex_node_ip }}
 address=/cognition.{{ dhcp_domain }}/{{ cognition_node_ip }}
 address=/cognition.{{ dhcp_domain }}/{{ cognition_node_ula }}
-address=/freeipa.{{ dhcp_domain }}/{{ docker_node_ip }}
-address=/hcv.{{ dhcp_domain }}/{{ docker_node_ip }}
+address=/freeipa.{{ dhcp_domain }}/{{ atlas_node_ip }}
+address=/freeipa.{{ dhcp_domain }}/{{ atlas_node_ula }}
+address=/hcv.{{ dhcp_domain }}/{{ atlas_node_ip }}
+address=/hcv.{{ dhcp_domain }}/{{ atlas_node_ula }}
 # Exact names, with Atlas first for canonical reverse DNS.
 host-record=atlas.{{ dhcp_domain }},vault.{{ dhcp_domain }},openvox.{{ dhcp_domain }},ipa.{{ dhcp_domain }},{{ atlas_node_ip }},{{ atlas_node_ula }}
 host-record=cognition.{{ dhcp_domain }},{{ cognition_node_ip }},{{ cognition_node_ula }}
 host-record=remarkable.{{ dhcp_domain }},{{ remarkable_ip }},{{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 host-record=remarkable.{{ dhcp_domain }},{{ ipv6_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 
-# The Docker node IP is shared by multiple services. Keep its reverse DNS
-# canonical identity on the host while clients pin FreeIPA lookups explicitly.
+# Retain the retired host's canonical reverse DNS for rollback.
 ptr-record={{ docker_node_ip.split('.')[3] }}.{{ docker_node_ip.split('.')[2] }}.{{ docker_node_ip.split('.')[1] }}.{{ docker_node_ip.split('.')[0] }}.in-addr.arpa,docker.{{ dhcp_domain }}
 
 # ============================================================

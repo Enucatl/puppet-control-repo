@@ -1,16 +1,27 @@
-# FreeIPA provisioning on Docker
+# FreeIPA provisioning on Atlas
 
 `freeipa_users` only manages local group membership and removes the retired
 `/run/puppet-ipa-admin-pass` file. `freeipa_users::provision` and its users are
-included by `data/nodes/docker.home.arpa.yaml`. The class requires Puppet's authenticated
-remote certname to equal `docker.home.arpa`, regardless of hostname/role facts.
+included by `data/nodes/atlas.home.arpa.yaml`. The class requires Puppet's authenticated
+remote certname to equal `atlas.home.arpa`, regardless of hostname/role facts.
 
-Run `docker/freeipa/bootstrap-puppet-provisioner.sh` as root on that host with
-administrative Vault access. It uses a private temporary administrator ticket
-to create `puppet-provisioner/docker.home.arpa@HOME.ARPA`, a dedicated role and
+Run `docker/freeipa/bootstrap-puppet-provisioner.sh` as root on that host. Atlas's
+current IPA administrator credential is in the protected installer state, so
+bootstrap without passing passwords in arguments, environment, or output:
+
+```sh
+sudo bash -c 'set -euo pipefail; jq -er .admin_password /root/openvox-infra/freeipa/installer.json | /opt/docker/puppet-control-repo/docker/freeipa/bootstrap-puppet-provisioner.sh --admin-password-stdin'
+```
+
+It uses a private temporary administrator ticket
+to create `puppet-provisioner/atlas.home.arpa@HOME.ARPA`, a dedicated role and
 privilege, and `/etc/puppet-ipa-provisioner.keytab` (root, `0400`). Reruns retain
-working keys. The bootstrap reads `kv/freeipa-admin:admin_password` after the
-migration, or the old shared field before retirement.
+working keys and remove Docker's provisioner from the delegated role if present.
+The keytab helper uses `ipa.home.arpa`, Atlas's current authority. With no
+arguments, the bootstrap retains its administrative Vault CLI credential path:
+`kv/freeipa-admin:admin_password`, or the old shared field before retirement.
+Atlas's Vault TLS requires the native runtime used by `proxmox/atlas-infra.py`;
+do not use an incompatible Vault CLI to obtain its administrator credential.
 
 The role can add users, read the required user/private-group information, and
 manage membership of the default `ipausers` group. Key creation/retrieval is
@@ -25,9 +36,10 @@ keytabs, including `/etc/krb5-backrest.keytab`. Missing/stale local keytabs use
 FreeIPA documents the underlying scoped operations in
 [Keytab Retrieval](https://www.freeipa.org/page/V4/Keytab_Retrieval).
 
-After deployment and delegated provisioning verification, run
-`docker/freeipa/retire-shared-admin-password.sh` as root with administrative
-Vault access. It verifies that ordinary Puppet certificate authentication
+`docker/freeipa/retire-shared-admin-password.sh` is retained for the legacy
+Docker authority only; do not run it on Atlas. Atlas has independent installer
+credentials and no dependency on those retired shared fields. The legacy script
+requires administrative Vault access and verifies that ordinary Puppet certificate authentication
 cannot read `kv/freeipa-admin`, saves independent `admin_password` and
 `directory_manager_password` values there, rotates and verifies each account,
 and removes the obsolete installation password from the FreeIPA container's

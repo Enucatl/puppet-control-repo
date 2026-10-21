@@ -23,9 +23,9 @@ Runner = proxmox_orchestration.Runner
 class Config:
     dropbear_host: str = "dropbear.proxmox-cortex.home.arpa"
     proxmox_host: str = "proxmox-cortex.home.arpa"
-    vm_host: str = "complex.home.arpa"
+    vm_host: str = "cognition.home.arpa"
     guest_user: str = "user"
-    vm_id: int = 200
+    vm_id: int = 220
     mac: str = "30:56:0f:5e:a9:de"
     broadcast: str = "10.0.0.255"
     compose_dir: str = "/opt/docker/vllm"

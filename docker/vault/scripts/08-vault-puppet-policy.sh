@@ -34,8 +34,8 @@ vault write auth/cert/certs/puppet-server \
 
 vault write auth/cert/certs/puppet-wolf \
   certificate="$PUPPET_CA_CERT" \
-  allowed_common_names=docker.home.arpa,proxmox.home.arpa \
-  allowed_dns_sans=docker.home.arpa,proxmox.home.arpa \
+  allowed_common_names=atlas.home.arpa,proxmox.home.arpa \
+  allowed_dns_sans=atlas.home.arpa,proxmox.home.arpa \
   token_policies=puppet-wolf \
   token_ttl=15m
 

@@ -2,8 +2,8 @@
 class freeipa_users::provision (
   Hash $users = {},
 ) {
-  if $trusted['authenticated'] != 'remote' or $trusted['certname'] != 'docker.home.arpa' {
-    fail('FreeIPA provisioning requires the authenticated docker.home.arpa certificate')
+  if $trusted['authenticated'] != 'remote' or $trusted['certname'] != 'atlas.home.arpa' {
+    fail('FreeIPA provisioning requires the authenticated atlas.home.arpa certificate')
   }
 
   file { '/etc/puppet-ipa-provisioner.keytab':

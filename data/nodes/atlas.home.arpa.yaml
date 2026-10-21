@@ -2,6 +2,8 @@
 classes:
   - profile::paperless_scans
   - profile::scratch
+  - profile::atlas
+  - freeipa_users::provision
 
 nfs_config::ipa_server: ipa.home.arpa
 nfs_config::server_exports:
@@ -11,6 +13,11 @@ nfs_config::server_exports:
   '/opt/docker':
     clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,root_squash)'
     atboot: true
+
+nfs_config::client_mounts:
+  '/export/Documents':
+    server: aperture.home.arpa
+    options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p'
 
 samba::workgroup: 'WORKGROUP'
 samba::server_string: 'atlas'
@@ -163,8 +170,493 @@ profile::common::acls::posix_acls:
       - "mask::r--"
     subscribe: "Vault_cert[atlas]"
 
-# Timers remain disabled until their source jobs complete the explicit handover.
+  /opt/docker/protonmail-bridge/secrets:
+    action: set
+    permission:
+    - user:101000:--x
+    - group::---
+    - mask::--x
+    - other::---
+  /opt/docker/protonmail-bridge/secrets/vault_key:
+    action: set
+    permission:
+    - user:101000:r--
+    - group::---
+    - mask::r--
+    - other::---
+  /opt/docker/beszel/secrets:
+    action: set
+    permission:
+    - user:101000:--x
+    - group::rwx
+    - mask::rwx
+  /opt/docker/beszel/secrets/beszel_admin_password:
+    action: set
+    permission:
+    - user:101000:r--
+    - group::---
+    - mask::r--
+    - other::---
+  /opt/docker/barbero-scripts/secrets/cloudflare-tunnel-token:
+    action: set
+    permission:
+    - user:100000:r--
+    - group::---
+    - mask::r--
+    - other::---
+  /opt/docker/tor-i2pd/secrets:
+    action: set
+    permission:
+    - user:101000:--x
+    - group::---
+    - mask::--x
+    - other::---
+  /opt/docker/tor-i2pd/secrets/cloudflare_api_token:
+    action: set
+    permission:
+    - user:101000:r--
+    - group::---
+    - mask::r--
+    - other::---
+  /opt/docker/grafana-loki/secrets:
+    action: set
+    permission:
+    - user:100472:--x
+    - mask::--x
+  /opt/docker/grafana-loki/secrets/oidc_client_secret:
+    action: set
+    permission:
+    - user:100472:r--
+    - mask::r--
+  /opt/docker/puppet-control-repo/docker/wolf/secrets/dropbear_key:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/paperless_token.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/webhook_secret.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/openai_api_key.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/anthropic_api_key.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/google_api_key.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/openrouter_api_key.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/typesafe_api_token.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/hf_token.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+  /opt/docker/paperless-ai/secrets/phoenix_postgres_password.txt:
+    action: set
+    permission:
+    - user:100999:r--
+    - user:100000:r--
+    - mask::r--
+    - other::---
+  /opt/docker/paperless-ai/secrets/ai_chat_postgres_password.txt:
+    action: set
+    permission:
+    - user:110001:r--
+    - user:100999:r--
+    - user:100000:r--
+    - mask::r--
+    - other::---
+  /opt/docker/crabberbot/secrets:
+    action: set
+    permission:
+    - user:100101:--x
+    - user:165532:--x
+    - user:101000:--x
+    - user:100999:--x
+    - mask::--x
+  /opt/docker/crabberbot/secrets/telegram_api_hash:
+    action: set
+    permission:
+    - user:100101:r--
+    - mask::r--
+  /opt/docker/crabberbot/secrets/telegram_api_id:
+    action: set
+    permission:
+    - user:100101:r--
+    - mask::r--
+  /opt/docker/crabberbot/secrets/tunnel_token:
+    action: set
+    permission:
+    - user:165532:r--
+    - mask::r--
+  /opt/docker/crabberbot/secrets/telegram_bot_token:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/crabberbot/secrets/postgres_password:
+    action: set
+    permission:
+    - user:101000:r--
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/crabberbot/secrets/deepgram_api_key:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/crabberbot/secrets/openrouter_api_key:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/crabberbot/secrets/owner_chat_id:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/rclone/secrets:
+    action: set
+    permission:
+    - user:165532:--x
+    - mask::--x
+  /opt/docker/rclone/secrets/tunnel_token:
+    action: set
+    permission:
+    - user:165532:r--
+    - mask::r--
+  /opt/docker/authelia/secrets:
+    action: set
+    permission:
+    - user:100999:--x
+    - user:101000:--x
+    - group::---
+    - mask::--x
+    - other::---
+  /opt/docker/authelia/secrets/authelia_jwt_secret:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/postgres_password:
+    action: set
+    permission:
+    - user:100999:r--
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/smtp_password:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/ldap_password:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/oidc_grafana_client_secret_digest:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/oidc_beszel_client_secret_digest:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/oidc_hmac_secret:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/oidc_jwks_es256_key.pem:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/oidc_jwks_rs256_key.pem:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/session_secret:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/authelia/secrets/storage_encryption_key:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+  /opt/docker/send-bills/secrets:
+    action: set
+    permission:
+    - user:100999:--x
+    - user:100000:--x
+    - mask::--x
+  /opt/docker/send-bills/secrets/django_secret_key:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/send-bills/secrets/django_email_host_password:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/send-bills/secrets/postgres_password:
+    action: set
+    permission:
+    - user:100999:r--
+    - user:100000:r--
+    - mask::r--
+  /opt/docker/browser-use/secrets:
+    action: set
+    permission:
+    - user:100999:--x
+    - mask::--x
+  /opt/docker/browser-use/secrets/postgres_password:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/browser-use/secrets/jev_api_key:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/browser-use/secrets/openrouter_api_key:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/browser-use/secrets/audit_signing_key:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/browser-use/secrets/audit_signing_public_key:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/browser-use/secrets/minio_access_key:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/browser-use/secrets/minio_secret_key:
+    action: set
+    permission:
+    - user:100999:r--
+    - mask::r--
+  /opt/docker/ais/secrets:
+    action: set
+    permission:
+    - user:110001:--x
+    - user:100999:--x
+    - user:100472:--x
+    - mask::--x
+    - other::---
+  /opt/docker/ais/secrets/aisstream_api_key:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+    - other::---
+  /opt/docker/ais/secrets/vesselapi_api_key:
+    action: set
+    permission:
+    - user:110001:r--
+    - mask::r--
+    - other::---
+  /opt/docker/ais/secrets/postgres_password:
+    action: set
+    permission:
+    - user:110001:r--
+    - user:100999:r--
+    - mask::r--
+    - other::---
+  /opt/docker/ais/secrets/grafana-datasource.yaml:
+    action: set
+    permission:
+    - user:100472:r--
+    - group::---
+    - mask::r--
+    - other::---
+
+  /opt/docker/beszel/alerts.yml:
+    action: set
+    permission:
+      - "user:101000:r--"
+      - "mask::r--"
+  /opt/docker/beszel/config.yml:
+    action: set
+    permission:
+    - user:100000:r--
+    - mask::r--
+  /opt/docker/grafana-loki/grafana/grafana.ini:
+    action: set
+    permission:
+    - user:100472:r--
+    - mask::r--
+  /opt/docker/authelia/config/configuration.yml:
+    action: set
+    permission:
+    - user:101000:r--
+    - mask::r--
+
 profile::common::systemd::units:
+  paperless-snapshot.service:
+    content: |
+      [Unit]
+      Description=Export Paperless data and documents
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/paperless-ai/.env
+      ExecStart=/opt/docker/paperless-ai/backup.sh
+      TimeoutStartSec=4h
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  paperless-snapshot.timer:
+    content: |
+      [Unit]
+      Description=Schedule weekly Paperless export
+
+      [Timer]
+      OnCalendar=Mon *-*-* 01:00:00 UTC
+      Persistent=true
+      Unit=paperless-snapshot.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[paperless-snapshot.service]
+  paperless-correspondent-cleanup.service:
+    content: |
+      [Unit]
+      Description=Run weekly Paperless correspondent cleanup
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      User=user
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/paperless-ai/.env
+      WorkingDirectory=/opt/docker/paperless-ai
+      ExecStart=/opt/docker/paperless-ai/scripts/correspondent-cleanup weekly
+      TimeoutStartSec=2h
+      SyslogIdentifier=paperless-correspondent-cleanup
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  paperless-correspondent-cleanup.timer:
+    content: |
+      [Unit]
+      Description=Schedule weekly Paperless correspondent cleanup
+
+      [Timer]
+      OnCalendar=Tue *-*-* 01:10:00 UTC
+      Persistent=false
+      Unit=paperless-correspondent-cleanup.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[paperless-correspondent-cleanup.service]
+  backrest-kinit.service:
+    content: |
+      [Unit]
+      Description=Acquire Backrest Kerberos credentials
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/kinit -k -t /etc/krb5-backrest.keytab -c FILE:/tmp/krb5cc_175200010 backrest@HOME.ARPA
+      ExecStart=/bin/chown backrest:backrest /tmp/krb5cc_175200010
+    enable: false
+    active: false
+    require: File[/etc/krb5-backrest.keytab]
+  backrest-kinit.timer:
+    content: |
+      [Unit]
+      Description=Refresh Backrest Kerberos credentials
+
+      [Timer]
+      OnBootSec=1min
+      OnUnitActiveSec=12h
+      Unit=backrest-kinit.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[backrest-kinit.service]
+  vault-snapshot.service:
+    content: |
+      [Unit]
+      Description=Save a consistent Atlas Vault backup
+      Wants=network-online.target
+      After=network-online.target docker.service
+      Requires=docker.service
+      RequiresMountsFor=/scratch
+
+      [Service]
+      Type=oneshot
+      UMask=0077
+      ExecStart=/opt/docker/puppet-control-repo/docker/vault/scripts/backup.sh
+      TimeoutStartSec=1h
+    enable: false
+    active: false
+  vault-snapshot.timer:
+    content: |
+      [Unit]
+      Description=Back up Atlas Vault weekly
+
+      [Timer]
+      OnCalendar=Mon *-*-* 01:00:00 UTC
+      Persistent=true
+      Unit=vault-snapshot.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[vault-snapshot.service]
   automation-exam.service:
     content: |
       [Unit]
@@ -176,10 +668,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_DISABLE_ENV_FILE=true
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps exam
+      ExecStartPre=/usr/bin/docker compose --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --profile runner run --pull never --rm --no-deps exam
       SyslogIdentifier=automation-exam
       StandardOutput=journal
       StandardError=journal
@@ -211,10 +703,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_DISABLE_ENV_FILE=true
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps cyber-analyst
+      ExecStartPre=/usr/bin/docker compose --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --profile runner run --pull never --rm --no-deps cyber-analyst
       SyslogIdentifier=automation-cyber-analyst
       StandardOutput=journal
       StandardError=journal
@@ -246,10 +738,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_DISABLE_ENV_FILE=true
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps operations-analyst
+      ExecStartPre=/usr/bin/docker compose --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --profile runner run --pull never --rm --no-deps operations-analyst
       SyslogIdentifier=automation-operations-analyst
       StandardOutput=journal
       StandardError=journal
@@ -281,10 +773,10 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_DISABLE_ENV_FILE=true
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
-      ExecStartPre=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner up -d --no-build --pull never postgres-outputs
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps podcast-statistics
+      ExecStartPre=/usr/bin/docker compose --profile runner up -d --no-build --pull never postgres-outputs
+      ExecStart=/usr/bin/docker compose --profile runner run --pull never --rm --no-deps podcast-statistics
       SyslogIdentifier=automation-podcast-statistics
       StandardOutput=journal
       StandardError=journal
@@ -318,9 +810,9 @@ profile::common::systemd::units:
       [Service]
       Type=oneshot
       User=user
-      Environment=COMPOSE_DISABLE_ENV_FILE=true
+      Environment=COMPOSE_ENV_FILES=/opt/docker/.env,/opt/docker/airflow/.env
       WorkingDirectory=/opt/docker/airflow
-      ExecStart=/usr/bin/docker compose --env-file /dev/null -f atlas-compose.json --profile runner run --pull never --rm --no-deps download-zanzara
+      ExecStart=/usr/bin/docker compose --profile runner run --pull never --rm --no-deps download-zanzara
       SyslogIdentifier=automation-download-zanzara
       StandardOutput=journal
       StandardError=journal
@@ -345,3 +837,81 @@ profile::common::systemd::units:
 profile::alloy::enable_router_enrichment: true
 profile::alloy::router_listen_address: '10.0.0.158'
 profile::alloy::loki_url: 'http://127.0.0.1:3100/loki/api/v1/push'
+
+freeipa_users::provision::users:
+  backrest:
+    first: Backrest
+    last: Backup
+    keytab: /etc/krb5-backrest.keytab
+  ldap_ro:
+    first: ldap
+    last: ro
+  printer:
+    first: printer
+    last: printer
+  airflow:
+    first: airflow
+    last: airflow
+  beszel:
+    first: Beszel
+    last: Agent
+profile::beszel_agent::enable_docker_metrics: true
+profile::beszel_agent::hub_url: https://beszel-agent.atlas.home.arpa
+
+profile::docker_host::scheduled_refresh: true
+profile::docker_host::git_deploy_projects:
+  ais:
+    pull: false
+    build_command: docker compose pull --ignore-buildable && docker compose build --pull
+  airflow:
+    pull: false
+    build_command: docker compose pull --ignore-buildable && docker compose --profile runner build --pull exam download-zanzara
+      cyber-analyst operations-analyst podcast-statistics puppet-release-watch
+    deploy_command: docker compose up -d --force-recreate --wait --wait-timeout 300 postgres-outputs
+  authelia: {}
+  backrest: {}
+  barbero-scripts: {}
+  beszel:
+    pull: false
+    build_command: docker compose pull --ignore-buildable && docker compose build --pull alerts-init
+    deploy_command: docker compose up -d --force-recreate --wait --wait-timeout 300 beszel && docker compose run --rm alerts-init
+  browser-use:
+    pull: false
+    build_command: docker compose pull --ignore-buildable && docker compose build --pull
+  crabberbot:
+    pull: false
+    build_command: docker compose pull --ignore-buildable && YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git
+      refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build --pull
+  grafana-loki: {}
+  kms: {}
+  paperless-ai:
+    pull: false
+    build_command: docker compose pull --ignore-buildable && docker compose --profile cleanup build --pull ai webhook-listener
+      ai-cleanup cleanup-review
+  protonmail-bridge: {}
+  qbittorrent: {}
+  rclone: {}
+  rss-to-telegram-bot: {}
+  send-bills:
+    pull: false
+    build_command: docker compose pull --ignore-buildable && VERSION=$(/home/user/.local/bin/uv run --with setuptools-git-versioning setuptools-git-versioning) &&
+      docker compose build --pull --build-arg VERSION="$$VERSION"
+  teamspeak: {}
+  tor-i2pd: {}
+  traefik: {}
+  puppet-control-repo:
+    branch: production
+    run_as: root
+    pull: false
+    watch_dir: docker
+    build_command: >-
+      docker compose pull --ignore-buildable && docker compose build --pull openvox vault-unsealer apt-cacher-ng &&
+      (cd /opt/docker/wolf && env -u COMPOSE_ENV_FILES docker compose build --pull) &&
+      (cd /opt/docker/goflow2 && env -u COMPOSE_ENV_FILES docker compose pull) &&
+      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose build --pull)
+    deploy_command: >-
+      /usr/bin/flock -w 300 /run/lock/atlas-openvox-maintenance.lock /bin/bash -c
+      "docker compose up -d --no-build --pull never --wait --wait-timeout 600 openvox vault vault-unsealer apt-cacher-ng &&
+      (cd /opt/docker/wolf && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300) &&
+      (cd /opt/docker/goflow2 && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300) &&
+      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300)"

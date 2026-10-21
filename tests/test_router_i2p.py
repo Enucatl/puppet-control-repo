@@ -1,4 +1,4 @@
-"""Check that I2P moves to Atlas while Tor keeps its existing destination."""
+"""Check Atlas I2P forwarding and retirement of the old Tor relay rules."""
 
 from pathlib import Path
 import re
@@ -20,7 +20,7 @@ def test_i2p_tag_selects_only_the_migration_rules() -> None:
     prefixes = {"set nat destination rule 22"} | {
         f"set firewall {family} name {chain} rule {rule}"
         for family, chain in (("ipv4", "WAN-FORWARD"), ("ipv6", "WAN-FORWARD6"))
-        for rule in (39, 41, 42)
+        for rule in (41, 42)
     }
     selected = {line for line in lines if re.match(pattern[1], line)}
     assert selected == {
@@ -32,7 +32,7 @@ def test_i2p_tag_selects_only_the_migration_rules() -> None:
     assert "tags: [i2p, never]" in (PROVISIONING / "router.yml").read_text()
 
 
-def test_i2p_forwarding_preserves_tor_and_limits_public_ports() -> None:
+def test_i2p_forwarding_retires_tor_and_limits_public_ports() -> None:
     """Apply the same I2P destination and abuse limits for both IP families."""
     variables = dict(
         re.findall(
@@ -57,21 +57,19 @@ def test_i2p_forwarding_preserves_tor_and_limits_public_ports() -> None:
     assert commands[nat + " translation address"] == variables["atlas_node_ip"]
     assert commands[nat + " destination port"] == "11001"
     assert commands[nat + " protocol"] == "tcp_udp"
-    assert (
-        commands["set nat destination rule 20 translation address"]
-        == variables["docker_node_ip"]
+    deletes = (PROVISIONING / "templates/partials/deletes.j2").read_text().splitlines()
+    assert not any(
+        line.startswith("set nat destination rule 20 ") for line in text.splitlines()
     )
+    assert "delete nat destination rule 20" in deletes
     for family, chain, field in (
         ("ipv4", "WAN-FORWARD", "ip"),
         ("ipv6", "WAN-FORWARD6", "ipv6_suffix"),
     ):
         prefix = f"set firewall {family} name {chain} rule"
         for rule in (39, 40):
-            assert (
-                commands[f"{prefix} {rule} destination address"]
-                == variables[f"docker_node_{field}"]
-            )
-            assert commands[f"{prefix} {rule} destination port"] == "9001,9030"
+            assert not any(key.startswith(f"{prefix} {rule} ") for key in commands)
+            assert f"delete firewall {family} name {chain} rule {rule}" in deletes
         for rule in (41, 42):
             assert (
                 commands[f"{prefix} {rule} destination address"]

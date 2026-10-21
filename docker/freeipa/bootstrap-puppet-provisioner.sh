@@ -4,13 +4,13 @@ set +x
 export LC_ALL=C
 umask 077
 
-# Run as root on docker.home.arpa with administrative Vault authentication.
+# Run as root on Atlas with administrative Vault authentication or password stdin.
 # Passwords and Kerberos tickets stay outside Puppet catalogs and the repository.
-[[ $EUID == 0 && $(hostname -f) == docker.home.arpa ]] || {
-  echo 'Run this bootstrap as root on docker.home.arpa.' >&2
+[[ $EUID == 0 && $(hostname -f) == atlas.home.arpa ]] || {
+  echo 'Run this bootstrap as root on atlas.home.arpa.' >&2
   exit 1
 }
-readonly principal='puppet-provisioner/docker.home.arpa@HOME.ARPA'
+readonly principal='puppet-provisioner/atlas.home.arpa@HOME.ARPA'
 readonly keytab='/etc/puppet-ipa-provisioner.keytab'
 readonly role='Puppet User Provisioner'
 readonly privilege='Puppet User Provisioning'
@@ -27,7 +27,13 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-if password=$(vault kv get -field=admin_password kv/freeipa-admin 2>"$work/vault.err"); then
+if [[ $# == 1 && $1 == --admin-password-stdin ]]; then
+  IFS= read -r password
+  [[ -n $password ]] || { echo 'Administrator password is empty.' >&2; exit 1; }
+elif (( $# != 0 )); then
+  echo 'Usage: bootstrap-puppet-provisioner.sh [--admin-password-stdin]' >&2
+  exit 2
+elif password=$(vault kv get -field=admin_password kv/freeipa-admin 2>"$work/vault.err"); then
   :
 elif grep -Fxq 'No value found at kv/data/freeipa-admin' "$work/vault.err"; then
   password=$(vault kv get -field='freeipa_users::admin_password' kv/puppet)
@@ -46,6 +52,16 @@ ensure_object() {
   if ipa "$kind-show" "$name" --all --raw >"$work/object" 2>"$work/ipa.err"; then
     return
   fi
+  if [[ $kind == permission && ( $name == 'Puppet Retrieve Backrest Keys' ||
+    $name == 'Puppet Create Backrest Keys' || $name == 'Puppet Check Backrest Keys' ) ]] &&
+    sed 's/[[:space:]]*$//' "$work/ipa.err" | grep -Fxq \
+      "ipa: ERROR: The ACI for permission $name was not found in cn=users,cn=accounts,$basedn"; then
+    # A changed description forces permission-mod to regenerate only this ACI.
+    ipa permission-mod "$name" "$@" \
+      --setattr="description=Restored scoped Puppet ACI $(date -u +%FT%T.%NZ)" >/dev/null
+    ipa permission-show "$name" --all --raw >/dev/null
+    return
+  fi
   if ! grep -Fxq "ipa: ERROR: $name: $kind not found" "$work/ipa.err"; then
     cat "$work/ipa.err" >&2
     return 1
@@ -54,7 +70,7 @@ ensure_object() {
 }
 
 ensure_object service "$principal"
-ensure_object role "$role" --desc='Docker-only Puppet user creation'
+ensure_object role "$role" --desc='Atlas-only Puppet user creation'
 ensure_object privilege "$privilege" --desc='Create users and manage only Backrest keys'
 
 # Virtual protected-operation attributes authorize the keytab extended
@@ -92,6 +108,9 @@ fi
 if ! grep -Fxiq "  member: krbprincipalname=$principal,cn=services,cn=accounts,$basedn" "$work/role"; then
   ipa role-add-member "$role" --services="$principal" >/dev/null
 fi
+if grep -Fxiq "  member: krbprincipalname=puppet-provisioner/docker.home.arpa@HOME.ARPA,cn=services,cn=accounts,$basedn" "$work/role"; then
+  ipa role-remove-member "$role" --services='puppet-provisioner/docker.home.arpa@HOME.ARPA' >/dev/null
+fi
 
 # Administrators need an explicit retrieval grant to recover this service's
 # existing keys; their ordinary keytab permission authorizes only creation.
@@ -111,7 +130,7 @@ else
     echo 'FreeIPA did not report whether the provisioner has keys; refusing to rekey.' >&2
     exit 1
   fi
-  ipa-getkeytab "${retrieve[@]}" -p "$principal" -k "$work/provisioner.keytab"
+  ipa-getkeytab "${retrieve[@]}" -s ipa.home.arpa -p "$principal" -k "$work/provisioner.keytab"
   KRB5CCNAME="FILE:$work/check.ccache" kinit -kt "$work/provisioner.keytab" "$principal"
   install -o root -g root -m 0400 "$work/provisioner.keytab" "$keytab"
 fi

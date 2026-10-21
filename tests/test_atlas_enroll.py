@@ -110,6 +110,19 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
         "cognition.home.arpa",
     ]
     assert auth["token_policies"] == ["puppet"]
+    wolf = next(
+        call.args[2] for call in calls if call.args[1] == "auth/cert/certs/puppet-wolf"
+    )
+    assert wolf["allowed_common_names"] == ["atlas.home.arpa", "proxmox.home.arpa"]
+    assert wolf["allowed_dns_sans"] == wolf["allowed_common_names"]
+    assert wolf["token_policies"] == ["puppet-wolf"]
+    assert wolf["token_no_default_policy"] is True
+    wolf_policy = next(
+        call.args[2]["policy"]
+        for call in calls
+        if call.args[1] == "sys/policies/acl/puppet-wolf"
+    )
+    assert wolf_policy == 'path "kv/data/wolf" { capabilities = ["read"] }'
 
 
 def test_token_uses_stdin(

@@ -81,19 +81,19 @@ class TestVllmWeeklyWindow:
             [
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 220",
                     0,
                     "status: running\n",
                 ),
-                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
                 ("ps --services --filter status=running", 0, guest_output()),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 220",
                     0,
                     guest_output(),
                 ),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 220",
                     0,
                     guest_output(),
                 ),
@@ -109,7 +109,7 @@ class TestVllmWeeklyWindow:
         assert any(
             "docker compose --profile extraction down" in cmd for cmd in commands
         )
-        assert all("qm shutdown 200" not in cmd for cmd in commands)
+        assert all("qm shutdown 220" not in cmd for cmd in commands)
         assert all("shutdown -h now" not in cmd for cmd in commands)
 
     def test_already_running_vllm_is_left_alone(self) -> None:
@@ -117,11 +117,11 @@ class TestVllmWeeklyWindow:
             [
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 220",
                     0,
                     "status: running\n",
                 ),
-                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
                 (
                     "ps --services --filter status=running",
                     0,
@@ -138,7 +138,7 @@ class TestVllmWeeklyWindow:
         assert any(
             "up --wait --wait-timeout 600 --no-recreate" in cmd for cmd in commands
         )
-        assert all("qm shutdown 200" not in cmd for cmd in commands)
+        assert all("qm shutdown 220" not in cmd for cmd in commands)
 
     def test_full_sequence_cleans_up_started_layers(self) -> None:
         result, commands = run_case(
@@ -150,21 +150,21 @@ class TestVllmWeeklyWindow:
                 ("expect -", 0, ""),
                 ("nc -z -w 1 proxmox-cortex.home.arpa 22", 0, ""),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 220",
                     0,
                     "status: stopped\n",
                 ),
-                ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 200", 0, ""),
-                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 220", 0, ""),
+                ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
                 ("ps --services --filter status=running", 0, guest_output()),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 220",
                     0,
                     guest_output(),
                 ),
                 ("docker compose --profile extraction down", 0, guest_output()),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 220",
                     0,
                     "",
                 ),
@@ -177,7 +177,7 @@ class TestVllmWeeklyWindow:
         )
 
         assert result == 0
-        assert "qm start 200" in " ".join(commands)
+        assert "qm start 220" in " ".join(commands)
         assert any(
             "docker compose --profile extraction up --wait --wait-timeout 600 --no-recreate"
             in cmd
@@ -186,7 +186,7 @@ class TestVllmWeeklyWindow:
         assert any(
             "docker compose --profile extraction down" in cmd for cmd in commands
         )
-        assert commands[-2].endswith("qm shutdown 200")
+        assert commands[-2].endswith("qm shutdown 220")
         assert commands[-1].endswith("shutdown -h now 'vLLM weekly window complete'")
 
     def test_compose_start_failure_still_cleans_up(self) -> None:
@@ -199,12 +199,12 @@ class TestVllmWeeklyWindow:
                 ("expect -", 0, ""),
                 ("nc -z -w 1 proxmox-cortex.home.arpa 22", 0, ""),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 220",
                     0,
                     "status: stopped\n",
                 ),
-                ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 200", 0, ""),
-                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 220", 0, ""),
+                ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
                 ("ps --services --filter status=running", 0, guest_output()),
                 (
                     "up --wait --wait-timeout 600 --no-recreate",
@@ -212,12 +212,12 @@ class TestVllmWeeklyWindow:
                     guest_output(exitcode=1),
                 ),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 220",
                     0,
                     guest_output(),
                 ),
                 (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 200",
+                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 220",
                     0,
                     "",
                 ),
@@ -233,7 +233,7 @@ class TestVllmWeeklyWindow:
         assert any(
             "docker compose --profile extraction down" in cmd for cmd in commands
         )
-        assert commands[-2].endswith("qm shutdown 200")
+        assert commands[-2].endswith("qm shutdown 220")
         assert commands[-1].endswith("'vLLM weekly window complete'")
 
     def test_lock_contention_exits_75(self, tmp_path: Path) -> None:
@@ -249,8 +249,8 @@ class TestVllmWeeklyWindow:
         result, commands = run_case(
             [
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
-                ("qm status 200", 0, "status: running\n"),
-                ("nc -z -w 1 complex.home.arpa 22", 0, ""),
+                ("qm status 220", 0, "status: running\n"),
+                ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
                 ("ps --services --filter status=running", 0, guest_output("bge\n")),
                 (
                     "up --wait --wait-timeout 600 --no-recreate",
@@ -265,7 +265,7 @@ class TestVllmWeeklyWindow:
 
     def test_guest_command_must_finish_before_success(self) -> None:
         """A QGA PID alone is not a successful model startup."""
-        runner = FakeRunner([("qm guest exec 200 --timeout 0", 0, '{"pid":123}')])
+        runner = FakeRunner([("qm guest exec 220 --timeout 0", 0, '{"pid":123}')])
         controller = vllm.Orchestrator(FastConfig(), runner)
         with pytest.raises(RuntimeError, match="did not complete"):
             controller.guest_exec("docker compose up --wait", timeout=630)

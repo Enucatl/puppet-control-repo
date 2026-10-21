@@ -61,6 +61,23 @@ path "auth/token/lookup-self" {{
         )
     infra.api("PUT", "sys/policies/acl/puppet", {"policy": policy})
     infra.api(
+        "PUT",
+        "sys/policies/acl/puppet-wolf",
+        {"policy": 'path "kv/data/wolf" { capabilities = ["read"] }'},
+    )
+    infra.api(
+        "POST",
+        "auth/cert/certs/puppet-wolf",
+        {
+            "certificate": infra.openvox("/bin/cat", "/trust/openvox-chain.pem"),
+            "allowed_common_names": [CERTNAME, "proxmox.home.arpa"],
+            "allowed_dns_sans": [CERTNAME, "proxmox.home.arpa"],
+            "token_policies": ["puppet-wolf"],
+            "token_no_default_policy": True,
+            "token_ttl": "15m",
+        },
+    )
+    infra.api(
         "POST",
         "auth/cert/certs/puppet",
         {

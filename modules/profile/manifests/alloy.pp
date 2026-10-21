@@ -1,10 +1,10 @@
 class profile::alloy (
-  String            $loki_url            = 'https://loki.docker.home.arpa/loki/api/v1/push',
+  String            $loki_url            = 'https://loki.atlas.home.arpa/loki/api/v1/push',
   Boolean           $enable_docker       = false,
   Boolean           $manage_docker_user  = false,
   Boolean           $manage_geoip        = false,
   Boolean           $enable_router_enrichment = false,
-  String            $router_listen_address = '10.0.0.128',
+  String            $router_listen_address = '10.0.0.158',
   Optional[String]   $local_ipv6_prefix   = lookup('ipv6-prefix', Optional[String], 'first', undef),
 ) {
   # Class parameters are serialized into every catalog, even when unused.

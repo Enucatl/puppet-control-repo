@@ -18,6 +18,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 NODES = (
+    "atlas.home.arpa",
     "complex.home.arpa",
     "docker.home.arpa",
     "forbearance.home.arpa",
@@ -318,7 +319,7 @@ def test_certificate_roles_enforce_kv_boundaries(
     }
     allowed_nodes = {
         "puppet-server": ("docker.home.arpa",),
-        "puppet-wolf": ("docker.home.arpa", "proxmox.home.arpa"),
+        "puppet-wolf": ("atlas.home.arpa", "proxmox.home.arpa"),
     }
     if role in allowed_nodes and node not in allowed_nodes[role]:
         with pytest.raises(hvac.exceptions.InvalidRequest):
@@ -351,10 +352,11 @@ def test_privileged_login_requires_puppet_ca_and_exact_common_name(
 ) -> None:
     """A privileged SAN or a service-CA certificate cannot impersonate Docker."""
     root, _ = vault
+    identity = "atlas.home.arpa" if role == "puppet-wolf" else "docker.home.arpa"
     certificate = root.secrets.pki.generate_certificate(
         "nodes" if mount == "puppet_ca" else "general",
-        common_name="complex.home.arpa" if mount == "puppet_ca" else "docker.home.arpa",
-        extra_params={"alt_names": "docker.home.arpa"},
+        common_name="complex.home.arpa" if mount == "puppet_ca" else identity,
+        extra_params={"alt_names": identity},
         mount_point=mount,
     )["data"]
     cert_file = tmp_path / "cert.pem"

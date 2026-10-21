@@ -4,6 +4,10 @@ classes:
   - profile::desktop_archives
   - profile::desktop_snaps
   - profile::desktop_printing
+  - profile::vault_login
+
+packages::list:
+  - alsa-utils
 
 systemd::timezone: Europe/Zurich
 
@@ -63,6 +67,16 @@ nfs_config::client_mounts:
     options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p,proto=tcp'
   '/export/docker':
     server: 'atlas.home.arpa'
+    ensure: absent
+  '/export/atlas':
+    server: 'atlas.home.arpa'
+    share: 'docker'
+    atboot: false
+    options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p,proto=tcp'
+  '/export/cognition':
+    server: 'cognition.home.arpa'
+    ensure: present
+    share: 'docker'
     atboot: false
     options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p,proto=tcp'
 
@@ -72,3 +86,116 @@ profile::desktop_archives::reaper_checksum: 'a4aa961534f22ae5ae910e4ec0c200dcb44
 profile::desktop_archives::teamspeak_version: '6.0.0-beta5'
 profile::desktop_archives::teamspeak_source: 'https://files.teamspeak-services.com/pre_releases/client/6.0.0-beta5/teamspeak-client.tar.xz'
 profile::desktop_archives::teamspeak_checksum: '394472a25ee9c2419c44a5e71a401c21bffecf2fdcb27fbe2173d0fffd1875a4'
+
+profile::common::sysctl::settings:
+  net.ipv6.conf.all.accept_redirects:
+    value: 0
+  net.ipv6.conf.default.accept_redirects:
+    value: 0
+  net.ipv6.conf.all.forwarding:
+    value: 1
+  net.ipv6.conf.default.forwarding:
+    value: 1
+  net.ipv6.conf.all.accept_ra:
+    value: 2
+  net.ipv6.conf.default.accept_ra:
+    value: 2
+  net.ipv6.conf.all.proxy_ndp:
+    value: 1
+  net.ipv6.conf.default.proxy_ndp:
+    value: 1
+
+profile::common::systemd::units:
+  export-cognition.automount:
+    content: |
+      [Unit]
+      Description=Mount Cognition on demand
+
+      [Automount]
+      Where=/export/cognition
+      TimeoutIdleSec=10min
+
+      [Install]
+      WantedBy=multi-user.target
+    enable: true
+    active: true
+    require: Nfs::Client::Mount[/export/cognition]
+  docker-prune.service:
+    content: |
+      [Unit]
+      Description=Prune unused Docker objects
+      Wants=network-online.target docker.service
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c '/usr/bin/docker system prune --all --force --filter until=24h 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
+      StandardOutput=journal
+      StandardError=journal
+    enable: false
+    active: false
+  docker-prune.timer:
+    content: |
+      [Unit]
+      Description=Run Docker cleanup daily
+
+      [Timer]
+      OnCalendar=*-*-* 03:00:00 UTC
+      Persistent=true
+      Unit=docker-prune.service
+
+      [Install]
+      WantedBy=timers.target
+    enable: true
+    active: true
+    require: Systemd::Unit_file[docker-prune.service]
+  gpg-agent-ssh.socket:
+    path: /etc/systemd/user
+    target: /dev/null
+    daemon_reload: false
+  hyperx-headset-volume-user.service:
+    path: /etc/systemd/user
+    content: |
+      [Unit]
+      Description=Set HyperX Cloud III S Wireless ALSA playback volume
+      ConditionUser=user
+      Wants=wireplumber.service
+      After=wireplumber.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'for i in $(seq 1 30); do /usr/bin/amixer -c Wireless sset PCM 100% && exit 0; sleep 1; done; exit 1'
+
+      [Install]
+      WantedBy=default.target
+    daemon_reload: false
+  hyperx-headset-volume-user.timer:
+    path: /etc/systemd/user
+    content: |
+      [Unit]
+      Description=Reset HyperX headset ALSA playback volume hourly
+
+      [Timer]
+      OnUnitActiveSec=1h
+      Unit=hyperx-headset-volume-user.service
+
+      [Install]
+      WantedBy=timers.target
+    daemon_reload: false
+
+profile::common::systemd::user_services:
+  hyperx-headset-volume-user.service:
+    unit: hyperx-headset-volume-user.service
+    global: true
+    enable: true
+    require: Package[alsa-utils]
+  hyperx-headset-volume-user.timer:
+    unit: hyperx-headset-volume-user.timer
+    global: true
+    enable: true
+
+profile::common::udev::rules:
+  99-logitech-c925e-disable-audio.rules:
+    rules:
+      - 'ACTION=="bind", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", DRIVER=="snd-usb-audio", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="085b", ATTR{bInterfaceClass}=="01", RUN+="/bin/sh -c ''echo -n %k > /sys/bus/usb/drivers/snd-usb-audio/unbind''"'

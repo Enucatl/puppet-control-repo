@@ -6,8 +6,8 @@ set system login user vyos authentication public-keys user@ansible key AAAAC3Nza
 set system login user vyos authentication public-keys user@ansible type ssh-ed25519
 set system name-server {{ vyos_lan_ip.split('/')[0] }}
 set system update-check url https://raw.githubusercontent.com/vyos/vyos-nightly-build/refs/heads/rolling/version.json
-set system static-host-mapping host-name alloy.docker.home.arpa inet {{ docker_node_ip }}
-set system static-host-mapping host-name loki.docker.home.arpa inet {{ docker_node_ip }}
+set system static-host-mapping host-name alloy.atlas.home.arpa inet {{ atlas_node_ip }}
+set system static-host-mapping host-name loki.atlas.home.arpa inet {{ atlas_node_ip }}
 set system option reboot-on-upgrade-failure 5
 set system syslog local facility all level info
 set system syslog local facility local7 level debug
