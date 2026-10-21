@@ -322,15 +322,6 @@ def start() -> None:
         staged = STATE / "container-inputs" / name
         if not staged.is_file() or staged.read_bytes() != (STATE / name).read_bytes():
             raise RuntimeError(f"Missing or changed staged IPA input: {name}")
-    if MOUNT + "/" not in infra.api("GET", "sys/mounts")["data"]:
-        raise RuntimeError("Established FreeIPA mount missing; restore it")
-    identity = json.loads((STATE / "issuer.json").read_text())
-    keys = infra.api("LIST", MOUNT + "/keys")["data"]["keys"]
-    current = infra.api("GET", MOUNT + "/issuer/default")["data"]
-    if identity["key_id"] not in keys or any(
-        current[name] != value for name, value in identity.items()
-    ):
-        raise RuntimeError("Established FreeIPA key or issuer changed; restore it")
     volume()
     if (STATE / "installed").exists():
         compose(

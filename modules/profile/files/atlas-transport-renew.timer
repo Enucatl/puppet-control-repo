@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Atlas Vault and FreeIPA certificate renewal every six hours
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+Unit=atlas-transport-renew.service
+
+[Install]
+WantedBy=timers.target

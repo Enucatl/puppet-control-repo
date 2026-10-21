@@ -169,10 +169,15 @@ for config in etc/puppetlabs/puppet etc/puppetlabs/facter/facter.conf \
     home/user/.config/home-arpa/mtls/codex.{crt,key}; do
     if [[ -e /"$config" || -L /"$config" ]]; then host_config+=("$config"); fi
 done
+# Canonical Compose inputs are private recovery inputs alongside issued keys.
+for config in /opt/docker/.env /opt/docker/*/.env; do
+    if [[ -f $config || -L $config ]]; then host_config+=("${config#/}"); fi
+done
 for key in /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub; do
     if [[ -f $key || -L $key ]]; then host_config+=("etc/ssh/${key##*/}"); fi
 done
-for unit in atlas-openvox-renew.service atlas-openvox-renew.timer; do
+for unit in atlas-openvox-renew.service atlas-openvox-renew.timer \
+    atlas-transport-renew.service atlas-transport-renew.timer; do
     if [[ -f /etc/systemd/system/$unit ]]; then host_config+=("etc/systemd/system/$unit"); fi
 done
 tar --numeric-owner --acls --xattrs -czf "$output/host-config.tar.gz" -C / "${host_config[@]}"

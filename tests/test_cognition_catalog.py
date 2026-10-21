@@ -7,7 +7,7 @@ from test_profile_catalogs import DUMMY_SECRETS
 
 
 def test_cognition_catalog(tmp_path: Path) -> None:
-    """Use native Atlas services and explicit GPU workload deployment profiles."""
+    """Use Atlas services and leave GPU workload lifetime to on-demand controllers."""
     result = resources(
         compile_catalog(
             tmp_path,
@@ -60,9 +60,13 @@ def test_cognition_catalog(tmp_path: Path) -> None:
     ]
     assert "ExecCondition=/usr/bin/nvidia-smi -L" in power
     for project in ("vllm", "wolf"):
-        assert f"File[/etc/systemd/system/{project}-deploy.service]" in result
-    deploy = result["File[/etc/systemd/system/vllm-deploy.service]"]["content"]
-    assert "--profile extraction up" in deploy
-    assert "--wait --wait-timeout 600" in deploy
-    assert "ExecStart=/usr/bin/docker compose pull" not in deploy
+        for suffix in ("path", "service"):
+            assert (
+                result[f"File[/etc/systemd/system/{project}-deploy.{suffix}]"]["ensure"]
+                == "absent"
+            )
+            unit = result[f"Service[{project}-deploy.{suffix}]"]
+            assert unit["enable"] is False
+            assert unit["ensure"] is False
+    assert (ROOT / "data/roles/nodes/cognition.home.arpa.yaml").is_symlink()
     assert "Class[Profile::Docker_node]" not in result

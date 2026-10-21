@@ -73,12 +73,6 @@ nfs_config::client_mounts:
     share: 'docker'
     atboot: false
     options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p,proto=tcp'
-  '/export/cognition':
-    server: 'cognition.home.arpa'
-    ensure: present
-    share: 'docker'
-    atboot: false
-    options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p,proto=tcp'
 
 profile::desktop_archives::reaper_version: '7.82'
 profile::desktop_archives::reaper_source: 'https://www.reaper.fm/files/7.x/reaper782_linux_x86_64.tar.xz'
@@ -106,6 +100,18 @@ profile::common::sysctl::settings:
     value: 1
 
 profile::common::systemd::units:
+  export-cognition.mount:
+    content: |
+      [Unit]
+      Description=Cognition Docker share
+
+      [Mount]
+      What=cognition.home.arpa:/docker
+      Where=/export/cognition
+      Type=nfs4
+      Options=sec=krb5p,proto=tcp
+      TimeoutSec=10s
+    require: Class[nfs::client]
   export-cognition.automount:
     content: |
       [Unit]
@@ -119,7 +125,7 @@ profile::common::systemd::units:
       WantedBy=multi-user.target
     enable: true
     active: true
-    require: Nfs::Client::Mount[/export/cognition]
+    require: Systemd::Unit_file[export-cognition.mount]
   docker-prune.service:
     content: |
       [Unit]

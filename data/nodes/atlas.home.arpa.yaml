@@ -530,6 +530,15 @@ profile::common::acls::posix_acls:
     - mask::r--
 
 profile::common::systemd::units:
+  atlas-transport-renew.service:
+    source: puppet:///modules/profile/atlas-transport-renew.service
+    enable: false
+    active: false
+  atlas-transport-renew.timer:
+    source: puppet:///modules/profile/atlas-transport-renew.timer
+    enable: true
+    active: true
+    require: Systemd::Unit_file[atlas-transport-renew.service]
   paperless-snapshot.service:
     content: |
       [Unit]

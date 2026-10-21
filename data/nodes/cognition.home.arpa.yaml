@@ -49,10 +49,10 @@ packages::list:
   - ubuntu-drivers-common
 
 profile::docker_host::git_deploy_projects:
-  wolf: {}
+  wolf:
+    ensure: absent
   vllm:
-    pull: false
-    deploy_command: '/usr/bin/docker compose --profile extraction up --pull always --force-recreate --wait --wait-timeout 600'
+    ensure: absent
 
 kmod::list_of_loads:
   'uinput': {}

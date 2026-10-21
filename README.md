@@ -1,5 +1,11 @@
 # Puppet Control Repository
 
+Atlas, Aperture and Cognition are the active replacements for Docker,
+Forbearance and Complex. See [Atlas service configuration](docs/atlas-services.md)
+for the current service sources and environment files, and
+[Atlas recovery](docs/atlas-recovery.md) for established-authority restoration.
+The migration reports below retain their historical staging and acceptance notes.
+
 A monorepo for home lab infrastructure. It combines Puppet configuration management with the supporting infrastructure that runs the Puppet server itself — plus provisioning tools and Proxmox scripts — all in one place.
 
 The goal is to reproduce the stack from versioned configuration, provisioning

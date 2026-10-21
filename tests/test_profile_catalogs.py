@@ -82,10 +82,9 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     )
     assert certificate["ca_trust"] == "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
     assert certificate["cert_data"]["common_name"] == "codex.aperture.home.arpa"
-    for share in ("scratch", "atlas", "cognition"):
+    for share in ("scratch", "atlas"):
         mount = result[f"Nfs::Client::Mount[/export/{share}]"]
-        server = "cognition" if share == "cognition" else "atlas"
-        assert mount["server"] == f"{server}.home.arpa"
+        assert mount["server"] == "atlas.home.arpa"
         if share != "scratch":
             assert mount["share"] == "docker"
         assert mount["atboot"] is False
@@ -108,7 +107,18 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     )
     assert result["Nfs::Client::Mount[/export/docker]"]["ensure"] == "absent"
     assert "Nfs::Client::Mount[/export/complex]" not in result
-    assert result["Nfs::Client::Mount[/export/cognition]"]["ensure"] == "present"
+    assert "Nfs::Client::Mount[/export/cognition]" not in result
+    assert "Exec[mkdir_recurse_/export/cognition]" not in result
+    assert "File[/export/cognition]" not in result
+    cleanup = result["Augeas[cognition-native-automount]"]
+    assert cleanup["context"] == "/files/etc/fstab"
+    assert cleanup["changes"] == "rm *[file = '/export/cognition']"
+    native_mount = result["File[/etc/systemd/system/export-cognition.mount]"]["content"]
+    assert "What=cognition.home.arpa:/docker" in native_mount
+    assert "Type=nfs4" in native_mount
+    assert "Options=sec=krb5p,proto=tcp" in native_mount
+    assert "TimeoutSec=10s" in native_mount
+    assert "Service[export-cognition.mount]" not in result
     assert result["Systemd::Unit_file[export-cognition.automount]"]["active"] is True
     for scope in ("all", "default"):
         for setting, value in (
@@ -220,6 +230,7 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         == "aperture.home.arpa"
     )
     for job in (
+        "atlas-transport-renew",
         "paperless-snapshot",
         "paperless-correspondent-cleanup",
         "backrest-kinit",
@@ -228,6 +239,9 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         timer = result[f"Systemd::Unit_file[{job}.timer]"]
         assert timer["enable"] is True and timer["active"] is True
     vault_backup = result["File[/etc/systemd/system/vault-snapshot.service]"]["content"]
+    assert result["File[/etc/systemd/system/atlas-transport-renew.service]"][
+        "source"
+    ] == ("puppet:///modules/profile/atlas-transport-renew.service")
     assert "RequiresMountsFor=/scratch" in vault_backup
     assert "backup.sh" in vault_backup
     assert "Cron[vault-snapshot]" not in result

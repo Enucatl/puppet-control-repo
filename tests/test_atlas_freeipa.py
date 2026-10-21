@@ -37,6 +37,40 @@ def test_start_cannot_initialize(controller: ModuleType) -> None:
     controller.compose.assert_not_called()
 
 
+def test_established_start_needs_no_vault_session(
+    controller: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Vault outage cannot prevent starting intact local directory state."""
+    monkeypatch.setattr(controller.infra, "STATE", controller.STATE)
+    (controller.STATE / "ready.json").write_text(
+        '{"hostname":"ipa.home.arpa","root_sha256":"pin"}'
+    )
+    (controller.STATE / "root.sha256").write_text("pin")
+    for name in (
+        "installer.json",
+        "issuer.json",
+        "intermediate.json",
+        "intermediate.pem",
+        "root.pem",
+        "http.json",
+        "ldap.json",
+        "http-chain.pem",
+        "ldap-chain.pem",
+        "http-key.pem",
+        "ldap-key.pem",
+    ):
+        (controller.STATE / name).write_text("saved")
+    staged = controller.STATE / "container-inputs"
+    staged.mkdir()
+    for name in controller.INPUTS:
+        (staged / name).write_text("saved")
+    monkeypatch.setattr(controller, "volume", Mock())
+    controller.infra.api.side_effect = RuntimeError("Vault unavailable")
+    controller.start()
+    controller.infra.api.assert_not_called()
+    assert (controller.STATE / "installed").exists()
+
+
 @pytest.mark.parametrize(
     "checkpoint", ["intermediate.json", "intermediate.pem", "issuer.json"]
 )

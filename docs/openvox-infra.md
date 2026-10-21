@@ -51,6 +51,10 @@ served full chain, repeat no-op and refreshed off-VM kit are recorded in
 
 ## Maintenance release and independent recovery
 
+The maintained replacement-host entrypoint and current production recovery steps
+are in [Atlas recovery](atlas-recovery.md). Protected acceptance scripts below are
+historical evidence.
+
 The maintenance fixes and shared Vault ACL files were published as `60da9a9`.
 Both GitHub CI jobs passed: 568 enrollment/Atlas tests and 21 profile tests.
 Atlas's checkout, bare production ref, deployed environment HEAD and successful
@@ -207,6 +211,45 @@ alone does not satisfy independent recovery. Never overwrite the #12 test kit.
 A backup proves preservation only; restoration and unchanged-identity acceptance
 remain separate checks before issue closure.
 
+### Automated Vault and IPA transport renewal
+
+Puppet installs `atlas-transport-renew.service` and its six-hour timer. After
+initial authority setup, run the following once as root on Atlas to authorize
+its existing native Puppet agent identity, then verify the first check:
+
+```sh
+python3 /opt/docker/puppet-control-repo/proxmox/atlas-transport-renew.py configure
+systemctl start atlas-transport-renew.service
+systemctl enable --now atlas-transport-renew.timer
+```
+
+`configure` uses the protected bootstrap root token only to create the policy
+and certificate-auth role. Routine renewal uses Atlas's existing native agent
+certificate and a five-minute token restricted to the Vault and IPA transport
+signing endpoints. It reads no root token. Keep the native agent's own built-in
+certificate renewal enabled.
+
+Vault's 30-day leaf is renewed with ten days remaining; IPA's 90-day HTTP and
+LDAP leaves are renewed with thirty days remaining. Native Ruby/OpenSSL creates
+CSRs from the existing keys, validates the complete ML-DSA chain against the
+saved root fingerprint, and preserves the subject and identity extensions. The
+Vault public key stays unchanged, and its unsealer pin is republished with the
+same key. Vault reloads TLS with SIGHUP; IPA certificates are installed through
+`ipa-server-certinstall`'s own implementation and the affected `httpd` or
+`dirsrv@HOME-ARPA` service is restarted. Its Directory Manager password and
+certificate inputs are supplied on stdin and kept out of process arguments;
+temporary container files are private.
+
+Issued certificates are saved as `*.renewal-pending.json` before publication.
+The canonical JSON and PEM files are updated together under the shared
+maintenance lock. A failed install or reload retains the
+pending certificate for retry without another issuance. The marker is removed
+only after an authenticated, exact-name TLS handshake serves the saved leaf.
+A regular check verifies all three listeners and does not restart services.
+Backups preserve the current recovery inputs, pending state and installed units.
+If Vault has already expired while the timer was disabled, operator recovery
+must install a valid transport leaf before this job can authenticate to Vault.
+
 ### Automated OpenVox leaf renewal
 
 Atlas startup installs `atlas-openvox-renew.service` and its systemd timer,
@@ -241,8 +284,8 @@ Run `systemctl start atlas-openvox-renew.service` for an immediate check and
 successful command alone is insufficient: the job verifies the served identity.
 Its logs contain certificate metadata, never tokens or private keys. A renewal
 causes one brief OpenVox restart; Vault and its unsealer keep running. This
-procedure requires an unexpired current leaf and does not renew Vault's own TLS
-certificate or the CA certificates.
+procedure requires an unexpired current OpenVox leaf. Vault and IPA transport
+certificates use the separate job above; CA renewal remains an operator task.
 
 The updated kit at
 `root@proxmox.home.arpa:/root/openvox-atlas-renewal-20261019T165202Z`

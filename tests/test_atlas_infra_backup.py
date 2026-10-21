@@ -264,6 +264,7 @@ esac
     for prefix in ("/scratch/vault", "/etc/", "/root", "/opt/", "/run/lock/"):
         source = source.replace(prefix, str(tmp_path) + prefix)
     source = source.replace('/"$config"', str(tmp_path) + '/"$config"')
+    source = source.replace("${config#/}", "${config#" + str(tmp_path) + "/}")
     source = source.replace("SECONDS + 300", "SECONDS + 1").replace(
         "sleep 2", "sleep 0.05"
     )
@@ -628,6 +629,10 @@ def test_backup_preserves_native_agent_identities_without_host_caches(
         "opt/docker/puppet-control-repo/docker/wolf/secrets/key.pem": "WOLF-PRIVATE-KEY-CANARY",
         "opt/docker/browser-use/secrets/browser-use.crt": "BROWSER-CERT-CANARY",
         "opt/docker/browser-use/secrets/browser-use.key": "BROWSER-PRIVATE-KEY-CANARY",
+        "opt/docker/.env": "SHARED-ENV-SECRET-CANARY",
+        "opt/docker/traefik/.env": "PROJECT-ENV-SECRET-CANARY",
+        "etc/systemd/system/atlas-transport-renew.service": "[Service]\nType=oneshot\n",
+        "etc/systemd/system/atlas-transport-renew.timer": "[Timer]\nOnBootSec=5m\n",
         "home/user/.config/home-arpa/mtls/codex.crt": "CODEX-CERT-CANARY",
         "home/user/.config/home-arpa/mtls/codex.key": "CODEX-PRIVATE-KEY-CANARY",
     }
