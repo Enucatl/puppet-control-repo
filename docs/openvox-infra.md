@@ -39,7 +39,9 @@ existing identities until their clients migrate.
 
 ## Fresh initialization
 
-For a fresh Atlas authority, from the repository root as root:
+First complete the one-time [fresh Atlas Git receiver setup](../proxmox/README.md#fresh-atlas-git-receiver)
+as the checkout owner. Then initialize a fresh Atlas authority from the
+repository root as root:
 
 ```sh
 python3 proxmox/atlas-infra.py initialize

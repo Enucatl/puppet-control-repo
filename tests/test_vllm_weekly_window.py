@@ -269,3 +269,22 @@ class TestVllmWeeklyWindow:
         controller = vllm.Orchestrator(FastConfig(), runner)
         with pytest.raises(RuntimeError, match="did not complete"):
             controller.guest_exec("docker compose up --wait", timeout=630)
+
+
+def test_vllm_wrapper_passes_target_overrides(tmp_path):
+    """Explicit target options reach the service instead of falling back to defaults."""
+    from puppet_catalog import DEPENDENCIES, compile_catalog, resources
+
+    if not (DEPENDENCIES / "systemd/manifests/unit_file.pp").is_file():
+        pytest.skip("Set PUPPET_TEST_MODULEPATH to the installed Forge dependencies")
+
+    catalog = compile_catalog(
+        tmp_path,
+        "service { 'alloy': } class { 'profile::vllm_weekly_window': vm_host => 'fixture-workload.home.arpa', vm_id => 999 }",
+        hostname="proxmox",
+        node_type="proxmox",
+    )
+    service = resources(catalog)[
+        "File[/etc/systemd/system/vllm-weekly-window.service]"
+    ]["content"]
+    assert "--vm-host fixture-workload.home.arpa --vm-id 999" in service

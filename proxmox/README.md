@@ -242,59 +242,74 @@ under #13/#18.
 
 ## Atlas production publishing and legacy separation
 
-Run the publishing handover after the independent tooling bootstrap, which pins
-a detached checkout. First disconnect the legacy checkout from GitHub, then
-publish the reviewed commit from Atlas:
+### Fresh Atlas Git receiver
+
+Before fresh authority initialization, prepare the public receiver once on Atlas.
+Use the freshly bootstrapped checkout at the reviewed commit already published
+on GitHub. Run Git as its owner, `user_l`; `sudo` is only needed for the one-time
+directory and system Git trust setup. These commands require an absent receiver;
+restore the existing receiver on recovery instead.
 
 ```bash
-bash proxmox/legacy-git-remotes.sh /export/docker/puppet-control-repo
-CONTROL_REVISION=$(git rev-parse HEAD)
-ssh -A user_l@atlas.home.arpa \
-  "sudo --preserve-env=SSH_AUTH_SOCK bash -s -- '$CONTROL_REVISION'" \
-  < proxmox/atlas-publish.sh
+(
+set -e
+cd /opt/docker/puppet-control-repo
+revision=$(git rev-parse HEAD)
+receiver=/opt/git/openvox/control.git
+test ! -e "$receiver"
+sudo install -d -o user_l -g docker -m 2775 /opt/git/openvox
+git clone --bare --config core.sharedRepository=0664 \
+  https://github.com/Enucatl/puppet-control-repo.git "$receiver"
+git --git-dir="$receiver" update-ref refs/heads/production "$revision"
+chmod -R o+rX,o-w "$receiver"
+sudo git config --system --add safe.directory "$receiver"
+git switch -C production "$revision"
+git config --local --replace-all remote.origin.pushurl git@github.com:Enucatl/puppet-control-repo.git
+git config --local --add remote.origin.pushurl "$receiver"
+git config --local --replace-all remote.origin.push refs/heads/production:refs/heads/production
+git config --local remote.pushDefault origin
+git config --local branch.production.pushRemote origin
+)
 ```
 
-The legacy script changes only Git routing configuration. Its fetch URL and
-sole push URL become `user_l@docker.home.arpa:/opt/git/puppet-control-repo.git`,
-with an explicit `production:production` push mapping. It removes the legacy
-bare repository's unused GitHub remote without deleting its tracking refs.
-Dirty work, branches, deployment hooks and legacy authority state are preserved.
-This also prevents a GitHub fetch from changing the legacy `origin/production`
-reference watched by its existing deployment service.
+The full public clone supplies the receiver's history without inheriting the
+bootstrap checkout's shallow boundary. Public read/traverse permissions let
+OpenVox's remapped container user read committed code; the working checkout and
+its ignored secrets retain their existing private permissions. The explicit
+initialization command then deploys code and installs the managed receive hook.
 
-`atlas-publish.sh CONTROL_COMMIT_SHA` requires a clean Atlas control checkout
-and a commit already published on GitHub `dev`. It restores complete history
-when the bootstrap checkout is shallow, requires fast-forward ancestry for all
-existing production targets, checks out local `production`, and creates the
-`user_l:docker` bare repository at `/opt/git/openvox/control.git`.
-This receiver contains public committed code: its directory and parent use
-`2775`, existing contents gain read/traverse access for others, and
-`core.sharedRepository=0664` keeps future objects and refs readable even under
-a restrictive umask. Other users cannot write. The working checkout under
-`/opt/docker` retains mode `2770` because it can contain deployment secrets.
-The bare repository is created with an empty Git template. The publisher removes
-the old maintenance-lock pre-receive guard; container activation installs the
-post-receive deployment dispatcher. It also marks this exact receiver safe in
-system Git config so local group writers can push to it.
+### Ordinary publication
 
-Atlas keeps GitHub's SSH URL for fetches and pins GitHub's public host key in
-the checkout's Git metadata. GitHub authentication uses the administrator's
-forwarded SSH agent; private keys are not copied to Atlas. The publisher holds
-the maintenance lock while it prepares and publishes the Atlas checkout. Once
-routing is configured, ordinary `git push` publishes from a working checkout to
-both:
+The migration and Git routing setup are complete. From Atlas's control checkout
+on `production`, ordinary `git push` publishes to both configured targets:
 
 - `git@github.com:Enucatl/puppet-control-repo.git`, branch `production`.
 - `/opt/git/openvox/control.git`, branch `production`.
 
-GitHub `dev` remains available for development; the publishing setup promotes a
-declared commit rather than rewriting or deleting that branch. Once routing is
-configured, ordinary `git push` updates GitHub and the Atlas receiver; its
-post-receive hook deploys the pushed branch. Pushes are no longer gated by the
-maintenance lock. The publisher still uses that lock when coordinating its
-GitHub promotion and Atlas receiver update with backups and service operations.
-Git push to two URLs is not a cross-repository transaction, so verify both refs
-if a push reports an error after updating one target.
+```bash
+cd /opt/docker/puppet-control-repo
+git push origin
+```
+
+The receiver's managed post-receive hook deploys the pushed branch through
+OpenVox. Git can accept refs even when deployment fails, and a no-op retry does
+not rerun the hook. After every publication, verify both target refs and the
+receipt against the intended revision:
+
+```bash
+revision=$(git rev-parse HEAD)
+test "$(git ls-remote git@github.com:Enucatl/puppet-control-repo.git refs/heads/production | cut -f1)" = "$revision"
+test "$(git --git-dir=/opt/git/openvox/control.git rev-parse refs/heads/production)" = "$revision"
+test "$(docker --host unix:///var/run/docker.sock exec infra-openvox-1 cat /git/deploy.status /git/deploy.commit)" = "$(printf '0\n%s' "$revision")"
+```
+
+If the receipt fails, inspect the deployment error and repair or rerun the
+receiver's deployment before treating the publication as complete. Updating two
+Git targets is not a transaction; inspect both refs after any push error.
+GitHub authentication uses the administrator's SSH agent. Legacy Docker's
+checkout fetches and pushes only to its old bare repository at
+`user_l@docker.home.arpa:/opt/git/puppet-control-repo.git`.
+The one-time publication and legacy-routing scripts have been retired.
 
 Maintenance release `60da9a9` passed production publication with a receipt
 matching the actual deployed commit. Its isolated restore, host reboot, image
@@ -302,8 +317,8 @@ rollback and failure-recovery checks passed before release; all three Atlas
 services and the renewed identity remained healthy afterward. See the
 [maintenance acceptance and recovery notes](../docs/openvox-infra.md#maintenance-release-and-independent-recovery).
 
-This stage stores code without starting containers or generating authorities.
-Compose mounts only the public bare repository read-only at `/git/control.git`.
+Receiver preparation stores public code without starting containers or generating
+authorities. Compose mounts it read-only at `/git/control.git`.
 The separate external volume at `/git` remains writable for deployment status.
 Container UID/GID `999:999` maps to host `100999:100999`; public read/traverse
 permissions allow it to read the bare repository without ACLs or ownership
@@ -320,12 +335,11 @@ checkout of `production`. A temporary r10k configuration skips Puppetfile
 processing for this offline code-access check; module installation is verified
 separately during activation. It starts no OpenVox server and initializes no CA.
 
-Before #13 activation, prepare the writable deployment volume and install a host
-receive hook that dispatches into the container. The container deployment helper
-already runs r10k, generates Puppet types and refreshes the environment caches;
-it uses container paths and cannot run directly as the host's Git hook. Its
-startup hook check must match the dispatch arrangement. Initial code deployment
-must precede normal startup; root/CA initialization remains separate and explicit.
+Fresh initialization prepares the writable deployment volume, performs initial
+code deployment and installs the host hook. Subsequent receives dispatch into
+the container to run r10k, generate Puppet types and refresh environment caches.
+The container helper uses container paths and cannot run directly as a host hook.
+Ordinary startup uses the native foreground command; it performs no hook setup.
 
 Public read-only access acceptance passed on **2026-10-19**, using revision
 `c96c722290cf289ada386e4de76b8947dc6c8c9d`. The actual `24001` derived image,
@@ -408,15 +422,15 @@ Desktop provisioning reboots and verifies the short hostname/FQDN again.
 Cognition uses the Docker workload path: VM 220, eight cores, 32768 MiB RAM,
 1000 GiB disk and virtio graphics, with MAC `bc:24:11:4e:c0:22` reserved as
 `10.0.40.134`. It enrolls against Atlas and installs authenticated system CA
-trust before FreeIPA enrollment. The GPU stays with Complex throughout staging;
-Cognition's node data configures the NVIDIA runtime but disables Wolf/vLLM
-deployment. Its daemon retains Complex's disabled user namespace remapping to
-preserve numeric ownership during state transfer; other Docker builds retain
-their existing `default` remapping. The Docker provisioning failure path retains
+trust before FreeIPA enrollment. Cognition now owns the GPU and runs the migrated
+Wolf/vLLM workloads. Its daemon retains disabled user namespace remapping to
+preserve migrated numeric ownership; other Docker builds retain their existing
+`default` remapping. The Docker provisioning failure path retains
 the guest and writes private diagnostics so an enrolled identity can be repaired
 in place.
-See [Cognition state transfer and cutover](cognition-migration.md) for the guarded
-copy/GPU tools, networking, controllers and rollback.
+See the [completed Cognition cutover record](cognition-migration.md) for
+acceptance evidence and retained recovery data. The one-time migration tools
+have been retired.
 
 The prepared `aperture.home.arpa` node uses the desktop role with Atlas IPA,
 Vault, monitoring and Kerberos NFS endpoints. Its first catalog creates the
