@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 
 SOURCE = Path(__file__).resolve().parents[1]
@@ -187,4 +188,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except subprocess.CalledProcessError as error:
+        print(
+            error.stderr or f"Certificate command failed (exit {error.returncode}).",
+            file=sys.stderr,
+            end="",
+        )
+        raise SystemExit(error.returncode) from None

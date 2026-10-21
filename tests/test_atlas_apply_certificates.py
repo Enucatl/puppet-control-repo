@@ -140,6 +140,54 @@ def test_failed_refresh_is_retried_without_reissuing(
     assert action.call_count == 2
 
 
+def test_cli_surfaces_native_child_failure_without_private_input(
+    tmp_path: Path,
+) -> None:
+    """Real child diagnostics reach Puppet without dumping its code or stdin secrets."""
+    script = tmp_path / "proxmox/atlas-apply-certificates.py"
+    script.parent.mkdir()
+    script.write_text(
+        (ROOT / "proxmox/atlas-apply-certificates.py")
+        .read_text()
+        .replace(
+            "/run/lock/atlas-openvox-maintenance.lock",
+            str(tmp_path / "maintenance.lock"),
+        )
+    )
+    secrets = tmp_path / "docker/freeipa/secrets"
+    secrets.mkdir(parents=True)
+    for name, contents in (
+        ("fullchain.pem", "public-certificate"),
+        ("key.pem", "PRIVATE-KEY-CANARY"),
+        ("installer.json", '{"dm_password":"PRIVATE-PASSWORD-CANARY"}'),
+    ):
+        (secrets / name).write_text(contents)
+    binary = tmp_path / "bin/docker"
+    binary.parent.mkdir()
+    binary.write_text(
+        f"#!{sys.executable}\n"
+        "import json, sys\n"
+        "request = json.load(sys.stdin)\n"
+        "assert request['private_key'] == 'PRIVATE-KEY-CANARY'\n"
+        "assert request['dm_password'] == 'PRIVATE-PASSWORD-CANARY'\n"
+        "print('Native certificate import failed: unsupported key type', file=sys.stderr)\n"
+        "raise SystemExit(7)\n"
+    )
+    binary.chmod(0o755)
+    result = subprocess.run(
+        [sys.executable, str(script), "ipa"],
+        env={**os.environ, "PATH": f"{binary.parent}:{os.environ['PATH']}"},
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 7
+    assert result.stdout == ""
+    assert result.stderr == "Native certificate import failed: unsupported key type\n"
+    assert "PRIVATE-KEY-CANARY" not in result.stderr
+    assert "PRIVATE-PASSWORD-CANARY" not in result.stderr
+
+
 @pytest.mark.parametrize(
     "service, ports",
     [("vault", ["8200"]), ("ipa", ["443", "636"]), ("openvox", ["8140"])],

@@ -33,6 +33,7 @@ case "${*: -1}" in
         case ${TEST_CASE:-init} in
             unreachable) exit 7 ;;
             bad-health) echo '{}' ;;
+            unsealed) echo '{"initialized":true,"sealed":false}' ;;
             init|init-fail|uninitialized) echo '{"initialized":false,"sealed":true}' ;;
             *) echo '{"initialized":true,"sealed":true}' ;;
         esac ;;
@@ -50,6 +51,7 @@ esac
 MOCK
 cat > "$work/bin/sleep" <<'MOCK'
 #!/usr/bin/env bash
+printf '%s\n' "$1" > "$TEST_WORK/sleep-interval"
 exit 37
 MOCK
 cat > "$work/bin/vault" <<'MOCK'
@@ -92,6 +94,7 @@ run_unsealer() {
     local result=0
     bash -x "$scripts/unseal.sh" > "$work/output" 2>&1 || result=$?
     [ "$result" = 37 ] # fake sleep terminates after one complete iteration
+    [ "$(cat "$work/sleep-interval")" = "${1:-5}" ]
     assert_private
 }
 
@@ -114,6 +117,10 @@ for TEST_CASE in uninitialized unreachable; do
     run_unsealer
     [ ! -e "$work/unseal-request" ]
 done
+export TEST_CASE=unsealed
+rm -f "$work/unseal-request"
+run_unsealer 120
+[ ! -e "$work/unseal-request" ]
 export TEST_CASE=sealed
 mv "$UNSEAL_KEY_FILE" "$work/saved-key"
 rm -f "$work/unseal-request"

@@ -40,6 +40,8 @@ while true; do
         fi
     else
         echo '[Unsealer] Vault is initialized and unsealed.'
+        sleep 120
+        continue
     fi
-    sleep 120
+    sleep 5
 done
