@@ -956,13 +956,9 @@ profile::docker_host::git_deploy_projects:
     pull: false
     watch_dir: docker
     build_command: >-
-      docker compose pull --ignore-buildable && docker compose build --pull openvox vault-unsealer apt-cacher-ng &&
-      (cd /opt/docker/wolf && env -u COMPOSE_ENV_FILES docker compose build --pull) &&
-      (cd /opt/docker/goflow2 && env -u COMPOSE_ENV_FILES docker compose pull) &&
+      docker compose pull --ignore-buildable && docker compose build --pull openvox vault-unsealer apt-cacher-ng wolf &&
       (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose pull)
     deploy_command: >-
       /usr/bin/flock -w 300 /run/lock/atlas-openvox-maintenance.lock /bin/bash -c
-      "docker compose up -d --no-build --pull never --wait --wait-timeout 600 openvox vault vault-unsealer apt-cacher-ng &&
-      (cd /opt/docker/wolf && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300) &&
-      (cd /opt/docker/goflow2 && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300) &&
+      "docker compose up -d --no-build --pull never --wait --wait-timeout 600 &&
       (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose up -d --pull never --wait --wait-timeout 300)"

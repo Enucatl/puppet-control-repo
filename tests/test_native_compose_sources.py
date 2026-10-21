@@ -36,7 +36,7 @@ def resolve(path: Path) -> dict:
 
 
 def test_root_defaults_preserve_native_authorities() -> None:
-    """Keep native authorities active and standalone Wolf/flow definitions opted out."""
+    """Start infrastructure services with established authority volumes."""
     config = resolve(ROOT / "compose.yaml")
     assert config["name"] == "infra"
     assert set(config["services"]) == {
@@ -44,6 +44,8 @@ def test_root_defaults_preserve_native_authorities() -> None:
         "vault",
         "vault-unsealer",
         "apt-cacher-ng",
+        "wolf",
+        "goflow2",
     }
     services = config["services"]
     assert services["openvox"]["image"] == "infra-openvox:24001"
@@ -88,26 +90,16 @@ def test_root_defaults_preserve_native_authorities() -> None:
     assert public["source"] == str(ROOT / "docker/vault/secrets/public")
 
 
-def test_wolf_and_flow_standalone_sources_preserve_runtime_identity(
-    tmp_path: Path,
-) -> None:
-    """Resolve mounted production paths without inheriting retired profiles/networks."""
+def test_infrastructure_wolf_and_flow_preserve_runtime_identity() -> None:
+    """Keep controller state and collector ports when consolidating projects."""
+    config = resolve(ROOT / "compose.yaml")
     for name in ("wolf", "goflow2"):
-        path = tmp_path / f"{name}.yaml"
-        path.write_text(
-            (ROOT / f"docker/{name}/compose.yaml")
-            .read_text()
-            .replace("/opt/docker/puppet-control-repo", str(ROOT))
-        )
-        config = resolve(path)
-        assert config["name"] == name
-        assert set(config["services"]) == {name}
         service = config["services"][name]
         assert "profiles" not in service
         assert service["read_only"] is True
         assert service["cap_drop"] == ["ALL"]
         if name == "wolf":
-            assert service["container_name"] == "infra-wolf-1"
+            assert service["image"] == "infra-wolf:atlas"
             assert service["build"]["context"] == str(ROOT / "docker/wolf")
             assert service["environment"]["WOLF_GUEST_HOST"] == "cognition.home.arpa"
             assert service["environment"]["WOLF_VM_ID"] == "220"
@@ -120,9 +112,15 @@ def test_wolf_and_flow_standalone_sources_preserve_runtime_identity(
                 "external": True,
             }
             assert set(service["networks"]) == {"traefik_proxy"}
+            state = next(
+                mount for mount in service["volumes"] if mount["target"] == "/state"
+            )
+            assert state["source"] == "wolf_state"
+            for secret in config["secrets"].values():
+                assert Path(secret["file"]).is_relative_to(ROOT / "docker/wolf")
         else:
             assert service["image"] == "netsampler/goflow2:latest"
-            assert set(service["networks"]) == {"default"}
+            assert set(service["networks"]) == {"infra"}
             assert service["ports"][0]["published"] == "2055"
             assert service["ports"][0]["protocol"] == "udp"
 

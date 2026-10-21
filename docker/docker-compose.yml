@@ -100,7 +100,6 @@ services:
       start_period: 90s
 
   goflow2:
-    profiles: [migration-retired]
     extends:
       file: ../../compose-security-baseline/hardening.yml
       service: hardened-small
@@ -222,13 +221,13 @@ services:
       - apt_cache
 
   wolf:
-    profiles: [migration-retired]
     extends:
       file: ../../compose-security-baseline/hardening.yml
       service: hardened-small
     build:
       context: ./wolf
       dockerfile: Dockerfile
+    image: infra-wolf:atlas
     cpu_shares: 512
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=32m
@@ -301,7 +300,7 @@ volumes:
   vault_data: {external: true, name: infra_vault_data}
   vault_unseal: {external: true, name: infra_vault_unseal}
   vault_logs: {external: true, name: infra_vault_logs}
-  wolf_state:
+  wolf_state: {external: true, name: infra_wolf_state}
 
 secrets:
   wolf_cert:

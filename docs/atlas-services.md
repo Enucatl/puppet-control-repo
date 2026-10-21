@@ -23,9 +23,11 @@ Compose does not automatically load the parent `.env`. Use the explicit
 selection above for every command, or export `COMPOSE_ENV_FILES` in the current
 shell. Avoid printing resolved configuration: it can contain credentials.
 
-The control repository, FreeIPA, Wolf controller and GoFlow2 retain their native
-Compose entrypoints and established external volume names. Bootstrap and authority
-recovery use their explicit inputs; follow [Atlas recovery](atlas-recovery.md).
+The control repository's root Compose project includes OpenVox, Vault, its
+unsealer, the APT cache, the Wolf controller and GoFlow2. FreeIPA retains its
+own Compose entrypoint. Existing authority and Wolf state volumes retain their
+external names. Bootstrap and authority recovery use their explicit inputs;
+follow [Atlas recovery](atlas-recovery.md).
 Cognition's Wolf/vLLM projects have no automatic Git deployments. Their existing
 on-demand controllers select when to start them.
 

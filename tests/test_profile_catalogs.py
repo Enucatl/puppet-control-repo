@@ -314,8 +314,17 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     control_deploy = result[
         "File[/etc/systemd/system/puppet-control-repo-deploy.service]"
     ]["content"]
+    assert "build --pull openvox vault-unsealer apt-cacher-ng wolf" in control_deploy
+    assert "docker compose pull --ignore-buildable" in control_deploy
+    assert "--wait-timeout 600 &&" in control_deploy
+    assert "cd /opt/docker/wolf" not in control_deploy
+    assert "cd /opt/docker/goflow2" not in control_deploy
     assert (
         "cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose pull"
+        in control_deploy
+    )
+    assert (
+        "cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose up"
         in control_deploy
     )
     assert (
