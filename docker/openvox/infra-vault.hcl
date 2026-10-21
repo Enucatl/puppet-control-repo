@@ -10,9 +10,9 @@ storage "file" {
 listener "tcp" {
   address = "[::]:8200"
   tls_disable = false
-  tls_cert_file = "/certificates/vault_chain.crt"
-  tls_key_file = "/certificates/vault.key"
-  tls_client_ca_file = "/certificates/ca.crt"
+  tls_cert_file = "/certificates/fullchain.pem"
+  tls_key_file = "/certificates/key.pem"
+  tls_client_ca_file = "/certificates/ca.pem"
   tls_min_version = "tls13"
   tls_max_version = "tls13"
   # Enrollment needs a token before it has a certificate; cert auth validates it.

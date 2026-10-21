@@ -5,7 +5,7 @@ shorter lifetimes and exploratory crypto paths are not extra migration requireme
 Use the [current migration plan](26.04-migration-plan.md), accepted #12 Vault-held
 ML-DSA-44 hierarchy, existing CRL behavior and measured Vault limitations.
 
-This repository still relies on classical asymmetric cryptography for its
+The legacy deployment assessed below relied on classical asymmetric cryptography for its
 infrastructure identities, key exchange, and VPN access. In light of Filippo
 Valsorda's April 2026 article, [A Cryptography Engineer's Perspective on
 Quantum Computing Timelines](https://words.filippo.io/crqc-timeline/), treat
@@ -21,8 +21,8 @@ to store-now-decrypt-later collection.
 
 1. Replace or constrain long-lived classical PKI.
 
-   Vault PKI currently provisions a 10-year root CA, a 5-year intermediate CA,
-   and a long-lived Vault TLS certificate in `docker/vault/scripts/config.sh`.
+   The retired Vault setup provisioned a 10-year root CA, a 5-year intermediate
+   CA, and a long-lived Vault TLS certificate.
    Those lifetimes extend beyond the 2029 risk horizon discussed in the article.
 
    Remediate by reducing new classical CA and certificate lifetimes, avoiding
@@ -31,7 +31,7 @@ to store-now-decrypt-later collection.
 
 2. Stop treating the RSA Puppet CA as a long-term identity root.
 
-   `docker/vault/scripts/03-puppet-external-ca.sh` generates the Puppet CA with
+   The retired `03-puppet-external-ca.sh` generated the Puppet CA with
    `openssl genrsa 4096` and imports it into Puppet. RSA-4096 is still strong
    against classical attackers, but it is not quantum-resistant.
 
@@ -79,10 +79,9 @@ to store-now-decrypt-later collection.
    effort should focus on asymmetric authentication, signatures, and key
    exchange.
 
-## Related Non-CRQC Hardening
+## Retired bootstrap paths
 
-- `docker/vault/config/vault-conf-insecure.hcl` disables Vault TLS. Keep this
-  file out of normal operational paths, or remove it if it is no longer needed.
-- `docker/vault/scripts/03-puppet-external-ca.sh` uses `curl --insecure` during
-  bootstrap. Keep this limited to controlled bootstrap use and document that
-  boundary if the workflow remains necessary.
+The plaintext Vault HCL and legacy Puppet external-CA setup script described in
+the original assessment have been removed. Current Vault startup uses the
+production TLS configuration in `docker/openvox/infra-vault.hcl` through the
+root Compose entrypoint.

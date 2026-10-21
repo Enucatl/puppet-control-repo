@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 from pathlib import Path
 import subprocess
 from types import ModuleType
@@ -22,6 +21,7 @@ def enrollment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module.infra, "STATE", tmp_path)
+    monkeypatch.setattr(module.infra, "CA", tmp_path / "ca.pem", raising=False)
     monkeypatch.setattr(module, "PUPPET_CA", tmp_path / "puppet-ca.pem")
     monkeypatch.setattr(module, "SYSTEM_CA", tmp_path / "system-ca.crt")
     monkeypatch.setattr(module, "CERTIFICATE", tmp_path / "atlas.pem")
@@ -30,14 +30,6 @@ def enrollment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module.infra.openvox.return_value = "puppet-chain"
     module.infra.git.return_value = "published-sha\n"
     return module
-
-
-def test_import_is_required(enrollment: ModuleType) -> None:
-    """No token or host configuration changes precede verified identity import."""
-    with pytest.raises(RuntimeError, match="final IPA import"):
-        enrollment.enroll()
-    enrollment.infra.api.assert_not_called()
-    enrollment.infra.run.assert_not_called()
 
 
 def test_helper_accepts_token_stdin() -> None:
@@ -63,7 +55,7 @@ def test_helper_accepts_token_stdin() -> None:
 
 def test_trust_conflict_is_not_overwritten(enrollment: ModuleType) -> None:
     """Refuse a different existing CA before writing either destination."""
-    (enrollment.infra.STATE / "root.pem").write_text("new-root")
+    enrollment.infra.CA.write_text("new-root")
     enrollment.SYSTEM_CA.write_text("other-root")
     with pytest.raises(RuntimeError, match="Different existing trust"):
         enrollment.install_trust()
@@ -129,8 +121,6 @@ def test_token_uses_stdin(
     enrollment: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The enrollment credential reaches only the existing helper's stdin."""
-    (enrollment.infra.STATE / "freeipa").mkdir()
-    (enrollment.infra.STATE / "freeipa/imported.json").write_text('{"success":true}')
     monkeypatch.setattr(enrollment, "install_trust", Mock())
     monkeypatch.setattr(enrollment, "configure_runtime", Mock())
     token = {
@@ -150,20 +140,14 @@ def test_token_uses_stdin(
     assert "private-token" not in repr(command)
     assert command[-4:] == ["docker", "-", "atlas.home.arpa", "openvox.home.arpa"]
     assert payload == "private-token\n"
-    assert (
-        json.loads((enrollment.infra.STATE / "atlas-enrolled.json").read_text())[
-            "certname"
-        ]
-        == "atlas.home.arpa"
-    )
+    assert not (enrollment.infra.STATE / "atlas-enrolled.json").exists()
+    assert not (enrollment.infra.STATE / "atlas-enrollment.log").exists()
 
 
 def test_existing_certificate_resumes_catalog(
     enrollment: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Retry a partial first catalog without issuing another enrollment token."""
-    (enrollment.infra.STATE / "freeipa").mkdir()
-    (enrollment.infra.STATE / "freeipa/imported.json").write_text('{"success":true}')
     enrollment.CERTIFICATE.write_text("existing certificate")
     monkeypatch.setattr(enrollment, "install_trust", Mock())
     monkeypatch.setattr(enrollment, "configure_runtime", Mock())
@@ -184,8 +168,6 @@ def test_shared_installer_precedes_enrollment(
     already_enrolled: bool,
 ) -> None:
     """Both enrollment paths provision through signed APT after trust checks."""
-    (enrollment.infra.STATE / "freeipa").mkdir()
-    (enrollment.infra.STATE / "freeipa/imported.json").write_text('{"success":true}')
     if already_enrolled:
         enrollment.CERTIFICATE.write_text("existing certificate")
     events = []

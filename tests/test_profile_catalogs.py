@@ -220,6 +220,35 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     assert (
         result["Vault_cert[atlas]"]["cert_data"]["common_name"] == "*.atlas.home.arpa"
     )
+    for service, mount, hostname, threshold, ttl, owner in (
+        ("vault", "pki_int", "vault.home.arpa", 10, "720h", 100100),
+        ("ipa", "pki_freeipa", "ipa.home.arpa", 30, "2160h", 100000),
+    ):
+        certificate = result[f"Vault_cert[{service}-transport]"]
+        assert certificate["vault_uri"] == (
+            f"https://vault.home.arpa:8200/v1/{mount}/issue/{service}-transport"
+        )
+        assert certificate["auth_name"] == "atlas-transport"
+        assert certificate["cert_data"]["common_name"] == hostname
+        assert certificate["cert_data"]["ttl"] == ttl
+        assert certificate["renewal_threshold"] == threshold
+        assert certificate["key_owner"] == owner
+        assert certificate["key_mode"] == "0600"
+        directory = "freeipa" if service == "ipa" else service
+        assert certificate["cert_chain_file"] == (
+            f"/opt/docker/puppet-control-repo/docker/{directory}/secrets/fullchain.pem"
+        )
+        assert certificate["key_file"] == (
+            f"/opt/docker/puppet-control-repo/docker/{directory}/secrets/key.pem"
+        )
+        apply = result[f"Exec[apply-{service}-certificate]"]
+        assert apply["require"] == f"Vault_cert[{service}-transport]"
+        assert apply["unless"] == apply["command"] + " --check"
+        assert not apply.get("refreshonly", False)
+    openvox = result["Exec[apply-openvox-certificate]"]
+    assert openvox["command"].endswith("atlas-apply-certificates.py openvox")
+    assert openvox["unless"] == openvox["command"] + " --check"
+    assert not openvox.get("refreshonly", False)
     assert "Class[Profile::Docker_node]" not in result
     assert "Class[Profile::Paperless_scans]" in result
     assert "Class[Freeipa_users::Provision]" in result
@@ -230,7 +259,6 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         == "aperture.home.arpa"
     )
     for job in (
-        "atlas-transport-renew",
         "paperless-snapshot",
         "paperless-correspondent-cleanup",
         "backrest-kinit",
@@ -239,9 +267,15 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         timer = result[f"Systemd::Unit_file[{job}.timer]"]
         assert timer["enable"] is True and timer["active"] is True
     vault_backup = result["File[/etc/systemd/system/vault-snapshot.service]"]["content"]
-    assert result["File[/etc/systemd/system/atlas-transport-renew.service]"][
-        "source"
-    ] == ("puppet:///modules/profile/atlas-transport-renew.service")
+    for unit in (
+        "atlas-transport-renew.service",
+        "atlas-transport-renew.timer",
+        "atlas-openvox-renew.service",
+        "atlas-openvox-renew.timer",
+    ):
+        assert result[f"File[/etc/systemd/system/{unit}]"]["ensure"] == "absent"
+        assert result[f"Service[{unit}]"]["enable"] is False
+        assert result[f"Service[{unit}]"]["ensure"] is False
     assert "RequiresMountsFor=/scratch" in vault_backup
     assert "backup.sh" in vault_backup
     assert "Cron[vault-snapshot]" not in result
@@ -274,6 +308,17 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     assert (
         "--profile cleanup build"
         in result["File[/etc/systemd/system/paperless-ai-deploy.service]"]["content"]
+    )
+    control_deploy = result[
+        "File[/etc/systemd/system/puppet-control-repo-deploy.service]"
+    ]["content"]
+    assert (
+        "cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose pull"
+        in control_deploy
+    )
+    assert (
+        "cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose build"
+        not in control_deploy
     )
     assert result["Exec[trigger_traefik_reload]"]["subscribe"] == "Vault_cert[atlas]"
     bills_deploy = result["File[/etc/systemd/system/send-bills-deploy.service]"][

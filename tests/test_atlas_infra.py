@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-import hashlib
 import importlib.util
 import json
 from pathlib import Path
 import re
-import ssl
 import subprocess
 import sys
 from types import ModuleType
-from unittest.mock import Mock, call
+from unittest.mock import Mock
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
@@ -64,94 +62,16 @@ def controller(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module, "STATE", tmp_path)
+    for name in ("VAULT_SECRETS", "IPA_SECRETS"):
+        path = tmp_path / name.lower()
+        path.mkdir()
+        monkeypatch.setattr(module, name, path)
+    monkeypatch.setattr(module, "CA", module.VAULT_SECRETS / "ca.pem")
+    monkeypatch.setattr(module.os, "chown", Mock())
     monkeypatch.setattr(module, "MAINTENANCE_LOCK", tmp_path / "maintenance.lock")
     for name in ("run", "compose", "api", "openvox", "volume_file"):
         monkeypatch.setattr(module, name, Mock(name=name))
     return module
-
-
-def test_start_refuses_missing_checkpoint_before_any_mutation(
-    controller: ModuleType,
-) -> None:
-    """A normal start cannot silently initialize an empty authority."""
-    with pytest.raises(RuntimeError, match="Missing initialized state"):
-        controller.start()
-    controller.run.assert_not_called()
-    controller.compose.assert_not_called()
-    controller.api.assert_not_called()
-    assert not list(controller.STATE.iterdir())
-
-
-def test_start_only_starts_established_services(controller: ModuleType) -> None:
-    """Existing state starts without issuing credentials or altering PKI."""
-    (controller.STATE / "ready.json").write_text("{}")
-    controller.start()
-    controller.compose.assert_called_once_with(
-        "up",
-        "-d",
-        "--no-deps",
-        "--wait",
-        "--wait-timeout",
-        "300",
-        "vault",
-        "vault-unsealer",
-        "openvox",
-    )
-    controller.api.assert_not_called()
-    controller.openvox.assert_not_called()
-    controller.volume_file.assert_not_called()
-    controller.run.assert_has_calls(
-        [
-            call(
-                [
-                    "install",
-                    "-o",
-                    "root",
-                    "-g",
-                    "root",
-                    "-m",
-                    "0644",
-                    str(
-                        controller.SOURCE
-                        / "proxmox/systemd/atlas-openvox-renew.service"
-                    ),
-                    str(
-                        controller.SOURCE / "proxmox/systemd/atlas-openvox-renew.timer"
-                    ),
-                    "/etc/systemd/system/",
-                ]
-            ),
-            call(["systemctl", "daemon-reload"]),
-            call(["systemctl", "start", "atlas-openvox-renew.service"]),
-            call(["systemctl", "enable", "--now", "atlas-openvox-renew.timer"]),
-        ]
-    )
-
-
-def test_start_does_not_schedule_renewal_for_unhealthy_services(
-    controller: ModuleType,
-) -> None:
-    """Require healthy established infrastructure before installing renewal."""
-    (controller.STATE / "ready.json").write_text("{}")
-    controller.compose.side_effect = RuntimeError("services unhealthy")
-    with pytest.raises(RuntimeError, match="services unhealthy"):
-        controller.start()
-    controller.run.assert_called_once_with(
-        ["rm", "-f", "/opt/git/openvox/control.git/hooks/pre-receive"]
-    )
-
-
-def test_start_requires_successful_first_renewal_before_enabling_timer(
-    controller: ModuleType,
-) -> None:
-    """Surface first-run renewal failures instead of enabling an unverified timer."""
-    (controller.STATE / "ready.json").write_text("{}")
-    controller.run.side_effect = ["", "", "", RuntimeError("renewal failed")]
-    with pytest.raises(RuntimeError, match="renewal failed"):
-        controller.start()
-    assert controller.run.call_args == call(
-        ["systemctl", "start", "atlas-openvox-renew.service"]
-    )
 
 
 @pytest.mark.parametrize(
@@ -167,7 +87,6 @@ def test_start_requires_successful_first_renewal_before_enabling_timer(
         "openvox_trust",
         "vault_data",
         "vault_logs",
-        "certificates",
         "vault_unseal",
     ],
 )
@@ -187,8 +106,8 @@ def test_initialize_refuses_existing_state_without_checkpoint(
 
 
 def test_initialize_refuses_completed_installation(controller: ModuleType) -> None:
-    """A completed checkpoint never reenters fresh initialization."""
-    (controller.STATE / "ready.json").write_text("{}")
+    """Existing recovery credentials never reenter fresh initialization."""
+    (controller.VAULT_SECRETS / "recovery.json").write_text("{}")
     with pytest.raises(RuntimeError, match="Established infrastructure"):
         controller.initialize()
     controller.run.assert_not_called()
@@ -208,28 +127,29 @@ def test_resume_refuses_lost_allocated_volume(controller: ModuleType) -> None:
 
 @pytest.fixture
 def resumed(controller: ModuleType, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
-    """Resume a sealed-state checkpoint using fake existing labeled volumes."""
+    """Resume a sealed-state checkpoint using fake existing named volumes."""
     state = controller.STATE
     (state / "initializing").write_text("atlas.home.arpa\n")
-    (state / "transport").mkdir()
-    (state / "transport/tls.key").write_text("saved temporary listener key")
-    (state / "transport/tls.crt").write_text("saved temporary listener certificate")
-    (state / "transport/trust.pem").write_text("saved temporary listener trust")
-    (state / "trust.pem").write_text("saved temporary listener trust")
-    (state / "recovery.json").write_text(
+    bootstrap = controller.STATE / "transport"
+    bootstrap.mkdir()
+    for name, value in (
+        ("tls.key", "saved temporary listener key"),
+        ("tls.crt", "saved temporary listener certificate"),
+        ("trust.pem", "saved temporary listener trust"),
+    ):
+        (bootstrap / name).write_text(value)
+        (bootstrap / name).chmod(0o600)
+    controller.CA.write_text("saved temporary listener trust")
+    (controller.VAULT_SECRETS / "recovery.json").write_text(
         json.dumps({"root_token": "test-root-token", "keys_base64": ["test-share"]})
     )
+    (controller.VAULT_SECRETS / "recovery.json").chmod(0o600)
     names = ["openvox_" + name for name in controller.OPENVOX_VOLUMES]
     names += list(controller.VAULT_VOLUMES)
 
     def command(arguments: list[str], data: str | None = None) -> str:
         if arguments == controller.DOCKER + ["volume", "ls", "--format", "{{.Name}}"]:
             return "\n".join("infra_" + name for name in names)
-        if arguments[: len(controller.DOCKER) + 2] == controller.DOCKER + [
-            "volume",
-            "inspect",
-        ]:
-            return json.dumps([{"Labels": {"home.arpa.authority": "atlas"}}])
         if arguments[: len(controller.DOCKER) + 1] == controller.DOCKER + ["run"]:
             return ""
         raise AssertionError(f"Unexpected command: {arguments}")
@@ -245,39 +165,22 @@ def resumed(controller: ModuleType, monkeypatch: pytest.MonkeyPatch) -> ModuleTy
 def test_transport_retry_repairs_saved_identity_and_retains_transition_trust(
     resumed: ModuleType, final_saved: bool
 ) -> None:
-    """Interrupted TLS writes are repaired from the same saved identity."""
+    """Temporary TLS preparation preserves any already published final PEMs."""
     if final_saved:
-        (resumed.STATE / "vault-transport.json").write_text(
-            json.dumps(
-                {
-                    "private_key": "saved final key",
-                    "certificate": "saved final leaf",
-                    "ca_chain": ["saved intermediate", "saved root"],
-                }
-            )
-        )
-        (resumed.STATE / "root.pem").write_text("saved root")
+        (resumed.VAULT_SECRETS / "key.pem").write_text("saved final key")
+        (resumed.VAULT_SECRETS / "fullchain.pem").write_text("saved final chain")
+        resumed.CA.write_text("saved root")
     resumed.install_transport()
-    writes = {
-        (call.args[0], call.args[1]): call.args[2]
-        for call in resumed.volume_file.call_args_list
-    }
-    assert len(writes) == 3
-    assert writes["certificates", "vault.key"] == (
+    assert (resumed.VAULT_SECRETS / "key.pem").read_text() == (
         "saved final key" if final_saved else "saved temporary listener key"
     )
-    assert writes["certificates", "vault_chain.crt"] == (
-        "saved final leaf\nsaved intermediate\nsaved root"
-        if final_saved
-        else "saved temporary listener certificate"
+    assert (resumed.VAULT_SECRETS / "fullchain.pem").read_text() == (
+        "saved final chain" if final_saved else "saved temporary listener certificate"
     )
-    assert writes["certificates", "ca.crt"] == (
+    assert resumed.CA.read_text() == (
         "saved root" if final_saved else "saved temporary listener trust"
     )
-    trust = (resumed.STATE / "trust.pem").read_text()
-    assert "saved temporary listener trust" in trust
-    if final_saved:
-        assert "saved root" in trust
+    resumed.volume_file.assert_not_called()
     resumed.api.assert_not_called()
     resumed.run.assert_not_called()
 
@@ -299,12 +202,7 @@ def test_resume_rejects_changed_root_before_import(resumed: ModuleType) -> None:
         .public_bytes(serialization.Encoding.PEM)
         .decode()
     )
-    original_pin = hashlib.sha256(b"original authority").hexdigest()
-    assert (
-        hashlib.sha256(ssl.PEM_cert_to_DER_cert(certificate)).hexdigest()
-        != original_pin
-    )
-    (resumed.STATE / "root.sha256").write_text(original_pin)
+    resumed.CA.write_text("original authority")
     responses = {
         ("GET", "sys/mounts"): {"data": {"pki/": {"type": "pki"}}},
         ("LIST", "pki/issuers"): {"data": {"keys": ["existing-issuer"]}},
@@ -315,8 +213,7 @@ def test_resume_rejects_changed_root_before_import(resumed: ModuleType) -> None:
     ]
     with pytest.raises(RuntimeError, match="root identity changed"):
         resumed.initialize()
-    assert (resumed.STATE / "root.sha256").read_text() == original_pin
-    assert certificate not in (resumed.STATE / "trust.pem").read_text()
+    assert resumed.CA.read_text() == "original authority"
     resumed.openvox.assert_not_called()
     assert all(
         call.args[0] != "openvox_trust" for call in resumed.volume_file.call_args_list
@@ -329,7 +226,7 @@ def test_resume_never_regenerates_a_missing_pinned_root(
 ) -> None:
     """A saved authority pin requires recovery if Vault has lost its issuer."""
     if saved_pin:
-        (resumed.STATE / "root.sha256").write_text("a" * 64)
+        resumed.CA.write_text("saved authority certificate")
 
     def response(method: str, path: str, *args, **kwargs) -> dict:
         if (method, path) == ("GET", "sys/mounts"):
@@ -344,6 +241,52 @@ def test_resume_never_regenerates_a_missing_pinned_root(
     with pytest.raises(RuntimeError, match="[Rr]estor|[Rr]ecover|[Mm]issing"):
         resumed.initialize()
     assert not (resumed.STATE / "ready.json").exists()
+
+
+def test_bootstrap_publishes_native_pems_and_recovery_secrets(
+    resumed: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bootstrap produces the same canonical PEM files Puppet later manages."""
+    monkeypatch.setattr(resumed.ssl, "PEM_cert_to_DER_cert", lambda _: b"root")
+    monkeypatch.setattr(resumed, "services_intermediate", Mock())
+    monkeypatch.setattr(resumed, "configure_access", Mock())
+    monkeypatch.setattr(resumed, "deploy_initial", Mock())
+    command = resumed.run.side_effect
+    resumed.run.side_effect = lambda args, data=None: (
+        "PUBLIC-KEY" if args[0] == resumed.RUBY else command(args, data)
+    )
+    resumed.openvox.return_value = "imported"
+    responses = {
+        ("GET", "sys/mounts"): {"data": {"pki/": {}}},
+        ("LIST", "pki/issuers"): {"data": {"keys": ["root-issuer"]}},
+        ("GET", "pki/cert/ca"): {"data": {"certificate": "ROOT-CERT"}},
+        ("GET", "pki/cert/crl"): {"data": {"certificate": "ROOT-CRL"}},
+        ("POST", "pki_int/issue/vault-transport"): {
+            "data": {
+                "certificate": "LEAF",
+                "private_key": "PRIVATE-KEY",
+                "ca_chain": ["ISSUER", "ROOT-CERT"],
+            }
+        },
+    }
+    resumed.api.side_effect = lambda method, path, *args, **kwargs: responses.get(
+        (method, path), {}
+    )
+    resumed.initialize()
+    secrets = resumed.VAULT_SECRETS
+    assert (secrets / "fullchain.pem").read_text() == "LEAF\nISSUER\nROOT-CERT\n"
+    assert (secrets / "key.pem").read_text() == "PRIVATE-KEY"
+    assert (secrets / "public/vault.pub.pem").read_text() == "PUBLIC-KEY"
+    assert (secrets / "root-token").read_text() == "test-root-token"
+    assert resumed.CA.read_text() == "ROOT-CERT"
+    assert not (resumed.STATE / "ready.json").exists()
+    assert not (resumed.STATE / "vault-transport.json").exists()
+    assert not (resumed.STATE / "initializing").exists()
+    assert all(
+        path.stat().st_mode & 0o777 == 0o600
+        for path in secrets.rglob("*")
+        if path.is_file()
+    )
 
 
 @pytest.mark.parametrize("established", [False, True])
@@ -382,6 +325,8 @@ def test_access_setup_scopes_compiler_and_preserves_existing_data(
         "sys/policies/acl/puppet-server",
         "sys/policies/acl/puppet-enrollment",
         "auth/cert/certs/puppet-server",
+        "sys/policies/acl/atlas-transport",
+        "auth/cert/certs/atlas-transport",
     }
     if not established:
         expected |= {"sys/mounts/kv", "kv/data/puppet", "sys/auth/cert"}
@@ -393,6 +338,16 @@ def test_access_setup_scopes_compiler_and_preserves_existing_data(
     assert role["certificate"] == controller.openvox.return_value
     assert role["token_policies"] == ["puppet-server"]
     assert role["token_no_default_policy"] is True
+    transport = writes["auth/cert/certs/atlas-transport"]
+    assert transport["allowed_common_names"] == ["atlas.home.arpa"]
+    assert transport["token_policies"] == ["atlas-transport"]
+    assert re.findall(
+        r'path "([^"]+)"', writes["sys/policies/acl/atlas-transport"]["policy"]
+    ) == [
+        "pki_int/issue/vault-transport",
+        "pki_freeipa/issue/ipa-transport",
+        "auth/token/lookup-self",
+    ]
     for name, path in (
         ("puppet-server", "kv/data/puppet"),
         ("puppet-enrollment", "auth/token/lookup-self"),

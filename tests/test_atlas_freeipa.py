@@ -5,6 +5,9 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import stat
+import subprocess
+import shlex
 from types import ModuleType
 from unittest.mock import Mock
 
@@ -22,53 +25,19 @@ def controller(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module, "STATE", tmp_path)
+    monkeypatch.setattr(
+        module.infra, "IPA_SECRETS", tmp_path / "secrets", raising=False
+    )
+    monkeypatch.setattr(module.infra, "CA", tmp_path / "ca.pem", raising=False)
+    module.infra.CA.write_text("root")
+    monkeypatch.setattr(module.os, "chown", Mock())
     for name in ("api", "run", "mount"):
         monkeypatch.setattr(module.infra, name, Mock(name=name))
     monkeypatch.setattr(module, "compose", Mock())
-    return module
-
-
-def test_start_cannot_initialize(controller: ModuleType) -> None:
-    """A missing checkpoint fails before any external mutation."""
-    with pytest.raises(RuntimeError, match="Missing initialized"):
-        controller.start()
-    controller.infra.api.assert_not_called()
-    controller.infra.run.assert_not_called()
-    controller.compose.assert_not_called()
-
-
-def test_established_start_needs_no_vault_session(
-    controller: ModuleType, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A Vault outage cannot prevent starting intact local directory state."""
-    monkeypatch.setattr(controller.infra, "STATE", controller.STATE)
-    (controller.STATE / "ready.json").write_text(
-        '{"hostname":"ipa.home.arpa","root_sha256":"pin"}'
+    module.compose.return_value = json.dumps(
+        {"services": {"ipa": {"image": "native-freeipa-image"}}}
     )
-    (controller.STATE / "root.sha256").write_text("pin")
-    for name in (
-        "installer.json",
-        "issuer.json",
-        "intermediate.json",
-        "intermediate.pem",
-        "root.pem",
-        "http.json",
-        "ldap.json",
-        "http-chain.pem",
-        "ldap-chain.pem",
-        "http-key.pem",
-        "ldap-key.pem",
-    ):
-        (controller.STATE / name).write_text("saved")
-    staged = controller.STATE / "container-inputs"
-    staged.mkdir()
-    for name in controller.INPUTS:
-        (staged / name).write_text("saved")
-    monkeypatch.setattr(controller, "volume", Mock())
-    controller.infra.api.side_effect = RuntimeError("Vault unavailable")
-    controller.start()
-    controller.infra.api.assert_not_called()
-    assert (controller.STATE / "installed").exists()
+    return module
 
 
 @pytest.mark.parametrize(
@@ -133,95 +102,14 @@ def test_intermediate_reuses_saved_certificate_and_key(
     ]
 
 
-def test_replaced_volume_is_refused(controller: ModuleType) -> None:
-    """Docker volume names alone cannot authorize empty replacement storage."""
-    (controller.STATE / "volume.json").write_text(json.dumps({"identity": "identity"}))
-    controller.infra.run.side_effect = [
-        "infra_ipa_data\n",
-        json.dumps(
-            [{"Labels": {"home.arpa.authority": "atlas"}, "CreatedAt": "replacement"}]
-        ),
-        "different-identity\n",
-    ]
-    with pytest.raises(RuntimeError, match="volume identity mismatch"):
-        controller.volume()
-    assert controller.infra.run.call_count == 3
-
-
-def test_volume_marker_cannot_be_recreated_on_start(controller: ModuleType) -> None:
-    """A missing allocation never causes implicit volume creation."""
-    controller.infra.run.return_value = ""
-    with pytest.raises(RuntimeError, match="volume missing"):
-        controller.volume()
-    assert controller.infra.run.call_count == 1
-
-
-def test_restored_volume_keeps_its_identity(controller: ModuleType) -> None:
-    """Restored authority data may reside in a newly allocated Docker volume."""
-    (controller.STATE / "volume.json").write_text('{"identity":"original"}')
-    controller.infra.run.side_effect = [
-        "infra_ipa_data\n",
-        json.dumps([{"Labels": {"home.arpa.authority": "atlas"}, "CreatedAt": "new"}]),
-        "original\n",
-    ]
-    controller.volume()
-    assert controller.infra.run.call_count == 3
-
-
-def test_start_refuses_changed_staged_key(
-    controller: ModuleType, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The remapped container cannot silently use inputs unlike recovery state."""
-    monkeypatch.setattr(controller.infra, "STATE", controller.STATE)
-    (controller.STATE / "ready.json").write_text(
-        '{"hostname":"ipa.home.arpa","root_sha256":"pin"}'
-    )
-    (controller.STATE / "root.sha256").write_text("pin")
-    for name in (
-        "installer.json",
-        "issuer.json",
-        "intermediate.json",
-        "intermediate.pem",
-        "root.pem",
-        "http.json",
-        "ldap.json",
-        "http-chain.pem",
-        "ldap-chain.pem",
-        "http-key.pem",
-        "ldap-key.pem",
-    ):
-        (controller.STATE / name).write_text("saved")
-    staged = controller.STATE / "container-inputs"
-    staged.mkdir()
-    for name in controller.INPUTS:
-        (staged / name).write_text("changed" if name == "http-key.pem" else "saved")
-    with pytest.raises(RuntimeError, match="changed staged IPA input: http-key.pem"):
-        controller.start()
-    controller.compose.assert_not_called()
-    controller.infra.api.assert_not_called()
-
-
 def test_issuance_is_exact_name_and_never_exports_root(
     controller: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Actual role creation restricts identities and preserves issued seed keys."""
-    existing = controller.STATE / "infra"
-    existing.mkdir()
-    (existing / "ready.json").write_text("{}")
-    (existing / "root.sha256").write_text(
-        controller.hashlib.sha256(b"root").hexdigest()
-    )
-    monkeypatch.setattr(controller.infra, "STATE", existing)
-    monkeypatch.setattr(controller.ssl, "PEM_cert_to_DER_cert", lambda _: b"root")
-    monkeypatch.setattr(controller.os, "chown", Mock())
+    """One protected pair bootstraps HTTP and LDAP without duplicating key JSON."""
+    monkeypatch.setattr(controller.ssl, "PEM_cert_to_DER_cert", lambda value: value)
     monkeypatch.setattr(controller, "intermediate", Mock())
-
-    def prepare_volume(create: bool = False) -> None:
-        """Provide an allocation identity without Docker."""
-        assert create
-        (controller.STATE / "volume.json").write_text('{"identity":"volume"}')
-
-    monkeypatch.setattr(controller, "volume", prepare_volume)
+    password = "spaces and '$()' preserve this"
+    monkeypatch.setattr(controller.secrets, "token_urlsafe", lambda _: password)
     leaf = {
         "certificate": "leaf",
         "ca_chain": ["issuer", "root"],
@@ -231,14 +119,12 @@ def test_issuance_is_exact_name_and_never_exports_root(
         {"data": {"certificate": "root"}},
         {},
         {"data": leaf},
-        {"data": leaf},
     ]
     controller.initialize()
     calls = controller.infra.api.call_args_list
     assert [(call.args[0], call.args[1]) for call in calls] == [
         ("GET", "pki/cert/ca"),
         ("POST", "pki_freeipa/roles/ipa-transport"),
-        ("POST", "pki_freeipa/issue/ipa-transport"),
         ("POST", "pki_freeipa/issue/ipa-transport"),
     ]
     role = calls[1].args[2]
@@ -248,14 +134,51 @@ def test_issuance_is_exact_name_and_never_exports_root(
     assert role["allow_wildcard_certificates"] is False
     assert role["key_usage"] == ["DigitalSignature"]
     assert role["max_ttl"] == "2160h"
-    for service in ("http", "ldap"):
-        assert (controller.STATE / f"{service}-key.pem").read_text() == leaf[
-            "private_key"
-        ]
-        assert (
-            controller.STATE / "container-inputs" / f"{service}-key.pem"
-        ).read_text() == leaf["private_key"]
-    settings = json.loads((controller.STATE / "installer.json").read_text())
+    secrets = controller.infra.IPA_SECRETS
+    assert (secrets / "fullchain.pem").read_text() == "leaf\nissuer\nroot\n"
+    assert (secrets / "key.pem").read_text() == leaf["private_key"]
+    assert (secrets / "ca.pem").read_text() == "root"
+    settings = json.loads((secrets / "installer.json").read_text())
     assert settings["no_pkinit"] is True
-    assert settings["volume_identity"] == "volume"
-    assert len(settings["admin_password"]) >= 12
+    assert "volume_identity" not in settings
+    options = secrets / "ipa-server-install-options"
+    parsed = shlex.split(options.read_text())
+    assert parsed == [f"--admin-password={password}", f"--ds-password={password}"]
+    assert stat.S_IMODE(secrets.stat().st_mode) == 0o700
+    for path in secrets.iterdir():
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+        controller.os.chown.assert_any_call(path, 100000, 100000)
+    controller.os.chown.assert_any_call(secrets, 100000, 100000)
+    assert not (controller.STATE / "ready.json").exists()
+    assert not (controller.STATE / "http.json").exists()
+    assert not (controller.STATE / "ldap.json").exists()
+    assert password not in repr(controller.infra.run.call_args_list)
+    command = controller.infra.run.call_args.args[0]
+    assert "--read-only" in command
+    assert "type=volume,src=infra_ipa_data,dst=/data,readonly" in command
+    assert command[-1] == 'test -z "$(ls -A /data)"'
+
+
+def test_populated_native_volume_refuses_bootstrap(controller: ModuleType) -> None:
+    """Reject an existing server before issuing or replacing any credentials."""
+    data = controller.STATE / "data"
+    data.mkdir()
+    existing = data / "installed-state"
+    existing.write_text("preserved")
+
+    def run(arguments: list[str]) -> str:
+        """Execute the real bootstrap preflight against disposable storage."""
+        if "create" in arguments:
+            return controller.VOLUME
+        subprocess.run(
+            ["sh", "-ec", arguments[-1].replace("/data", shlex.quote(str(data)))],
+            check=True,
+        )
+        return ""
+
+    controller.infra.run.side_effect = run
+    with pytest.raises(subprocess.CalledProcessError):
+        controller.initialize()
+    controller.infra.api.assert_not_called()
+    assert not controller.infra.IPA_SECRETS.exists()
+    assert existing.read_text() == "preserved"

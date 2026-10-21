@@ -34,8 +34,8 @@ intermediates. Existing CRL behavior is retained without added refresh jobs;
 #13 owns Atlas deployment/enrollment, #18 independent bootstrap/recovery, and
 #19 staged service/storage cutover. Read the [implementation report](docs/openvox-rehearsal-report.md)
 and [Vault configuration limits](docs/openvox-vault-limitations.md) before use.
-The host-service and legacy Vault bootstrap descriptions below describe the
-existing installation, rather than the new-chain setup procedure.
+Historical host-service notes below describe the previous installation. Current
+Vault/OpenVox startup uses the root Compose entrypoint.
 
 ## Repository Structure
 
@@ -58,7 +58,7 @@ existing installation, rather than the new-chain setup procedure.
 │   ├── docker-compose.yml       # Core services: Vault, FreeIPA, APT cache
 │   ├── vault/
 │   │   ├── config/              # Vault server configuration
-│   │   └── scripts/             # Bootstrap scripts (01-13) + wake_on_lan.py
+│   │   └── scripts/             # Runtime export/unseal and administrative helpers
 │   └── puppet/
 │       └── config/              # r10k configuration and empty puppet.conf placeholder
 ├── proxmox/                     # Scripts that run ON the Proxmox hypervisor
@@ -332,77 +332,51 @@ Adjust the IPFIX sampling rate or monitored interfaces if the 24-hour volume, di
 - [provisioning/templates/app_configs/vyos-ndp-snapshot.sh.j2](/opt/docker/puppet-control-repo/provisioning/templates/app_configs/vyos-ndp-snapshot.sh.j2)
 - [provisioning/templates/app_configs/vyos-ndp-logrotate.j2](/opt/docker/puppet-control-repo/provisioning/templates/app_configs/vyos-ndp-logrotate.j2)
 
-## Key Vault Bootstrap Scripts (`docker/vault/scripts/`)
+## Vault lifecycle and administration
 
-Numbered scripts run once to set up Vault and surrounding infrastructure:
+The root `compose.yaml` selects the production Vault and OpenVox definitions in
+`docker/docker-compose.yml`. Vault uses its pinned image, TLS configuration and
+read-only `docker/vault/secrets/` certificate directory. The unsealer mounts only
+its existing key share and public TLS-key pin. Ordinary startup is:
 
-| Script | Purpose |
-|--------|---------|
-| `00-vault-init.sh` | One-off initialization; save recovery output and split runtime credentials |
-| `01-pki-core-setup.sh` | Root CA, Vault TLS cert |
-| `02-pki-intermediate.sh` | Intermediate CA |
-| `03-puppet-external-ca.sh` | Puppet external CA config |
-| `04-sign-csr.sh` | Sign FreeIPA CSR |
-| `05-clone-puppet-repo.sh` | Clone this repo onto the server |
-| `06-vault-puppet.sh` | Cert auth + KV v2 for Puppet |
-| `07-configure-sudo.sh` | FreeIPA sudo rules |
-| `08-vault-puppet-policy.sh` | Puppet runtime and single-use enrollment policies |
-| `10-vault-ldap.sh` | LDAP auth backend |
-| `11-vault-airflow.sh` | Airflow KV policy |
-| `13-vault-admin-policy.sh` | Admin policy + LDAP group mapping |
-| `99-revoke-root-token.sh` | Final step after all setup and an independent admin login have been tested |
-
-Vault credentials use three separate volumes: `vault_recovery` holds the complete
-initialization response, `vault_bootstrap` holds only the temporary root token,
-and `vault_unseal` holds only the unseal share. Directories are mode `0700` and
-credential files `0600`, owned by container UID/GID `100:100`. Only the one-off
-initializer mounts all three. Setup containers mount the bootstrap token
-read-only; the running unsealer mounts only the unseal share read-only and the
-host's public CA bundle. The Vault server mounts none of these volumes.
-
-For a new Vault, run `docker/vault/bootstrap.sh` once from the repository root.
-It builds the unsealer and setup images, selects the HTTP listener using
-`docker/vault/bootstrap.compose.yml`, initializes and unseals Vault, and generates
-the root CA and server certificate. The temporary HTTP port is published only on
-host loopback. The script stops Vault and the unsealer after generating the
-certificates. The initializer never prints credentials or overwrites an existing
-recovery file. An already initialized server with missing recovery output requires
-restoring the saved credentials, not reinitializing.
-
-Install the generated public CA in the Docker host's trust store, then start the
-normal HTTPS configuration. On this Debian/Ubuntu host, run from the repository
-root:
-
-```bash
-vault_ca=$(mktemp)
-docker compose -f docker/docker-compose.yml run --rm --no-deps \
-  --entrypoint cat vault-pki-core-setup /certificates/ca.crt > "$vault_ca"
-sudo install -m 0644 "$vault_ca" /usr/local/share/ca-certificates/vault-ca.crt
-sudo update-ca-certificates
-rm "$vault_ca"
-export VAULT_ADDR=https://vault.home.arpa:8200
-export VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
-docker compose -f docker/docker-compose.yml up -d --wait --wait-timeout 180 vault vault-unsealer
+```sh
+docker compose up -d --wait vault vault-unsealer openvox
 ```
 
-Persist these HTTPS environment values in the deployment environment. Continue
-with the intermediate CA and FreeIPA signing setup jobs using the normal Compose
-file. Setup jobs use a built image with `jq` already installed and a writable
-temporary filesystem; they do not install packages at runtime.
+Fresh authority creation remains an explicit one-time operation:
+`sudo python3 proxmox/atlas-infra.py initialize`. Restore established authority
+state on recovery; do not repeat initialization. See the
+[authority runbook](docs/openvox-infra.md) and [recovery notes](docs/atlas-recovery.md).
+The old HTTP bootstrap, numbered root/intermediate setup and legacy FreeIPA CSR
+signing services have been removed.
 
-Back up the unseal share outside this host, independently of Vault, and verify a
-restore with a Vault data backup. The recovery volume is not an off-host backup.
-Never keep recovery material in the shared `certificates` volume.
+Bootstrap writes certificate PEMs, Vault recovery JSON/root token and IPA
+passwords beside each service's Compose file, under gitignored `secrets/`.
+Puppet renews the Vault and IPA certificate PEMs. Public `ca.pem` files contain
+CA certificates, not private signing keys. The root signing key stays in Vault.
 
-After every setup step (including optional Wolf setup), log in using the LDAP
-admin account and test it. Run `99-revoke-root-token.sh` on the host with
-`ROOT_TOKEN_FILE` pointing to a private local copy of the bootstrap token.
-The script checks independent admin access and removes that local copy after
-successful revocation. Remove the token from the bootstrap volume afterward.
-Normal root revocation also revokes its child tokens and leases: review these
-first. Setup reruns must use an administrator `VAULT_TOKEN` once root is revoked.
-Emergency root generation requires the unseal-key quorum; ordinary admin access
-does not replace possession of those shares.
+Retained helpers in `docker/vault/scripts/` have separate purposes:
+
+| Script | Purpose |
+| --- | --- |
+| `unseal.sh` | Existing automatic unseal and healthcheck |
+| `backup.sh` | Existing weekly consistent Vault export for Backrest |
+| `08-vault-puppet-policy.sh` | Runtime certificate issuance and enrollment policies |
+| `10-vault-ldap.sh` | Manual LDAP auth configuration |
+| `13-vault-admin-policy.sh` | Manual administrator policy and LDAP group mapping |
+| `99-revoke-root-token.sh` | Explicit root-token revocation after independent administrator access is verified |
+| `issue-device-cert.sh` | Manual device certificate/PKCS#12 export |
+| `offline-intermediate.rb` | Separate historical offline-root experiment; not Atlas startup |
+
+The weekly `vault-snapshot.timer` still runs Monday at 01:00 UTC. Its existing
+export and Backrest handling remain unchanged. Recovery inputs must also be
+retained independently of the live Vault host.
+
+Root-token revocation remains an explicit administrator action. Supply an
+independent administrator `VAULT_TOKEN` and set `ROOT_TOKEN_FILE` to the protected
+bootstrap token. The helper verifies independent access, revokes the bootstrap
+token and removes that local token file. Review its child tokens/leases first;
+revocation can revoke those too.
 
 Puppet bootstrap tokens are single-use and bound to one exact certname. See
 [Puppet enrollment](docs/puppet-enrollment.md) for rollout and replacement-token

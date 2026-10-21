@@ -10,7 +10,7 @@ current IPA administrator credential is in the protected installer state, so
 bootstrap without passing passwords in arguments, environment, or output:
 
 ```sh
-sudo bash -c 'set -euo pipefail; jq -er .admin_password /root/openvox-infra/freeipa/installer.json | /opt/docker/puppet-control-repo/docker/freeipa/bootstrap-puppet-provisioner.sh --admin-password-stdin'
+sudo bash -c 'set -euo pipefail; jq -er .admin_password /opt/docker/puppet-control-repo/docker/freeipa/secrets/installer.json | /opt/docker/puppet-control-repo/docker/freeipa/bootstrap-puppet-provisioner.sh --admin-password-stdin'
 ```
 
 It uses a private temporary administrator ticket

@@ -19,7 +19,6 @@ STATE = "var/lib/docker/100000.100000/volumes/infra_vault_data/_data"
 def authority(tmp_path: Path) -> Path:
     """Replace host operations while retaining archive and filesystem behavior."""
     files = {
-        "etc/openvox-infra/promoted": "openvox-authority:atlas.home.arpa\n",
         STATE + "/core/state": "PRIVATE-VAULT-STATE-CANARY\n",
         "uid": "0",
         "hostname": "atlas.home.arpa",
@@ -67,14 +66,10 @@ case "$name" in
   docker)
     [[ -z ${DOCKER_HOST:-} && -z ${DOCKER_CONTEXT:-} ]]
     case "$1 $2" in
-      'volume inspect')
-        [[ ${@: -1} == infra_vault_data && $failure != missing-volume ]]
-        if [[ $failure == unmanaged-volume ]]; then echo other; else echo atlas; fi
-        ;;
       'compose --env-file')
         [[ -z ${VAULT_TOKEN:-} && -z ${COMPOSE_FILE:-} ]]
         [[ $DOCKER_DOMAIN == home.arpa ]]
-        [[ $* == *'--env-file /dev/null -p infra -f '*'/docker-compose.yml -f '*'/openvox/infra-vault.override.yaml '* ]]
+        [[ $* == *'--env-file /dev/null -p infra -f '*'/compose.yaml '* ]]
         case "$*" in
           *' stop vault-unsealer vault')
             touch "$root/stopped"
@@ -115,7 +110,6 @@ esac
         path.chmod(0o755)
     source = SCRIPT.read_text()
     for prefix in (
-        "/etc/openvox-infra",
         "/run/lock",
         "/var/lib/docker",
         "/scratch",
@@ -145,7 +139,7 @@ def snapshot(root: Path) -> subprocess.CompletedProcess[str]:
 
 
 def test_snapshot_preserves_private_state_and_backrest_access(authority: Path) -> None:
-    """Archive stopped storage, restart Vault, and retain only group read access."""
+    """Export native storage without promotion markers or custom volume labels."""
     result = snapshot(authority)
     assert result.returncode == 0, result.stderr
     directory = authority / "scratch/backup/vault"
@@ -160,6 +154,7 @@ def test_snapshot_preserves_private_state_and_backrest_access(authority: Path) -
         source = (authority / STATE / "core/state").stat()
         assert (member.uid, member.gid) == (source.st_uid, source.st_gid)
     commands = (authority / "commands").read_text()
+    assert "volume inspect" not in commands
     assert commands.count(" stop vault-unsealer vault\n") == 1
     assert commands.count(" start vault vault-unsealer\n") == 1
     assert f"chgrp backrest {archive}\n" in commands
@@ -203,10 +198,7 @@ def test_snapshot_cannot_report_success_before_vault_recovers(
     [
         "root",
         "hostname",
-        "promoted",
         "missing-source",
-        "missing-volume",
-        "unmanaged-volume",
         "lock",
         "existing",
     ],
@@ -219,8 +211,6 @@ def test_snapshot_refuses_missing_authority_before_stopping(
         (authority / "uid").write_text("1000")
     elif failure == "hostname":
         (authority / "hostname").write_text("docker.home.arpa")
-    elif failure == "promoted":
-        (authority / "etc/openvox-infra/promoted").write_text("development")
     elif failure == "missing-source":
         (authority / STATE).rename(authority / "retained-state")
     elif failure == "existing":

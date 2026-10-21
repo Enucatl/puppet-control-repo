@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Explicitly create Atlas authorities, or start their established state."""
+"""Explicitly initialize fresh Atlas Vault and OpenVox authorities."""
 
 from __future__ import annotations
 
@@ -18,19 +18,21 @@ import time
 from collections.abc import Iterator
 
 SOURCE = Path(__file__).resolve().parents[1]
-STATE = Path("/root/openvox-infra")
+VAULT_SECRETS = SOURCE / "docker/vault/secrets"
+IPA_SECRETS = SOURCE / "docker/freeipa/secrets"
+STATE = VAULT_SECRETS / "bootstrap"
+CA = VAULT_SECRETS / "ca.pem"
 RUBY = "/opt/puppetlabs/puppet/bin/ruby"
 PUPPET = "/opt/puppetlabs/bin/puppet"
 DOCKER = ["docker", "--host", "unix:///var/run/docker.sock"]
 OPENVOX_VOLUMES = ("ssl", "ca", "code", "data", "gems", "git", "r10k_cache", "trust")
-VAULT_VOLUMES = ("vault_data", "vault_logs", "certificates", "vault_unseal")
-LABEL = "home.arpa.authority=atlas"
+VAULT_VOLUMES = ("vault_data", "vault_logs", "vault_unseal")
 MAINTENANCE_LOCK = Path("/run/lock/atlas-openvox-maintenance.lock")
 
 
 @contextmanager
 def maintenance() -> Iterator[None]:
-    """Exclude backup and publication while changing established services."""
+    """Exclude publication while initializing authority state."""
     with MAINTENANCE_LOCK.open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         yield
@@ -55,7 +57,7 @@ def run(arguments: list[str], data: str | None = None) -> str:
 
 
 def compose(*arguments: str, data: str | None = None) -> str:
-    """Select only declared new services; never load a legacy .env file."""
+    """Use the canonical production Compose configuration without local env files."""
     return run(
         DOCKER
         + [
@@ -65,9 +67,7 @@ def compose(*arguments: str, data: str | None = None) -> str:
             "-p",
             "infra",
             "-f",
-            str(SOURCE / "docker/docker-compose.yml"),
-            "-f",
-            str(SOURCE / "docker/openvox/infra-vault.override.yaml"),
+            str(SOURCE / "compose.yaml"),
             *arguments,
         ],
         data,
@@ -107,8 +107,8 @@ def api(
                     "path": path,
                     "body": body or {},
                     "auth": auth,
-                    "trust": str(STATE / "trust.pem"),
-                    "token_file": str(STATE / "root-token"),
+                    "trust": str(CA),
+                    "token_file": str(VAULT_SECRETS / "root-token"),
                 }
             ),
         )
@@ -158,7 +158,7 @@ def volume_file(volume: str, path: str, contents: str) -> None:
 
 
 def openvox(*arguments: str) -> str:
-    """Run explicit setup with existing mounts, bypassing normal startup guards."""
+    """Run explicit setup commands with the declared service mounts."""
     return compose(
         "run",
         "--rm",
@@ -177,23 +177,19 @@ def git(*arguments: str) -> str:
 
 
 def install_transport(root: str | None = None) -> None:
-    """Repair a complete saved TLS identity before trying to start Vault."""
+    """Prepare the temporary TLS listener before Vault can issue its own leaf."""
     bootstrap = STATE / "transport"
-    saved = STATE / "vault-transport.json"
-    if saved.exists():
-        transport = json.loads(saved.read_text())
-        certificate = transport["certificate"] + "\n" + "\n".join(transport["ca_chain"])
-        key = transport["private_key"]
-        root = root or (STATE / "root.pem").read_text()
-    else:
-        certificate = (bootstrap / "tls.crt").read_text()
-        key = (bootstrap / "tls.key").read_text()
-    trust = root or (bootstrap / "trust.pem").read_text()
-    volume_file("certificates", "vault.key", key)
-    volume_file("certificates", "vault_chain.crt", certificate)
-    volume_file("certificates", "ca.crt", trust)
-    # Both authenticated local pins permit an interrupted bootstrap TLS transition.
-    save(STATE / "trust.pem", trust + "\n" + (bootstrap / "trust.pem").read_text())
+    VAULT_SECRETS.mkdir(mode=0o750, parents=True, exist_ok=True)
+    os.chown(VAULT_SECRETS, 100100, 100100)
+    for name, source in (("key.pem", "tls.key"), ("fullchain.pem", "tls.crt")):
+        path = VAULT_SECRETS / name
+        if not path.exists():
+            save(path, (bootstrap / source).read_text())
+            os.chown(path, 100100, 100100)
+    if root is not None or not CA.exists():
+        trust = (root + "\n" if root else "") + (bootstrap / "trust.pem").read_text()
+        save(CA, trust)
+        os.chown(CA, 100100, 100100)
 
 
 def mount(name: str, kind: str, options: dict | None = None) -> None:
@@ -208,10 +204,7 @@ def services_intermediate() -> None:
     signed = STATE / "vault-intermediate.pem"
     established = STATE / "vault-intermediate-established.json"
     if (
-        any(
-            path.exists()
-            for path in (request, signed, established, STATE / "vault-transport.json")
-        )
+        any(path.exists() for path in (request, signed, established))
         and "pki_int/" not in api("GET", "sys/mounts")["data"]
     ):
         raise RuntimeError("Established services mount missing; restore existing state")
@@ -224,9 +217,7 @@ def services_intermediate() -> None:
     keys = (
         api("LIST", "pki_int/keys", accepted=(200, 404)).get("data", {}).get("keys", [])
     )
-    if (
-        established.exists() or (STATE / "vault-transport.json").exists()
-    ) and not issuers:
+    if established.exists() and not issuers:
         raise RuntimeError(
             "Established services issuer missing; restore existing state"
         )
@@ -295,11 +286,11 @@ def services_intermediate() -> None:
 def initialize() -> None:
     """Create fresh authorities only on this explicit, resumable setup path."""
     print("Preparing protected Atlas authority volumes", flush=True)
-    if (STATE / "ready.json").exists():
-        raise RuntimeError(
-            "Established infrastructure requires start/recovery, not initialization"
-        )
     checkpoint = STATE / "initializing"
+    if (VAULT_SECRETS / "recovery.json").exists() and not checkpoint.exists():
+        raise RuntimeError(
+            "Established infrastructure requires Compose startup/recovery, not initialization"
+        )
     names = ["openvox_" + name for name in OPENVOX_VOLUMES] + list(VAULT_VOLUMES)
     existing = set(run(DOCKER + ["volume", "ls", "--format", "{{.Name}}"]).splitlines())
     allocated = STATE / "volumes-created"
@@ -310,16 +301,13 @@ def initialize() -> None:
     if not checkpoint.exists():
         if any("infra_" + n in existing for n in names):
             raise RuntimeError(
-                "Existing infrastructure state requires start/recovery, not initialization"
+                "Existing infrastructure state requires Compose startup/recovery, not initialization"
             )
         save(checkpoint, "atlas.home.arpa\n")
     for name in names:
         volume = "infra_" + name
         if volume not in existing:
-            run(DOCKER + ["volume", "create", "--label", LABEL, volume])
-        metadata = json.loads(run(DOCKER + ["volume", "inspect", volume]))[0]
-        if metadata.get("Labels", {}).get("home.arpa.authority") != "atlas":
-            raise RuntimeError(f"Refusing unmanaged volume: {volume}")
+            run(DOCKER + ["volume", "create", volume])
         uid = "999:999" if name.startswith("openvox_") else "100:100"
         run(
             DOCKER
@@ -342,6 +330,7 @@ def initialize() -> None:
             ]
         )
     save(allocated, "\n".join(names) + "\n")
+    VAULT_SECRETS.mkdir(mode=0o750, parents=True, exist_ok=True)
     bootstrap = STATE / "transport"
     if not bootstrap.exists():
         with tempfile.TemporaryDirectory(dir=STATE) as generated:
@@ -359,16 +348,16 @@ def initialize() -> None:
     print("Initializing/unsealing the declared Vault state", flush=True)
     status = health()
     if not status["initialized"]:
-        if (STATE / "recovery.json").exists():
+        if (VAULT_SECRETS / "recovery.json").exists():
             raise RuntimeError(
                 "Vault storage missing despite recovery state; restore it"
             )
         recovery = api(
             "PUT", "sys/init", {"secret_shares": 1, "secret_threshold": 1}, auth=False
         )
-        save(STATE / "recovery.json", json.dumps(recovery))
-    recovery = json.loads((STATE / "recovery.json").read_text())
-    save(STATE / "root-token", recovery["root_token"])
+        save(VAULT_SECRETS / "recovery.json", json.dumps(recovery))
+    recovery = json.loads((VAULT_SECRETS / "recovery.json").read_text())
+    save(VAULT_SECRETS / "root-token", recovery["root_token"])
     volume_file("vault_unseal", "key", recovery["keys_base64"][0])
     if status["sealed"]:
         api("PUT", "sys/unseal", {"key": recovery["keys_base64"][0]}, auth=False)
@@ -376,7 +365,9 @@ def initialize() -> None:
     issuers = api("LIST", "pki/issuers", accepted=(200, 404))
     if not issuers.get("data", {}).get("keys"):
         keys = api("LIST", "pki/keys", accepted=(200, 404))
-        if (STATE / "root.sha256").exists() or keys.get("data", {}).get("keys"):
+        if CA.read_text() != (bootstrap / "trust.pem").read_text() or keys.get(
+            "data", {}
+        ).get("keys"):
             raise RuntimeError(
                 "Established root issuer missing; restore existing state"
             )
@@ -393,14 +384,20 @@ def initialize() -> None:
         )
     root = api("GET", "pki/cert/ca")["data"]["certificate"]
     fingerprint = hashlib.sha256(ssl.PEM_cert_to_DER_cert(root)).hexdigest()
-    if (STATE / "root.sha256").exists() and (
-        STATE / "root.sha256"
-    ).read_text() != fingerprint:
+    saved_ca = CA.read_text().split("-----END CERTIFICATE-----", 1)[0].strip()
+    bootstrap_ca = (
+        (bootstrap / "trust.pem")
+        .read_text()
+        .split("-----END CERTIFICATE-----", 1)[0]
+        .strip()
+    )
+    if (
+        saved_ca != bootstrap_ca
+        and saved_ca != root.split("-----END CERTIFICATE-----", 1)[0].strip()
+    ):
         raise RuntimeError("Established root identity changed")
-    save(STATE / "root.sha256", fingerprint)
     print(f"Vault-held root certificate SHA-256: {fingerprint}", flush=True)
-    save(STATE / "root.pem", root)
-    save(STATE / "trust.pem", root + "\n" + (bootstrap / "trust.pem").read_text())
+    install_transport(root)
     volume_file("openvox_trust", "root.pem", root)
     volume_file(
         "openvox_trust", "root.crl", api("GET", "pki/cert/crl")["data"]["certificate"]
@@ -437,45 +434,47 @@ def initialize() -> None:
             "key_usage": ["DigitalSignature"],
         },
     )
-    if not (STATE / "vault-transport.json").exists():
-        save(
-            STATE / "vault-transport.json",
-            json.dumps(
-                api(
-                    "POST",
-                    "pki_int/issue/vault-transport",
-                    {"common_name": "vault.home.arpa", "ttl": "720h"},
-                )["data"]
+    if (VAULT_SECRETS / "fullchain.pem").read_text() == (
+        bootstrap / "tls.crt"
+    ).read_text():
+        transport = api(
+            "POST",
+            "pki_int/issue/vault-transport",
+            {"common_name": "vault.home.arpa", "ttl": "720h"},
+        )["data"]
+        for name, value in (
+            ("key.pem", transport["private_key"]),
+            (
+                "fullchain.pem",
+                transport["certificate"]
+                + "\n"
+                + "\n".join(transport["ca_chain"])
+                + "\n",
             ),
-        )
-    transport = json.loads((STATE / "vault-transport.json").read_text())
-    install_transport(root)
+        ):
+            save(VAULT_SECRETS / name, value)
+            os.chown(VAULT_SECRETS / name, 100100, 100100)
     public = run(
         [
             RUBY,
             "-ropenssl",
             "-e",
-            'puts OpenSSL::PKey.read(JSON.parse(STDIN.read).fetch("private_key")).public_to_pem',
-            "-rjson",
+            "puts OpenSSL::PKey.read(File.read(ARGV.fetch(0))).public_to_pem",
+            str(VAULT_SECRETS / "key.pem"),
         ],
-        json.dumps(transport),
     )
-    volume_file("certificates", "public/vault.pub.pem", public)
+    (VAULT_SECRETS / "public").mkdir(mode=0o750, exist_ok=True)
+    os.chown(VAULT_SECRETS / "public", 100100, 100100)
+    save(VAULT_SECRETS / "public/vault.pub.pem", public)
+    os.chown(VAULT_SECRETS / "public/vault.pub.pem", 100100, 100100)
     compose("restart", "vault")
     status = health()
     if status["sealed"]:
         api("PUT", "sys/unseal", {"key": recovery["keys_base64"][0]}, auth=False)
-    save(STATE / "trust.pem", root)
+    save(CA, root)
+    os.chown(CA, 100100, 100100)
     deploy_initial()
-    save(
-        STATE / "ready.json",
-        json.dumps(
-            {
-                "root_sha256": fingerprint,
-                "control_commit": git("rev-parse", "HEAD").strip(),
-            }
-        ),
-    )
+    checkpoint.unlink()
 
 
 def configure_access() -> None:
@@ -506,31 +505,41 @@ def configure_access() -> None:
             "token_ttl": "15m",
         },
     )
+    configure_transport_access(chain)
+
+
+def configure_transport_access(chain: str) -> None:
+    """Let Atlas's Puppet agent issue only the two service TLS identities."""
+    api(
+        "PUT",
+        "sys/policies/acl/atlas-transport",
+        {
+            "policy": "\n".join(
+                f'path "{path}" {{ capabilities = ["update"] }}'
+                for path in (
+                    "pki_int/issue/vault-transport",
+                    "pki_freeipa/issue/ipa-transport",
+                )
+            )
+            + '\npath "auth/token/lookup-self" { capabilities = ["read"] }'
+        },
+    )
+    api(
+        "POST",
+        "auth/cert/certs/atlas-transport",
+        {
+            "certificate": chain,
+            "allowed_common_names": ["atlas.home.arpa"],
+            "allowed_dns_sans": ["atlas.home.arpa"],
+            "token_policies": ["atlas-transport"],
+            "token_no_default_policy": True,
+            "token_ttl": "5m",
+        },
+    )
 
 
 def deploy_initial() -> None:
-    """Populate both declared environments before fail-on-missing-state startup."""
-    run(
-        DOCKER
-        + [
-            "run",
-            "--rm",
-            "--network",
-            "none",
-            "--user",
-            "0:0",
-            "--mount",
-            "type=volume,src=infra_openvox_code,dst=/code",
-            "--mount",
-            f"type=bind,src={SOURCE / 'docker/openvox'},dst=/infra,readonly",
-            "--entrypoint",
-            "/bin/bash",
-            "infra-openvox:24001",
-            "/infra/infra-code-prepare.sh",
-            "/code",
-            "/etc/puppetlabs/code",
-        ]
-    )
+    """Populate both declared environments and install the publication hook."""
     git("fetch", "origin", "dev")
     run(
         [
@@ -598,71 +607,26 @@ def deploy_initial() -> None:
     run(["rm", "-f", "/opt/git/openvox/control.git/hooks/pre-receive"])
 
 
-def start() -> None:
-    """Start established services without generating any authority material."""
-    if not (STATE / "ready.json").is_file():
-        raise RuntimeError(
-            "Missing initialized state; explicitly initialize or restore it"
-        )
-    with maintenance():
-        run(["rm", "-f", "/opt/git/openvox/control.git/hooks/pre-receive"])
-        compose(
-            "up",
-            "-d",
-            "--no-deps",
-            "--wait",
-            "--wait-timeout",
-            "300",
-            "vault",
-            "vault-unsealer",
-            "openvox",
-        )
-        run(
-            [
-                "install",
-                "-o",
-                "root",
-                "-g",
-                "root",
-                "-m",
-                "0644",
-                str(SOURCE / "proxmox/systemd/atlas-openvox-renew.service"),
-                str(SOURCE / "proxmox/systemd/atlas-openvox-renew.timer"),
-                "/etc/systemd/system/",
-            ]
-        )
-        run(["systemctl", "daemon-reload"])
-    run(["systemctl", "start", "atlas-openvox-renew.service"])
-    run(["systemctl", "enable", "--now", "atlas-openvox-renew.timer"])
-
-
 def main() -> None:
-    """Require the protected Atlas target and explicit lifecycle operation."""
+    """Initialize fresh authorities on Atlas through the explicit setup command."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("initialize", "start"))
-    action = parser.parse_args().action
+    parser.add_argument("action", choices=("initialize",))
+    parser.parse_args()
     os.umask(0o077)
     if os.geteuid() != 0 or socket.getfqdn() != "atlas.home.arpa":
         raise RuntimeError("Run as root on atlas.home.arpa")
-    if (
-        Path("/etc/openvox-infra/promoted").read_text().strip()
-        != "openvox-authority:atlas.home.arpa"
-    ):
-        raise RuntimeError("Promote VM 210 before creating authoritative state")
-    STATE.mkdir(mode=0o700, exist_ok=True)
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
     STATE.chmod(0o700)
     if run(DOCKER + ["info", "--format", "{{.Name}}"]).strip() != socket.gethostname():
         raise RuntimeError("Refusing nonlocal Docker daemon")
-    if git("status", "--porcelain").strip():
-        raise RuntimeError("Activation requires a clean versioned checkout")
     os.environ["OPENSSL_CONF"] = str(SOURCE / "docker/openvox/openssl.cnf")
     os.environ["DOCKER_DOMAIN"] = "home.arpa"
-    if action == "initialize":
-        with maintenance():
-            initialize()
-    # Renewal takes the same lock; synchronous systemctl start must run outside it.
-    start()
-    print("Atlas Vault, unsealer and OpenVox are healthy", flush=True)
+    with maintenance():
+        initialize()
+    print(
+        "Authorities initialized; start services with docker compose up -d --wait",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

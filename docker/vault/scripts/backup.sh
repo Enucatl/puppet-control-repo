@@ -4,9 +4,8 @@ set -euo pipefail
 umask 077
 unset DOCKER_HOST DOCKER_CONTEXT
 
-[[ $(id -u) == 0 && $(hostname -f) == atlas.home.arpa &&
-   $(cat /etc/openvox-infra/promoted) == openvox-authority:atlas.home.arpa ]] || {
-  echo 'Run as root on the promoted Atlas authority.' >&2; exit 1;
+[[ $(id -u) == 0 && $(hostname -f) == atlas.home.arpa ]] || {
+  echo 'Run as root on atlas.home.arpa.' >&2; exit 1;
 }
 exec 9>/run/lock/atlas-openvox-maintenance.lock
 flock -w 300 9
@@ -14,10 +13,9 @@ flock -w 300 9
 # Configuration
 SOURCE_DIR="/var/lib/docker/100000.100000/volumes/infra_vault_data/_data"
 BACKUP_DIR="/scratch/backup/vault"
-COMPOSE_DIR="/opt/docker/puppet-control-repo/docker"
+COMPOSE_DIR="/opt/docker/puppet-control-repo"
 COMPOSE=(env -i "PATH=$PATH" DOCKER_DOMAIN=home.arpa docker compose
-  --env-file /dev/null -p infra -f "$COMPOSE_DIR/docker-compose.yml"
-  -f "$COMPOSE_DIR/openvox/infra-vault.override.yaml")
+  --env-file /dev/null -p infra -f "$COMPOSE_DIR/compose.yaml")
 DATE=$(date --iso-8601=seconds)
 ARCHIVE_NAME="vault-backup-${DATE}.tar.gz"
 DESTINATION="${BACKUP_DIR}/${ARCHIVE_NAME}"
@@ -33,8 +31,7 @@ log_msg() {
 
 # Ensure backup directory exists
 install -d -o root -g backrest -m 0750 "$BACKUP_DIR"
-[[ $(docker volume inspect --format '{{index .Labels "home.arpa.authority"}}' infra_vault_data) == atlas &&
-   -d $SOURCE_DIR && ! -e $DESTINATION ]] || {
+[[ -d $SOURCE_DIR && ! -e $DESTINATION ]] || {
   echo 'Refusing missing authority state or an existing backup destination.' >&2; exit 1;
 }
 

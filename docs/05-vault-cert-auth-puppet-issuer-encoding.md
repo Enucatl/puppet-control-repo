@@ -2,6 +2,10 @@
 
 Date: 2026-04-25
 
+The legacy rotation/bootstrap scripts quoted below have been retired. Their
+commands are historical diagnostic evidence, not runnable maintenance steps.
+Current authority setup and startup are documented in [OpenVox infrastructure](openvox-infra.md).
+
 Historical diagnosis and proposed remedies for the legacy authority. The active
 [migration plan](26.04-migration-plan.md) supersedes the broad agent reissue and
 RSA/intermediate migration proposals below: deploy a fresh Vault-held ML-DSA-44

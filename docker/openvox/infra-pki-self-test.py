@@ -153,6 +153,8 @@ try:
         + [
             "-e",
             "require 'openssl';"
+            "raise 'Import must leave the native leaf file unbundled' unless "
+            "File.read(ARGV[0]).scan(/-----BEGIN CERTIFICATE-----/).length == 1;"
             "cert=OpenSSL::X509::Certificate.new(File.read(ARGV[0]));"
             "raise 'Imported leaf does not last 60 days' unless "
             "(cert.not_after-Time.now-60*86400).abs < 120",

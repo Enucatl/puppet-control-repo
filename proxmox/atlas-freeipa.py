@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""Prepare an explicit CA-less Atlas IPA installation or start its saved state."""
+"""Prepare certificates and password options for a fresh Atlas IPA installation."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
 import secrets
+import shlex
 import socket
 import ssl
 import stat
-import uuid
 
 SPEC = importlib.util.spec_from_file_location(
     "atlas_infra", Path(__file__).with_name("atlas-infra.py")
@@ -21,18 +20,10 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC and SPEC.loader
 infra = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(infra)
-STATE = infra.STATE / "freeipa"
+STATE = infra.IPA_SECRETS / "bootstrap"
 MOUNT = "pki_freeipa"
 VOLUME = "infra_ipa_data"
 HOSTNAME = "ipa.home.arpa"
-INPUTS = (
-    "installer.json",
-    "root.pem",
-    "http-chain.pem",
-    "ldap-chain.pem",
-    "http-key.pem",
-    "ldap-key.pem",
-)
 
 
 def compose(*arguments: str) -> str:
@@ -135,68 +126,35 @@ def intermediate() -> None:
     infra.save(established, json.dumps(identity))
 
 
-def volume(create: bool = False) -> None:
-    """Pin the authority label and identity inside the persistent IPA data."""
-    checkpoint = STATE / "volume.json"
-    existing = infra.run(
-        infra.DOCKER + ["volume", "ls", "--format", "{{.Name}}"]
-    ).splitlines()
-    if VOLUME not in existing:
-        if checkpoint.exists() or not create:
-            raise RuntimeError("Established IPA volume missing; restore it")
-        infra.run(infra.DOCKER + ["volume", "create", "--label", infra.LABEL, VOLUME])
-    metadata = json.loads(infra.run(infra.DOCKER + ["volume", "inspect", VOLUME]))[0]
-    if metadata.get("Labels", {}).get("home.arpa.authority") != "atlas":
-        raise RuntimeError("Refusing unmanaged IPA volume")
-    saved = json.loads(checkpoint.read_text()) if checkpoint.exists() else None
-    command = infra.DOCKER + [
-        "run",
-        "--rm",
-        "-i",
-        "--network",
-        "none",
-        "--user",
-        "0:0",
-        "--mount",
-        f"type=volume,src={VOLUME},dst=/volume",
-        "--entrypoint",
-        "/bin/sh",
-        "infra-openvox:24001",
-        "-c",
-    ]
-    if saved:
-        marker = infra.run(command + ["cat /volume/.atlas-freeipa-volume"]).strip()
-        if marker != saved["identity"]:
-            raise RuntimeError("IPA volume identity mismatch; restore original data")
-    elif create:
-        identity = str(uuid.uuid4())
-        # An interrupted first allocation must not adopt populated IPA storage.
-        infra.run(
-            command
-            + [
-                'set -eu; test -z "$(ls -A /volume)"; chown 0:0 /volume; chmod 0700 /volume; '
-                "umask 077; cat > /volume/.atlas-freeipa-volume",
-            ],
-            identity + "\n",
-        )
-        infra.save(
-            checkpoint,
-            json.dumps({"identity": identity}),
-        )
-    else:
-        raise RuntimeError("Missing saved IPA volume identity")
-
-
 def initialize(password_file: Path | None = None) -> None:
     """Prepare fresh IPA credentials without changing existing root authority."""
-    if (STATE / "ready.json").exists():
-        raise RuntimeError("IPA already prepared; use start or recovery")
-    if not (infra.STATE / "ready.json").is_file():
-        raise RuntimeError("Initialize Atlas Vault/OpenVox first")
+    image = json.loads(compose("config", "--format", "json"))["services"]["ipa"][
+        "image"
+    ]
+    infra.run(infra.DOCKER + ["volume", "create", VOLUME])
+    # Native state must never be overwritten by another bootstrap.
+    infra.run(
+        infra.DOCKER
+        + [
+            "run",
+            "--rm",
+            "--network",
+            "none",
+            "--read-only",
+            "--user",
+            "0:0",
+            "--mount",
+            f"type=volume,src={VOLUME},dst=/data,readonly",
+            "--entrypoint",
+            "/bin/sh",
+            image,
+            "-ec",
+            'test -z "$(ls -A /data)"',
+        ]
+    )
     root = infra.api("GET", "pki/cert/ca")["data"]["certificate"]
-    fingerprint = hashlib.sha256(ssl.PEM_cert_to_DER_cert(root)).hexdigest()
-    if fingerprint != (infra.STATE / "root.sha256").read_text().strip():
-        raise RuntimeError("Existing Atlas root fingerprint changed")
+    if ssl.PEM_cert_to_DER_cert(root) != ssl.PEM_cert_to_DER_cert(infra.CA.read_text()):
+        raise RuntimeError("Existing Atlas root certificate changed")
     intermediate()
     infra.api(
         "POST",
@@ -218,31 +176,24 @@ def initialize(password_file: Path | None = None) -> None:
             "client_flag": True,
         },
     )
-    for service in ("http", "ldap"):
-        response = STATE / f"{service}.json"
-        if not response.exists():
-            infra.save(
-                response,
-                json.dumps(
-                    infra.api(
-                        "POST",
-                        MOUNT + "/issue/ipa-transport",
-                        {
-                            "common_name": HOSTNAME,
-                            "alt_names": HOSTNAME,
-                            "ttl": "2160h",
-                        },
-                    )["data"]
-                ),
-            )
-        leaf = json.loads(response.read_text())
+    infra.IPA_SECRETS.mkdir(mode=0o700, parents=True, exist_ok=True)
+    infra.IPA_SECRETS.chmod(0o700)
+    chain = infra.IPA_SECRETS / "fullchain.pem"
+    key = infra.IPA_SECRETS / "key.pem"
+    if chain.exists() != key.exists():
+        raise RuntimeError("Incomplete IPA certificate pair; restore the missing file")
+    if not chain.exists():
+        leaf = infra.api(
+            "POST",
+            MOUNT + "/issue/ipa-transport",
+            {"common_name": HOSTNAME, "alt_names": HOSTNAME, "ttl": "2160h"},
+        )["data"]
         infra.save(
-            STATE / f"{service}-chain.pem",
-            leaf["certificate"] + "\n" + "\n".join(leaf["ca_chain"]) + "\n",
+            chain, leaf["certificate"] + "\n" + "\n".join(leaf["ca_chain"]) + "\n"
         )
-        infra.save(STATE / f"{service}-key.pem", leaf["private_key"])
-    infra.save(STATE / "root.pem", root)
-    installer = STATE / "installer.json"
+        infra.save(key, leaf["private_key"])
+    infra.save(infra.IPA_SECRETS / "ca.pem", root)
+    installer = infra.IPA_SECRETS / "installer.json"
     if not installer.exists():
         if password_file:
             metadata = password_file.stat()
@@ -273,111 +224,44 @@ def initialize(password_file: Path | None = None) -> None:
                 }
             ),
         )
-    volume(create=True)
     settings = json.loads(installer.read_text())
-    settings["volume_identity"] = json.loads((STATE / "volume.json").read_text())[
-        "identity"
-    ]
-    infra.save(installer, json.dumps(settings))
-    staged = STATE / "container-inputs"
-    staged.mkdir(mode=0o700, exist_ok=True)
-    for name in INPUTS:
-        infra.save(staged / name, (STATE / name).read_text())
-        os.chown(staged / name, 100000, 100000)
-    os.chown(staged, 100000, 100000)
     infra.save(
-        STATE / "ready.json",
-        json.dumps({"hostname": HOSTNAME, "root_sha256": fingerprint}),
+        infra.IPA_SECRETS / "ipa-server-install-options",
+        (
+            "\n".join(
+                shlex.quote(f"--{option}={settings[field]}")
+                for option, field in (
+                    ("admin-password", "admin_password"),
+                    ("ds-password", "dm_password"),
+                )
+            )
+            + "\n"
+        ),
     )
-
-
-def start() -> None:
-    """Start only prepared IPA state, without issuing or replacing credentials."""
-    if not (STATE / "ready.json").is_file():
-        raise RuntimeError(
-            "Missing initialized IPA state; explicitly initialize or restore it"
-        )
-    ready = json.loads((STATE / "ready.json").read_text())
-    if (
-        ready["hostname"] != HOSTNAME
-        or ready["root_sha256"] != (infra.STATE / "root.sha256").read_text().strip()
-    ):
-        raise RuntimeError("Established IPA identity changed")
-    for name in (
-        "installer.json",
-        "issuer.json",
-        "intermediate.json",
-        "intermediate.pem",
-        "root.pem",
-        "http.json",
-        "ldap.json",
-        "http-chain.pem",
-        "ldap-chain.pem",
-        "http-key.pem",
-        "ldap-key.pem",
-    ):
-        if not (STATE / name).is_file():
-            raise RuntimeError(f"Missing established IPA file: {name}")
-    for name in INPUTS:
-        staged = STATE / "container-inputs" / name
-        if not staged.is_file() or staged.read_bytes() != (STATE / name).read_bytes():
-            raise RuntimeError(f"Missing or changed staged IPA input: {name}")
-    volume()
-    if (STATE / "installed").exists():
-        compose(
-            "run",
-            "--rm",
-            "--no-deps",
-            "-T",
-            "--entrypoint",
-            "/bin/sh",
-            "ipa",
-            "-c",
-            "test -s /data/.atlas-freeipa-installed",
-        )
-    compose("up", "-d", "--no-deps", "--wait", "--wait-timeout", "600", "ipa")
-    compose(
-        "exec",
-        "-T",
-        "ipa",
-        "/bin/sh",
-        "-c",
-        "umask 077; cp /data/.atlas-freeipa-volume /data/.atlas-freeipa-installed",
-    )
-    infra.save(STATE / "installed", "healthy CA-less IPA\n")
+    for path in (infra.IPA_SECRETS, *infra.IPA_SECRETS.iterdir()):
+        os.chown(path, 100000, 100000)
 
 
 def main() -> None:
-    """Require the promoted Atlas host and its local Docker daemon."""
+    """Prepare fresh installation inputs on Atlas using its local Docker daemon."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("initialize", "start"))
+    parser.add_argument("action", choices=("initialize",))
     parser.add_argument("--password-file", type=Path)
     args = parser.parse_args()
     os.umask(0o077)
     if os.geteuid() != 0 or socket.getfqdn() != "atlas.home.arpa":
         raise RuntimeError("Run as root on atlas.home.arpa")
     if (
-        Path("/etc/openvox-infra/promoted").read_text().strip()
-        != "openvox-authority:atlas.home.arpa"
-    ):
-        raise RuntimeError("Promote Atlas before creating authoritative state")
-    if (
         infra.run(infra.DOCKER + ["info", "--format", "{{.Name}}"]).strip()
         != socket.gethostname()
     ):
         raise RuntimeError("Refusing nonlocal Docker daemon")
-    if infra.git("status", "--porcelain").strip():
-        raise RuntimeError("Activation requires a clean versioned checkout")
     os.environ["OPENSSL_CONF"] = str(infra.SOURCE / "docker/openvox/openssl.cnf")
-    STATE.mkdir(mode=0o700, exist_ok=True)
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
     STATE.chmod(0o700)
     with infra.maintenance():
-        if args.action == "initialize":
-            initialize(args.password_file)
-        elif args.password_file:
-            raise RuntimeError("--password-file is only valid for initialize")
-        start()
-    print("Atlas CA-less IPA started; account migration is a separate operation")
+        initialize(args.password_file)
+    print("Atlas IPA inputs prepared; start the server with Docker Compose")
 
 
 if __name__ == "__main__":

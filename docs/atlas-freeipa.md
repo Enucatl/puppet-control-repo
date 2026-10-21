@@ -24,49 +24,39 @@ and uses OpenSSL for HTTP certificate/key matching and encrypted key storage.
 NSS retains full-chain and hostname validation. The build applies the patch with
 zero fuzz against the pinned source.
 
-`docker/freeipa/atlas.Dockerfile` adds only the Atlas entrypoint to that image.
-Its published base is pinned to
-`sha256:80024f5e76ce4eedd986eb9e7ed63461cafb1bc1774386cf4ff41a259633d0cb`,
-from fork revision `cea6c6b250867cd9dbf23c7224d81d1ae7908b83`.
+The [Compose file](../docker/freeipa/atlas-compose.yaml) selects the published
+image directly, with its native entrypoint. It owns the image pin, install
+options, volume mount, healthcheck and startup instructions. The pinned image
+comes from fork revision `cea6c6b250867cd9dbf23c7224d81d1ae7908b83`.
+There is no local derived FreeIPA image or custom entrypoint to build.
 [The hosted build and focused checks passed](https://github.com/Enucatl/freeipa-container/actions/runs/39307303697).
 The versioned full-install harness also passed on Atlas with disposable
 state and no published ports. The new server is initialized and healthy;
 [initialization evidence](atlas-ipa-initialization-results.json) records its
 certificate identities, authenticated checks and protected off-host backup.
 
-`atlas-entrypoint.py` reads protected inputs, validates the prepared data volume
-identity, writes the image's supported installer options file and delegates to
-the upstream init. It refuses missing established state rather than silently
-creating another realm. Credentials are not supplied through Compose environment
-variables or stored in the repository.
-
-Build on Atlas from its versioned control checkout:
-
-```bash
-sudo docker compose --env-file /dev/null -p infra \
-  -f docker/freeipa/atlas-compose.yaml build ipa
-```
-
 ## Initial preparation and startup
 
-From the clean published control checkout on the promoted Atlas host:
-
-```bash
-sudo python3 proxmox/atlas-freeipa.py initialize
-```
-
-This explicit operation creates the separate `pki_freeipa` internal intermediate
+The one-time preparation command documented in Compose creates the separate
+`pki_freeipa` internal intermediate
 under the established Vault-held root. It never exports or resets that root. The
-issuance role permits only `ipa.home.arpa`, using ML-DSA-44, and creates separate
-HTTP/LDAP leaves. Normal startup does not issue replacement identities.
+issuance role permits only `ipa.home.arpa`, using ML-DSA-44, and creates the shared
+HTTP/LDAP certificate. Normal startup does not issue replacement identities.
 
-Canonical private checkpoints, credentials and PEM files are under
-`/root/openvox-infra/freeipa`, protected by root ownership and restrictive modes.
-Container inputs are copied into its `container-inputs` subdirectory, owned by
-the existing Docker remapped root (`100000:100000`) with directory mode `0700`
-and file mode `0600`. Compose mounts only that subdirectory, read-only. The
-external `infra_ipa_data` volume holds the server state; its authority label and
-UUID marker identify the original data, including after an explicit restore.
+Preparation writes `fullchain.pem`, `key.pem`, the public CA certificate
+`ca.pem`, private `installer.json` passwords and `ipa-server-install-options`
+under `docker/freeipa/secrets/`, beside Compose and excluded from Git. Compose
+mounts the certificate inputs and protected options file alongside the persistent
+`infra_ipa_data` volume. Existing installations and restored volumes use native
+FreeIPA startup, without custom entrypoints, readiness checkpoints or volume
+identity markers. Installation flags and mount paths are documented in Compose.
+
+After the updated Atlas catalog is deployed and applied, Puppet's existing
+`vault_cert` resource renews the PEM files. Its refresh command
+imports the renewed certificate into both HTTP and Directory Server and restarts
+the affected services. The Directory Manager password comes from
+`secrets/installer.json`; no certificate JSON or custom renewal timer is needed.
+See [the certificate lifecycle](openvox-infra.md#automated-vault-and-ipa-transport-renewal).
 
 By default initialization generates and retains independent admin and Directory
 Manager passwords. To supply declared credentials instead, pass
@@ -74,16 +64,8 @@ Manager passwords. To supply declared credentials instead, pass
 `dm_password`. The input must belong to root and exclude group/other access.
 Never put that file in Git.
 
-After preparation, ordinary startup is:
-
-```bash
-sudo python3 proxmox/atlas-freeipa.py start
-```
-
-Startup checks the saved issuer/key, all prepared files and the data volume.
-It starts only the IPA service, verifies its CA-less healthcheck and records
-successful installation. Missing established identities require recovery from
-protected state. Do not rerun initialization as a recovery procedure.
+Use Compose for ordinary startup and restoration, following the instructions in
+the Compose file. The preparation helper is only for a fresh installation.
 
 ## DNS and client selection
 
@@ -95,110 +77,24 @@ New clients must explicitly select `ipa.home.arpa` and the authenticated new CA.
 Existing clients retain `freeipa.home.arpa` until their migration. Do not globally
 replace the common FreeIPA defaults before their cutover.
 
-## Identity migration and acceptance
+## Established identities and recovery
 
-A fresh CA-less installation is not account migration. Preserve original users,
-password hashes, numeric IDs, principals and policies through the tested #14
-procedure before declaring this endpoint ready for Atlas's full catalog.
-`ipa-migrate prod-mode` is the upstream migration path to rehearse; stage mode
-regenerates IDs. Fresh-realm migration does not preserve the original Kerberos
-master key or existing client keytabs, so retain original service state and
-script the agreed client re-enrollment and password-migration behavior.
+The completed account migration preserved the original users, numeric IDs,
+memberships and policies. See [migration evidence](atlas-ipa-migration-results.json)
+for the measured acceptance. Migration-only import and disposable clone tools
+are retired. Native startup reads the existing `/data` volume; it does not
+repeat that migration.
 
-The migration entry point is `proxmox/atlas-freeipa-migrate.py`. Supply the old
-Directory Manager password in a root-owned, private JSON file with the single
-key `dm_password`, and a CA bundle obtained through authenticated recovery or
-SSH. Source inputs are delivered outside the repository. On Atlas the prepared
-paths are `/root/openvox-infra/ipa-migration-source/credentials.json` and `ca.pem`.
-
-```bash
-sudo python3 proxmox/atlas-freeipa-migrate.py dry-run \
-  --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json \
-  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem
-```
-
-The command authenticates source LDAP with verified STARTTLS, uses production
-mode to retain numeric IDs, and skips source Directory Server configuration so
-it cannot overwrite the target's CA-less TLS settings. The initial dry-run
-confirmed that ordinary online migration proposes importing the old RSA root,
-intermediate and Dogtag CA records. Account migration must exclude the complete
-`cn=certificates,cn=ipa,cn=etc,dc=home,dc=arpa` and
-`cn=ca,dc=home,dc=arpa` subtrees through supported filtered LDIF input.
-Private logs, proposed
-LDIF changes and identity/policy comparisons remain under the protected IPA
-state directory. Inspect proposed certificate/issuer entries before importing.
-The `rehearse` action permits an actual import only into the separately labelled
-`atlas-ipa-rehearsal` clone without published ports or the authoritative volume.
-It is not a client cutover or an import into the live IPA data volume.
-
-Create the rehearsal target from the protected post-initialization backup:
-
-```bash
-sudo bash proxmox/atlas-freeipa-rehearse.sh /scratch/vault/EXACT_BACKUP_DIRECTORY
-sudo python3 proxmox/atlas-freeipa-migrate.py rehearse \
-  --container atlas-ipa-rehearsal \
-  --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json \
-  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem \
-  --login-password-file /root/openvox-infra/ipa-migration-source/login.json
-```
-
-The private login JSON contains only `password`, using the existing
-`puppet-enroller` password from Vault. The rehearsal checks a verified LDAP bind
-and Kerberos login with that password, plus the new administrator credentials.
-LDAP login generates the migrated user's Kerberos keys under the new realm's
-master key. Existing client keytabs still require client re-enrollment.
-
-Export ordinary users before their managed private groups: user creation
-generates those groups, after which migration restores the source group IDs
-and memberships. Existing HBAC rules can retain their target UUID DNs; verify
-their unique names, parent containers and complete policy attributes instead.
-
-The clone restores the original initialized database from the verified archive;
-it never generates authorities or mounts the live IPA data. Its dedicated bridge
-allows source LDAP reads, but it publishes no ports or production DNS aliases.
-Failed or completed rehearsal state remains available until explicitly removed
-with `sudo bash proxmox/atlas-freeipa-rehearse.sh cleanup`. Cleanup checks all
-three resource labels before removing only the designated disposable names.
-
-Do not treat the image's successful certificate import or a healthy fresh server
-as proof of account preservation, renewal, client enrollment or recovery. #14
-also requires real HTTP/LDAP/Kerberos checks, unchanged required access, renewal
-and reload, absence of Dogtag and the original-deployment rollback procedure.
-
-DNS is deployed, and fresh initialization, account migration and Atlas
-client enrollment have passed their recorded acceptance checks.
-Initialization passed with ML-DSA-44 HTTPS and LDAPS, administrator Kerberos and
-API access, and no Dogtag instance. `ipa-pkinit-manage status` reports disabled;
-FreeIPA still retains its self-signed KDC certificate and PKINIT configuration.
-The pre-migration backup contains 13 volumes and 19 archives, with every archive
-checksum verified on Proxmox after copying it off Atlas. Atlas now uses the
-new IPA service; other clients have not moved.
-
-Actual production-mode import has passed on the isolated clone, including the
-existing enrollment password's LDAP and Kerberos logins. See
-[migration evidence](atlas-ipa-migration-results.json) for measured acceptance.
-The final live import then passed against the authoritative service, using a
-fresh source export after a verified off-host backup. The command used was:
-
-```bash
-sudo python3 proxmox/atlas-freeipa-migrate.py import \
-  --source-password-file /root/openvox-infra/ipa-migration-source/credentials.json \
-  --source-ca /root/openvox-infra/ipa-migration-source/ca.pem \
-  --login-password-file /root/openvox-infra/ipa-migration-source/login.json
-```
-
-The live action accepts only the authoritative container and volume with their
-original identity. It requires a bootstrap-only target and records the attempt
-before importing; an interrupted or failed import cannot be repeated over
-partial state. Successful acceptance writes protected `imported.json`, which
-the Atlas enrollment script requires. Do not promote the rehearsal volume or
-reuse its generated client keys.
+Recover the established volume and Compose-adjacent `secrets/` with the normal
+[Atlas backup workflow](atlas-recovery.md). Check trusted HTTPS/LDAPS,
+administrator Kerberos/API access and required user access after restoration.
+FreeIPA remains CA-less, with PKINIT explicitly disabled and no Dogtag instance.
 
 ## Focused checks
 
 ```bash
-uv run --frozen pytest -q tests/test_atlas_freeipa.py \
-  tests/test_atlas_freeipa_entrypoint.py tests/test_router_dns.py
+uv run --frozen pytest -q tests/test_atlas_freeipa.py
+bash tests/test_atlas_freeipa_compose.sh
 ```
 
 Long builds and live installations in the main Codex thread use `wake-run`.

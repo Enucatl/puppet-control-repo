@@ -26,7 +26,7 @@ while true; do
     if ! status=$(curl "${tls_options[@]}" --silent --show-error --connect-timeout 5 --max-time 10 "$VAULT_ADDR/v1/sys/health"); then
         echo '[Unsealer] Vault unreachable.'
     elif ! jq -e '.initialized == true' <<< "$status" >/dev/null; then
-        echo '[Unsealer] Vault needs initialization; run the vault-init setup service.'
+        echo '[Unsealer] Vault is uninitialized; restore established data, or explicitly initialize a fresh installation.'
     elif jq -e '.sealed == true' <<< "$status" >/dev/null; then
         if [ ! -s "$UNSEAL_KEY_FILE" ]; then
             echo '[Unsealer] Unseal key file is missing or empty.'

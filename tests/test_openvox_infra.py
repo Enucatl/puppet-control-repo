@@ -1,4 +1,4 @@
-"""Validate the opt-in production model without contacting a Docker daemon."""
+"""Validate the production Compose model without contacting a Docker daemon."""
 
 import json
 import configparser
@@ -41,8 +41,6 @@ def compose_model():
             "/dev/null",
             "-f",
             str(ROOT / "docker/docker-compose.yml"),
-            "--profile",
-            "openvox",
             "config",
             "--format",
             "json",
@@ -55,11 +53,14 @@ def compose_model():
     return json.loads(result.stdout)
 
 
-def test_openvox_activation_is_explicit_and_keeps_the_tls_boundary(compose_model):
+def test_openvox_native_startup_keeps_the_tls_boundary(compose_model):
     service = compose_model["services"]["openvox"]
-    assert service["profiles"] == ["openvox"]
+    assert not service.get("profiles")
     assert not service.get("depends_on")
     assert service["hostname"] == "openvox.home.arpa"
+    assert service["command"] == [
+        "/opt/puppetlabs/server/apps/puppetserver/cli/apps/foreground"
+    ]
     assert service["user"] == "999:999"
     assert service["read_only"] is True
     assert "ALL" in service["cap_drop"]
@@ -170,17 +171,6 @@ def test_code_volume_stays_empty_for_initial_r10k_clone(compose_model):
     assert mount["volume"]["nocopy"] is True
 
 
-def test_start_fails_before_launch_when_state_is_missing():
-    result = subprocess.run(
-        ["bash", str(ROOT / "docker/openvox/infra-start.sh")],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == 1
-    assert "Restore established OpenVox state before startup; missing:" in result.stderr
-
-
 def test_published_control_repo_is_read_only_with_writable_deployment_status(
     compose_model,
 ):
@@ -211,7 +201,7 @@ def test_r10k_reads_foreign_owned_repo_using_file_transport_and_scoped_trust():
     ) == ["/git/control.git"]
 
 
-def test_vault_cutover_is_a_separate_pinned_override(compose_model):
+def test_root_compose_uses_canonical_vault_configuration(compose_model):
     result = subprocess.run(
         [
             "docker",
@@ -219,9 +209,7 @@ def test_vault_cutover_is_a_separate_pinned_override(compose_model):
             "--env-file",
             "/dev/null",
             "-f",
-            str(ROOT / "docker/docker-compose.yml"),
-            "-f",
-            str(ROOT / "docker/openvox/infra-vault.override.yaml"),
+            str(ROOT / "compose.yaml"),
             "config",
             "--format",
             "json",
@@ -234,7 +222,7 @@ def test_vault_cutover_is_a_separate_pinned_override(compose_model):
     model = json.loads(result.stdout)
     services = model["services"]
     vault = services["vault"]
-    assert compose_model["services"]["vault"]["image"] == "hashicorp/vault:latest"
+    assert vault["image"] == compose_model["services"]["vault"]["image"]
     assert vault["image"] == (
         "hashicorp/vault@sha256:"
         "e0acd3c681bdf57f002d7214e5d050b876e1704678005c6b0406dd96a65be919"
@@ -258,15 +246,31 @@ def test_vault_cutover_is_a_separate_pinned_override(compose_model):
     mounts = {mount["target"]: mount for mount in vault["volumes"]}
     assert mounts["/vault/file"]["source"] == "vault_data"
     assert mounts["/vault/logs"]["source"] == "vault_logs"
-    assert mounts["/certificates"]["source"] == "certificates"
+    assert mounts["/certificates"]["type"] == "bind"
+    assert mounts["/certificates"]["source"] == str(ROOT / "docker/vault/secrets")
     assert mounts["/certificates"]["read_only"] is True
     assert mounts["/vault/config/infra-vault.hcl"]["read_only"] is True
     assert "/vault/config" not in mounts
-    for name in ("vault_data", "vault_logs", "certificates", "vault_unseal"):
+    for name in ("vault_data", "vault_logs", "vault_unseal"):
         assert model["volumes"][name] == {
             "external": True,
             "name": f"infra_{name}",
         }
-        assert not compose_model["volumes"][name].get("external", False)
+        assert compose_model["volumes"][name] == model["volumes"][name]
     assert services["vault-unsealer"]["command"] == ["/scripts/unseal.sh"]
     assert set(services["vault-unsealer"]["networks"]) == {"infra"}
+    public = next(
+        mount
+        for mount in services["vault-unsealer"]["volumes"]
+        if mount["target"] == "/public"
+    )
+    assert public["type"] == "bind"
+    assert public["source"] == str(ROOT / "docker/vault/secrets/public")
+    assert public["read_only"] is True
+    configuration = (ROOT / "docker/openvox/infra-vault.hcl").read_text()
+    for setting, filename in (
+        ("tls_cert_file", "fullchain.pem"),
+        ("tls_key_file", "key.pem"),
+        ("tls_client_ca_file", "ca.pem"),
+    ):
+        assert f'{setting} = "/certificates/{filename}"' in configuration

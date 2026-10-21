@@ -1,11 +1,32 @@
 name: infra
 
+# Existing installation (including a restored volume):
+#   docker compose --env-file /dev/null -f docker/freeipa/atlas-compose.yaml up -d --wait
+# Fresh installation only: prepare certificates and protected password options first:
+#   sudo python3 proxmox/atlas-freeipa.py initialize
+# Then run the same Compose command. The native image ignores install options once
+# /data contains an installed server. Bootstrap inputs live beside this file.
 services:
   ipa:
-    build:
-      context: .
-      dockerfile: atlas.Dockerfile
-    image: infra-freeipa:mldsa44
+    # The published fork supplies ML-DSA support; use its native entrypoint.
+    image: ghcr.io/enucatl/freeipa-server@sha256:80024f5e76ce4eedd986eb9e7ed63461cafb1bc1774386cf4ff41a259633d0cb
+    # Also bypass the removed wrapper when restoring an older saved image.
+    entrypoint: [/usr/local/sbin/init]
+    command:
+      - --unattended
+      - --hostname=ipa.home.arpa
+      - --domain=home.arpa
+      - --realm=HOME.ARPA
+      - --no-ntp
+      - --no-host-dns
+      - --no-pkinit
+      - --ca-cert-file=/bootstrap/ca.pem
+      - --http-cert-file=/bootstrap/fullchain.pem
+      - --http-cert-file=/bootstrap/key.pem
+      - --http-pin=
+      - --dirsrv-cert-file=/bootstrap/fullchain.pem
+      - --dirsrv-cert-file=/bootstrap/key.pem
+      - --dirsrv-pin=
     hostname: ipa.home.arpa
     runtime: sysbox-runc
     restart: unless-stopped
@@ -37,8 +58,13 @@ services:
     volumes:
       - ipa_data:/data
       - type: bind
-        source: /root/openvox-infra/freeipa/container-inputs
+        source: ./secrets
         target: /bootstrap
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./secrets/ipa-server-install-options
+        target: /data/ipa-server-install-options
         read_only: true
         bind: {create_host_path: false}
     healthcheck:
@@ -47,7 +73,7 @@ services:
         - >-
           systemctl is-active --quiet ipa.service &&
           ! systemctl is-active --quiet pki-tomcatd@pki-tomcat.service &&
-          curl --silent --fail --max-time 5 --cacert /bootstrap/root.pem
+          curl --silent --fail --max-time 5 --cacert /etc/ipa/ca.crt
           --resolve ipa.home.arpa:443:127.0.0.1 https://ipa.home.arpa/ipa/ui/
           > /dev/null
       interval: 30s

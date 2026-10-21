@@ -1,25 +1,9 @@
 name: infra
 
-x-vault-runtime: &vault-runtime
-  image: hashicorp/vault:latest
-  extends:
-    file: ../../compose-security-baseline/hardening.yml
-    service: hardened-large
-  user: 100:100
-
-x-vault-setup: &vault-setup
-  <<: *vault-runtime
-  build:
-    context: ./vault/setup
-  image: infra-vault-setup
-  tmpfs:
-    - /tmp:rw,noexec,nosuid,size=16m,uid=100,gid=100,mode=0700
-
 services:
 
-  # Explicit opt-in only; identity volumes must already have been restored/imported.
+  # Identity volumes must already have been restored/imported.
   openvox:
-    profiles: [openvox]
     extends:
       file: ../../compose-security-baseline/hardening.yml
       service: hardened-xlarge
@@ -29,7 +13,7 @@ services:
     image: infra-openvox:24001
     hostname: openvox.home.arpa
     user: "999:999"
-    command: [bash, /infra/infra-start.sh]
+    command: [/opt/puppetlabs/server/apps/puppetserver/cli/apps/foreground]
     stop_grace_period: 60s
     environment:
       OPENSSL_CONF: /infra/openssl.cnf
@@ -134,24 +118,37 @@ services:
       start_period: 10s
 
   vault:
-    <<: *vault-runtime
+    image: hashicorp/vault@sha256:e0acd3c681bdf57f002d7214e5d050b876e1704678005c6b0406dd96a65be919
+    extends:
+      file: ../../compose-security-baseline/hardening.yml
+      service: hardened-large
+    user: 100:100
     cpu_shares: 1536
     ports:
       - "8200:8200"
     volumes:
       - vault_data:/vault/file
       - vault_logs:/vault/logs
-      - ./vault/config:/vault/config
-      - certificates:/certificates
+      - type: bind
+        source: ./vault/secrets
+        target: /certificates
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./openvox/infra-vault.hcl
+        target: /vault/config/infra-vault.hcl
+        read_only: true
+        bind: {create_host_path: false}
     environment:
       - VAULT_LOG_LEVEL=info
-      - VAULT_ADDR
-      - VAULT_CACERT=/certificates/ca.crt
+      - VAULT_ADDR=https://vault.home.arpa:8200
+      - VAULT_CACERT=/certificates/ca.pem
       - SKIP_CHOWN=true
       - SKIP_SETCAP=true
     networks:
-      - infra
-    command: vault server -config /vault/config/vault-conf.hcl
+      infra:
+        aliases: [vault.home.arpa]
+    command: [vault, server, -config=/vault/config/infra-vault.hcl]
     healthcheck:
       test: ["CMD-SHELL", "vault status -format=json >/dev/null 2>&1 || [ \"$$?\" -eq 2 ]"]
       interval: 10s
@@ -174,70 +171,26 @@ services:
     environment:
       - CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
       - UNSEAL_KEY_FILE=/unseal/key
-      - VAULT_ADDR
+      - VAULT_ADDR=https://vault.home.arpa:8200
+      - VAULT_PINNED_PUBKEY=/public/vault.pub.pem
     volumes:
       - ./vault/scripts/unseal.sh:/scripts/unseal.sh:ro
       - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       - vault_unseal:/unseal:ro
+      - type: bind
+        source: ./vault/secrets/public
+        target: /public
+        read_only: true
+        bind: {create_host_path: false}
     command: /scripts/unseal.sh
     networks:
       - infra
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -sf --max-time 5 \"$$VAULT_ADDR/v1/sys/health\" | jq -e '.initialized == true and .sealed == false' >/dev/null",
-        ]
+      test: [CMD, /scripts/unseal.sh, --healthcheck]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 60s
-
-  freeipa:
-    # no hardening on the docker image, it has to run privileged
-    mem_limit: 2g
-    memswap_limit: 2g
-    pids_limit: 512
-    restart: unless-stopped
-    image: freeipa/freeipa-server:almalinux-10
-    container_name: freeipa
-    hostname: freeipa.home.arpa
-    cpu_shares: 1536
-    networks:
-      - infra
-      - traefik_proxy
-    ports:
-      - "88:88"
-      - "88:88/udp"
-      - "389:389"
-      - "464:464"
-      - "464:464/udp"
-      - "636:636"
-    environment:
-      # first run this to generate the CSR
-      #- IPA_SERVER_INSTALL_OPTS=--unattended --realm HOME.ARPA --domain home.arpa --external-ca
-      - IPA_SERVER_INSTALL_OPTS=--external_cert_file=/data/ipa.crt --external_ca_file=/data/ca.crt
-    volumes:
-      - freeipa_data:/data
-      - ./freeipa/tune-homelab.sh:/opt/freeipa-homelab/tune-homelab.sh:ro
-      - ./freeipa/homelab-tuning.conf:/etc/systemd/system/ipa.service.d/homelab-tuning.conf:ro
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=0
-      - net.ipv6.conf.all.forwarding=1
-    healthcheck:
-      test: ["CMD-SHELL", "systemctl is-active --quiet ipa.service && echo | openssl s_client -connect localhost:443 -servername freeipa.home.arpa 2>/dev/null | grep -q 'Verify return code: 0'"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik_proxy"
-      - "traefik.tcp.routers.freeipa-secure.entrypoints=https"
-      - "traefik.tcp.routers.freeipa-secure.rule=HostSNI(`freeipa.home.arpa`)"
-      - "traefik.tcp.routers.freeipa-secure.tls=true"
-      - "traefik.tcp.routers.freeipa-secure.tls.passthrough=true"
-      - "traefik.tcp.services.freeipa-secure.loadbalancer.server.port=443"
 
   apt-cacher-ng:
     extends:
@@ -272,7 +225,7 @@ services:
       - /run:rw,noexec,nosuid,size=16m,uid=1000,gid=1000
     environment:
       - VAULT_ADDR=https://vault.home.arpa:8200
-      - VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
+      - VAULT_CACERT=/certificates/ca.pem
       - WOLF_GUEST_HOST=cognition.home.arpa
       - WOLF_VM_ID=220
       - WOLF_ALLOWED_GROUP=admins,wolf-operators
@@ -309,106 +262,9 @@ services:
       - "traefik.http.routers.wolf.service=wolf"
       - "traefik.http.services.wolf.loadbalancer.server.port=8000"
 
-  # TEMPORARY CONTAINERS
-  # only to document one-off setup
-
-  vault-init:
-    extends:
-      file: ../../compose-security-baseline/hardening.yml
-      service: hardened-small
-    profiles: [init]
-    image: infra-vault-unsealer
-    user: 100:100
-    restart: no
-    depends_on:
-      vault:
-        condition: service_healthy
-    environment:
-      - VAULT_ADDR
-      - CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-    volumes:
-      - ./vault/scripts/00-vault-init.sh:/scripts/00-vault-init.sh:ro
-      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      - vault_recovery:/recovery
-      - vault_bootstrap:/bootstrap
-      - vault_unseal:/unseal
-    networks:
-      - infra
-    command: /scripts/00-vault-init.sh
-
-  # Bootstrap uses this to generate certificates before switching to HTTPS.
-  vault-pki-core-setup:
-    <<: *vault-setup
-    profiles:
-      - setup
-    restart: no
-    depends_on:
-      vault-unsealer:
-        condition: service_healthy
-    environment:
-      - VAULT_ADDR
-      - ROOT_TOKEN_FILE=/bootstrap/root-token
-    volumes:
-      - ./vault/scripts:/scripts
-      - certificates:/certificates
-      - vault_bootstrap:/bootstrap:ro
-    networks:
-      - infra
-    entrypoint: /scripts/01-pki-core-setup.sh
-
-  vault-pki-intermediate-setup:
-    <<: *vault-setup
-    profiles:
-      - setup
-    restart: no
-    depends_on:
-      vault-unsealer:
-        condition: service_healthy
-    environment:
-      - ROOT_TOKEN_FILE=/bootstrap/root-token
-      - VAULT_ADDR
-      - VAULT_CACERT=/certificates/ca.crt
-    volumes:
-      - ./vault/scripts:/scripts
-      - certificates:/certificates
-      - vault_bootstrap:/bootstrap:ro
-    entrypoint: /scripts/02-pki-intermediate.sh
-    networks:
-      - infra
-
-  freeipa-sign-csr:
-    <<: *vault-setup
-    # FreeIPA's existing /data volume is owned by root.
-    user: 0:0
-    # Read the UID 100 bootstrap token while retaining the other capability drops.
-    cap_add:
-      - DAC_READ_SEARCH
-    profiles:
-      - setup
-    restart: no
-    depends_on:
-      vault-unsealer:
-        condition: service_healthy
-    environment:
-      - ROOT_TOKEN_FILE=/bootstrap/root-token
-      - VAULT_ADDR
-      - VAULT_CACERT=/certificates/ca.crt
-    volumes:
-      - ./vault/scripts:/scripts
-      - freeipa_data:/data
-      - certificates:/certificates
-      - vault_bootstrap:/bootstrap:ro
-    entrypoint: /scripts/04-sign-csr.sh
-    networks:
-      - infra
-
 networks:
   apt_cache:
     enable_ipv6: true
-  authelia_proxy:
-    name: authelia_proxy
-    enable_ipv6: true
-    attachable: true
   infra:
     name: infra
     enable_ipv6: true
@@ -432,13 +288,9 @@ volumes:
   openvox_r10k_cache: {external: true, name: infra_openvox_r10k_cache}
   openvox_trust: {external: true, name: infra_openvox_trust}
   # config/state files are kept in the repo checkout via bind mounts
-  certificates:
-  freeipa_data:
-  vault_data:
-  vault_recovery:
-  vault_bootstrap:
-  vault_unseal:
-  vault_logs:
+  vault_data: {external: true, name: infra_vault_data}
+  vault_unseal: {external: true, name: infra_vault_unseal}
+  vault_logs: {external: true, name: infra_vault_logs}
   wolf_state:
 
 secrets:

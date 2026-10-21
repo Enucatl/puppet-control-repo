@@ -3,6 +3,7 @@ classes:
   - profile::paperless_scans
   - profile::scratch
   - profile::atlas
+  - profile::atlas::certificates
   - freeipa_users::provision
 
 nfs_config::ipa_server: ipa.home.arpa
@@ -63,6 +64,8 @@ profile::common::certs::directories:
   - /opt/docker/puppet-control-repo/docker
   - /opt/docker/puppet-control-repo/docker/wolf
   - /opt/docker/puppet-control-repo/docker/wolf/secrets
+  - /opt/docker/puppet-control-repo/docker/vault/secrets
+  - /opt/docker/puppet-control-repo/docker/freeipa/secrets
   - /opt/docker/browser-use/secrets
 
 profile::docker_host::stack_directories:
@@ -102,6 +105,38 @@ profile::common::certs::vault_certs_defaults:
   ca_trust: /etc/puppetlabs/puppet/ssl/certs/ca.pem
 
 profile::common::certs::vault_certs:
+  vault-transport:
+    vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/vault-transport'
+    auth_name: atlas-transport
+    cert_data:
+      common_name: vault.home.arpa
+      alt_names: vault.home.arpa
+      ttl: '720h'
+    renewal_threshold: 10
+    cert_chain_file: /opt/docker/puppet-control-repo/docker/vault/secrets/fullchain.pem
+    cert_chain_owner: 100100
+    cert_chain_group: 100100
+    cert_chain_mode: '0644'
+    key_file: /opt/docker/puppet-control-repo/docker/vault/secrets/key.pem
+    key_owner: 100100
+    key_group: 100100
+    key_mode: '0600'
+  ipa-transport:
+    vault_uri: 'https://vault.home.arpa:8200/v1/pki_freeipa/issue/ipa-transport'
+    auth_name: atlas-transport
+    cert_data:
+      common_name: ipa.home.arpa
+      alt_names: ipa.home.arpa
+      ttl: '2160h'
+    renewal_threshold: 30
+    cert_chain_file: /opt/docker/puppet-control-repo/docker/freeipa/secrets/fullchain.pem
+    cert_chain_owner: 100000
+    cert_chain_group: 100000
+    cert_chain_mode: '0644'
+    key_file: /opt/docker/puppet-control-repo/docker/freeipa/secrets/key.pem
+    key_owner: 100000
+    key_group: 100000
+    key_mode: '0600'
   atlas:
     cert_data:
       common_name: '*.atlas.home.arpa'
@@ -530,15 +565,22 @@ profile::common::acls::posix_acls:
     - mask::r--
 
 profile::common::systemd::units:
+  atlas-openvox-renew.service:
+    ensure: absent
+    enable: false
+    active: false
+  atlas-openvox-renew.timer:
+    ensure: absent
+    enable: false
+    active: false
   atlas-transport-renew.service:
-    source: puppet:///modules/profile/atlas-transport-renew.service
+    ensure: absent
     enable: false
     active: false
   atlas-transport-renew.timer:
-    source: puppet:///modules/profile/atlas-transport-renew.timer
-    enable: true
-    active: true
-    require: Systemd::Unit_file[atlas-transport-renew.service]
+    ensure: absent
+    enable: false
+    active: false
   paperless-snapshot.service:
     content: |
       [Unit]
@@ -917,10 +959,10 @@ profile::docker_host::git_deploy_projects:
       docker compose pull --ignore-buildable && docker compose build --pull openvox vault-unsealer apt-cacher-ng &&
       (cd /opt/docker/wolf && env -u COMPOSE_ENV_FILES docker compose build --pull) &&
       (cd /opt/docker/goflow2 && env -u COMPOSE_ENV_FILES docker compose pull) &&
-      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose build --pull)
+      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose pull)
     deploy_command: >-
       /usr/bin/flock -w 300 /run/lock/atlas-openvox-maintenance.lock /bin/bash -c
       "docker compose up -d --no-build --pull never --wait --wait-timeout 600 openvox vault vault-unsealer apt-cacher-ng &&
       (cd /opt/docker/wolf && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300) &&
       (cd /opt/docker/goflow2 && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300) &&
-      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose up -d --no-build --pull never --wait --wait-timeout 300)"
+      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose up -d --pull never --wait --wait-timeout 300)"

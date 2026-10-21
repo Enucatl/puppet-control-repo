@@ -542,60 +542,6 @@ fi
         assert marker.read_text() == revision + "\n"
 
 
-@pytest.mark.parametrize("hook", ["managed", "container", "nonexecutable", "missing"])
-@pytest.mark.parametrize(
-    "missing",
-    [
-        None,
-        "trust/root.pem",
-        "etc/puppetlabs/code/environments/production/.r10k-deploy.json",
-    ],
-)
-def test_startup_requires_serving_state_independently_of_deployment_hook(
-    tmp_path: Path, hook: str, missing: str | None
-) -> None:
-    """Keep serving intact production while deployment wiring or dev code is absent."""
-    for name in (
-        "trust/root.pem",
-        "trust/openvox-chain.pem",
-        "etc/puppetlabs/puppetserver/ca/ca_crl.pem",
-        "etc/puppetlabs/code/environments/production/.r10k-deploy.json",
-    ):
-        path = tmp_path / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("established state\n")
-    reference = tmp_path / "infra/infra-host-post-receive"
-    reference.parent.mkdir()
-    reference.write_text(
-        (PROXMOX.parent / "docker/openvox/infra-host-post-receive").read_text()
-    )
-    installed = tmp_path / "git/control.git/hooks/post-receive"
-    installed.parent.mkdir(parents=True)
-    installed.write_text(
-        (PROXMOX.parent / "docker/openvox/infra-post-receive").read_text()
-        if hook == "container"
-        else reference.read_text()
-    )
-    installed.chmod(0o644 if hook == "nonexecutable" else 0o755)
-    if hook == "missing":
-        installed.unlink()
-    if missing:
-        (tmp_path / missing).unlink()
-    entrypoint = tmp_path / "usr/local/bin/openvox-server-entrypoint"
-    entrypoint.parent.mkdir(parents=True)
-    entrypoint.write_text('#!/bin/bash\ntouch "$TEST_ROOT/server-started"\n')
-    entrypoint.chmod(0o755)
-    result = subprocess.run(
-        ["bash", str(runtime_script(tmp_path, "infra-start.sh"))],
-        env={**os.environ, "TEST_ROOT": str(tmp_path)},
-        text=True,
-        capture_output=True,
-        timeout=5,
-    )
-    assert (result.returncode == 0) == (missing is None), result.stderr
-    assert (tmp_path / "server-started").exists() == (missing is None)
-
-
 def test_publishing_waits_for_backup_before_checkout_or_ref_changes(
     publishing: Path,
 ) -> None:

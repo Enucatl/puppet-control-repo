@@ -1,5 +1,8 @@
 # Development Infrastructure And Cryptography Migration Plan
 
+The numbered legacy Vault/bootstrap scripts quoted below have been retired;
+their command names are retained only as design history.
+
 **Historical design:** the mirror-first Ed25519/ECDSA proposals below are
 superseded for #12–#14 by the fresh ML-DSA-44 Vault-held root decision in the
 [current container plan](openvox-container-migration-plan.md). They are retained

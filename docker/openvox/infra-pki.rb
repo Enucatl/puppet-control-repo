@@ -105,7 +105,6 @@ when 'import'
     leaf.verify(intermediate.public_key) && leaf.not_after <= intermediate.not_after &&
     leaf.public_key.public_to_der == host_key.public_to_der &&
     OpenSSL::SSL.verify_certificate_identity(leaf, host)
-  File.write(path, leaf.to_pem + chain.map(&:to_pem).join)
   verify.call('--key', "#{ca}/ca_key.pem", '--cert', path, '--crl', "#{ca}/ca_crl.pem")
   puts 'Imported pinned offline-root-signed OpenVox intermediate and matching server identity'
 else

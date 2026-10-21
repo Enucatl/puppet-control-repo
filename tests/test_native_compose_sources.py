@@ -35,7 +35,7 @@ def resolve(path: Path) -> dict:
 
 
 def test_root_defaults_preserve_native_authorities() -> None:
-    """Keep native OpenVox/Vault active while old IPA, Wolf and flow definitions opt out."""
+    """Keep native authorities active and standalone Wolf/flow definitions opted out."""
     config = resolve(ROOT / "compose.yaml")
     assert config["name"] == "infra"
     assert set(config["services"]) == {
@@ -46,6 +46,10 @@ def test_root_defaults_preserve_native_authorities() -> None:
     }
     services = config["services"]
     assert services["openvox"]["image"] == "infra-openvox:24001"
+    assert services["openvox"]["command"] == [
+        "/opt/puppetlabs/server/apps/puppetserver/cli/apps/foreground"
+    ]
+    assert "freeipa_data" not in config["volumes"]
     assert services["vault"]["command"] == [
         "vault",
         "server",
@@ -53,6 +57,8 @@ def test_root_defaults_preserve_native_authorities() -> None:
     ]
     volumes = {mount["target"]: mount for mount in services["vault"]["volumes"]}
     assert volumes["/vault/file"]["source"] == "vault_data"
+    assert volumes["/certificates"]["type"] == "bind"
+    assert volumes["/certificates"]["source"] == str(ROOT / "docker/vault/secrets")
     assert volumes["/certificates"]["read_only"] is True
     assert volumes["/vault/config/infra-vault.hcl"]["source"] == str(
         ROOT / "docker/openvox/infra-vault.hcl"
@@ -60,7 +66,6 @@ def test_root_defaults_preserve_native_authorities() -> None:
     for name in (
         "vault_data",
         "vault_logs",
-        "certificates",
         "vault_unseal",
         "openvox_ssl",
         "openvox_ca",
@@ -78,7 +83,8 @@ def test_root_defaults_preserve_native_authorities() -> None:
         mount for mount in unsealer["volumes"] if mount["target"] == "/public"
     )
     assert public["read_only"] is True
-    assert public["volume"]["subpath"] == "public"
+    assert public["type"] == "bind"
+    assert public["source"] == str(ROOT / "docker/vault/secrets/public")
 
 
 def test_wolf_and_flow_standalone_sources_preserve_runtime_identity(
@@ -129,4 +135,12 @@ def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
     assert service["hostname"] == "ipa.home.arpa"
     assert service["runtime"] == "sysbox-runc"
     assert config["volumes"]["ipa_data"] == {"name": "infra_ipa_data", "external": True}
-    assert "--cacert /bootstrap/root.pem" in service["healthcheck"]["test"][1]
+    assert "--cacert /etc/ipa/ca.crt" in service["healthcheck"]["test"][1]
+    mounts = {mount["target"]: mount for mount in service["volumes"]}
+    assert mounts["/data"]["source"] == "ipa_data"
+    assert mounts["/bootstrap"]["source"] == str(ROOT / "docker/freeipa/secrets")
+    assert mounts["/bootstrap"]["read_only"] is True
+    assert mounts["/data/ipa-server-install-options"]["source"] == str(
+        ROOT / "docker/freeipa/secrets/ipa-server-install-options"
+    )
+    assert mounts["/data/ipa-server-install-options"]["read_only"] is True

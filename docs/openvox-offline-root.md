@@ -96,36 +96,24 @@ The publication experiment above is historical evidence only. A dedicated CRL
 mirror, scheduled publication ceremony and CRL-expiry alarms are not deployment
 requirements. The normal CA code continues to own its existing CRL behavior.
 
-## Explicit paths in the existing Vault setup scripts
+## Retained native intermediate experiment
 
-The four existing `docker/vault/scripts/01` through `04` entry points now accept
-`--offline-root` as their **first** argument. Their legacy defaults are preserved
-for the existing deployment until its staged retirement under #20. #13 prepares
-the new Atlas deployment while legacy agents remain on the old server. The opt-in branch
-runs before legacy configuration, `.env` loading, token-file fallbacks, RSA
-generation, online-root signing, SSL-directory removal or systemd operations.
+The legacy numbered Vault setup scripts and their `--offline-root` dispatch
+wrappers have been removed. The historical offline-root experiment retains its
+native `docker/vault/scripts/offline-intermediate.rb` interface. It is separate
+from Atlas's current Vault-held root and CA-less IPA bootstrap.
 
-| Entry point | Explicit offline-root behavior |
-| --- | --- |
-| `01-pki-core-setup.sh --offline-root` | Refuses the online-root bootstrap and prints the offline ceremony/publication commands; exits 2 |
-| `02-pki-intermediate.sh --offline-root ...` | Generates a separate online FreeIPA ML-DSA CSR or imports its externally signed chain |
-| `03-puppet-external-ca.sh --offline-root` | Prints the explicit container `infra-pki.rb prepare` / pinned `import` commands; exits 2 without touching the host |
-| `04-sign-csr.sh --offline-root` | Refuses the old FreeIPA CA-full subordinate-CA signing path; exits 2 with the CA-less #14 handoff |
-
-For `02`, use the accepted OpenVox native Ruby/OpenSSL runtime with the explicit
-strict `OPENSSL_CONF` policy. The legacy Vault setup image has no such Ruby
-runtime; this mode fails with an actionable message there. It does not install
-dependencies or silently use a different cryptographic backend. Set
-`OPENVOX_RUBY` if the accepted native Ruby lives somewhere other than
-`/opt/puppetlabs/puppet/bin/ruby`. Inject an administrator `VAULT_TOKEN` through
-the operator's protected environment; there is no fallback to the online root's
-bootstrap token file. Also supply verified HTTPS `VAULT_ADDR`, readable
-`VAULT_CACERT` and readable `OPENSSL_CONF` before invoking:
+Use the accepted OpenVox native Ruby/OpenSSL runtime and explicit strict
+`OPENSSL_CONF` policy. Supply a verified HTTPS `VAULT_ADDR`, administrator
+`VAULT_TOKEN`, and readable `VAULT_CACERT` through the protected environment;
+there is no bootstrap token-file fallback:
 
 ```sh
-sh docker/vault/scripts/02-pki-intermediate.sh --offline-root generate-csr --initialize /protected/freeipa-request
+/opt/puppetlabs/puppet/bin/ruby docker/vault/scripts/offline-intermediate.rb \
+  generate-csr --initialize /protected/freeipa-request
 # Transfer intermediate.csr to the offline signer; transfer public signed files back.
-sh docker/vault/scripts/02-pki-intermediate.sh --offline-root import /protected/freeipa-request ROOT_SHA256
+/opt/puppetlabs/puppet/bin/ruby docker/vault/scripts/offline-intermediate.rb \
+  import /protected/freeipa-request ROOT_SHA256
 ```
 
 Generation requires the explicit `--initialize` flag, creates `pki_int` only if

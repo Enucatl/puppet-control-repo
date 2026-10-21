@@ -36,17 +36,6 @@ case "${*: -1}" in
             init|init-fail|uninitialized) echo '{"initialized":false,"sealed":true}' ;;
             *) echo '{"initialized":true,"sealed":true}' ;;
         esac ;;
-    */sys/init)
-        [[ "${TEST_CASE:-init}" == init* ]]
-        output=
-        while [ "$#" -gt 0 ]; do
-            if [ "$1" = --output ]; then output=$2; shift; fi
-            shift
-        done
-        [ -n "$output" ]
-        [ "$(stat -c %a "$output")" = 600 ]
-        printf '%s\n' '{"keys_base64":["test-secret-unseal-share"],"root_token":"test-secret-bootstrap-token"}' > "$output"
-        if [ "${TEST_CASE:-init}" = init-fail ]; then exit 22; fi ;;
     */sys/unseal)
         [[ " $* " == *' --data-binary @- '* ]]
         jq -e '.key == "test-secret-unseal-share"' >/dev/null
@@ -106,45 +95,11 @@ run_unsealer() {
     assert_private
 }
 
-bash -x "$scripts/00-vault-init.sh" > "$work/output" 2>&1
-assert_private
-[ "$(cat "$ROOT_TOKEN_FILE")" = test-secret-bootstrap-token ]
-[ "$(cat "$UNSEAL_KEY_FILE")" = test-secret-unseal-share ]
-for file in "$INIT_FILE" "$ROOT_TOKEN_FILE" "$UNSEAL_KEY_FILE"; do
-    [ "$(stat -c %a "$file")" = 600 ]
-    [ "$(stat -c %a "$(dirname "$file")")" = 700 ]
-done
-before=$(sha256sum "$INIT_FILE" "$ROOT_TOKEN_FILE" "$UNSEAL_KEY_FILE")
-if bash "$scripts/00-vault-init.sh" > "$work/output" 2>&1; then exit 1; fi
-[ "$(sha256sum "$INIT_FILE" "$ROOT_TOKEN_FILE" "$UNSEAL_KEY_FILE")" = "$before" ]
-export TEST_CASE=sealed
-if bash "$scripts/00-vault-init.sh" > "$work/output" 2>&1; then exit 1; fi
-[ "$(sha256sum "$INIT_FILE" "$ROOT_TOKEN_FILE" "$UNSEAL_KEY_FILE")" = "$before" ]
-assert_private
-printf '%s\n' 'PASS: initialization saves restricted files, does not log credentials, refuses overwrite'
-
-(
-    export INIT_FILE=$work/interrupted/recovery/init.json
-    export ROOT_TOKEN_FILE=$work/interrupted/bootstrap/root-token
-    export UNSEAL_KEY_FILE=$work/interrupted/unseal/key
-    for TEST_CASE in bad-health unreachable; do
-        export TEST_CASE
-        if bash "$scripts/00-vault-init.sh" > "$work/output" 2>&1; then exit 1; fi
-        [ ! -e "$INIT_FILE" ]
-    done
-    export TEST_CASE=init-fail
-    if bash "$scripts/00-vault-init.sh" > "$work/output" 2>&1; then exit 1; fi
-    [ -s "$INIT_FILE" ]
-    [ ! -e "$ROOT_TOKEN_FILE" ]
-    [ ! -e "$UNSEAL_KEY_FILE" ]
-    assert_private
-    export TEST_CASE=sealed
-    bash "$scripts/00-vault-init.sh" > "$work/output" 2>&1
-    [ "$(cat "$ROOT_TOKEN_FILE")" = test-secret-bootstrap-token ]
-    [ "$(cat "$UNSEAL_KEY_FILE")" = test-secret-unseal-share ]
-    assert_private
-)
-printf '%s\n' 'PASS: init rejects unknown health, preserves failed response, and resumes splitting saved credentials'
+# Retained runtime and administrative helpers receive existing protected inputs.
+mkdir -p "$(dirname "$ROOT_TOKEN_FILE")" "$(dirname "$UNSEAL_KEY_FILE")"
+printf '%s\n' test-secret-bootstrap-token > "$ROOT_TOKEN_FILE"
+printf '%s\n' test-secret-unseal-share > "$UNSEAL_KEY_FILE"
+chmod 600 "$ROOT_TOKEN_FILE" "$UNSEAL_KEY_FILE"
 
 : > "$work/argv"
 for TEST_CASE in sealed unseal-fail; do
@@ -183,16 +138,14 @@ assert_private
 printf '%s\n' 'PASS: revocation requires independent capable admin and root bootstrap, retains file on failure'
 
 # Compose expands its existing baseline; config is never printed (it can contain environment secrets).
-docker compose -f "$repo/docker/docker-compose.yml" --profile init --profile setup config --format json > "$work/compose.json"
+DOCKER_DOMAIN=home.arpa docker compose --env-file /dev/null -f "$repo/compose.yaml" config --format json > "$work/compose.json"
 jq -e '
     .services as $s |
     ([ $s.vault.volumes[].source ] | index("vault_recovery") == null and index("vault_bootstrap") == null and index("vault_unseal") == null) and
     ([ $s["vault-unsealer"].volumes[] | select(.type == "volume") ] | length == 1 and .[0].source == "vault_unseal" and .[0].read_only == true) and
-    ([ $s["vault-init"].volumes[] | select(.type == "volume") | .source ] | sort == ["vault_bootstrap","vault_recovery","vault_unseal"]) and
-    ([$s | to_entries[] | select(.key != "vault-init") | .value.volumes[]? | select(.source == "vault_recovery")] | length == 0) and
-    ([$s | to_entries[] | select(.key != "vault-init" and .key != "vault-unsealer") | .value.volumes[]? | select(.source == "vault_unseal")] | length == 0)
+    ([$s | to_entries[] | select(.key != "vault-unsealer") | .value.volumes[]? | select(.source == "vault_unseal")] | length == 0)
 ' "$work/compose.json" >/dev/null
-printf '%s\n' 'PASS: Compose isolates recovery/bootstrap/unseal volumes and makes the unsealer share read-only'
+printf '%s\n' 'PASS: Compose isolates the read-only runtime unseal share from server data'
 
 # Run the same scripts against an uninitialized, disposable real Vault server.
 export PATH=$original_path
@@ -218,9 +171,14 @@ for ((attempt=0;attempt<100;attempt++)); do
     if curl --silent --max-time 1 "$VAULT_ADDR/v1/sys/health" | jq -e '.initialized == false' >/dev/null; then break; fi
     sleep 0.1
 done
-bash "$scripts/00-vault-init.sh" > "$work/output" 2>&1
+mkdir -p "$(dirname "$INIT_FILE")" "$(dirname "$ROOT_TOKEN_FILE")" "$(dirname "$UNSEAL_KEY_FILE")"
+umask 077
+vault operator init -key-shares=1 -key-threshold=1 -format=json > "$INIT_FILE"
+jq -r .root_token "$INIT_FILE" > "$ROOT_TOKEN_FILE"
+jq -r '.unseal_keys_b64[0]' "$INIT_FILE" > "$UNSEAL_KEY_FILE"
 real_root=$(cat "$ROOT_TOKEN_FILE")
 real_key=$(cat "$UNSEAL_KEY_FILE")
+: > "$work/output"
 check_real_logs() {
     ! rg -q -F -e "$real_root" -e "$real_key" "$work/output" "$work/server.log"
 }
@@ -228,7 +186,6 @@ check_real_logs
 for file in "$INIT_FILE" "$ROOT_TOKEN_FILE" "$UNSEAL_KEY_FILE"; do
     [ "$(stat -c %a "$file")" = 600 ]
 done
-if bash "$scripts/00-vault-init.sh" >> "$work/output" 2>&1; then exit 1; fi
 # Only sleep is mocked here: both HTTP requests and unsealing are real.
 mkdir "$work/once"
 cp "$work/bin/sleep" "$work/once/sleep"
@@ -255,4 +212,4 @@ vault kv put after-revoke/check value=works >/dev/null
 [ "$(vault kv get -field=value after-revoke/check)" = works ]
 vault secrets disable after-revoke >/dev/null 2>&1
 check_real_logs
-printf '%s\n' 'PASS: real Vault init, re-init refusal, seal/unseal, root revocation, and admin writes afterward'
+printf '%s\n' 'PASS: real Vault seal/unseal, root revocation, and admin writes afterward'

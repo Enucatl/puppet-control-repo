@@ -1,4 +1,4 @@
-"""Check explicit offline-root dispatch and certificate import boundaries."""
+"""Check retained offline-intermediate certificate import boundaries."""
 
 import os
 from pathlib import Path
@@ -10,51 +10,6 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO / "docker/vault/scripts"
-
-
-@pytest.mark.parametrize(
-    "script,message",
-    [
-        ("01-pki-core-setup.sh", "refuses the legacy online-root"),
-        ("03-puppet-external-ca.sh", "infra-pki.rb prepare"),
-        ("04-sign-csr.sh", "rejects FreeIPA CA-full"),
-    ],
-)
-def test_offline_dispatch_never_sources_legacy_configuration(
-    tmp_path: Path, script: str, message: str
-) -> None:
-    """Do not read .env, use Vault, delete SSL state or invoke host services."""
-    (tmp_path / ".env").write_text("touch legacy-configuration-was-read\n")
-    result = subprocess.run(
-        ["bash", str(SCRIPTS / script), "--offline-root"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    assert result.returncode == 2
-    assert message in result.stderr
-    assert not (tmp_path / "legacy-configuration-was-read").exists()
-
-
-def test_intermediate_dispatch_resolves_helper_relative_to_script(
-    tmp_path: Path,
-) -> None:
-    """The opt-in path works outside /scripts without reading legacy config."""
-    ruby = shutil.which("ruby")
-    if ruby is None:
-        pytest.skip("Ruby is required")
-    result = subprocess.run(
-        ["sh", str(SCRIPTS / "02-pki-intermediate.sh"), "--offline-root", "import"],
-        cwd=tmp_path,
-        env={"PATH": os.environ["PATH"], "OPENVOX_RUBY": ruby},
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    assert result.returncode != 0
-    assert "usage:" in result.stderr
-    assert "/scripts/config.sh" not in result.stderr
 
 
 @pytest.mark.parametrize(

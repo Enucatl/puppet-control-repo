@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import os
 from pathlib import Path
 import socket
@@ -98,7 +97,7 @@ path "auth/token/lookup-self" {{
 def install_trust() -> None:
     """Install authenticated public trust without replacing another authority."""
     chain = infra.openvox("/bin/cat", "/trust/openvox-chain.pem")
-    root = (infra.STATE / "root.pem").read_text()
+    root = infra.CA.read_text()
     for path, contents in ((PUPPET_CA, chain), (SYSTEM_CA, root)):
         if path.exists() and path.read_text() != contents:
             raise RuntimeError(
@@ -113,19 +112,13 @@ def install_trust() -> None:
 
 def enroll() -> None:
     """Use a single-use token through stdin; let Puppet install the IPA client."""
-    checkpoint = infra.STATE / "freeipa/imported.json"
-    if (
-        not checkpoint.is_file()
-        or json.loads(checkpoint.read_text()).get("success") is not True
-    ):
-        raise RuntimeError("Complete the verified final IPA import before enrollment")
     helper = str(infra.SOURCE / "proxmox/configure-puppet.sh")
     infra.run(["bash", helper, "--preflight", CERTNAME])
     install_trust()
     infra.run(["bash", str(infra.SOURCE / "proxmox/install-openvox.sh")])
     configure_runtime()
     if CERTIFICATE.exists():
-        log = infra.run(["bash", helper, "--apply", CERTNAME, "openvox.home.arpa"])
+        infra.run(["bash", helper, "--apply", CERTNAME, "openvox.home.arpa"])
     else:
         token = infra.api(
             "POST",
@@ -150,23 +143,11 @@ def enroll() -> None:
             or not 0 < token["lease_duration"] <= 7200
         ):
             raise RuntimeError("Vault returned an invalid enrollment token")
-        log = infra.run(
+        infra.run(
             ["bash", helper, "docker", "-", CERTNAME, "openvox.home.arpa"],
             token["client_token"] + "\n",
         )
-    infra.save(infra.STATE / "atlas-enrollment.log", log)
-    infra.save(
-        infra.STATE / "atlas-enrolled.json",
-        json.dumps(
-            {
-                "certname": CERTNAME,
-                "control_revision": infra.git("rev-parse", "HEAD").strip(),
-            }
-        ),
-    )
-    print(
-        "Atlas enrollment and its first catalog passed; private log: /root/openvox-infra/atlas-enrollment.log"
-    )
+    print("Atlas enrollment and catalog completed")
 
 
 def main() -> None:

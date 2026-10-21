@@ -35,7 +35,13 @@ of its own OpenVox/Vault services. See the [migration plan](26.04-migration-plan
 For the new-chain compiler, set `VAULT_ADDR` to the direct verified HTTPS Vault
 endpoint and `VAULT_CACERT` to authenticated root trust. The autosigner rejects
 plaintext Vault endpoints. Token-only enrollment uses server-authenticated TLS
-without a client certificate. Hiera uses its explicit `ca_trust` option.
+without a client certificate. Runtime HTTPS verification, including Hiera's
+`ca_trust` and agent certificate issuance, uses
+`/etc/ssl/certs/ca-certificates.crt`. Containers mount the host bundle read-only.
+The separately authenticated `atlas-infrastructure.crt` remains an input to
+initial FreeIPA enrollment; enrolled clients receive system trust from FreeIPA.
+Puppet CA chains and incoming client-certificate authentication retain their
+scoped issuer trust.
 
 Existing CRL behavior is retained. No custom outbound CRL bundle, publisher,
 refresh job or new revocation-enforcement policy is required for this migration.
@@ -61,7 +67,7 @@ service and sets that exact certname before its first configured agent run.
 
 ### Atlas
 
-After the verified final IPA import, run from Atlas's clean published checkout:
+Run from Atlas's clean published checkout:
 
 ```bash
 sudo python3 proxmox/atlas-enroll.py
@@ -103,8 +109,9 @@ against `openvox.home.arpa`. Its catalog installs the FreeIPA client and runs
 `ipa-client-install` with `ipa.home.arpa` and the authenticated CA file. It also
 creates the website certificate directories and certificates from Atlas's node
 data. Existing Docker clients retain their original node data and endpoints.
-Private enrollment output is retained under `/root/openvox-infra`. Repeating
-the command with an existing certificate resumes an ordinary catalog run. It
+Enrollment uses ordinary Puppet logging and does not retain migration receipts
+or a separate enrollment evidence archive. Repeating the command with an
+existing certificate resumes an ordinary catalog run. It
 checks the configured certname and server, preserves the identity, and does not
 create another enrollment token.
 
