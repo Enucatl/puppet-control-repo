@@ -4,7 +4,7 @@ require 'openssl'
 
 http = Net::HTTP.new('vault.home.arpa', 8200, nil)
 http.use_ssl = true
-http.ca_file = '/trust/root.pem'
+http.ca_file = '/etc/ssl/certs/ca-certificates.crt'
 http.min_version = http.max_version = OpenSSL::SSL::TLS1_3_VERSION
 ssl = '/etc/puppetlabs/puppet/ssl'
 http.cert = OpenSSL::X509::Certificate.new(File.read("#{ssl}/certs/openvox.home.arpa.pem"))

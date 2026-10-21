@@ -6,11 +6,11 @@
 # ============================================================
 # STEP 1: Template all files locally to /tmp/
 # ============================================================
-- name: Stage the trusted Atlas CA for router log shipping
+- name: Stage the system CA bundle for router log shipping
   delegate_to: localhost
   ansible.builtin.copy:
-    src: /usr/local/share/ca-certificates/atlas-infrastructure.crt
-    dest: /tmp/atlas-infrastructure.crt
+    src: /etc/ssl/certs/ca-certificates.crt
+    dest: /tmp/ca-certificates.crt
     mode: "0600"
 
 - name: Template app configs locally
@@ -42,7 +42,7 @@
     - AdGuardHome.yaml
     - dnsmasq.conf
     - config.alloy
-    - atlas-infrastructure.crt
+    - ca-certificates.crt
     - vyos-ndp-snapshot.sh
     - vyos-ndp-logrotate
     - suricata-update.sh
@@ -74,8 +74,8 @@
       - sudo mv /tmp/config.alloy {{ alloy_data_path }}/conf/config.alloy
       - sudo chown root:vyattacfg {{ alloy_data_path }}/conf/config.alloy
       - sudo chmod 0644 {{ alloy_data_path }}/conf/config.alloy
-      - sudo install -o root -g vyattacfg -m 0644 /tmp/atlas-infrastructure.crt {{ alloy_data_path }}/conf/atlas-infrastructure.crt
-      - rm /tmp/atlas-infrastructure.crt
+      - sudo install -o root -g vyattacfg -m 0644 /tmp/ca-certificates.crt {{ alloy_data_path }}/conf/ca-certificates.crt
+      - rm /tmp/ca-certificates.crt
 
 - name: Install VyOS NDP snapshot script
   vyos.vyos.vyos_command:
@@ -133,7 +133,7 @@
     - AdGuardHome.yaml
     - dnsmasq.conf
     - config.alloy
-    - atlas-infrastructure.crt
+    - ca-certificates.crt
     - vyos-ndp-snapshot.sh
     - vyos-ndp-logrotate
     - suricata-update.sh

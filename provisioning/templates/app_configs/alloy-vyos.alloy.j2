@@ -17,7 +17,7 @@ loki.write "remote_loki" {
     url = "{{ loki_url }}"
 
     tls_config {
-      ca_file = "/etc/alloy/atlas-infrastructure.crt"
+      ca_file = "/etc/ssl/certs/ca-certificates.crt"
     }
 
     batch_wait = "1s"

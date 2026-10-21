@@ -67,7 +67,7 @@ freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastruc
 
 profile::common::certs::vault_certs_defaults:
   vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/puppet'
-  ca_trust: /etc/puppetlabs/puppet/ssl/certs/ca.pem
+  ca_trust: /etc/ssl/certs/ca-certificates.crt
 
 profile::alloy::loki_url: 'https://loki.atlas.home.arpa/loki/api/v1/push'
 profile::beszel_agent::hub_url: 'https://beszel-agent.atlas.home.arpa'

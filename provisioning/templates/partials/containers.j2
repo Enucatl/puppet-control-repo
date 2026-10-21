@@ -24,6 +24,9 @@ set container name alloy volume alloy_adguard_work source {{ adguard_data_path }
 set container name alloy volume alloy_conf destination /etc/alloy
 set container name alloy volume alloy_conf mode ro
 set container name alloy volume alloy_conf source {{ alloy_data_path }}/conf
+set container name alloy volume alloy_ca destination /etc/ssl/certs/ca-certificates.crt
+set container name alloy volume alloy_ca mode ro
+set container name alloy volume alloy_ca source {{ alloy_data_path }}/conf/ca-certificates.crt
 set container name alloy volume alloy_data destination /var/lib/alloy/data
 set container name alloy volume alloy_data mode rw
 set container name alloy volume alloy_data source {{ alloy_data_path }}/data

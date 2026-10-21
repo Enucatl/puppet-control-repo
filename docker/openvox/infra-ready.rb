@@ -4,7 +4,7 @@ require 'openssl'
 http = Net::HTTP.new('openvox.home.arpa', 8140, nil)
 http.ipaddr = '127.0.0.1'
 http.use_ssl = true
-http.ca_file = '/trust/root.pem'
+http.ca_file = '/etc/ssl/certs/ca-certificates.crt'
 http.min_version = OpenSSL::SSL::TLS1_3_VERSION
 http.open_timeout = 2
 http.read_timeout = 2

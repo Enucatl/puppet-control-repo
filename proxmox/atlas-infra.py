@@ -22,6 +22,7 @@ VAULT_SECRETS = SOURCE / "docker/vault/secrets"
 IPA_SECRETS = SOURCE / "docker/freeipa/secrets"
 STATE = VAULT_SECRETS / "bootstrap"
 CA = VAULT_SECRETS / "ca.pem"
+SYSTEM_CA = Path("/usr/local/share/ca-certificates/atlas-infrastructure.crt")
 RUBY = "/opt/puppetlabs/puppet/bin/ruby"
 PUPPET = "/opt/puppetlabs/bin/puppet"
 DOCKER = ["docker", "--host", "unix:///var/run/docker.sock"]
@@ -467,6 +468,14 @@ def initialize() -> None:
     os.chown(VAULT_SECRETS / "public", 100100, 100100)
     save(VAULT_SECRETS / "public/vault.pub.pem", public)
     os.chown(VAULT_SECRETS / "public/vault.pub.pem", 100100, 100100)
+    if SYSTEM_CA.exists() and SYSTEM_CA.read_text() != root:
+        raise RuntimeError(
+            f"Different existing trust requires explicit migration: {SYSTEM_CA}"
+        )
+    SYSTEM_CA.parent.mkdir(parents=True, exist_ok=True)
+    save(SYSTEM_CA, root)
+    SYSTEM_CA.chmod(0o644)
+    run(["update-ca-certificates"])
     compose("restart", "vault")
     status = health()
     if status["sealed"]:

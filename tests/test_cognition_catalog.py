@@ -35,7 +35,7 @@ def test_cognition_catalog(tmp_path: Path) -> None:
         certificate["vault_uri"]
         == "https://vault.home.arpa:8200/v1/pki_int/issue/puppet"
     )
-    assert certificate["ca_trust"] == "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
+    assert certificate["ca_trust"] == "/etc/ssl/certs/ca-certificates.crt"
     assert certificate["cert_data"]["common_name"] == "codex.cognition.home.arpa"
     assert result["Nfs_config::Ipa_service[nfs]"]["ipa_server"] == "ipa.home.arpa"
     mount = result["Nfs::Client::Mount[/export/scratch]"]

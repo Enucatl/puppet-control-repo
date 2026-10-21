@@ -18,7 +18,7 @@ services:
     environment:
       OPENSSL_CONF: /infra/openssl.cnf
       VAULT_ADDR: https://vault.home.arpa:8200
-      VAULT_CACERT: /trust/root.pem
+      VAULT_CACERT: /etc/ssl/certs/ca-certificates.crt
       NO_PROXY: vault.home.arpa,openvox.home.arpa,127.0.0.1,localhost
       no_proxy: vault.home.arpa,openvox.home.arpa,127.0.0.1,localhost
       JAVA_ARGS: >-
@@ -87,6 +87,11 @@ services:
         bind: {create_host_path: false}
       - openvox_r10k_cache:/var/cache/r10k
       - openvox_trust:/trust:ro
+      - type: bind
+        source: /etc/ssl/certs/ca-certificates.crt
+        target: /etc/ssl/certs/ca-certificates.crt
+        read_only: true
+        bind: {create_host_path: false}
     healthcheck:
       test: [CMD, /opt/puppetlabs/puppet/bin/ruby, /infra/infra-ready.rb]
       interval: 15s
@@ -130,6 +135,11 @@ services:
       - vault_data:/vault/file
       - vault_logs:/vault/logs
       - type: bind
+        source: /etc/ssl/certs/ca-certificates.crt
+        target: /etc/ssl/certs/ca-certificates.crt
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
         source: ./vault/secrets
         target: /certificates
         read_only: true
@@ -142,7 +152,7 @@ services:
     environment:
       - VAULT_LOG_LEVEL=info
       - VAULT_ADDR=https://vault.home.arpa:8200
-      - VAULT_CACERT=/certificates/ca.pem
+      - VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
       - SKIP_CHOWN=true
       - SKIP_SETCAP=true
     networks:
@@ -225,7 +235,7 @@ services:
       - /run:rw,noexec,nosuid,size=16m,uid=1000,gid=1000
     environment:
       - VAULT_ADDR=https://vault.home.arpa:8200
-      - VAULT_CACERT=/certificates/ca.pem
+      - VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt
       - WOLF_GUEST_HOST=cognition.home.arpa
       - WOLF_VM_ID=220
       - WOLF_ALLOWED_GROUP=admins,wolf-operators

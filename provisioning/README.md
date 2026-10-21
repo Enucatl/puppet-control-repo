@@ -175,8 +175,10 @@ preserving their prefixes. The Cognition `c000`/`c100` routes remain on `eth3`.
 
 Router logs use verified HTTPS to `loki.atlas.home.arpa`. Alloy is pinned to
 v1.21.0, built with Go 1.27.2 and native ML-DSA TLS support. The deployment copies
-the controller's trusted `/usr/local/share/ca-certificates/atlas-infrastructure.crt`
-into Alloy's configuration mount; certificate verification remains enabled.
+the controller's system CA bundle from `/etc/ssl/certs/ca-certificates.crt`
+to persistent storage and mounts it read-only at the same standard path inside
+Alloy; certificate verification remains enabled. Reapply after controller trust
+updates to refresh the router's copy.
 Suricata still uses its existing enrichment API on port 12345.
 The explicit Alloy command enables the stability level required by the existing
 write-ahead logs; `CUSTOM_ARGS` is not consumed by the official image. Smoke checks

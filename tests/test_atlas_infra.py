@@ -67,6 +67,7 @@ def controller(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
         path.mkdir()
         monkeypatch.setattr(module, name, path)
     monkeypatch.setattr(module, "CA", module.VAULT_SECRETS / "ca.pem")
+    monkeypatch.setattr(module, "SYSTEM_CA", tmp_path / "system-ca.crt")
     monkeypatch.setattr(module.os, "chown", Mock())
     monkeypatch.setattr(module, "MAINTENANCE_LOCK", tmp_path / "maintenance.lock")
     for name in ("run", "compose", "api", "openvox", "volume_file"):
@@ -243,18 +244,28 @@ def test_resume_never_regenerates_a_missing_pinned_root(
     assert not (resumed.STATE / "ready.json").exists()
 
 
+@pytest.mark.parametrize("system_root", [None, "ROOT-CERT", "OTHER-ROOT"])
 def test_bootstrap_publishes_native_pems_and_recovery_secrets(
-    resumed: ModuleType, monkeypatch: pytest.MonkeyPatch
+    resumed: ModuleType, monkeypatch: pytest.MonkeyPatch, system_root: str | None
 ) -> None:
     """Bootstrap produces the same canonical PEM files Puppet later manages."""
     monkeypatch.setattr(resumed.ssl, "PEM_cert_to_DER_cert", lambda _: b"root")
     monkeypatch.setattr(resumed, "services_intermediate", Mock())
     monkeypatch.setattr(resumed, "configure_access", Mock())
     monkeypatch.setattr(resumed, "deploy_initial", Mock())
+    if system_root is not None:
+        resumed.SYSTEM_CA.write_text(system_root)
     command = resumed.run.side_effect
-    resumed.run.side_effect = lambda args, data=None: (
-        "PUBLIC-KEY" if args[0] == resumed.RUBY else command(args, data)
-    )
+
+    def bootstrap_command(args: list[str], data: str | None = None) -> str:
+        """Keep the host trust update inert while recording its ordering."""
+        if args[0] == resumed.RUBY:
+            return "PUBLIC-KEY"
+        if args == ["update-ca-certificates"]:
+            return ""
+        return command(args, data)
+
+    resumed.run.side_effect = bootstrap_command
     resumed.openvox.return_value = "imported"
     responses = {
         ("GET", "sys/mounts"): {"data": {"pki/": {}}},
@@ -272,6 +283,23 @@ def test_bootstrap_publishes_native_pems_and_recovery_secrets(
     resumed.api.side_effect = lambda method, path, *args, **kwargs: responses.get(
         (method, path), {}
     )
+    if system_root == "OTHER-ROOT":
+        with pytest.raises(RuntimeError, match="Different existing trust"):
+            resumed.initialize()
+        assert resumed.SYSTEM_CA.read_text() == system_root
+        resumed.deploy_initial.assert_not_called()
+        return
+
+    def assert_system_trust() -> None:
+        """Require system trust before restarting Vault or deploying Hiera."""
+        assert resumed.SYSTEM_CA.read_text() == "ROOT-CERT"
+        assert resumed.SYSTEM_CA.stat().st_mode & 0o777 == 0o644
+        resumed.run.assert_any_call(["update-ca-certificates"])
+
+    resumed.compose.side_effect = lambda *args, **kwargs: (
+        assert_system_trust() if args == ("restart", "vault") else ""
+    )
+    resumed.deploy_initial.side_effect = assert_system_trust
     resumed.initialize()
     secrets = resumed.VAULT_SECRETS
     assert (secrets / "fullchain.pem").read_text() == "LEAF\nISSUER\nROOT-CERT\n"

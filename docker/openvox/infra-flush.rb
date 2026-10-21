@@ -4,7 +4,7 @@ require 'openssl'
 http = Net::HTTP.new('openvox.home.arpa', 8140, nil)
 http.ipaddr = '127.0.0.1'
 http.use_ssl = true
-http.ca_file = '/trust/root.pem'
+http.ca_file = '/etc/ssl/certs/ca-certificates.crt'
 ssl = '/etc/puppetlabs/puppet/ssl'
 http.cert = OpenSSL::X509::Certificate.new(File.read("#{ssl}/certs/openvox.home.arpa.pem"))
 http.key = OpenSSL::PKey.read(File.read("#{ssl}/private_keys/openvox.home.arpa.pem"))

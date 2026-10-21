@@ -203,7 +203,9 @@ not prove its hook succeeded. After correcting a failed deployment, replay the
 current ref-update input to the managed hook. An unchanged push does not replay
 it. See the [publishing instructions](../proxmox/README.md#atlas-production-publishing-and-legacy-separation).
 
-The deployed `hiera.yaml` uses `vault.home.arpa` and `/trust/root.pem`.
+The deployed `hiera.yaml` uses `vault.home.arpa` and the host system bundle,
+mounted read-only at `/etc/ssl/certs/ca-certificates.crt`. Initial authority setup
+installs the authenticated root into that bundle before deploying Hiera.
 The compiler's `puppet-server` Vault login admits exactly `openvox.home.arpa`
 and reads only `kv/data/puppet`. Native agent transport issuance uses its own
 scoped role. Hiera fails compilation when its authenticated Vault lookup fails.

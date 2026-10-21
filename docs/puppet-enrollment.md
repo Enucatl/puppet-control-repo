@@ -43,6 +43,13 @@ initial FreeIPA enrollment; enrolled clients receive system trust from FreeIPA.
 Puppet CA chains and incoming client-certificate authentication retain their
 scoped issuer trust.
 
+Browsers retain their built-in public CA stores. Desktop Firefox and Chromium
+policies add only the FreeIPA-managed CA certificates under
+`/usr/local/share/ca-certificates/ipa-ca/`, refreshed by
+`update-ca-certificates`. Browser Use's Chromium imports `/etc/ipa/ca.crt` into
+NSS. Firefox imports persist in existing browser profiles; withdrawing a
+previously imported CA may require profile cleanup.
+
 Existing CRL behavior is retained. No custom outbound CRL bundle, publisher,
 refresh job or new revocation-enforcement policy is required for this migration.
 

@@ -68,7 +68,9 @@ def test_openvox_native_startup_keeps_the_tls_boundary(compose_model):
     assert not service.get("labels")
     assert service["ports"][0]["target"] == 8140
     assert service["environment"]["VAULT_ADDR"] == "https://vault.home.arpa:8200"
-    assert service["environment"]["VAULT_CACERT"] == "/trust/root.pem"
+    assert (
+        service["environment"]["VAULT_CACERT"] == "/etc/ssl/certs/ca-certificates.crt"
+    )
     for option in ("NO_PROXY", "no_proxy"):
         assert set(service["environment"][option].split(",")) == {
             "vault.home.arpa",
@@ -127,6 +129,19 @@ def test_deployed_hiera_uses_the_mounted_vault_trust(compose_model):
     assert backend["options"]["ca_trust"] == environment["VAULT_CACERT"]
     assert backend["options"]["fail_hard"] is True
     assert backend["uris"] == [environment["VAULT_ADDR"] + "/v1/kv/data/puppet"]
+
+
+@pytest.mark.parametrize("name", ["openvox", "vault", "vault-unsealer"])
+def test_runtime_tls_uses_the_host_system_bundle(compose_model, name):
+    """Make the host's enrolled trust available at the configured runtime path."""
+    service = compose_model["services"][name]
+    bundle = "/etc/ssl/certs/ca-certificates.crt"
+    option = "CURL_CA_BUNDLE" if name == "vault-unsealer" else "VAULT_CACERT"
+    assert service["environment"][option] == bundle
+    mount = next(mount for mount in service["volumes"] if mount["target"] == bundle)
+    assert mount["type"] == "bind"
+    assert mount["source"] == bundle
+    assert mount["read_only"] is True
 
 
 def test_openvox_state_cannot_be_replaced_by_implicit_empty_volumes(compose_model):

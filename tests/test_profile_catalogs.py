@@ -50,6 +50,10 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     assert documents["owner"] == documents["group"] == "user"
     assert documents["mode"] == "0750"
     pairs = ordered_pairs(catalog)
+    assert (
+        "Freeipa_client_enrollment[default]",
+        "Exec[generate-browser-policies]",
+    ) in pairs
     assert ("File[/home/user]", "File[/home/user/Documents]") in pairs
     assert (
         "File[/home/user/Documents]",
@@ -80,7 +84,7 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     assert certificate["vault_uri"] == (
         "https://vault.home.arpa:8200/v1/pki_int/issue/puppet"
     )
-    assert certificate["ca_trust"] == "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
+    assert certificate["ca_trust"] == "/etc/ssl/certs/ca-certificates.crt"
     assert certificate["cert_data"]["common_name"] == "codex.aperture.home.arpa"
     for share in ("scratch", "atlas"):
         mount = result[f"Nfs::Client::Mount[/export/{share}]"]
@@ -211,7 +215,7 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         assert certificate["vault_uri"] == (
             "https://vault.home.arpa:8200/v1/pki_int/issue/puppet-atlas.home.arpa"
         )
-        assert certificate["ca_trust"] == "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
+        assert certificate["ca_trust"] == "/etc/ssl/certs/ca-certificates.crt"
         assert "atlas.home.arpa" in certificate["cert_data"]["common_name"]
         if name != "codex":
             for key in ("cert_chain_file", "key_file"):

@@ -15,7 +15,7 @@ hierarchy:
       version: "v2"
       auth_path: "cert"
       auth_name: "puppet-server"
-      ca_trust: "/trust/root.pem"
+      ca_trust: "/etc/ssl/certs/ca-certificates.crt"
       fail_hard: true
 
   - name: "Authenticated certificate identity"

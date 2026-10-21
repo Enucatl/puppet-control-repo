@@ -78,11 +78,21 @@ def test_logging_and_pxe_use_atlas() -> None:
     assert "insecure_skip_verify" not in alloy
 
     assert variables["alloy_image"] == "docker.io/grafana/alloy:v1.21.0"
-    assert 'ca_file = "/etc/alloy/atlas-infrastructure.crt"' in alloy
+    assert 'ca_file = "/etc/ssl/certs/ca-certificates.crt"' in alloy
     tasks = (PROVISIONING / "tasks/02_push_files.yml").read_text()
-    assert "src: /usr/local/share/ca-certificates/atlas-infrastructure.crt" in tasks
-    assert "{{ alloy_data_path }}/conf/atlas-infrastructure.crt" in tasks
+    assert "src: /etc/ssl/certs/ca-certificates.crt" in tasks
+    assert "{{ alloy_data_path }}/conf/ca-certificates.crt" in tasks
+    assert "atlas-infrastructure.crt" not in tasks
     containers = (PROVISIONING / "templates/partials/containers.j2").read_text()
+    assert (
+        "set container name alloy volume alloy_ca destination /etc/ssl/certs/ca-certificates.crt"
+        in containers
+    )
+    assert "set container name alloy volume alloy_ca mode ro" in containers
+    assert (
+        "set container name alloy volume alloy_ca source {{ alloy_data_path }}/conf/ca-certificates.crt"
+        in containers
+    )
     assert "--disable-reporting --stability.level=experimental'" in containers
     assert "CUSTOM_ARGS" not in containers
     smoke = (

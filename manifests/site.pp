@@ -36,8 +36,8 @@ $classes = lookup('classes', Array[String])
 node default {
   $classes.include
 
-  # IPA must make its users visible before their files, jobs, and tools are managed.
-  ['freeipa_users', 'profile::common', 'profile::beszel_agent', 'profile::dotfiles', 'profile::codex_mtls', 'profile::user_toolchain'].each |$profile| {
+  # IPA must install CA trust and expose its users before dependent resources.
+  ['freeipa_users', 'freeipa_firefox', 'profile::common', 'profile::beszel_agent', 'profile::dotfiles', 'profile::codex_mtls', 'profile::user_toolchain'].each |$profile| {
     if $profile in $classes {
       Class['freeipa::client'] -> Class[$profile]
     }

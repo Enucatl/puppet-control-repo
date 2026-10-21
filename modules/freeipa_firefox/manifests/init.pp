@@ -1,57 +1,37 @@
+# Add FreeIPA-enrolled CAs alongside the browsers' built-in public trust stores.
 class freeipa_firefox {
+  ensure_packages(['ca-certificates', 'python3'])
 
-  $source_dir      = '/usr/local/share/ca-certificates'
-  $policy_dir      = '/etc/firefox/policies'
-  $cert_target_dir = "${policy_dir}/certs"
-
-  # 1. Create the directories
-  file { [ '/etc/firefox', $policy_dir, $cert_target_dir ]:
+  file { [
+    '/etc/firefox',
+    '/etc/firefox/policies',
+    '/etc/firefox/policies/certs',
+    '/etc/chromium-browser',
+    '/etc/chromium-browser/policies',
+    '/etc/chromium-browser/policies/managed',
+  ]:
     ensure => directory,
     owner  => 'root',
     group  => 'root',
     mode   => '0755',
   }
 
-  # 2. Watch the source directory for changes.
-  # We don't sync files directly here because the 'exec' needs to process them.
-  # This 'file' resource acts as a trigger.
-  file { 'ipa-cert-trigger':
-    ensure  => directory,
-    path    => $source_dir,
-    recurse => true,
-    notify  => Exec['generate-firefox-policies'],
+  file { '/etc/ca-certificates/update.d/browser-trust':
+    ensure  => file,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    source  => 'puppet:///modules/freeipa_firefox/browser-trust.py',
+    require => Package[['ca-certificates', 'python3']],
   }
 
-  # 3. Handle the JSON file existence.
-  # If the policies.json is deleted, this ensures the exec runs again.
-  file { "${policy_dir}/policies.json":
-    ensure => present,
-    replace => false, # Don't overwrite content, just ensure it exists
-    notify  => Exec['generate-firefox-policies'],
-  }
-
-  # 4. The Execution logic
-  exec { 'generate-firefox-policies':
-    command     => "/bin/bash -c '
-      # 1. Clean out the target cert dir to ensure it matches source exactly
-      rm -f ${cert_target_dir}/*.crt
-
-      # 2. Extract and clean certificates
-      for f in ${source_dir}/*.crt; do
-        [ -e \"\$f\" ] || continue
-        filename=\$(basename \"\$f\")
-        openssl x509 -in \"\$f\" -out \"${cert_target_dir}/\$filename\"
-      done
-
-      # 3. Build the JSON array
-      CERTS=\$(find ${cert_target_dir} -name \"*.crt\" -printf \"\\\"%p\\\",\" | sed \"s/,\$//\")
-      
-      # 4. Atomically write the policies.json
-      echo \"{\\\"policies\\\": {\\\"Certificates\\\": {\\\"Install\\\": [\$CERTS]}}}\" > ${policy_dir}/policies.json.tmp
-      mv ${policy_dir}/policies.json.tmp ${policy_dir}/policies.json
-    '",
-    path        => ['/bin', '/usr/bin'],
-    unless       => "/usr/bin/grep -Fq '${cert_target_dir}/atlas-infrastructure.crt' ${policy_dir}/policies.json",
-    require     => File[$cert_target_dir],
+  exec { 'generate-browser-policies':
+    command => '/etc/ca-certificates/update.d/browser-trust',
+    unless  => '/etc/ca-certificates/update.d/browser-trust --check',
+    require => File[
+      '/etc/ca-certificates/update.d/browser-trust',
+      '/etc/firefox/policies/certs',
+      '/etc/chromium-browser/policies/managed',
+    ],
   }
 }
