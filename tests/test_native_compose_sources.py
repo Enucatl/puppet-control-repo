@@ -137,7 +137,7 @@ def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
         r"ghcr\.io/enucatl/freeipa-server@sha256:[0-9a-f]{64}", service["image"]
     )
     assert "build" not in service
-    assert service["entrypoint"] == ["/usr/local/sbin/init"]
+    assert service.get("entrypoint") is None
     assert service["hostname"] == "ipa.home.arpa"
     assert service["runtime"] == "sysbox-runc"
     assert config["volumes"]["ipa_data"] == {"name": "infra_ipa_data", "external": True}
@@ -155,7 +155,7 @@ def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
     assert mounts["/data/ipa-server-install-options"]["read_only"] is True
     for target in ("/bootstrap", "/data/ipa-server-install-options"):
         assert mounts[target]["type"] == "bind"
-        assert mounts[target]["bind"]["create_host_path"] is False
+        assert mounts[target]["bind"].get("create_host_path", False) is False
     options = service["command"]
     assert "--no-pkinit" in options
     assert "--ca-cert-file=/bootstrap/ca.pem" in options

@@ -113,9 +113,10 @@ jobs:
           test -d "$PUPPET_TEST_MODULEPATH/systemd"
       - name: Validate Puppet, EPP and rehearsal syntax
         run: |
+          set -o pipefail
           /opt/puppetlabs/bin/puppet parser validate modules/profile/manifests modules/proxmox_workflows/manifests
           /opt/puppetlabs/bin/puppet parser validate docker/openvox/fixture/manifests
-          rg --files modules/profile/templates -g '*.epp' -0 | xargs -0 /opt/puppetlabs/bin/puppet epp validate
+          find modules/profile/templates -name '*.epp' -print0 | xargs -0 -r /opt/puppetlabs/bin/puppet epp validate
           for script in docker/openvox/*.rb docker/vault/scripts/offline-intermediate.rb; do /opt/puppetlabs/puppet/bin/ruby -c "$script"; done
       - name: Test source, catalogs and controllers with dummy secrets
         run: >-

@@ -2,6 +2,8 @@ name: infra
 
 # Existing installation (including a restored volume):
 #   docker compose --env-file /dev/null -f docker/freeipa/atlas-compose.yaml up -d --wait
+# Pre-transition AlmaLinux volumes need the one-time procedure in
+# docs/atlas-freeipa.md#one-time-almalinux-to-centos-stream-transition first.
 # Fresh installation only: prepare certificates and protected password options first:
 #   sudo python3 proxmox/atlas-freeipa.py initialize
 # Then run the same Compose command. The native image ignores install options once
@@ -9,9 +11,7 @@ name: infra
 services:
   ipa:
     # The published fork supplies ML-DSA support; use its native entrypoint.
-    image: ghcr.io/enucatl/freeipa-server@sha256:80024f5e76ce4eedd986eb9e7ed63461cafb1bc1774386cf4ff41a259633d0cb
-    # Also bypass the removed wrapper when restoring an older saved image.
-    entrypoint: [/usr/local/sbin/init]
+    image: ghcr.io/enucatl/freeipa-server@sha256:bce0ae74c51bdad84335d36561ce5915ddb985ac9237d8d1761f3e3c2e387a66
     command:
       - --unattended
       - --hostname=ipa.home.arpa

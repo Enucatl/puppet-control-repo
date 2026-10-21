@@ -16,24 +16,53 @@ without `--external-ca`, Dogtag installation, or a subordinate Dogtag CSR.
 
 ## Image
 
-The image compatibility build lives in the
-[FreeIPA container fork](https://github.com/Enucatl/freeipa-container/tree/mldsa44).
-It derives from the pinned AlmaLinux 10 FreeIPA image without changing package
-versions. Its patch reads SubjectPublicKeyInfo through the existing ASN.1 parser
-and uses OpenSSL for HTTP certificate/key matching and encrypted key storage.
-NSS retains full-chain and hostname validation. The build applies the patch with
-zero fuzz against the pinned source.
+The image build lives in the
+[FreeIPA container fork](https://github.com/Enucatl/freeipa-container).
+It uses CentOS Stream 10 and the distribution's cryptography package for ML-DSA
+keys. A small FreeIPA patch handles seed-only key extraction and public-key
+matching. NSS retains full-chain and hostname validation.
 
 The [Compose file](../docker/freeipa/atlas-compose.yaml) selects the published
 image directly, with its native entrypoint. It owns the image pin, install
 options, volume mount, healthcheck and startup instructions. The pinned image
-comes from fork revision `cea6c6b250867cd9dbf23c7224d81d1ae7908b83`.
-There is no local derived FreeIPA image or custom entrypoint to build.
-[The hosted build and focused checks passed](https://github.com/Enucatl/freeipa-container/actions/runs/39307303697).
-The versioned full-install harness also passed on Atlas with disposable
-state and no published ports. The new server is initialized and healthy;
+comes from fork revision `63b0aa68606946268dcaff1e2d1113febada1183`, pinned to
+`sha256:bce0ae74c51bdad84335d36561ce5915ddb985ac9237d8d1761f3e3c2e387a66`.
+There is no local derived FreeIPA image, custom entrypoint or entrypoint override.
+[The hosted build and checks passed](https://github.com/Enucatl/freeipa-container/actions/runs/39654753564),
+including fresh installation, HTTP/LDAP certificate replacement and a standard
+installation with a replica. The established server's
 [initialization evidence](atlas-ipa-initialization-results.json) records its
 certificate identities, authenticated checks and protected off-host backup.
+
+The [October 21 image acceptance](atlas-ipa-image-upgrade-results.json) passed
+on Atlas using the published digest: fresh installation, ML-DSA-44/65/87 and
+RSA/EC compatibility, certificate replacement, existing-volume migration and
+ordinary native startup. The live service is healthy on that digest. All 10
+users, 16 groups, numeric IDs, memberships, HBAC and sudo policies were preserved.
+Both HTTPS and LDAP now serve the current Vault-issued ML-DSA-44 certificate.
+Vault preparation/renewal and account provisioning helpers remain infrastructure
+integration; they do not patch the image or supply ML-DSA compatibility code.
+
+### One-time AlmaLinux to CentOS Stream transition
+
+The old AlmaLinux data records FreeIPA `4.13.4-1.el10_2`, while this CentOS image
+packages `4.13.4-1.el10`. Native startup treats the release suffix as a downgrade
+and exits. After testing a stopped-volume copy, the live migration temporarily
+set the image's native `DEBUG_NO_EXIT=1` environment option, waited for
+`ipa-server-upgrade.service` to fail its version check, then ran inside the
+container:
+
+```sh
+ipa-server-upgrade --skip-version-check
+/usr/sbin/ipa-server-configure-first upgrade
+systemctl reset-failed ipa-server-upgrade.service
+```
+
+Recreating with the ordinary Compose definition removed `DEBUG_NO_EXIT` and
+passed health and authentication checks. No migration flag, wrapper, image
+modification or startup script remains. This procedure applies to the tested
+4.13.4 distribution-release transition; another version transition requires its
+own clone test. Restoring an already migrated backup uses ordinary Compose.
 
 ## Initial preparation and startup
 

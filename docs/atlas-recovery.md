@@ -8,6 +8,11 @@ a replacement with the same identities. Use the existing Compose definitions
 for established services; do not run fresh authority initialization over a
 restored installation.
 
+For a FreeIPA backup from before the AlmaLinux to CentOS Stream transition,
+follow the [one-time transition procedure](atlas-freeipa.md#one-time-almalinux-to-centos-stream-transition)
+before ordinary startup with the current image. Already migrated FreeIPA backups
+use ordinary startup.
+
 From the restored repository, start the established authorities with:
 
 ```sh

@@ -1,0 +1,82 @@
+{
+  "completed_at_utc": "2026-10-21T19:25:57Z",
+  "host": "atlas.home.arpa",
+  "endpoint": "ipa.home.arpa",
+  "image": {
+    "previous": "ghcr.io/enucatl/freeipa-server@sha256:80024f5e76ce4eedd986eb9e7ed63461cafb1bc1774386cf4ff41a259633d0cb",
+    "published": "ghcr.io/enucatl/freeipa-server@sha256:bce0ae74c51bdad84335d36561ce5915ddb985ac9237d8d1761f3e3c2e387a66",
+    "running_id": "sha256:5d96dc144d524ea02ba43b973b2cbd72ffe5d767de027e0d9d3e8a2528706560",
+    "source_revision": "63b0aa68606946268dcaff1e2d1113febada1183",
+    "hosted_checks": "https://github.com/Enucatl/freeipa-container/actions/runs/39654753564",
+    "native_entrypoint": "/usr/local/sbin/init",
+    "runtime": "sysbox-runc",
+    "local_build_required": false,
+    "local_compatibility_patches_or_scripts_required": false,
+    "entrypoint_override": false,
+    "persistent_debug_or_version_check_override": false,
+    "packages": [
+      "ipa-server-4.13.4-1.el10.x86_64",
+      "python3-cryptography-49.0.0-1.el10.x86_64",
+      "nss-3.124.0-5.el10.x86_64",
+      "openssl-3.5.9-1.el10.x86_64",
+      "389-ds-base-3.3.0-4.el10.x86_64"
+    ]
+  },
+  "fresh_disposable_acceptance": {
+    "image_pulled_directly_from_ghcr": true,
+    "isolated_python_certificate_checks": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "RSA:2048", "EC:P-256"],
+    "wrong_hostname_mismatched_key_and_untrusted_chain_rejected": true,
+    "full_ca_less_installation": "passed",
+    "https_and_ldaps_seed_only_key_certificate_replacement": "passed",
+    "renewed_http_key_preserves_original_32_byte_seed": true,
+    "admin_kerberos_and_authenticated_api": "passed",
+    "hostname_and_chain_verified_https_and_ldaps": "passed",
+    "native_restart_after_renewal": "passed",
+    "no_published_ports_or_production_authority_inputs": true
+  },
+  "existing_volume_migration": {
+    "disposable_copy_tested_before_live_deployment": true,
+    "initial_native_startup": "Rejected distribution-release downgrade from 4.13.4-1.el10_2 to 4.13.4-1.el10",
+    "one_time_native_procedure": [
+      "Temporarily set DEBUG_NO_EXIT=1 and wait for the native upgrade version check to fail",
+      "ipa-server-upgrade --skip-version-check",
+      "/usr/sbin/ipa-server-configure-first upgrade",
+      "systemctl reset-failed ipa-server-upgrade.service",
+      "Recreate using ordinary Compose without DEBUG_NO_EXIT"
+    ],
+    "native_startup_without_migration_options": "passed on clone and live",
+    "unchanged_records_numeric_ids_and_memberships": {
+      "users": 10,
+      "groups": 16,
+      "hbac_rules": 4,
+      "sudo_rules": 1
+    },
+    "native_existing_state_certificate_import": "passed on clone and live using the existing renewal worker",
+    "admin_kerberos_and_authenticated_api_after_import": "passed on clone and live"
+  },
+  "live_acceptance": {
+    "container_healthy": true,
+    "external_https_status": 200,
+    "external_ldaps_hostname_chain_and_mldsa44_signature": "passed",
+    "http_and_ldap_match_canonical_vault_certificate": true,
+    "canonical_leaf_der_sha256": "77a0b707c9a21d607a4d1c582f8b8b16495ef8a83a894ed08126bab9a7b0eba6",
+    "root_ca_der_sha256": "9e7498e776ad4ca805143244ff0b1a3bbf1f269891f3d7c40d40c94227f7c1ea",
+    "rollback_required": false,
+    "protected_stopped_volume_backup": "/home/user/.local/state/freeipa-image-upgrade-20261021T1919/live-before-data-and-bootstrap.tar.gz",
+    "backup_sha256": "f13276bd14e4dc2a5ed0a135b6d6f6081ce9728f8c990f12e33daa4134174c46",
+    "all_disposable_containers_volumes_and_networks_removed": true
+  },
+  "repository_checks": {
+    "passed": 55,
+    "suites": ["tests/test_atlas_freeipa.py", "tests/test_native_compose_sources.py", "tests/test_atlas_apply_certificates.py", "tests/test_profile_catalogs.py"],
+    "dependency_modulepath": "/tmp/vault-migration-modules.YOpCq7",
+    "ruff_format_check": "passed",
+    "git_diff_check": "passed"
+  },
+  "limitations": [
+    "PKINIT remains disabled; Dogtag and PKINIT were not tested.",
+    "Scheduled Vault issuance was not forced; native installation of the already renewed Vault certificate was tested.",
+    "Automatic rollback and full disaster recovery were not exercised.",
+    "The protected upgrade backup remains on Atlas; this task did not create an additional off-host copy."
+  ]
+}
