@@ -2,99 +2,31 @@
 
 The root signing key remains inside Vault. The deployment retains existing CRL
 behavior, without custom strict checks, lifetime settings or distribution jobs.
-The network-isolated procedure below records an earlier disposable experiment;
+The notes below record an earlier network-isolated disposable experiment;
 its publication and operator-ceremony steps are not #12 closure requirements.
 
-`scripts/openvox_offline_root.py` exercises the established disposable offline
-root on the local Docker installation. It never initializes a replacement root,
-uses the explicit local socket and fixed `openvox-rehearsal` project, requires the
-recorded root SHA-256 fingerprint, and refuses a root with Docker networking.
-It stops the root in a `finally` block, including after a failed signing or
-verification step. A stop failure is reported as a failed ceremony.
+The retired ceremony helper exercised the established network-isolated test
+root, pinned its recorded SHA-256 fingerprint, and stopped it after each run.
+It renewed one disposable intermediate with the same key, revoked the first
+certificate, and verified both CRL signatures and rejection of the revoked
+serial. No production authority or trust mount changed.
 
-Run from the repository after the main rehearsal initialized the offline root:
+The rehearsal proved nine cryptographic/lifecycle checks. Its sanitized evidence
+is `/tmp/openvox-rehearsal-175200003/offline-root-lifecycle.json`. Public artifacts
+were written under
+`/tmp/openvox-rehearsal-<uid>/public/offline-root/<operation-id>/`: the root
+certificate, DER and PEM CRLs, both disposable intermediate certificates, and
+`evidence.json`. Private root state and recovery material stayed in the protected
+root volume. This one-share test recovery arrangement was not an operator
+key-custody design.
 
-```sh
-python3 scripts/openvox_offline_root.py rehearse --expected-root-sha256 <recorded-root-certificate-sha256>
-python3 scripts/openvox_offline_root.py publish --expected-root-sha256 <recorded-root-certificate-sha256>
-```
-
-Take the fingerprint from the recorded ceremony evidence, not from a new root
-discovered during the operation. Existing protected Vault recovery inputs stay
-inside the root volume and travel through private control requests; command
-arguments and public output contain no tokens, unseal material or private keys.
-This one-share test recovery arrangement is not an operator key-custody design.
-
-`rehearse` performs these explicit ceremony steps:
-
-1. Start and unseal the established network-isolated root and check its identity.
-2. Generate a fresh ML-DSA-44 intermediate key and signed CSR in a new private
-   directory within its offline volume. This disposable probe is separate from
-   both current OpenVox and FreeIPA intermediates.
-3. Sign that CSR for 48 hours with CA path length zero, then sign the same CSR for
-   72 hours. Verify the renewal retains the public key, changes the serial and
-   extends validity without exceeding the root's lifetime.
-4. Revoke only the first certificate created by this invocation. Rotate the root
-   CRL and verify its issuer, signature and validity. OpenSSL's certificate-store
-   revocation check must reject the revoked certificate and accept its renewal.
-5. Export public artifacts, stop the root and confirm it is stopped.
-
-This tests serial revocation after routine renewal. A compromised intermediate
-key requires revoking **every unexpired certificate for that key** and creating a
-replacement key; retaining the key is appropriate only for an uncompromised
-renewal. For a real ceremony, generate the intermediate key at its owning issuer
-and transfer only its CSR to the offline root. The main rehearsal already uses
-that separation for the actual OpenVox and FreeIPA intermediates.
-
-`publish` rotates and verifies the root CRL, then exports it without issuing or
-revoking any certificate. It does not merely recopy an aging CRL. Each operation
-creates a new publication directory under
-`/tmp/openvox-rehearsal-<uid>/public/offline-root/<operation-id>/`:
-
-| Artifact | Purpose |
-| --- | --- |
-| `root.pem` | Pinned public root certificate |
-| `root.crl` | Signed DER root CRL for a CRL distribution endpoint |
-| `root.crl.pem` | The same signed root CRL in PEM form for local trust stores |
-| `intermediate-initial.pem` | Disposable revoked intermediate (`rehearse` only) |
-| `intermediate-renewed.pem` | Same-key renewed intermediate (`rehearse` only) |
-| `evidence.json` | Sanitized verification results, issuer URLs and CRL expiry |
-
-For the OpenVox trust volume, copy the exported **`root.crl.pem`** to
-**`/trust/root.crl`**. That local import filename expects PEM; the exported
-`root.crl` is DER and belongs on the public distribution endpoint.
-
-Only these public files may cross from offline custody to a publication host.
-Keep the root volume, private probe directories, unseal material and protected
-backups out of any web-server document root. Back up the changed root storage
-after signing or revocation, so recovery retains its issuance and revocation
-history. Retain the older backup until the new protected copy is verified.
-
-The live rehearsal proved nine cryptographic/lifecycle checks, including actual
-ML-DSA-44 CRL verification and certificate-store denial of the revoked serial.
-The latest sanitized result is
-`/tmp/openvox-rehearsal-175200003/offline-root-lifecycle.json`.
-Both `publish` and `rehearse` were run successfully; the current root certificate
-fingerprint remained unchanged and the root is stopped.
-An additional temporary HTTP server bound only to host loopback served the public
-root certificate and DER CRL without credentials. A separate network-isolated
-container verified the fetched CRL signature and rejected a bit-flipped CRL.
-Those three checks are recorded as `publication_probe`; this proves the exported
-bytes are usable through a static mirror, while the real publication route
-remains a deployment requirement.
-
-## Historical publication probe and remaining custody work
-
-The current disposable root's `issuing_certificates`,
-`crl_distribution_points` and `ocsp_servers` lists are empty. The command exports
-verified publication files; it does not claim that fleet clients can discover
-them or install them into the running restored stack. Existing clients use
-explicitly supplied root certificate/CRL files. No production DNS, web server,
-root issuer URL or current trust mount was changed.
-
-The publication experiment above is historical evidence only. A dedicated CRL
-mirror, scheduled publication ceremony and CRL-expiry alarms are not deployment
-requirements. The normal CA code continues to own its existing CRL behavior.
+A temporary HTTP server bound to host loopback served the public certificate and
+DER CRL. A network-isolated container verified the fetched CRL signature and
+rejected a bit-flipped CRL; those three checks are recorded as
+`publication_probe`. A dedicated CRL mirror, scheduled publication ceremony and
+CRL-expiry alarms are not deployment requirements. Normal CA code owns its
+existing CRL behavior. The ceremony helper and its dedicated tests are retired;
+these results remain historical evidence.
 
 ## Retained native intermediate experiment
 

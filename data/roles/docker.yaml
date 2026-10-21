@@ -122,15 +122,3 @@ profile::common::sysctl::settings:
     value: 1
   net.ipv4.conf.eth0.bc_forwarding:
     value: 1
-
-promtail::scrape_configs_hash:
-  scrape_configs:
-    - job_name: docker
-      docker_sd_configs:
-        - host: unix:///var/run/docker.sock
-          refresh_interval: 5s
-      relabel_configs:
-        - source_labels:
-            - "__meta_docker_container_name"
-          regex: "/(.*)"
-          target_label: 'container_name'

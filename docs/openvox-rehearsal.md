@@ -137,7 +137,7 @@ custom outbound CRL enforcement is no longer required. Puppetfile pins the
 published Hiera transport and protocol-setting fix.
 
 The prepared [infra profile](openvox-infra.md),
-[offline-root procedure](openvox-offline-root.md),
+[historical offline-root notes](openvox-offline-root.md),
 [Vault limits](openvox-vault-limitations.md) and
 [BCJSSE audit](openvox-jvm-policy.md) document the next deployment boundaries.
 Final native Ubuntu/Debian, hardened Compose, hosted CI, clean protected off-host

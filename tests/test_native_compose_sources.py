@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 
 
@@ -132,11 +133,19 @@ def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
     assert config["name"] == "infra"
     assert set(config["services"]) == {"ipa"}
     service = config["services"]["ipa"]
+    assert re.fullmatch(
+        r"ghcr\.io/enucatl/freeipa-server@sha256:[0-9a-f]{64}", service["image"]
+    )
+    assert "build" not in service
+    assert service["entrypoint"] == ["/usr/local/sbin/init"]
     assert service["hostname"] == "ipa.home.arpa"
     assert service["runtime"] == "sysbox-runc"
     assert config["volumes"]["ipa_data"] == {"name": "infra_ipa_data", "external": True}
     assert "--cacert /etc/ipa/ca.crt" in service["healthcheck"]["test"][1]
     mounts = {mount["target"]: mount for mount in service["volumes"]}
+    assert len(service["volumes"]) == 3
+    assert service["volumes"][0] == mounts["/data"]
+    assert mounts["/data"]["type"] == "volume"
     assert mounts["/data"]["source"] == "ipa_data"
     assert mounts["/bootstrap"]["source"] == str(ROOT / "docker/freeipa/secrets")
     assert mounts["/bootstrap"]["read_only"] is True
@@ -144,3 +153,37 @@ def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
         ROOT / "docker/freeipa/secrets/ipa-server-install-options"
     )
     assert mounts["/data/ipa-server-install-options"]["read_only"] is True
+    for target in ("/bootstrap", "/data/ipa-server-install-options"):
+        assert mounts[target]["type"] == "bind"
+        assert mounts[target]["bind"]["create_host_path"] is False
+    options = service["command"]
+    assert "--no-pkinit" in options
+    assert "--ca-cert-file=/bootstrap/ca.pem" in options
+    for name in ("http", "dirsrv"):
+        for filename in ("fullchain.pem", "key.pem"):
+            assert f"--{name}-cert-file=/bootstrap/{filename}" in options
+    assert "--external-ca" not in options
+    assert not any(
+        option.startswith(("--admin-password", "--ds-password")) for option in options
+    )
+    assert sorted((port["target"], port["protocol"]) for port in service["ports"]) == [
+        (88, "tcp"),
+        (88, "udp"),
+        (389, "tcp"),
+        (464, "tcp"),
+        (464, "udp"),
+        (636, "tcp"),
+    ]
+    assert set(service["networks"]) == {"infra", "traefik_proxy"}
+    proxy = config["networks"]["traefik_proxy"]
+    assert proxy["name"] == "traefik_proxy"
+    assert proxy["external"] is True
+    assert service["labels"] == {
+        "traefik.enable": "true",
+        "traefik.docker.network": "traefik_proxy",
+        "traefik.tcp.routers.freeipa-secure.entrypoints": "https",
+        "traefik.tcp.routers.freeipa-secure.rule": "HostSNI(`ipa.home.arpa`)",
+        "traefik.tcp.routers.freeipa-secure.tls": "true",
+        "traefik.tcp.routers.freeipa-secure.tls.passthrough": "true",
+        "traefik.tcp.services.freeipa-secure.loadbalancer.server.port": "443",
+    }

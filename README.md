@@ -59,8 +59,7 @@ Vault/OpenVox startup uses the root Compose entrypoint.
 │   ├── vault/
 │   │   ├── config/              # Vault server configuration
 │   │   └── scripts/             # Runtime export/unseal and administrative helpers
-│   └── puppet/
-│       └── config/              # r10k configuration and empty puppet.conf placeholder
+│   └── openvox/                 # OpenVox image, runtime and r10k configuration
 ├── proxmox/                     # Scripts that run ON the Proxmox hypervisor
 │   ├── configure-pve-backups.sh # Proxmox Backup Server setup
 │   ├── desktop.sh               # Launcher for desktop.py

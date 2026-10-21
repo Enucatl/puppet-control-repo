@@ -474,12 +474,8 @@ The live run caught two fixes now covered by checks: Proxmox's generated user-da
 needs an explicit search domain to retain the FQDN, and `qm config` percent-encodes
 the ownership description.
 
-For the scripted live checks on an unused 210, run
-`bash proxmox/atlas-acceptance.sh`. It builds template 9001 if absent, creates
-Atlas twice, checks names across reboot and authenticated SSH, and compares
-unrelated guest/template configuration hashes. Evidence goes to
-`LOG_DIR/atlas-acceptance`.
-Use `-r` to retry with an existing matching development Atlas at 210.
+The one-time Atlas base acceptance harness has been retired. Recover the
+established host with the [Atlas backup workflow](../docs/atlas-recovery.md).
 
 Live Atlas enrollment and convergence belong to #13. Independent infrastructure
 deployment/recovery and promotion protections belong to #18; this base does not

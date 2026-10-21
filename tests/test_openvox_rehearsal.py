@@ -213,7 +213,6 @@ def test_stage_preserves_archive_and_excludes_local_environment(
         "scripts/external_node_classifier.py": b"# classifier\n",
         "scripts/openvox-rehearsal.py": b"# controller\n",
         "scripts/openvox_rehearsal_recovery.py": b"# recovery\n",
-        "scripts/openvox_offline_root.py": b"# offline root ceremony\n",
         "docker/openvox/compose.yaml": b"services: {}\n",
         "README": contents,
     }.items():

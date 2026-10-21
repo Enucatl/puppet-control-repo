@@ -93,8 +93,7 @@ FreeIPA remains CA-less, with PKINIT explicitly disabled and no Dogtag instance.
 ## Focused checks
 
 ```bash
-uv run --frozen pytest -q tests/test_atlas_freeipa.py
-bash tests/test_atlas_freeipa_compose.sh
+uv run --frozen pytest -q tests/test_atlas_freeipa.py tests/test_native_compose_sources.py
 ```
 
 Long builds and live installations in the main Codex thread use `wake-run`.

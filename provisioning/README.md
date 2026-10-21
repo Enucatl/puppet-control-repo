@@ -157,8 +157,8 @@ VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook
 
 IPFIX exports from the IoT/guest interfaces go to Atlas UDP 2055. Apply only
 the collector destination and router smoke checks with `--tags netflow,healthcheck`.
-The isolated collector definition is `../docker/goflow2-compose.json`; its
-pinned image matches the source collector and it has no persistent state.
+The collector entrypoint is `../docker/goflow2/compose.yaml`; it extends the
+maintained service definition and has no persistent state.
 Atlas's dedicated Alloy pipeline enriches flow records with GeoIP. Its local
 Loki write URL uses the loopback-only published port 3100 because Alloy's Go
 TLS client cannot negotiate the ML-DSA ingress; HTTPS reads retain mTLS.

@@ -124,11 +124,6 @@ to another dependency directory when needed. Workflow and rendering tests run in
 with public Puppet 8.10; full catalog tests require a populated Puppet modulepath and
 are intended for the Puppet server checkout or a separately provisioned test image.
 
-For a refactor comparison, set `PROFILE_BASELINE_ROOT` to a clean checkout of the
-previous revision. Node and deployment tests additionally compare native resources,
-effective ordering through container anchors, and refresh notifications. Only the
-Proxmox source URI move and Alloy whitespace are normalized.
-
 Before production rollout, compile with actual node facts in an isolated environment
 and inspect no-op results. A fixture comparison cannot establish live drift or prove
 that every host has completed migration. Verify Alloy ingestion and database timer,

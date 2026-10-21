@@ -4,8 +4,7 @@
 # linux-x86_64 tarball, extracts to /usr/local, and keeps it up to date.
 #
 # Example usage:
-#   neovim::
-#   neovim { 'version' => 'v0.10.0': }  # pin to specific version
+#   class { 'neovim': version => 'v0.10.0' }
 #
 class neovim (
   Optional[String[1]] $version = undef,
@@ -46,13 +45,12 @@ class neovim (
     require => File['/var/lib/neovim'],
   }
 
-  # Execute the installation script (only when marker file doesn't exist)
+  # The script compares the requested release with the installed version.
   exec { 'neovim-install':
     command   => '/usr/local/bin/install-neovim.sh',
     path      => ['/usr/bin', '/bin', '/usr/local/bin', '/usr/sbin', '/sbin'],
     user      => 'root',
     cwd       => '/tmp',
-    creates   => $marker_file,
     logoutput => true,
     require   => File['/usr/local/bin/install-neovim.sh'],
   }

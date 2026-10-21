@@ -180,7 +180,6 @@ def stage() -> None:
         "scripts/external_node_classifier.py",
         "scripts/openvox-rehearsal.py",
         "scripts/openvox_rehearsal_recovery.py",
-        "scripts/openvox_offline_root.py",
     ):
         shutil.copy2(SOURCE / path, STAGE / path)
         expected.add(Path(path))

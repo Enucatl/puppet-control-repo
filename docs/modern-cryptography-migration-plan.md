@@ -53,7 +53,7 @@ trust anchors short-lived where practical.
   `docker/docker-compose.yml`.
 - `docker/docker-compose.yml` currently runs Vault, FreeIPA, apt-cacher-ng, and
   supporting services.
-- `docker/puppet/config/r10k.yaml` deploys Puppet environments from branches
+- `docker/openvox/infra-r10k.yaml` deploys Puppet environments from branches
   under `/etc/puppetlabs/code/environments`.
 - `post-receive` watches `production` and `dev` branches
   and deploys the corresponding Puppet environment.

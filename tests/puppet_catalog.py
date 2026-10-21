@@ -26,7 +26,6 @@ def compile_catalog(
     node_type: str = "docker",
     certname: str | None = None,
     authenticated: str = "remote",
-    root: Path = ROOT,
     fact_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compile an isolated catalog with explicit facts and certificate identity."""
@@ -83,14 +82,14 @@ def compile_catalog(
         input=json.dumps(
             {
                 "workdir": str(workdir),
-                "hiera_config": str(root / "hiera.yaml"),
+                "hiera_config": str(ROOT / "hiera.yaml"),
                 "overrides": str(overrides),
-                "datadir": str(root / "data"),
+                "datadir": str(ROOT / "data"),
                 "code": code,
                 "certname": certname or f"{hostname}.home.arpa",
                 "authenticated": authenticated,
                 "facts": facts,
-                "modulepath": [str(root / "modules"), str(DEPENDENCIES)],
+                "modulepath": [str(ROOT / "modules"), str(DEPENDENCIES)],
             }
         ),
         capture_output=True,

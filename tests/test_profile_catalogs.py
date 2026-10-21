@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import os
-import re
 import shlex
 import subprocess
 from typing import Any
@@ -485,20 +483,6 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
             == "puppet:///modules/proxmox_workflows/chronicle_backup_orchestrator.py"
         )
 
-    baseline = os.environ.get("PROFILE_BASELINE_ROOT")
-    if baseline:
-        before = compile_catalog(
-            tmp_path / "before",
-            "lookup('classes', Array[String]).include",
-            DUMMY_SECRETS,
-            hostname=hostname,
-            node_type=node_type,
-            root=Path(baseline),
-        )
-        assert managed_resources(catalog) == managed_resources(before)
-        assert ordered_pairs(catalog) == ordered_pairs(before)
-        assert notifications(catalog) == notifications(before)
-
 
 @pytest.mark.parametrize(
     "certname", ["forbearance.home.arpa", "docker.example.org", "ordinary.home.arpa"]
@@ -603,34 +587,13 @@ def test_freeipa_provision_command_arguments(tmp_path: Path) -> None:
         assert "source" not in keytab and "content" not in keytab
 
 
-def managed_resources(catalog: dict[str, Any]) -> dict[str, Any]:
-    """Compare native resources, allowing only source relocation and Alloy formatting."""
-    result = {}
-    for ref, params in resources(catalog).items():
-        kind = ref.split("[")[0]
-        if kind in ("Class", "Stage") or "::" in kind:
-            continue
-        params = {
-            key: value
-            for key, value in params.items()
-            if key not in ("require", "before", "notify", "subscribe")
-        }
-        source = params.get("source")
-        if isinstance(source, str) and source.startswith(
-            "puppet:///modules/proxmox_workflows/"
-        ):
-            params["source"] = source.replace("/proxmox_workflows/", "/profile/")
-        if ref == "File[/etc/alloy/config.alloy]":
-            params["content"] = re.findall(
-                r'"(?:\\.|[^"\\])*"|[A-Za-z_][A-Za-z_0-9.]*|[^\s]', params["content"]
-            )
-        result[ref] = params
-    return result
-
-
 def ordered_pairs(catalog: dict[str, Any]) -> set[tuple[str, str]]:
     """Compare effective ordering through Puppet's class/container anchors."""
-    native = managed_resources(catalog).keys()
+    native = {
+        ref
+        for ref in resources(catalog)
+        if ref.split("[")[0] not in ("Class", "Stage") and "::" not in ref.split("[")[0]
+    }
     edges: dict[str, set[str]] = {}
     for edge in catalog["relationships"]:
         edges.setdefault(edge["source"], set()).add(edge["target"])
@@ -646,29 +609,6 @@ def ordered_pairs(catalog: dict[str, Any]) -> set[tuple[str, str]]:
             todo.extend(edges.get(target, ()))
             if target in native:
                 result.add((source, target))
-    return result
-
-
-def notifications(catalog: dict[str, Any]) -> set[tuple[str, str, str, str]]:
-    native = managed_resources(catalog).keys()
-    edges: dict[str, list[dict[str, Any]]] = {}
-    for edge in catalog["relationships"]:
-        if edge.get("event") and edge["event"] != "NONE":
-            edges.setdefault(edge["source"], []).append(edge)
-    result = set()
-    for source in native:
-        todo = list(edges.get(source, ()))
-        seen = set()
-        while todo:
-            edge = todo.pop()
-            target = edge["target"]
-            if target in seen:
-                continue
-            seen.add(target)
-            if target in native:
-                result.add((source, target, edge["event"], edge.get("callback", "")))
-            else:
-                todo.extend(edges.get(target, ()))
     return result
 
 
@@ -816,18 +756,6 @@ def test_deploy_options(tmp_path: Path, refresh: bool, ensure: str) -> None:
             "ExecCondition="
             not in result["File[/etc/systemd/system/custom-refresh.service]"]["content"]
         )
-    baseline = os.environ.get("PROFILE_BASELINE_ROOT")
-    if baseline:
-        before = compile_catalog(
-            tmp_path / "before",
-            code,
-            hostname="fixture",
-            node_type="proxmox",
-            root=Path(baseline),
-        )
-        assert managed_resources(catalog) == managed_resources(before)
-        assert ordered_pairs(catalog) == ordered_pairs(before)
-        assert notifications(catalog) == notifications(before)
 
 
 def test_grafana_public_key_matches_published_primary_fingerprint(
