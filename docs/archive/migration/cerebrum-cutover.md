@@ -6,7 +6,7 @@
 This procedure transferred the existing services to Cerebrum VM 230 on Cortex.
 Cognition VM 220 and Complex VM 200 remain intact for rollback. Complete XFS
 template, identity, storage and initial-copy validation before this handover.
-Keep Cognition's node data and DNS records available for recovery.
+Keep Cognition's DNS records available for recovery; its retired node data is in Git history.
 
 ## Hostname and VMID references
 
@@ -21,13 +21,12 @@ Active configuration targets `cerebrum.home.arpa`, VM 230:
 | DNS, DHCP and six routed container networks | `provisioning/host_vars/router.yml`, `provisioning/templates/{app_configs,partials}` |
 | Vault admission and shared host configuration | `proxmox/atlas-enroll.py`, `modules/profile/manifests/common/systemd.pp` |
 
-Retain Cognition's DNS/DHCP records, node data, native enrollment admission,
+Retain Cognition's DNS/DHCP records, native enrollment admission,
 and native identity for rollback. Retired provisioning and controller overrides
 remain in Git history. Route deletion commands
 must still name its old next hop. Historical migration records and source
-recovery paths keep their original names. Aperture retains `/export/cognition`
-and matching systemd unit names as stable client interfaces; their NFS server is
-Cerebrum. Tests cover both the retained source and replacement identities.
+recovery paths keep their original names. Aperture now uses `/export/cerebrum`
+and matching systemd unit names. Tests cover the replacement identity.
 
 Resolved controller configurations and copied user projects are additional live
 state: inspect those separately, since changing repository defaults does not
@@ -65,7 +64,7 @@ while preserving unrelated local preferences.
    Converge the weekly controller on `proxmox.home.arpa` before restoring its
    timer. Preserve on-demand workload behavior and absent deploy watchers.
 7. Converge Aperture's authenticated NFS mount to
-   `cerebrum.home.arpa:/docker`, retaining `/export/cognition` as its client path.
+   `cerebrum.home.arpa:/docker`, now using `/export/cerebrum` as its client path.
    Drain active clients and unmount the old server before restarting the mount;
    changing the unit file alone does not migrate an established NFS connection.
 
@@ -113,7 +112,7 @@ edits. Puppet tracks upstream latest, so a guest-only edit will be overwritten.
 Inspect copied application files for remaining old hostname/VMID dependencies
 without printing `.env` contents or secrets.
 
-Repeat the [previous acceptance checks](cognition-migration.md)
+Repeat the [acceptance checks](cerebrum-migration.md)
 against the refreshed inventory: native identities and TLS, Puppet convergence,
 Kerberos NFS, monitoring, backup configuration, Docker/NVIDIA computation, Wolf
 UUID/pairings/encoders, Qdrant collections plus disposable write/read/delete,

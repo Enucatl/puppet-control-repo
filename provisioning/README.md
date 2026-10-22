@@ -221,8 +221,7 @@ Both guests derive the same container pools from their first hostname letter;
 do not activate those networks on both guests.
 See the [completed handover](../docs/archive/migration/cerebrum-cutover.md)
 for rollback and the [acceptance record](../docs/archive/migration/cerebrum-migration.md)
-for measurements. Earlier [Cognition router notes](../docs/archive/migration/cognition-migration.md)
-are historical evidence, not current route commands.
+for measurements.
 
 ### Recovering adguard_users from the router
 

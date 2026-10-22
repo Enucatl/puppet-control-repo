@@ -447,9 +447,8 @@ in place.
 See the [Cerebrum migration record](../docs/archive/migration/cerebrum-migration.md) for current
 acceptance evidence and retained recovery data. Preserve Cognition VM 220 and
 Complex VM 200 for rollback; neither may run conflicting GPU or container
-networks alongside Cerebrum. The
-[completed Complex-to-Cognition record](../docs/archive/migration/cognition-migration.md)
-is historical evidence; its one-time migration tools have been retired.
+networks alongside Cerebrum. The one-time Complex-to-Cognition migration tools
+have been retired.
 
 Aperture VM 310 on `proxmox.home.arpa` uses the desktop role with Atlas IPA,
 Vault, monitoring and Kerberos NFS endpoints. Its catalog creates the user-owned

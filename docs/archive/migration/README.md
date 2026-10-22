@@ -54,7 +54,6 @@ and [Atlas recovery](../../atlas-recovery.md). The reusable
 
 - [Aperture cutover and recovery records](aperture-cutover.md)
 - [Aperture acceptance results](aperture-cutover-results.json)
-- [Cognition cutover, recovery records and retention requirements](cognition-migration.md)
 
 - [Cerebrum XFS migration and acceptance](cerebrum-migration.md)
 - [Cerebrum handover and rollback](cerebrum-cutover.md)

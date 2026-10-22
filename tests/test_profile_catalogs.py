@@ -115,13 +115,32 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     cleanup = result["Augeas[cognition-native-automount]"]
     assert cleanup["context"] == "/files/etc/fstab"
     assert cleanup["changes"] == "rm *[file = '/export/cognition']"
-    native_mount = result["File[/etc/systemd/system/export-cognition.mount]"]["content"]
+    for suffix in ("mount", "automount"):
+        retired = result[f"Service[export-cognition.{suffix}]"]
+        assert retired["ensure"] is False
+        assert retired["enable"] is False
+        assert (
+            result[f"File[/etc/systemd/system/export-cognition.{suffix}]"]["ensure"]
+            == "absent"
+        )
+    native_mount = result["File[/etc/systemd/system/export-cerebrum.mount]"]["content"]
     assert "What=cerebrum.home.arpa:/docker" in native_mount
+    assert "Where=/export/cerebrum" in native_mount
     assert "Type=nfs4" in native_mount
     assert "Options=sec=krb5p,proto=tcp" in native_mount
     assert "TimeoutSec=10s" in native_mount
-    assert "Service[export-cognition.mount]" not in result
-    assert result["Systemd::Unit_file[export-cognition.automount]"]["active"] is True
+    assert "Service[export-cerebrum.mount]" not in result
+    automount = result["File[/etc/systemd/system/export-cerebrum.automount]"]["content"]
+    assert "Where=/export/cerebrum" in automount
+    assert result["Systemd::Unit_file[export-cerebrum.automount]"]["active"] is True
+    assert (
+        "Service[export-cognition.automount]",
+        "Service[export-cognition.mount]",
+    ) in pairs
+    assert (
+        "Service[export-cognition.mount]",
+        "File[/etc/systemd/system/export-cerebrum.mount]",
+    ) in pairs
     for scope in ("all", "default"):
         for setting, value in (
             ("accept_redirects", 0),
@@ -408,7 +427,7 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     ("hostname", "node_type"),
     [
         ("atlas", "docker"),
-        ("cognition", "docker"),
+        ("cerebrum", "docker"),
         ("aperture", "desktop"),
         ("proxmox", "proxmox"),
         ("proxmox-cortex", "proxmox"),

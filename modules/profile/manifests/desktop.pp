@@ -3,8 +3,8 @@ class profile::desktop {
   augeas { 'cognition-native-automount':
     context => '/files/etc/fstab',
     changes => "rm *[file = '/export/cognition']",
-    before  => Systemd::Unit_file['export-cognition.mount'],
-    notify  => Systemd::Daemon_reload['export-cognition.mount'],
+    before  => Systemd::Unit_file['export-cerebrum.mount'],
+    notify  => Systemd::Daemon_reload['export-cerebrum.mount'],
   }
 
   file { '/home/user/Documents':

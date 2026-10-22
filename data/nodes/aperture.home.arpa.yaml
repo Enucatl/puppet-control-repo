@@ -95,34 +95,44 @@ profile::common::sysctl::settings:
   net.ipv6.conf.default.proxy_ndp:
     value: 1
 
-# Keep the client path and unit names stable while the NFS server changes.
 profile::common::systemd::units:
+  export-cognition.automount:
+    ensure: absent
+    enable: false
+    active: false
   export-cognition.mount:
+    ensure: absent
+    enable: false
+    active: false
+    require: Systemd::Unit_file[export-cognition.automount]
+  export-cerebrum.mount:
     content: |
       [Unit]
       Description=Cerebrum Docker share
 
       [Mount]
       What=cerebrum.home.arpa:/docker
-      Where=/export/cognition
+      Where=/export/cerebrum
       Type=nfs4
       Options=sec=krb5p,proto=tcp
       TimeoutSec=10s
-    require: Class[nfs::client]
-  export-cognition.automount:
+    require:
+      - Class[nfs::client]
+      - Systemd::Unit_file[export-cognition.mount]
+  export-cerebrum.automount:
     content: |
       [Unit]
       Description=Mount Cerebrum on demand
 
       [Automount]
-      Where=/export/cognition
+      Where=/export/cerebrum
       TimeoutIdleSec=10min
 
       [Install]
       WantedBy=multi-user.target
     enable: true
     active: true
-    require: Systemd::Unit_file[export-cognition.mount]
+    require: Systemd::Unit_file[export-cerebrum.mount]
   docker-prune.service:
     content: |
       [Unit]

@@ -113,7 +113,7 @@ uv run --frozen pytest -q
 ```
 
 Catalog tests use a temporary Hiera hierarchy, dummy secrets, and representative
-Ubuntu/Debian facts for Atlas, Aperture, Cerebrum, retained Cognition,
+Ubuntu/Debian facts for Atlas, Aperture, Cerebrum,
 proxmox, and proxmox-cortex.
 They compile the real merged class lists and validate dependency graphs, but never
 apply resources or call the production Vault backend. Agent root capability is
