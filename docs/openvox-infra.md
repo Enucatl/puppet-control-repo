@@ -15,11 +15,10 @@ checkout alone does not update installed catalogs or systemd units.
 From the repository root on Atlas:
 
 ```sh
-docker compose up -d --wait openvox vault vault-unsealer
-docker compose --env-file /dev/null -f docker/freeipa/atlas-compose.yaml up -d --wait
+docker compose up -d --wait openvox vault vault-unsealer ipa
 ```
 
-These commands start existing state. The Python initialization commands below
+This command starts existing state. The Python initialization commands below
 are for a new authority, not ordinary startup or restoration. Compose names the
 external volumes explicitly. There are no additional volume-identity markers
 or startup checkpoint checks.
@@ -63,7 +62,7 @@ FreeIPA provisioning uses its [delegated service keytab](freeipa-provisioning.md
 
 ## Persistent state and credentials
 
-Runtime PEM files and recovery inputs live beside Compose, excluded from Git:
+Runtime PEM files and recovery inputs live in service directories, excluded from Git:
 
 | Directory | Contents |
 | --- | --- |
@@ -95,7 +94,7 @@ historical receipts are not runtime dependencies.
 | `infra_ipa_data` | FreeIPA's installed `/data` state |
 
 External volumes survive `docker compose down -v`; backup and restore still
-need their contents and the Compose-adjacent secrets.
+need their contents and the service secrets.
 
 ## Automated Vault and IPA transport renewal
 

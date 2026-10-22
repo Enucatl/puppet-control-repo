@@ -50,6 +50,10 @@ The existing Puppet profiles manage both deployment paths:
 - both services retain `docker compose ps` for diagnostic output
 - waiting applies even when scheduled refresh is disabled, including on `complex`
 
+The shared pull step uses `docker compose pull --ignore-buildable` to refresh
+prebuilt service images. Custom build commands use `build --pull` to refresh
+Dockerfile base images; they keep the default `pull: true`.
+
 The default readiness timeout is 300 seconds. Override it per project through
 the existing Hiera parameters:
 

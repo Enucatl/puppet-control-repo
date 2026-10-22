@@ -40,7 +40,7 @@ the [historical archive](docs/archive/migration/README.md).
 │   ├── freeipa_users/           # Local user management via IPA
 │   └── ...                      # Other custom modules
 ├── docker/                      # Docker Compose stack (runs ON atlas.home.arpa)
-│   ├── docker-compose.yml       # Core services: OpenVox, Vault, APT cache
+│   ├── docker-compose.yml       # Core services: OpenVox, Vault, FreeIPA, APT cache
 │   ├── vault/
 │   │   ├── config/              # Vault server configuration
 │   │   └── scripts/             # Runtime export/unseal and administrative helpers
@@ -64,8 +64,8 @@ the [historical archive](docs/archive/migration/README.md).
 
 ## How the Pieces Relate
 
-Atlas runs OpenVox and Vault through the root `compose.yaml`; FreeIPA has its
-own entrypoint at `docker/freeipa/atlas-compose.yaml`. OpenVox serves catalogs
+Atlas runs OpenVox, Vault and FreeIPA through the root `compose.yaml`, which
+loads `docker/docker-compose.yml`. OpenVox serves catalogs
 at `openvox.home.arpa:8140`, Vault at `https://vault.home.arpa:8200`, and FreeIPA
 at `ipa.home.arpa`. Atlas, Aperture, Cerebrum and the Proxmox hosts consume the
 shared Puppet profiles and Hiera configuration.
@@ -267,7 +267,7 @@ Adjust the IPFIX sampling rate or monitored interfaces if the 24-hour volume, di
 
 ## Vault lifecycle and administration
 
-The root `compose.yaml` selects the production Vault and OpenVox definitions in
+The root `compose.yaml` selects the production Vault, OpenVox and FreeIPA definitions in
 `docker/docker-compose.yml`. Vault uses its pinned image, TLS configuration and
 read-only `docker/vault/secrets/` certificate directory. The unsealer mounts only
 its existing key share and public TLS-key pin. Ordinary startup is:

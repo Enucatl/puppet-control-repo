@@ -23,7 +23,7 @@ It uses CentOS Stream 10 and the distribution's cryptography package for ML-DSA
 keys. A small FreeIPA patch handles seed-only key extraction and public-key
 matching. NSS retains full-chain and hostname validation.
 
-The [Compose file](../docker/freeipa/atlas-compose.yaml) selects the published
+The [Compose file](../docker/docker-compose.yml) selects the published
 image directly, with its native entrypoint. It owns the image pin, install
 options, volume mount, healthcheck and startup instructions. The pinned image
 comes from fork revision `63b0aa68606946268dcaff1e2d1113febada1183`, pinned to
@@ -67,15 +67,21 @@ own clone test. Restoring an already migrated backup uses ordinary Compose.
 
 ## Initial preparation and startup
 
-The one-time preparation command documented in Compose creates the separate
-`pki_freeipa` internal intermediate
+From the repository root, start an established FreeIPA installation with:
+
+```sh
+docker compose --env-file /dev/null up -d --wait ipa
+```
+
+For a fresh installation only, run `sudo python3 proxmox/atlas-freeipa.py initialize`
+before startup. This creates the separate `pki_freeipa` internal intermediate
 under the established Vault-held root. It never exports or resets that root. The
 issuance role permits only `ipa.home.arpa`, using ML-DSA-44, and creates the shared
 HTTP/LDAP certificate. Normal startup does not issue replacement identities.
 
 Preparation writes `fullchain.pem`, `key.pem`, the public CA certificate
 `ca.pem`, private `installer.json` passwords and `ipa-server-install-options`
-under `docker/freeipa/secrets/`, beside Compose and excluded from Git. Compose
+under `docker/freeipa/secrets/`, excluded from Git. Compose
 mounts the certificate inputs and protected options file alongside the persistent
 `infra_ipa_data` volume. Existing installations and restored volumes use native
 FreeIPA startup, without custom entrypoints, readiness checkpoints or volume

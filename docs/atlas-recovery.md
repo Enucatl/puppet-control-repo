@@ -16,8 +16,7 @@ use ordinary startup.
 From the restored repository, start the established authorities with:
 
 ```sh
-docker compose up -d --wait openvox vault vault-unsealer
-docker compose --env-file /dev/null -f docker/freeipa/atlas-compose.yaml up -d --wait
+docker compose up -d --wait openvox vault vault-unsealer ipa
 ```
 
 Resume the native Atlas Puppet agent for its normal certificate renewal and
@@ -27,7 +26,7 @@ Canonical credentials and certificate PEMs live in
 `/opt/docker/puppet-control-repo/docker/{vault,freeipa}/secrets/`. They are
 excluded from Git and must be present in backups along with Docker's persistent
 volumes. See [service configuration](atlas-services.md),
-[FreeIPA startup](../docker/freeipa/atlas-compose.yaml) and
+[FreeIPA startup](../docker/docker-compose.yml) and
 [authority configuration](openvox-infra.md).
 
 The existing weekly `vault-snapshot.timer` remains enabled: Monday at 01:00 UTC.

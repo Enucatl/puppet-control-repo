@@ -7,7 +7,7 @@
 #   ensure        - 'present' or 'absent' (default: 'present')
 #   branch        - Git branch to watch (default: 'main')
 #   run_as        - User that runs docker compose (default: 'user')
-#   pull          - Pull updated images before starting (default: true)
+#   pull          - Pull updated non-buildable images before starting (default: true)
 #   build_command - Custom build command run after pull and before deploy
 #                   (wrapped in bash -c '...'); omit for image-only projects
 #   deploy_command - Custom deploy command run after pull/build
@@ -65,7 +65,7 @@ define profile::docker_deploy (
   $compose_cmd  = "/usr/bin/docker compose${envfile_flag}${file_flag}"
 
   # Assemble ExecStart lines in order: pull -> custom build -> deploy
-  $pull_exec       = $pull          ? { true  => ["ExecStart=${compose_cmd} pull"], default => [] }
+  $pull_exec       = $pull          ? { true  => ["ExecStart=${compose_cmd} pull --ignore-buildable"], default => [] }
   $build_exec      = $build_command ? { undef => [],                                default => ["ExecStart=/bin/bash -c '${build_command}'"] }
   $deploy_exec     = $deploy_command ? {
     undef   => ["ExecStart=${compose_cmd} up --force-recreate --wait --wait-timeout ${wait_timeout}"],

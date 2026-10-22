@@ -304,6 +304,15 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         assert result[f"Systemd::Unit_file[{stack}-refresh.timer]"]["active"] is True
         unit = result[f"File[/etc/systemd/system/{stack}-deploy.service]"]["content"]
         assert "atlas-compose.json" not in unit
+        for action in ("deploy", "refresh"):
+            service = result[f"File[/etc/systemd/system/{stack}-{action}.service]"][
+                "content"
+            ]
+            assert (
+                "ExecStart=/usr/bin/docker compose pull --ignore-buildable"
+                in service.splitlines()
+            )
+            assert "docker compose pull --ignore-buildable &&" not in service
     assert (
         "--profile cleanup build"
         in result["File[/etc/systemd/system/paperless-ai-deploy.service]"]["content"]
@@ -311,23 +320,17 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     control_deploy = result[
         "File[/etc/systemd/system/puppet-control-repo-deploy.service]"
     ]["content"]
-    assert "build --pull openvox vault-unsealer apt-cacher-ng wolf" in control_deploy
+    assert "ExecStart=/bin/bash -c 'docker compose build --pull'" in control_deploy
+    assert "build --pull openvox" not in control_deploy
     assert "docker compose pull --ignore-buildable" in control_deploy
-    assert "--wait-timeout 600 &&" in control_deploy
+    assert "--wait-timeout 600" in control_deploy
+    assert (
+        "/run/lock/atlas-openvox-maintenance.lock docker compose up" in control_deploy
+    )
+    assert "/run/lock/atlas-openvox-maintenance.lock /bin/bash" not in control_deploy
     assert "cd /opt/docker/wolf" not in control_deploy
     assert "cd /opt/docker/goflow2" not in control_deploy
-    assert (
-        "cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose pull"
-        in control_deploy
-    )
-    assert (
-        "cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose up"
-        in control_deploy
-    )
-    assert (
-        "cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose build"
-        not in control_deploy
-    )
+    assert "cd docker/freeipa" not in control_deploy
     assert result["Exec[trigger_traefik_reload]"]["subscribe"] == "Vault_cert[atlas]"
     bills_deploy = result["File[/etc/systemd/system/send-bills-deploy.service]"][
         "content"
@@ -669,7 +672,7 @@ def test_docker_deploy_catalog(
         unit = result[f"File[/etc/systemd/system/example-{action}.service]"]["content"]
         starts = [line for line in unit.splitlines() if line.startswith("ExecStart=")]
         assert starts == [
-            f"ExecStart={compose} pull",
+            f"ExecStart={compose} pull --ignore-buildable",
             "ExecStart=/bin/bash -c 'docker compose build'",
             f"ExecStart={compose} up --force-recreate --wait --wait-timeout {timeout}",
         ]

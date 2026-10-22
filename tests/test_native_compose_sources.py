@@ -46,6 +46,7 @@ def test_root_defaults_preserve_native_authorities() -> None:
         "apt-cacher-ng",
         "wolf",
         "goflow2",
+        "ipa",
     }
     services = config["services"]
     assert services["openvox"]["image"] == "infra-openvox:24001"
@@ -126,10 +127,10 @@ def test_infrastructure_wolf_and_flow_preserve_runtime_identity() -> None:
 
 
 def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
-    """Alias the accepted IPA source, including its persistent identity and real check."""
-    config = resolve(ROOT / "docker/freeipa/compose.yaml")
+    """Keep IPA in the shared stack with its persistent identity and real check."""
+    config = resolve(ROOT / "compose.yaml")
     assert config["name"] == "infra"
-    assert set(config["services"]) == {"ipa"}
+    assert "ipa" in config["services"]
     service = config["services"]["ipa"]
     assert re.fullmatch(
         r"ghcr\.io/enucatl/freeipa-server@sha256:[0-9a-f]{64}", service["image"]
@@ -175,7 +176,7 @@ def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
     assert set(service["networks"]) == {"infra", "traefik_proxy"}
     proxy = config["networks"]["traefik_proxy"]
     assert proxy["name"] == "traefik_proxy"
-    assert proxy["external"] is True
+    assert proxy["enable_ipv6"] is True
     assert service["labels"] == {
         "traefik.enable": "true",
         "traefik.docker.network": "traefik_proxy",

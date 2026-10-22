@@ -27,7 +27,7 @@ HOSTNAME = "ipa.home.arpa"
 
 
 def compose(*arguments: str) -> str:
-    """Use only the dedicated IPA deployment and no ambient secrets."""
+    """Read the shared infrastructure configuration without ambient env files."""
     return infra.run(
         infra.DOCKER
         + [
@@ -37,7 +37,7 @@ def compose(*arguments: str) -> str:
             "-p",
             "infra",
             "-f",
-            str(infra.SOURCE / "docker/freeipa/atlas-compose.yaml"),
+            str(infra.SOURCE / "compose.yaml"),
             *arguments,
         ]
     )

@@ -901,40 +901,33 @@ profile::beszel_agent::enable_docker_metrics: true
 profile::docker_host::scheduled_refresh: true
 profile::docker_host::git_deploy_projects:
   ais:
-    pull: false
-    build_command: docker compose pull --ignore-buildable && docker compose build --pull
+    build_command: docker compose build --pull
   airflow:
-    pull: false
-    build_command: docker compose pull --ignore-buildable && docker compose --profile runner build --pull exam download-zanzara
+    build_command: docker compose --profile runner build --pull exam download-zanzara
       cyber-analyst operations-analyst podcast-statistics puppet-release-watch
     deploy_command: docker compose up -d --force-recreate --wait --wait-timeout 300 postgres-outputs
   authelia: {}
   backrest: {}
   barbero-scripts: {}
   beszel:
-    pull: false
-    build_command: docker compose pull --ignore-buildable && docker compose build --pull alerts-init
+    build_command: docker compose build --pull alerts-init
     deploy_command: docker compose up -d --force-recreate --wait --wait-timeout 300 beszel && docker compose run --rm alerts-init
   browser-use:
-    pull: false
-    build_command: docker compose pull --ignore-buildable && docker compose build --pull
+    build_command: docker compose build --pull
   crabberbot:
-    pull: false
-    build_command: docker compose pull --ignore-buildable && YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git
+    build_command: YT_DLP_COMMIT_HASH=$(git ls-remote https://github.com/Enucatl/yt-dlp.git
       refs/heads/master | cut -f1) CARGO_PACKAGE_VERSION=$(git describe --long | sed "s/-/./") docker compose build --pull
   grafana-loki: {}
   kms: {}
   paperless-ai:
-    pull: false
-    build_command: docker compose pull --ignore-buildable && docker compose --profile cleanup build --pull ai webhook-listener
+    build_command: docker compose --profile cleanup build --pull ai webhook-listener
       ai-cleanup cleanup-review
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
   rss-to-telegram-bot: {}
   send-bills:
-    pull: false
-    build_command: docker compose pull --ignore-buildable && VERSION=$(/home/user/.local/bin/uv run --with setuptools-git-versioning setuptools-git-versioning) &&
+    build_command: VERSION=$(/home/user/.local/bin/uv run --with setuptools-git-versioning setuptools-git-versioning) &&
       docker compose build --pull --build-arg VERSION="$$VERSION"
   teamspeak: {}
   tor-i2pd: {}
@@ -942,12 +935,8 @@ profile::docker_host::git_deploy_projects:
   puppet-control-repo:
     branch: production
     run_as: root
-    pull: false
     watch_dir: docker
-    build_command: >-
-      docker compose pull --ignore-buildable && docker compose build --pull openvox vault-unsealer apt-cacher-ng wolf &&
-      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose pull)
+    build_command: docker compose build --pull
     deploy_command: >-
-      /usr/bin/flock -w 300 /run/lock/atlas-openvox-maintenance.lock /bin/bash -c
-      "docker compose up -d --no-build --pull never --wait --wait-timeout 600 &&
-      (cd docker/freeipa && env -u COMPOSE_ENV_FILES docker compose up -d --pull never --wait --wait-timeout 300)"
+      /usr/bin/flock -w 300 /run/lock/atlas-openvox-maintenance.lock
+      docker compose up -d --no-build --pull never --wait --wait-timeout 600
