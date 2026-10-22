@@ -313,10 +313,21 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
                 in service.splitlines()
             )
             assert "docker compose pull --ignore-buildable &&" not in service
-    assert (
-        "--profile cleanup build"
-        in result["File[/etc/systemd/system/paperless-ai-deploy.service]"]["content"]
-    )
+    for stack, command in (
+        ("airflow", "docker compose --profile runner build --pull"),
+        ("paperless-ai", "docker compose --profile cleanup build --pull"),
+        ("beszel", "docker compose build --pull"),
+    ):
+        for action in ("deploy", "refresh"):
+            unit = result[f"File[/etc/systemd/system/{stack}-{action}.service]"][
+                "content"
+            ]
+            assert f"ExecStart=/bin/bash -c '{command}'" in unit.splitlines()
+            if stack == "airflow":
+                assert (
+                    "ExecStart=/usr/bin/docker compose up --force-recreate "
+                    "--wait --wait-timeout 300"
+                ) in unit.splitlines()
     control_deploy = result[
         "File[/etc/systemd/system/puppet-control-repo-deploy.service]"
     ]["content"]
@@ -480,8 +491,7 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
                 "content"
             ]
             assert (
-                "ExecStart=/bin/bash -c 'docker compose up -d --force-recreate "
-                "--wait --wait-timeout 300 beszel && docker compose run --rm alerts-init'"
+                "ExecStart=/bin/bash -c 'docker compose up -d --force-recreate'"
                 in unit.splitlines()
             )
     if docker_role:

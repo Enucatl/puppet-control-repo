@@ -72,17 +72,18 @@ configured; services without health checks receive only a running-state check.
 
 `deploy_command` remains an unchanged shell-command override. It must implement
 its own waiting, timeout, and setup-job handling; `wait_timeout` does not modify
-custom commands. For example, Beszel waits for its server before running setup:
+custom commands. Beszel uses detached startup for the whole stack; its
+`alerts-init` service waits for a healthy server through `depends_on`, then exits:
 
 ```yaml
 profile::docker_host::git_deploy_projects:
   beszel:
-    build_command: "docker compose build alerts-init"
-    deploy_command: "docker compose up -d --force-recreate --wait --wait-timeout 300 beszel && docker compose run --rm alerts-init"
+    build_command: "docker compose build --pull"
+    deploy_command: "docker compose up -d --force-recreate"
 ```
 
-The `&&` preserves readiness and setup failures in the systemd result. Backrest
-and qBittorrent keep their existing `service_completed_successfully` dependencies:
+Beszel deployment does not wait for readiness or report setup-job failures.
+Backrest and qBittorrent keep their existing `service_completed_successfully` dependencies:
 Compose accepts these one-shot jobs only when they exit zero during native waiting
 ([Compose implementation](https://raw.githubusercontent.com/docker/compose/v5.5.1/pkg/compose/start.go)).
 Profile-gated maintenance and setup jobs remain excluded from normal deployment;

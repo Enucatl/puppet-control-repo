@@ -903,15 +903,13 @@ profile::docker_host::git_deploy_projects:
   ais:
     build_command: docker compose build --pull
   airflow:
-    build_command: docker compose --profile runner build --pull exam download-zanzara
-      cyber-analyst operations-analyst podcast-statistics puppet-release-watch
-    deploy_command: docker compose up -d --force-recreate --wait --wait-timeout 300 postgres-outputs
+    build_command: docker compose --profile runner build --pull
   authelia: {}
   backrest: {}
   barbero-scripts: {}
   beszel:
-    build_command: docker compose build --pull alerts-init
-    deploy_command: docker compose up -d --force-recreate --wait --wait-timeout 300 beszel && docker compose run --rm alerts-init
+    build_command: docker compose build --pull
+    deploy_command: docker compose up -d --force-recreate
   browser-use:
     build_command: docker compose build --pull
   crabberbot:
@@ -920,8 +918,7 @@ profile::docker_host::git_deploy_projects:
   grafana-loki: {}
   kms: {}
   paperless-ai:
-    build_command: docker compose --profile cleanup build --pull ai webhook-listener
-      ai-cleanup cleanup-review
+    build_command: docker compose --profile cleanup build --pull
   protonmail-bridge: {}
   qbittorrent: {}
   rclone: {}
