@@ -83,7 +83,7 @@ Package builds, patches and release instructions live in
 artifact directory or manual package copying is required. Ubuntu 26.04 and
 Debian 13 use the signed [native-client-2-1 release](https://github.com/Enucatl/openvox-packages/releases/tag/native-client-2-1).
 Ubuntu 24.04 retains its existing OpenVox installation path and is outside this
-native-client backport matrix. The OpenVox agent remains the accepted 24001
+native-client backport matrix. The OpenVox agent uses the accepted 28001
 build; the companion archive does not replace the server image.
 Fresh and repeated shared-installer runs passed in isolated Ubuntu 26.04 and
 Debian 13 containers, using both public signed repositories, the exact package
@@ -98,11 +98,18 @@ hostname verification remain enabled. Puppet still installs and enrolls the IPA
 client. An explicitly incomplete installation is recovered only after its
 configured identity matches Atlas.
 
-Documented helper runs and scheduled agent runs preload `openvox-child-policy.rb`: Puppet
-initializes its accepted strict TLS and key-writing policy, then gives spawned
-commands the operating system's TLS policy. This lets APT and public downloads
-work without changing Puppet's initialized TLS contexts. Atlas's managed
-systemd drop-in retains the same preload for scheduled runs.
+Agent installs use `resolute-28001`, including native seed-only ML-DSA key writing
+([source commit 0abc7dda4c](https://github.com/Enucatl/openvox/commit/0abc7dda4c)).
+Helpers and scheduled runs use the packaged Puppet command without a Ruby preload
+or `OPENSSL_CONF` override. Encrypted private-key passwords are limited to 1,023
+bytes and must not contain NUL, CR or LF.
+
+Upgrade existing agents with `proxmox/install-openvox.sh` before using the updated
+enrollment helpers. The installer verifies build 28001 before deleting the legacy
+`puppet-crypto.conf`, `openvox-child-policy.rb` and agent `openssl.cnf`, then reloads
+systemd. It leaves Puppet masked until authenticated enrollment or `--apply`.
+The three migrated node catalogs also remove these files once the installed agent
+is build 28001 or newer; older agents keep their existing compatibility files.
 
 The script checks enrollment state, installs authenticated public CA trust, runs
 the shared package installer, configures scoped ML-DSA-44

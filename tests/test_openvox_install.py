@@ -42,10 +42,18 @@ def test_native_install_pins_supported_signed_package(
         f'ID={distribution}\nVERSION_ID="{version}"\n'
     )
     (directory / "apt/sources.list.d").mkdir(parents=True)
+    legacy = [
+        directory / "systemd/system/puppet.service.d/puppet-crypto.conf",
+        tmp_path / "libexec/openvox-child-policy.rb",
+        directory / "puppetlabs/puppet/openssl.cnf",
+    ]
+    for path in legacy:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("legacy policy\n")
     commands = tmp_path / "commands"
     binaries = tmp_path / "bin"
     binaries.mkdir()
-    versions = {"openvox-agent": f"9.1.0+homelab.24001-1+{target}"}
+    versions = {"openvox-agent": f"9.1.0+homelab.28001-1+{target}"}
     if target in {"ubuntu26.04", "debian13"}:
         curl_version, ipa_version = (
             ("8.18.0-1ubuntu2.8", "4.13.1-1")
@@ -110,7 +118,7 @@ def test_native_install_pins_supported_signed_package(
         assert not (directory / "apt/sources.list.d/openvox-homelab.list").exists()
     else:
         assert (
-            f"apt-get install -y openvox-agent=9.1.0+homelab.24001-1+{target}" in calls
+            f"apt-get install -y openvox-agent=9.1.0+homelab.28001-1+{target}" in calls
         )
         if target in {"ubuntu26.04", "debian13"}:
             assert f"native-client-2-1/native-client-{target}.pref" in calls
@@ -125,21 +133,11 @@ def test_native_install_pins_supported_signed_package(
                 directory / "apt/sources.list.d/openvox-native-client.list"
             ).exists()
         assert "--allow-downgrades" not in calls
-        assert f"resolute-24001/{target}.pref" in calls
+        assert f"resolute-28001/{target}.pref" in calls
         source = (directory / "apt/sources.list.d/openvox-homelab.list").read_text()
         assert "signed-by=" in source
+        assert all(path.exists() != accepted for path in legacy)
         if accepted:
-            shim = (tmp_path / "libexec/openvox-child-policy.rb").read_text()
-            assert shim == (
-                ROOT / "modules/profile/files/openvox-child-policy.rb"
-            ).read_text().replace("/etc/", str(directory) + "/")
-            dropin = (
-                directory / "systemd/system/puppet.service.d/puppet-crypto.conf"
-            ).read_text()
-            assert f"-r {tmp_path / 'libexec/openvox-child-policy.rb'}" in dropin
             assert "key_type mldsa44 --section agent" in calls
             assert "systemctl unmask" not in calls
-            assert (
-                "Groups = X25519MLKEM768"
-                in (directory / "puppetlabs/puppet/openssl.cnf").read_text()
-            )
+            assert "systemctl daemon-reload" in calls

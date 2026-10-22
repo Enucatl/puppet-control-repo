@@ -80,7 +80,7 @@ guest_exec "$VMID" bash -c '
 jq -n --arg url "$IMAGE_URL" --arg checksum "$IMAGE_SHA256" \
     --arg revision "${CONTROL_REVISION:-$(git -C "$SCRIPT_DIR" rev-parse HEAD)}" --argjson vmid "$VMID" \
     '{vmid:$vmid, image_url:$url, image_sha256:$checksum, control_revision:$revision,
-      openvox_release:"resolute-24001", openvox_agent:"9.1.0+homelab.24001-1+ubuntu26.04"}' \
+      openvox_release:"resolute-28001", openvox_agent:"9.1.0+homelab.28001-1+ubuntu26.04"}' \
     > "$LOG_DIR/template-$VMID-provenance.json"
 sha256sum "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/*.tmpl > "$LOG_DIR/template-$VMID-sources.sha256"
 guest_exec "$VMID" bash -c '

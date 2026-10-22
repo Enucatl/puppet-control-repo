@@ -9,8 +9,8 @@ case "$ID:$VERSION_ID:$(dpkg --print-architecture)" in
   debian:13:amd64) target=debian13 ;;
   *) echo 'No accepted OpenVox package for this OS/architecture; refusing installation.' >&2; exit 1 ;;
 esac
-release=https://github.com/Enucatl/openvox-packages/releases/download/resolute-24001
-version="9.1.0+homelab.24001-1+$target"
+release=https://github.com/Enucatl/openvox-packages/releases/download/resolute-28001
+version="9.1.0+homelab.28001-1+$target"
 packages=("openvox-agent=$version")
 native_release=https://github.com/Enucatl/openvox-packages/releases/download/native-client-2-1
 case "$target" in
@@ -59,59 +59,24 @@ for specification in "${packages[@]}"; do
     echo "Installed $package version differs from accepted package." >&2; exit 1;
   }
 done
-install -d -m 0755 /etc/puppetlabs/puppet /etc/systemd/system/puppet.service.d
-cat > /etc/puppetlabs/puppet/openssl.cnf <<'POLICY'
-config_diagnostics = 1
-openssl_conf = openvox_init
-[openvox_init]
-providers = openvox_providers
-ssl_conf = openvox_ssl
-[openvox_providers]
-default = openvox_default
-base = openvox_base
-[openvox_default]
-activate = 1
-ml-dsa = openvox_mldsa
-[openvox_base]
-activate = 1
-ml-dsa = openvox_mldsa
-[openvox_mldsa]
-retain_seed = yes
-prefer_seed = yes
-output_formats = seed-only
-[openvox_ssl]
-system_default = openvox_tls
-[openvox_tls]
-MinProtocol = TLSv1.3
-MaxProtocol = TLSv1.3
-Protocol = -ALL,+TLSv1.3
-Groups = X25519MLKEM768
-POLICY
-install -d -m 0755 /usr/local/libexec
-cat > /usr/local/libexec/openvox-child-policy.rb <<'RUBY'
-# Initialize Puppet/Vault TLS before giving subprocesses the system TLS policy.
-ENV['OPENSSL_CONF'] = '/etc/puppetlabs/puppet/openssl.cnf'
-require 'openssl'
-OpenSSL::SSL::SSLContext.new
-ENV['OPENSSL_CONF'] = '/etc/ssl/openssl.cnf'
-RUBY
-chmod 0644 /usr/local/libexec/openvox-child-policy.rb
-cat > /etc/systemd/system/puppet.service.d/puppet-crypto.conf <<'POLICY'
-[Service]
-Environment=OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
-ExecStart=
-ExecStart=/opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb /opt/puppetlabs/puppet/bin/puppet agent $PUPPET_EXTRA_OPTS --no-daemonize
-POLICY
-export OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
+# Remove the compatibility policy only after the native package is verified.
+rm -f /etc/systemd/system/puppet.service.d/puppet-crypto.conf \
+  /usr/local/libexec/openvox-child-policy.rb /etc/puppetlabs/puppet/openssl.cnf
 /opt/puppetlabs/bin/puppet config set key_type mldsa44 --section main
 /opt/puppetlabs/bin/puppet config set key_type mldsa44 --section agent
 [[ $(/opt/puppetlabs/bin/puppet config print key_type --section agent) == mldsa44 ]]
-/opt/puppetlabs/puppet/bin/ruby -ropenssl -e '
+/opt/puppetlabs/puppet/bin/ruby -rpuppet -rtmpdir -e '
   abort "OpenSSL 3.5+ required" if OpenSSL::OPENSSL_VERSION_NUMBER < 0x30500000
   key = OpenSSL::PKey.generate_key("ML-DSA-44")
   abort "ML-DSA signing failed" unless key.verify(nil, key.sign(nil, "installation-check"), "installation-check")
-  payload = OpenSSL::ASN1.decode(OpenSSL::ASN1.decode(key.private_to_der).value[2].value)
-  abort "ML-DSA seed-only writer required" unless payload.tag == 0 && payload.tag_class == :CONTEXT_SPECIFIC && payload.value.bytesize == 32
+  Puppet.initialize_settings
+  Dir.mktmpdir do |directory|
+    provider = Puppet::X509::CertProvider.new(privatekeydir: directory, hostprivkey: nil)
+    provider.save_private_key("installation-check", key)
+    encoded = File.read(File.join(directory, "installation-check.pem")).lines[1..-2].join.unpack1("m")
+    payload = OpenSSL::ASN1.decode(OpenSSL::ASN1.decode(encoded).value[2].value)
+    abort "ML-DSA seed-only writer required" unless payload.tag == 0 && payload.tag_class == :CONTEXT_SPECIFIC && payload.value.bytesize == 32
+  end
 '
 systemctl daemon-reload
 echo "Installed accepted OpenVox $version; service remains masked pending authenticated enrollment."

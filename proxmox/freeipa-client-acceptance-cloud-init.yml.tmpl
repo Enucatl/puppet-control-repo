@@ -18,8 +18,6 @@ write_files:
       NODE_TYPE="${3:?node type required}"
       PUPPET_SERVER="${4:?server required}"
       systemctl stop puppet
-      export OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
-      test -s "$OPENSSL_CONF"
       test -s /etc/puppetlabs/puppet/ssl/certs/ca.pem || { echo 'Install authenticated OpenVox CA trust before enrollment.' >&2; exit 1; }
       /opt/puppetlabs/bin/puppet config set key_type mldsa44 --section main
       /opt/puppetlabs/bin/puppet config set key_type mldsa44 --section agent
@@ -46,8 +44,7 @@ write_files:
       # The acceptance runner performs the authoritative Puppet run after
       # cloud-init.  Do not discard the VM's diagnostics if this bootstrap
       # catalog is temporarily unavailable.
-      /opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb \
-        /opt/puppetlabs/puppet/bin/puppet agent --test --waitforlock 300 || true
+      /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || true
 
   - path: /etc/cloud/cloud.cfg.d/99-hostname.cfg
     permissions: '0644'

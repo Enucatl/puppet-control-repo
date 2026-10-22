@@ -24,6 +24,58 @@ DUMMY_SECRETS = {
 }
 
 
+def test_native_crypto_cleanup_waits_for_package_upgrade(tmp_path: Path) -> None:
+    """Preserve old agents and remove compatibility files once after upgrading."""
+    catalog = compile_catalog(
+        tmp_path / "catalog",
+        "lookup('classes', Array[String]).include",
+        DUMMY_SECRETS,
+        hostname="atlas",
+    )
+    cleanup = resources(catalog)["Exec[remove-openvox-crypto-workaround]"]
+    assert cleanup["notify"] == "Systemd::Daemon_reload[openvox-native-crypto]"
+    production_paths = [
+        "/etc/systemd/system/puppet.service.d/puppet-crypto.conf",
+        "/usr/local/libexec/openvox-child-policy.rb",
+        "/etc/puppetlabs/puppet/openssl.cnf",
+    ]
+    paths = [tmp_path / str(index) for index in range(len(production_paths))]
+    query = tmp_path / "dpkg-query"
+    guards = cleanup["onlyif"]
+    command = cleanup["command"]
+    for production_path, path in zip(production_paths, paths):
+        guards = [guard.replace(production_path, str(path)) for guard in guards]
+        command = command.replace(production_path, str(path))
+    guards = [guard.replace("/usr/bin/dpkg-query", str(query)) for guard in guards]
+    assert all(production_path not in command for production_path in production_paths)
+    for version, upgraded in [
+        ("9.1.0+homelab.24001-1+ubuntu26.04", False),
+        ("9.1.0+homelab.28001-1+ubuntu26.04", True),
+        ("9.1.0+homelab.29001-1+ubuntu26.04", True),
+        ("", False),
+    ]:
+        query.write_text(
+            "#!/bin/sh\n"
+            + (f"printf '%s' {shlex.quote(version)}\n" if version else "exit 1\n")
+        )
+        query.chmod(0o755)
+        for path in paths:
+            path.write_text("compatibility policy\n")
+        should_run = all(
+            subprocess.run(guard, shell=True, capture_output=True).returncode == 0
+            for guard in guards
+        )
+        assert should_run == upgraded
+        if should_run:
+            subprocess.run(command, shell=True, check=True)
+        assert all(path.exists() for path in paths) == (not upgraded)
+        if upgraded:
+            assert not all(
+                subprocess.run(guard, shell=True, capture_output=True).returncode == 0
+                for guard in guards
+            )
+
+
 def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     """Prepare the new desktop with native Atlas identity, storage and TLS."""
     catalog = compile_catalog(
@@ -64,14 +116,8 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
         and parameters.get("device") == "/home/user/Documents"
     )
     assert ("File[/home/user/Documents]", documents_mount) in pairs
-    shim = result["File[/usr/local/libexec/openvox-child-policy.rb]"]
-    assert shim["source"] == "puppet:///modules/profile/openvox-child-policy.rb"
-    assert shim["mode"] == "0644"
-    crypto = result["File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]"][
-        "content"
-    ]
-    assert "-r /usr/local/libexec/openvox-child-policy.rb" in crypto
-    assert "OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf" in crypto
+    assert "Exec[remove-openvox-crypto-workaround]" in result
+    assert "File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]" not in result
     enrollment = result["Freeipa_client_enrollment[default]"]
     assert enrollment["server"] == "ipa.home.arpa"
     assert enrollment["hostname"] == "aperture.home.arpa"
@@ -202,14 +248,8 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
     assert "ProxyCommand none\n" in ssh_config
     assert "KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H\n" in ssh_config
     assert "sss_ssh_knownhostsproxy" not in ssh_config
-    shim = result["File[/usr/local/libexec/openvox-child-policy.rb]"]
-    assert shim["source"] == "puppet:///modules/profile/openvox-child-policy.rb"
-    assert shim["mode"] == "0644"
-    crypto = result["File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]"][
-        "content"
-    ]
-    assert "-r /usr/local/libexec/openvox-child-policy.rb" in crypto
-    assert "OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf" in crypto
+    assert "Exec[remove-openvox-crypto-workaround]" in result
+    assert "File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]" not in result
     assert result["File[/etc/apt/keyrings/grafana-alloy-archive-keyring.asc]"][
         "source"
     ] == ("puppet:///modules/profile/grafana-signing-key.asc")
@@ -450,10 +490,11 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
         "/usr/local/share/ca-certificates/atlas-infrastructure.crt"
     )
     migrated = node_type != "proxmox"
-    assert ("File[/usr/local/libexec/openvox-child-policy.rb]" in result) == migrated
+    assert ("Exec[remove-openvox-crypto-workaround]" in result) == migrated
+    assert "File[/usr/local/libexec/openvox-child-policy.rb]" not in result
     assert (
         "File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]" in result
-    ) == migrated
+    ) is False
     if node_type in {"docker", "desktop"}:
         ssh_config = result["Concat::Fragment[ssh_config global config]"]["content"]
         assert "ProxyCommand none\n" in ssh_config

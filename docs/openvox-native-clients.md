@@ -37,7 +37,7 @@ explicitly migrate them before enrolling against a different authority.
 
 The installer verifies fingerprint
 `775661C709ACE6F7C1CF0FF6C4B7528F03E0BB94`, scopes `Signed-By`, installs the
-matching OS preferences and selects an exact 24001 package version. Unsupported
+matching OS preferences and selects an exact 28001 package version. Unsupported
 OS/architecture combinations fail before package/service changes. Repeat
 platform acceptance and replace preferences when changing OS; retain the
 matching rollback artifacts independently.

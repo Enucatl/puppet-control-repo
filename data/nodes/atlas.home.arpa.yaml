@@ -169,21 +169,12 @@ profile::common::certs::vault_certs:
     key_group: 100000
     key_mode: '0400'
 
-# Keep the daemon on the same strict parent / system child policy as manual runs.
 systemd::dropin_files:
   scratch.conf:
     unit: docker.service
     content: |
       [Unit]
       RequiresMountsFor=/scratch
-  puppet-crypto.conf:
-    unit: puppet.service
-    content: |
-      [Service]
-      Environment=OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
-      ExecStart=
-      ExecStart=/opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb /opt/puppetlabs/puppet/bin/puppet agent $PUPPET_EXTRA_OPTS --no-daemonize
-    require: File[/usr/local/libexec/openvox-child-policy.rb]
 
 profile::common::acls::posix_acls:
   "/opt/docker/traefik/data/certs":

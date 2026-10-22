@@ -22,8 +22,7 @@ apply_catalog() {
   systemctl enable puppet
   /opt/puppetlabs/bin/puppet resource service puppet enable=true
   local puppet_status=0
-  /opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb \
-    /opt/puppetlabs/puppet/bin/puppet agent --test --waitforlock 300 || puppet_status=$?
+  /opt/puppetlabs/bin/puppet agent --test --waitforlock 300 || puppet_status=$?
   case "$puppet_status" in
     0|2) ;;
     *) return "$puppet_status" ;;
@@ -38,8 +37,6 @@ if [[ ${1:-} == --preflight ]]; then
 fi
 
 if [[ ${1:-} == --apply ]]; then
-  export OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
-  test -s "$OPENSSL_CONF"
   [[ $(/opt/puppetlabs/bin/puppet config print certname --section agent) == "${2:?certname required}" &&
      $(/opt/puppetlabs/bin/puppet config print server --section agent) == "${3:?server required}" ]]
   test -s "$(/opt/puppetlabs/bin/puppet config print hostcert --section agent)"
@@ -58,8 +55,6 @@ fi
 CERTNAME="${3:?certname required}"
 PUPPET_SERVER="${4:-docker.home.arpa}"
 
-export OPENSSL_CONF=/etc/puppetlabs/puppet/openssl.cnf
-test -s "$OPENSSL_CONF"
 # The new trust bundle is supplied through authenticated provisioning/restore.
 test -s /etc/puppetlabs/puppet/ssl/certs/ca.pem || {
   echo 'Install authenticated OpenVox CA trust before enrollment.' >&2; exit 1;

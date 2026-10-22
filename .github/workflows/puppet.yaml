@@ -88,8 +88,8 @@ jobs:
         run: ln -s "$GITHUB_WORKSPACE/.ci-compose-baseline" "$GITHUB_WORKSPACE/../compose-security-baseline"
       - name: Install the accepted Ubuntu 24.04 OpenVox test runtime
         env:
-          OPENVOX_RELEASE_URL: https://github.com/Enucatl/openvox-packages/releases/download/resolute-24001
-          OPENVOX_AGENT_VERSION: 9.1.0+homelab.24001-1+ubuntu24.04
+          OPENVOX_RELEASE_URL: https://github.com/Enucatl/openvox-packages/releases/download/resolute-28001
+          OPENVOX_AGENT_VERSION: 9.1.0+homelab.28001-1+ubuntu24.04
         run: |
           test "$(. /etc/os-release; printf '%s' "$VERSION_ID")" = 24.04
           test "$(dpkg --print-architecture)" = amd64

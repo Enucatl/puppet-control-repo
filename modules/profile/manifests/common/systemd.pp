@@ -3,19 +3,16 @@ class profile::common::systemd (
   Hash $user_services = {},
 ) {
   if $trusted['certname'] in ['atlas.home.arpa', 'aperture.home.arpa', 'cerebrum.home.arpa'] {
-    file { '/usr/local/libexec':
-      ensure => directory,
-      owner  => 'root',
-      group  => 'root',
-      mode   => '0755',
+    # Old agents still need the compatibility files until their package upgrade.
+    exec { 'remove-openvox-crypto-workaround':
+      command => '/bin/rm -f /etc/systemd/system/puppet.service.d/puppet-crypto.conf /usr/local/libexec/openvox-child-policy.rb /etc/puppetlabs/puppet/openssl.cnf',
+      onlyif  => [
+        '/usr/bin/dpkg --compare-versions "$(/usr/bin/dpkg-query -W -f=\'${Version}\' openvox-agent)" ge 9.1.0+homelab.28001-1',
+        '/usr/bin/test -e /etc/systemd/system/puppet.service.d/puppet-crypto.conf -o -e /usr/local/libexec/openvox-child-policy.rb -o -e /etc/puppetlabs/puppet/openssl.cnf',
+      ],
+      notify  => Systemd::Daemon_reload['openvox-native-crypto'],
     }
-    file { '/usr/local/libexec/openvox-child-policy.rb':
-      ensure => file,
-      source => 'puppet:///modules/profile/openvox-child-policy.rb',
-      owner  => 'root',
-      group  => 'root',
-      mode   => '0644',
-    }
+    systemd::daemon_reload { 'openvox-native-crypto': }
   }
 
   $units.each |String $unit_name, Hash $config| {

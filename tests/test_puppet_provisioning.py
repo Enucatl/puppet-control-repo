@@ -352,9 +352,6 @@ def test_rendered_enrollment_configures_exact_identity(
         "/opt/puppetlabs/puppet/bin/puppet", str(tmp_path / "bin" / "puppet")
     )
     script = script.replace("/opt/puppetlabs/puppet/bin/ruby", shutil.which("ruby"))
-    preload = tmp_path / "child-policy.rb"
-    preload.write_text("# TLS initialization has its own focused checks.\n")
-    script = script.replace("/usr/local/libexec/openvox-child-policy.rb", str(preload))
     for command in ["puppet", "systemctl"]:
         executable = (
             tmp_path / command if command == "systemctl" else tmp_path / "bin" / command
@@ -373,7 +370,6 @@ def test_rendered_enrollment_configures_exact_identity(
             )
         executable.chmod(0o755)
     (tmp_path / "puppet").mkdir()
-    (tmp_path / "puppet" / "openssl.cnf").write_text("# installed policy\n")
     (tmp_path / "puppet" / "ssl/certs").mkdir(parents=True)
     (tmp_path / "puppet" / "ssl/certs/ca.pem").write_text("# authenticated trust\n")
     subprocess.run(["bash", "-n"], input=script, text=True, check=True)
@@ -604,7 +600,6 @@ def test_enrollment_refuses_existing_rsa_before_unmasking(
     puppet = tmp_path / "puppet"
     (puppet / "ssl/certs").mkdir(parents=True)
     (puppet / "ssl/certs/ca.pem").write_text("authenticated trust")
-    (puppet / "openssl.cnf").write_text("# installed policy\n")
     script = script.replace("/etc/puppetlabs/puppet", str(puppet)).replace(
         "/etc/facter/facts.d", str(tmp_path / "facts")
     )
