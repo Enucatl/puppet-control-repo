@@ -171,7 +171,8 @@ The current template routes `a000::/56` and `a100::/64` through Atlas, and
 The delete partial removes the previous next hops before installing these
 routes. Review `show configuration commands | match 'a[0123]00'` before applying:
 any retained previous ISP prefixes need the same next-hop replacement while
-preserving their prefixes. The Cognition `c000`/`c100` routes remain on `eth3`.
+preserving their prefixes. The Cerebrum `c000`/`c100` routes use `eth3`; their
+handover from Cognition is coordinated separately below.
 
 Router logs use verified HTTPS to `loki.atlas.home.arpa`. Alloy is pinned to
 v1.21.0, built with Go 1.27.2 and native ML-DSA TLS support. The deployment copies
@@ -211,9 +212,17 @@ is not confirmed complete in Loki and the archive has not been replayed.
 
 ### Cerebrum cutover
 
-The replacement targets Cerebrum VM 230, with both six-route handover and
-rollback documented in [Cerebrum handover](../docs/cerebrum-cutover.md).
-The Cognition record below remains historical recovery evidence.
+The replacement targets `cerebrum.home.arpa`, VM 230, at `10.0.40.135`, MAC
+`bc:24:11:4e:c0:23` and ULA `fd6b:d722:1738:28:be24:11ff:fe4e:c023`.
+The route templates select `cerebrum_node_ipv6_suffix`, giving next hop
+`fe80::be24:11ff:fe4e:c023` on `eth3`. Move all six existing routes, including
+the retained ISP prefix, only during the coordinated workload/GPU handover.
+Both guests derive the same container pools from their first hostname letter;
+do not activate those networks on both guests.
+See [Cerebrum handover](../docs/cerebrum-cutover.md) for the exact transaction
+and rollback, and the [migration record](../docs/cerebrum-migration.md) for
+execution status. The Cognition record below remains historical recovery
+evidence; do not replay its Complex-to-Cognition commands for this cutover.
 
 ### Cognition cutover record
 

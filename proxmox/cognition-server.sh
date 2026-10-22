@@ -1,5 +1,7 @@
 #!/bin/bash
 set -euo pipefail
+# Retained source provisioning reference; production uses cerebrum-server.sh.
+# Do not rebuild VM 220 while it is retained for rollback.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Preserve Complex's container ownership when copying its persistent state.
 export DOCKER_USERNS_REMAP=""

@@ -5,6 +5,32 @@ Cognition VM 220 and Complex VM 200 remain intact for rollback. Complete XFS
 template, identity, storage and initial-copy validation before this handover.
 Keep Cognition's node data and DNS records available for recovery.
 
+## Hostname and VMID references
+
+Active configuration targets `cerebrum.home.arpa`, VM 230:
+
+| Dependency | Repository location |
+| --- | --- |
+| Provisioning and native host identity | `proxmox/cerebrum-server.sh`, `data/nodes/cerebrum.home.arpa.yaml`, `data/roles/nodes/cerebrum.home.arpa.yaml` |
+| Wolf controller and token ACL | `docker/docker-compose.yml`, `docker/wolf/app/wolf.py`, `docker/wolf/scripts/10-proxmox-token.py`, `docker/wolf/cerebrum-controller.yml` |
+| Weekly vLLM orchestration | `data/nodes/proxmox.home.arpa.yaml`, `modules/proxmox_workflows/{files/vllm_weekly_window.py,manifests/vllm_weekly_window.pp}` |
+| Authenticated NFS server | `data/nodes/aperture.home.arpa.yaml` |
+| DNS, DHCP and six routed container networks | `provisioning/host_vars/router.yml`, `provisioning/templates/{app_configs,partials}` |
+| Vault admission and shared host configuration | `proxmox/atlas-enroll.py`, `modules/profile/manifests/common/systemd.pp` |
+
+Retain Cognition's DNS/DHCP records, node data, native enrollment admission,
+provisioning reference and rollback controller override. Route deletion commands
+must still name its old next hop. Historical migration records and source
+recovery paths keep their original names. Aperture retains `/export/cognition`
+and matching systemd unit names as stable client interfaces; their NFS server is
+Cerebrum. Tests cover both the retained source and replacement identities.
+
+Resolved controller configurations and copied user projects are additional live
+state: inspect those separately, since changing repository defaults does not
+rewrite their stored environment. The user dotfiles repository's local model
+provider also needs its endpoint changed to `http://cerebrum.home.arpa:8111/v1`
+while preserving unrelated local preferences.
+
 ## Coordinated handover
 
 1. Stop Atlas's Wolf controller and Proxmox's weekly vLLM timer. Save their
@@ -26,7 +52,9 @@ Keep Cognition's node data and DNS records available for recovery.
    Boot Cerebrum and verify its NIC link-local address before enabling workload
    networks. Never activate both guests' overlapping C-derived Docker pools.
 6. Recreate only Atlas's controller service with its existing Compose project,
-   state volume and secrets. Use `docker/wolf/cerebrum-controller.yml` if a
+   state volume and secrets. Inspect the live Compose labels first: at this
+   cutover the controller belonged to project `infra`, even though its saved
+   resolved file named `wolf`. Use `docker/wolf/cerebrum-controller.yml` if a
    target override is needed; remove the old Cognition override from the
    invocation. Its target must resolve to `cerebrum.home.arpa`, VM 230.
    Converge the weekly controller on `proxmox.home.arpa` before restoring its

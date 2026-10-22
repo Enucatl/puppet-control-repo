@@ -1,7 +1,10 @@
 # Puppet Control Repository
 
-Atlas, Aperture and Cognition are the active replacements for Docker,
-Forbearance and Complex. See [Atlas service configuration](docs/atlas-services.md)
+Atlas and Aperture replace Docker and Forbearance. Cerebrum (VM 230) is the
+XFS replacement for Cognition (VM 220); follow the
+[migration record](docs/cerebrum-migration.md) and
+[handover instructions](docs/cerebrum-cutover.md) for cutover status and rollback.
+See [Atlas service configuration](docs/atlas-services.md)
 for the current service sources and environment files, and
 [Atlas recovery](docs/atlas-recovery.md) for established-authority restoration.
 
@@ -64,7 +67,7 @@ the [historical archive](docs/archive/migration/README.md).
 Atlas runs OpenVox and Vault through the root `compose.yaml`; FreeIPA has its
 own entrypoint at `docker/freeipa/atlas-compose.yaml`. OpenVox serves catalogs
 at `openvox.home.arpa:8140`, Vault at `https://vault.home.arpa:8200`, and FreeIPA
-at `ipa.home.arpa`. Atlas, Aperture, Cognition and the Proxmox hosts consume the
+at `ipa.home.arpa`. Atlas, Aperture, Cerebrum and the Proxmox hosts consume the
 shared Puppet profiles and Hiera configuration.
 
 - **`modules/` + `data/`** contain profiles, roles and node settings.

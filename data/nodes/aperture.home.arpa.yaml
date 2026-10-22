@@ -95,11 +95,12 @@ profile::common::sysctl::settings:
   net.ipv6.conf.default.proxy_ndp:
     value: 1
 
+# Keep the client path and unit names stable while the NFS server changes.
 profile::common::systemd::units:
   export-cognition.mount:
     content: |
       [Unit]
-      Description=Cognition Docker share
+      Description=Cerebrum Docker share
 
       [Mount]
       What=cerebrum.home.arpa:/docker
@@ -111,7 +112,7 @@ profile::common::systemd::units:
   export-cognition.automount:
     content: |
       [Unit]
-      Description=Mount Cognition on demand
+      Description=Mount Cerebrum on demand
 
       [Automount]
       Where=/export/cognition

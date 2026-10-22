@@ -1,4 +1,5 @@
-# Add this override only after Cognition owns the GPU and final source state.
+# Rollback only: use after restoring Cognition GPU ownership and current data.
+# Production uses cerebrum-controller.yml (VM 230).
 services:
   wolf:
     environment:

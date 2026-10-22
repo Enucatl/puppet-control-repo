@@ -1,7 +1,8 @@
 # Proxmox VM provisioning
 
-Atlas, Aperture and Cognition are the active Ubuntu 26.04 hosts. This runbook
-covers provisioning, bootstrap and publication. Recover established Atlas state
+Atlas, Aperture and Cerebrum use Ubuntu 26.04; Cerebrum VM 230 is replacing
+Cognition VM 220 through the [staged migration](../docs/cerebrum-migration.md).
+This runbook covers provisioning, bootstrap and publication. Recover established Atlas state
 through the [backup and recovery workflow](../docs/atlas-recovery.md).
 Completed plans and acceptance results are in the
 [migration archive](../docs/archive/migration/README.md).
@@ -412,15 +413,15 @@ Keep credentials outside version control. Docker workload provisioning also need
 
 Set `VAULT_ADDR=https://vault.home.arpa:8200` in the declared environment with
 authenticated CA trust. The following are fresh provisioning examples; the
-existing Aperture and Cognition guests are already in service:
+existing Aperture and Cerebrum identities must not be recreated:
 
 ```bash
 # On proxmox.home.arpa; select an unused ID automatically.
 bash proxmox/desktop.sh -n aperture -t 9001 --puppet-server openvox.home.arpa
 
-# On proxmox-cortex.home.arpa; build its separate local template first.
-bash proxmox/ubuntu-server-template.sh
-bash proxmox/cognition-server.sh
+# On proxmox-cortex.home.arpa; build its separate XFS template first.
+bash proxmox/ubuntu-xfs-template.sh -i 9002 -b 9012
+bash proxmox/cerebrum-server.sh
 
 # An enrolled Docker workload host, separate from the Atlas base.
 bash proxmox/docker-server.sh -n app1 -t 9001 -s openvox.home.arpa -c 8 -m 16384 -d 50G
@@ -432,18 +433,25 @@ an explicit `-i VMID`; desktop recreation additionally requires
 Desktop's `-n` sets a short hostname; `-l LETTER` instead selects a random name.
 Desktop provisioning reboots and verifies the short hostname/FQDN again.
 
-Cognition uses the Docker workload path: VM 220, eight cores, 32768 MiB RAM,
-1000 GiB disk and virtio graphics for initial provisioning, with MAC `bc:24:11:4e:c0:22` reserved as
-`10.0.40.134`. It enrolls against Atlas and installs authenticated system CA
-trust before FreeIPA enrollment. Cognition now owns the GPU and runs the migrated
-Wolf/vLLM workloads, using serial graphics after the GPU handover. Its daemon retains disabled user namespace remapping to
+Cerebrum uses the Docker workload path: VM 230, template 9002, eight cores,
+32768 MiB final RAM, a thin 1000 GiB XFS disk and virtio graphics for initial
+provisioning, with MAC `bc:24:11:4e:c0:23` reserved as `10.0.40.135`.
+During staging, both Cerebrum and Cognition use 16384 MiB; raise Cerebrum to
+32768 MiB only after Cognition stops. It enrolls against Atlas and installs
+authenticated system CA trust before FreeIPA enrollment. Transfer both GPU
+functions and all six routed container networks together using the
+[handover instructions](../docs/cerebrum-cutover.md), switching to serial
+graphics after transfer. Its daemon retains disabled user namespace remapping to
 preserve migrated numeric ownership; other Docker builds retain their existing
 `default` remapping. The Docker provisioning failure path retains
 the guest and writes private diagnostics so an enrolled identity can be repaired
 in place.
-See the [completed Cognition cutover record](../docs/archive/migration/cognition-migration.md) for
-acceptance evidence and retained recovery data. The one-time migration tools
-have been retired.
+See the [Cerebrum migration record](../docs/cerebrum-migration.md) for current
+acceptance evidence and retained recovery data. Preserve Cognition VM 220 and
+Complex VM 200 for rollback; neither may run conflicting GPU or container
+networks alongside Cerebrum. The
+[completed Complex-to-Cognition record](../docs/archive/migration/cognition-migration.md)
+is historical evidence; its one-time migration tools have been retired.
 
 Aperture VM 310 on `proxmox.home.arpa` uses the desktop role with Atlas IPA,
 Vault, monitoring and Kerberos NFS endpoints. Its catalog creates the user-owned
