@@ -51,9 +51,6 @@ nfs_config::client_mounts:
     server: 'atlas.home.arpa'
     atboot: false
     options_nfsv4: '_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=10s,sec=krb5p,proto=tcp'
-  '/export/docker':
-    server: 'atlas.home.arpa'
-    ensure: absent
   '/export/atlas':
     server: 'atlas.home.arpa'
     share: 'docker'
@@ -86,15 +83,6 @@ profile::common::sysctl::settings:
     value: 1
 
 profile::common::systemd::units:
-  export-cognition.automount:
-    ensure: absent
-    enable: false
-    active: false
-  export-cognition.mount:
-    ensure: absent
-    enable: false
-    active: false
-    require: Systemd::Unit_file[export-cognition.automount]
   export-cerebrum.mount:
     content: |
       [Unit]
@@ -106,9 +94,7 @@ profile::common::systemd::units:
       Type=nfs4
       Options=sec=krb5p,proto=tcp
       TimeoutSec=10s
-    require:
-      - Class[nfs::client]
-      - Systemd::Unit_file[export-cognition.mount]
+    require: Class[nfs::client]
   export-cerebrum.automount:
     content: |
       [Unit]

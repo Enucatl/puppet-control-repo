@@ -49,6 +49,19 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     assert documents["mode"] == "0750"
     pairs = ordered_pairs(catalog)
     assert (
+        "renderer: networkd" in result["File[/etc/netplan/99-networkd.yaml]"]["content"]
+    )
+    assert "accept-ra: true" in result["File[/etc/netplan/99-networkd.yaml]"]["content"]
+    assert result["Exec[generate-desktop-networkd]"]["refreshonly"] is True
+    for service in ("NetworkManager", "NetworkManager-wait-online"):
+        assert result[f"Service[{service}]"]["ensure"] == "stopped"
+        assert result[f"Service[{service}]"]["enable"] == "mask"
+        assert ("Exec[generate-desktop-networkd]", f"Service[{service}]") in pairs
+        assert (f"Service[{service}]", "Service[systemd-networkd]") in pairs
+    assert result["Service[systemd-networkd]"]["ensure"] == "running"
+    assert result["Service[systemd-networkd]"]["enable"] is True
+    assert result["Service[systemd-networkd-wait-online]"]["enable"] is True
+    assert (
         "Freeipa_client_enrollment[default]",
         "Exec[generate-browser-policies]",
     ) in pairs
@@ -100,22 +113,9 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
         "pam_exec.so seteuid expose_authtok"
         in result["File[/usr/share/pam-configs/vault-login]"]["content"]
     )
-    assert result["Nfs::Client::Mount[/export/docker]"]["ensure"] == "absent"
+    assert "Nfs::Client::Mount[/export/docker]" not in result
     assert "Nfs::Client::Mount[/export/complex]" not in result
-    assert "Nfs::Client::Mount[/export/cognition]" not in result
-    assert "Exec[mkdir_recurse_/export/cognition]" not in result
-    assert "File[/export/cognition]" not in result
-    cleanup = result["Augeas[cognition-native-automount]"]
-    assert cleanup["context"] == "/files/etc/fstab"
-    assert cleanup["changes"] == "rm *[file = '/export/cognition']"
-    for suffix in ("mount", "automount"):
-        retired = result[f"Service[export-cognition.{suffix}]"]
-        assert retired["ensure"] is False
-        assert retired["enable"] is False
-        assert (
-            result[f"File[/etc/systemd/system/export-cognition.{suffix}]"]["ensure"]
-            == "absent"
-        )
+    assert not any("cognition" in name for name in result)
     native_mount = result["File[/etc/systemd/system/export-cerebrum.mount]"]["content"]
     assert "What=cerebrum.home.arpa:/docker" in native_mount
     assert "Where=/export/cerebrum" in native_mount
@@ -126,14 +126,6 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     automount = result["File[/etc/systemd/system/export-cerebrum.automount]"]["content"]
     assert "Where=/export/cerebrum" in automount
     assert result["Systemd::Unit_file[export-cerebrum.automount]"]["active"] is True
-    assert (
-        "Service[export-cognition.automount]",
-        "Service[export-cognition.mount]",
-    ) in pairs
-    assert (
-        "Service[export-cognition.mount]",
-        "File[/etc/systemd/system/export-cerebrum.mount]",
-    ) in pairs
     for scope in ("all", "default"):
         for setting, value in (
             ("accept_redirects", 0),
