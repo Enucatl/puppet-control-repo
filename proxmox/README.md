@@ -111,7 +111,9 @@ override must also update the router reservation. This keeps Atlas and its
 Run `bash proxmox/ubuntu-xfs-template.sh -i 9002 -b 9012` from the
 reviewed checkout on the Proxmox host. Both IDs must be unused; existing
 Ubuntu/ext4 templates remain intact. The disposable builder uses 2048 MiB RAM,
-two cores, a 10 GiB cloud-image boot disk and a separate thin 12 GiB target.
+two cores, a 10 GiB cloud-image boot disk and a separate thin 1,000 GiB target. Before booting the builder, the script
+checks both ZFS `reservation` and `refreservation` are zero. The virtual capacity
+is not allocated up front; physical pool headroom is still required.
 Check physical pool headroom and host RAM before running. Use the repository's
 `wake-run` workflow when launching the build from a controlling Codex session.
 
@@ -120,9 +122,17 @@ image under UEFI. The builder identifies only the blank target disk by its expli
 `openvox-xfs-target` hardware serial, verifies its size and absence of partitions/mounts,
 and passes the validated device path to Curtin (Proxmox udev IDs use a different
 `drive-scsi1` identifier). Curtin creates GPT with a 512 MiB FAT32 EFI partition, 1 GiB ext4 `/boot`, and
-XFS root with `reflink=1,ftype=1`. `/home`, `/var`, Docker and Steam remain on
-root. Native Curtin hooks install the kernel, initramfs and GRUB; a GRUB debconf
+a final-size XFS root with `reflink=1,ftype=1`. `/home`, `/var`, Docker and Steam remain on
+root. The pinned Curtin does not implement remaining-space `size: -1` semantics, so
+root uses the supported explicit size `1022462M`: 1,000 GiB minus the EFI and
+boot partitions and 2 MiB for GPT/alignment. It is formatted at its final size,
+using XFS defaults for allocation groups and journal, without intermediate
+filesystem expansion or manual geometry settings. The build checks four
+allocation groups and records complete `xfs_info` journal geometry.
+Native Curtin hooks install the kernel, initramfs and GRUB; a GRUB debconf
 setting requests the removable EFI fallback path for fresh firmware NVRAM.
+A GRUB drop-in adds `net.ifnames=0` before early networking starts, preserving
+the repository's `eth0` convention without a cloud-init rename race.
 
 Ubuntu 26.04 does not publish Curtin APT packages. The builder uses Canonical's
 [Curtin source](https://github.com/canonical/curtin/tree/93c36fb6a0271fefd2bf311418b95eb48f856d5f)
@@ -166,8 +176,9 @@ manually reviewing/removing only these owned build resources. Successful builds
 retain the stopped builder for review, with no builder disk attached to the
 template.
 
-Before production, clone with `docker-server.sh -b -t 9002` using a fresh
-identity and 1000G disk. Verify unique machine/SSH identities, cloud-init,
+This template requires clone disks **at least 1000G**; the generic provisioning
+default of 50G is too small. Before production, clone with
+`docker-server.sh -b -t 9002 -d 1000G` using a fresh identity. Verify unique machine/SSH identities, cloud-init,
 root expansion, reboot, guest agent, Docker OverlayFS, and disposable reflink,
 deduplication and independent writes. The template build alone does not claim
 these clone/application checks. Enrolled production clones use the same `-t`

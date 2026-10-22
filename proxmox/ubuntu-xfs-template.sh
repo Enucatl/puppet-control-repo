@@ -81,7 +81,7 @@ runcmd:
     target=\$targets
     test -b "\$target"
     test "\$(lsblk -dn -o SERIAL "\$target")" = openvox-xfs-target
-    test "\$(blockdev --getsize64 "\$target")" = 12884901888
+    test "\$(blockdev --getsize64 "\$target")" = 1073741824000
     test "\$(lsblk -nr -o NAME "\$target" | wc -l)" = 1
     test -z "\$(lsblk -nr -o MOUNTPOINTS "\$target" | tr -d '[:space:]')"
     test "\$target" != "/dev/\$(lsblk -no PKNAME "\$(findmnt -n -o SOURCE /)")"
@@ -103,10 +103,16 @@ qm create "$BUILDER_ID" --name ubuntu-xfs-builder --description openvox-provisio
 qm importdisk "$BUILDER_ID" "$IMAGE_PATH" "$DEFAULT_STORAGE"
 qm set "$BUILDER_ID" --scsi0 "$DEFAULT_STORAGE:vm-$BUILDER_ID-disk-0,discard=on,ssd=1,iothread=1"
 qm resize "$BUILDER_ID" scsi0 10G
-qm set "$BUILDER_ID" --scsi1 "$DEFAULT_STORAGE:12,serial=openvox-xfs-target,discard=on,ssd=1,iothread=1" \
+qm set "$BUILDER_ID" --scsi1 "$DEFAULT_STORAGE:1000,serial=openvox-xfs-target,discard=on,ssd=1,iothread=1" \
     --ide2 "$DEFAULT_STORAGE:cloudinit" --efidisk0 "$DEFAULT_STORAGE:0,efitype=4m,pre-enrolled-keys=0" \
     --boot order=scsi0 --cicustom "vendor=$SNIPPET_STORAGE:snippets/$(basename "$SNIPPET_PATH")" \
     --ciuser user_l --sshkey ~/.ssh/id_ed25519.pub
+# Refuse a capacity reservation before the guest can format the target.
+target_volume=$(qm config "$BUILDER_ID" | sed -n 's/^scsi1: \([^,]*\).*/\1/p')
+target_path=$(pvesm path "$target_volume")
+[[ $target_path == /dev/zvol/* ]] || { echo 'Target must use thin ZFS storage.' >&2; exit 1; }
+target_reservations=$(zfs get -Hp -o value reservation,refreservation "${target_path#/dev/zvol/}")
+[[ $target_reservations == $'0\n0' ]] || { echo 'Target ZFS volume has a capacity reservation.' >&2; exit 1; }
 qm start "$BUILDER_ID"
 wait_for_cloudinit "$BUILDER_ID"
 guest_exec "$BUILDER_ID" cat /var/log/curtin/install.log > "$LOG_DIR/xfs-curtin-$BUILDER_ID.log"
@@ -129,6 +135,10 @@ wait_for_cloudinit "$XFS_TEMPLATE_ID"
 guest_exec "$XFS_TEMPLATE_ID" bash -c '
     set -eu
     test -d /sys/firmware/efi
+    grep -qw net.ifnames=0 /proc/cmdline
+    cat /proc/cmdline
+    test ! -e /etc/krb5.keytab
+    test ! -e /etc/ipa/default.conf
     test "$(findmnt -n -o FSTYPE /)" = xfs
     xfs_info /
     findmnt -t xfs,ext4,vfat
@@ -136,6 +146,7 @@ guest_exec "$XFS_TEMPLATE_ID" bash -c '
     ! findmnt -n -o OPTIONS / | grep -qw discard
     systemctl is-enabled fstrim.timer
     xfs_info / | grep -q "reflink=1"
+    xfs_info / | grep -q "agcount=4"
     xfs_info / | grep -q "ftype=1"
     test "$(findmnt -n -o FSTYPE /boot)" = ext4
     test "$(findmnt -n -o FSTYPE /boot/efi)" = vfat
@@ -151,7 +162,7 @@ jq -n --arg image "$RELEASE_URL/$IMAGE_NAME" --arg image_sha "$IMAGE_SHA256" \
     --arg curtin_revision "$CURTIN_REVISION" --arg curtin_sha "$CURTIN_SHA256" \
     --arg revision "${CONTROL_REVISION:-$(git -C "$SCRIPT_DIR" rev-parse HEAD)}" \
     --argjson vmid "$XFS_TEMPLATE_ID" \
-    '{vmid:$vmid,image_url:$image,image_sha256:$image_sha,root_url:$root,root_sha256:$root_sha,curtin_revision:$curtin_revision,curtin_sha256:$curtin_sha,control_revision:$revision}' \
+    '{vmid:$vmid,image_url:$image,image_sha256:$image_sha,root_url:$root,root_sha256:$root_sha,curtin_revision:$curtin_revision,curtin_sha256:$curtin_sha,target_disk_gib:1000,root_partition_mib:1022462,control_revision:$revision}' \
     > "$LOG_DIR/xfs-template-$XFS_TEMPLATE_ID-provenance.json"
 sha256sum "$SCRIPT_DIR/ubuntu-xfs-template.sh" "$SCRIPT_DIR/ubuntu-xfs-curtin.yml" \
     "$SCRIPT_DIR/ubuntu-cloud-init.yml.tmpl" "$SCRIPT_DIR/install-openvox.sh" > "$LOG_DIR/xfs-template-$XFS_TEMPLATE_ID-sources.sha256"

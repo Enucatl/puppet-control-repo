@@ -113,7 +113,7 @@ lsblk() {
         *) return 1 ;;
     esac
 }
-blockdev() { echo 12884901888; }
+blockdev() { echo "${TARGET_BYTES:-1073741824000}"; }
 findmnt() { echo /dev/sda1; }
 test() {
     if [ "$1" = -b ] || [ "$1" = -d ]; then return 0; fi
@@ -132,3 +132,63 @@ test() {
             text=True,
         )
         assert checked.returncode == expected, checked.stderr
+    wrong_size = subprocess.run(
+        ["bash", "-ec", mocks + guard],
+        env={
+            **os.environ,
+            "DISKS": "/dev/sdb openvox-xfs-target",
+            "TARGET_BYTES": "12884901888",
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert wrong_size.returncode != 0
+
+
+def test_interface_naming_preserves_kernel_arguments() -> None:
+    """Assign eth0 before early networking while retaining existing arguments."""
+    config = yaml.safe_load((ROOT / "proxmox/ubuntu-xfs-curtin.yml").read_text())
+    naming = config["write_files"]["interface-naming"]
+    assert naming["path"] == "/etc/default/grub.d/60-openvox-interface.cfg"
+    result = subprocess.run(
+        [
+            "sh",
+            "-eu",
+            "-c",
+            'GRUB_CMDLINE_LINUX="existing=argument"\n'
+            + naming["content"]
+            + '\nprintf "%s" "$GRUB_CMDLINE_LINUX"',
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "existing=argument net.ifnames=0"
+    assert config["late_commands"]["30-interface-naming"] == [
+        "curtin",
+        "in-target",
+        "--",
+        "update-grub",
+    ]
+
+
+def test_target_is_thin_and_formatted_at_final_size() -> None:
+    """Format the final root once and reject ZFS capacity reservations first."""
+    config = yaml.safe_load((ROOT / "proxmox/ubuntu-xfs-curtin.yml").read_text())
+    partitions = [
+        item for item in config["storage"]["config"] if item["type"] == "partition"
+    ]
+    assert [item["size"] for item in partitions] == ["512M", "1G", "1022462M"]
+    assert 512 + 1024 + 1022462 + 2 == 1000 * 1024
+    options = next(
+        item for item in config["storage"]["config"] if item["id"] == "root-fs"
+    )["extra_options"]
+    assert options == ["-m", "reflink=1", "-n", "ftype=1"]
+    script = (ROOT / "proxmox/ubuntu-xfs-template.sh").read_text()
+    assert '--scsi1 "$DEFAULT_STORAGE:1000,' in script
+    assert 'qm resize "$BUILDER_ID" scsi0 10G' in script
+    assert "1073741824000" in script
+    assert script.index("reservation,refreservation") < script.index(
+        'qm start "$BUILDER_ID"'
+    )
+    assert "$'0\\n0'" in script

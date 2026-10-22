@@ -66,6 +66,14 @@ with `noatime,inode64` and without continuous discard; `fstrim.timer` is enabled
 The SCSI disk uses VirtIO SCSI single, IO Thread, discard and SSD emulation.
 QEMU confirms default direct/no-cache I/O, `io_uring` and a native ZFS volume.
 
+The initial small-template expansion produced 400 allocation groups and a
+64 MiB journal. Before copying data, the template is being rebuilt at the final
+1000 GiB virtual size so XFS chooses geometry for that capacity. No allocation
+group count, group size or journal size is manually configured. The target
+root partition is 1022462 MiB, leaving EFI, boot and GPT/alignment space.
+Both ZFS reservation properties must be zero before the builder starts.
+Clones of this template must be at least 1000 GiB.
+
 Ubuntu 26.04 does not publish the Curtin deb in its configured archive. The
 builder uses checksum-pinned Canonical source instead. Hardware serial
 discovery validates the unique blank target before supplying its device path

@@ -20,7 +20,9 @@ storage:
     - {id: target, type: disk, path: __TARGET_DISK__, ptable: gpt, wipe: superblock, grub_device: true}
     - {id: esp, type: partition, device: target, number: 1, size: 512M, flag: boot}
     - {id: boot, type: partition, device: target, number: 2, size: 1G}
-    - {id: root, type: partition, device: target, number: 3, size: 10G}
+    # Exact 1000 GiB disk minus 512 MiB EFI, 1024 MiB boot and 2 MiB GPT/alignment.
+    # Pinned Curtin has no remaining-space size:-1 semantics; format final size once.
+    - {id: root, type: partition, device: target, number: 3, size: 1022462M}
     - {id: esp-fs, type: format, volume: esp, fstype: fat32}
     - {id: boot-fs, type: format, volume: boot, fstype: ext4}
     - id: root-fs
@@ -31,8 +33,16 @@ storage:
     - {id: root-mount, type: mount, device: root-fs, path: /, options: noatime}
     - {id: boot-mount, type: mount, device: boot-fs, path: /boot}
     - {id: esp-mount, type: mount, device: esp-fs, path: /boot/efi}
+write_files:
+  interface-naming:
+    path: /etc/default/grub.d/60-openvox-interface.cfg
+    permissions: '0644'
+    content: |
+      # Name the NIC before initramfs networking races cloud-init's eth0 rename.
+      GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX} net.ifnames=0"
 late_commands:
   10-tools: [curtin, in-target, --, apt-get, install, -y, cloud-init, cloud-guest-utils, qemu-guest-agent, xfsprogs]
   15-efi-fallback: [curtin, in-target, --, test, -s, /boot/efi/EFI/BOOT/BOOTX64.EFI]
   # Let NoCloud configure each clone rather than retaining builder networking.
   20-network: [curtin, in-target, --, sh, -c, 'rm -f /etc/netplan/* /etc/cloud/cloud.cfg.d/50-curtin-networking.cfg']
+  30-interface-naming: [curtin, in-target, --, update-grub]
