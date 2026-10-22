@@ -108,6 +108,12 @@ All managed clients, including both Proxmox hypervisors, use the shared
 `/usr/local/share/ca-certificates/atlas-infrastructure.crt` as its authenticated
 CA file. Install that trust before enrolling a new client.
 
+Both Proxmox hypervisors completed this identity migration on 2026-10-22.
+Fresh host credentials, LDAP/HTTP service tickets, IPA API access and Puppet's
+enrollment check passed on both hosts. Their SSH public keys are registered
+in the new IPA, normal SSH host verification works, and the protected SSH/PAM
+configuration remained unchanged. SSSD and scheduled Puppet are running.
+
 Changing the server setting does not migrate an existing machine identity.
 The Puppet enrollment provider refuses mismatched existing configuration;
 matching configuration alone does not prove that the host keytab works.
@@ -115,19 +121,29 @@ Moving an existing client from the retired authority therefore requires an
 explicit administrator operation:
 
 1. Preserve a root-only backup of its IPA, Kerberos and SSSD configuration,
-   trust files and keytab. Confirm independent root SSH access and retain the
-   existing SSH/PAM configuration and any non-host keytab principals.
-2. Using an authorized account on `ipa.home.arpa`, issue fresh keys for the
+   trust files and keytab. Retain the existing SSH/PAM configuration and any
+   non-host keytab principals. Verify a root SSH connection using a trusted,
+   explicitly pinned host public key so access does not depend on SSSD's cache.
+2. Verify that each migrated host's SSH public keys are registered in its new
+   IPA host entry. If missing, obtain `/etc/ssh/ssh_host_*_key.pub` through that
+   verified connection and register them with `ipa host-mod <fqdn>
+   --sshpubkey='<public-key>'`, repeating `--sshpubkey` for each public key.
+   Include hosts reached through another migrating host. Complete this before
+   clearing SSSD caches: imported host entries may lack SSH public keys, and
+   cached trust can otherwise hide the missing records until access is lost.
+3. Using an authorized account on `ipa.home.arpa`, issue fresh keys for the
    existing `host/<fqdn>@HOME.ARPA` identity into a separate private keytab with
    `ipa-getkeytab -s ipa.home.arpa -p host/<fqdn>@HOME.ARPA -k <new-keytab>`.
    Supply authenticated Atlas trust with `--cacert`; omitting `-r` creates new
    keys and invalidates previous keys for that host principal.
-3. Verify the new keytab with `kinit -k -t <new-keytab> host/<fqdn>@HOME.ARPA`,
+4. Verify the new keytab with `kinit -k -t <new-keytab> host/<fqdn>@HOME.ARPA`,
    using a temporary Kerberos configuration that explicitly selects
    `ipa.home.arpa`. Install the authenticated CA trust, update IPA, Kerberos
    and SSSD server settings, and replace the old host keys while preserving
-   any other principals. Restart SSSD and clear its old identity cache.
-4. Verify host-keytab authentication through the normal client configuration,
+   any other principals. Run `ipa-certupdate` to refresh the native IPA,
+   Kerberos and system CA stores, and verify the resulting certificate bundles.
+   Restart SSSD and clear its old identity cache.
+5. Verify host-keytab authentication through the normal client configuration,
    SSSD user/group lookup, a fresh SSH connection and the Puppet enrollment
    check before resuming scheduled Puppet runs.
 
