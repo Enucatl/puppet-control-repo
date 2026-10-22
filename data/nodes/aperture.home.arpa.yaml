@@ -5,6 +5,7 @@ classes:
   - profile::desktop_snaps
   - profile::desktop_printing
   - profile::vault_login
+  - profile::vault_sso
 
 packages::list:
   - alsa-utils

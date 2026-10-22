@@ -4,6 +4,7 @@ classes:
   - profile::scratch
   - profile::atlas
   - profile::atlas::certificates
+  - profile::vault_sso
   - freeipa_users::provision
 
 nfs_config::ipa_server: ipa.home.arpa

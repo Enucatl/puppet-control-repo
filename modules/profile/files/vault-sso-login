@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Exchange the current Kerberos ticket for a token using Vault's token helper.
+set +x
+set -euo pipefail
+
+[ -z "${VAULT_TOKEN:-}" ] || exit 0
+klist -s || exit 0
+export VAULT_ADDR="${VAULT_ADDR:-https://vault.home.arpa:8200}"
+export VAULT_CLIENT_TIMEOUT=5s
+unset VAULT_TOKEN
+vault token lookup >/dev/null 2>&1 && exit 0
+
+curl_options=()
+if [ -n "${VAULT_CACERT:-}" ]; then
+  curl_options+=(--cacert "$VAULT_CACERT")
+fi
+token=$(
+  curl --disable --fail --silent --show-error --proto '=https' \
+    --connect-timeout 3 --max-time 10 --negotiate --user : \
+    "${curl_options[@]}" --request POST \
+    "${VAULT_ADDR%/}/v1/auth/kerberos/login" |
+    jq -er '.auth.client_token | select(type == "string" and length > 0 and (test("[[:space:][:cntrl:]]") | not))'
+)
+printf '%s\n' "$token" | vault login -no-print - >/dev/null
