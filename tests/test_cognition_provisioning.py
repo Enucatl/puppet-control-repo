@@ -99,3 +99,17 @@ def test_docker_infrastructure_trust(tmp_path: Path, root_count: int) -> None:
         if isinstance(step, list) and step[0] == "/usr/local/bin/configure-puppet.sh"
     )
     assert install < update < enroll
+
+
+def test_docker_restores_short_hostname_after_enrollment(tmp_path: Path) -> None:
+    """Restore the short OS hostname after FreeIPA enrollment sets its FQDN."""
+    config = parse_cloud_template(render_cloud_template(tmp_path, "docker"))
+    commands = config["runcmd"]
+    enrollment = next(
+        i
+        for i, command in enumerate(commands)
+        if isinstance(command, list)
+        and command[0] == "/usr/local/bin/configure-puppet.sh"
+    )
+    assert commands[-1] == ["hostnamectl", "set-hostname", "test-vm"]
+    assert enrollment < commands.index("systemctl start docker") < len(commands) - 1

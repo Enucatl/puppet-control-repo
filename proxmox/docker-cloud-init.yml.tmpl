@@ -106,4 +106,7 @@ runcmd:
   - systemctl enable docker
   - systemctl start docker
 
+  # FreeIPA enrollment sets the FQDN; restore the short OS hostname convention.
+  - [hostnamectl, set-hostname, "${NEW_VM_NAME}"]
+
 final_message: "Host ready. IPv6 configured with ${IPV6_FIXED}"
