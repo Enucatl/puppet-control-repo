@@ -95,11 +95,15 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
         "atlas.home.arpa",
         "aperture.home.arpa",
         "cognition.home.arpa",
+        "proxmox.home.arpa",
+        "proxmox-cortex.home.arpa",
     ]
     assert auth["allowed_dns_sans"] == [
         "atlas.home.arpa",
         "aperture.home.arpa",
         "cognition.home.arpa",
+        "proxmox.home.arpa",
+        "proxmox-cortex.home.arpa",
     ]
     assert auth["token_policies"] == ["puppet"]
     wolf = next(

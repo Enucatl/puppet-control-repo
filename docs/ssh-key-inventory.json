@@ -1,0 +1,173 @@
+{
+  "observed_at_utc": "2026-10-22T06:58:00.789484+00:00",
+  "scope": [
+    "proxmox.home.arpa",
+    "proxmox-cortex.home.arpa"
+  ],
+  "access_changes_made": false,
+  "keys": [
+    {
+      "id": "personal",
+      "algorithm": "ED25519",
+      "fingerprint": "SHA256:8+f21N5Vpf+EK2MRySwAPOaaxZHF8wSEXNKWXffspxI",
+      "comment": "1423701+Enucatl@users.noreply.github.com",
+      "unrestricted_root_openssh_hosts": [
+        "proxmox.home.arpa",
+        "proxmox-cortex.home.arpa"
+      ],
+      "restricted_dropbear_hosts": [
+        "proxmox.home.arpa",
+        "proxmox-cortex.home.arpa"
+      ],
+      "assessment": "approved",
+      "justification": "User explicitly approved this key."
+    },
+    {
+      "id": "proxmox-rsa",
+      "algorithm": "RSA4096",
+      "fingerprint": "SHA256:3f4rL60uWqpgdsTyPcEhuUcNZosjU3aiq0iajrgACRc",
+      "comment": "root@proxmox / root@proxmox-rsa",
+      "unrestricted_root_openssh_hosts": [
+        "proxmox.home.arpa",
+        "proxmox-cortex.home.arpa"
+      ],
+      "restricted_dropbear_hosts": [
+        "proxmox-cortex.home.arpa"
+      ],
+      "assessment": "justified",
+      "justification": "Matches Proxmox /root/.ssh/id_rsa.pub; explicit RSA authentication to Cortex verified. Enabled Chronicle backup and vLLM timers use root SSH and default-identity Dropbear unlock. Self-authorization is also maintained by native Proxmox setup."
+    },
+    {
+      "id": "cortex-rsa",
+      "algorithm": "RSA4096",
+      "fingerprint": "SHA256:kk1jzrrGH1/1NEA3vc+rL1XgYj0zC+oFYh3hoeri/zM",
+      "comment": "root@proxmox-cortex",
+      "unrestricted_root_openssh_hosts": [
+        "proxmox-cortex.home.arpa"
+      ],
+      "restricted_dropbear_hosts": [],
+      "assessment": "native-proxmox",
+      "justification": "Matches Cortex /root/.ssh/id_rsa.pub. Installed PVE::Cluster::Setup::ssh_merge_keys always re-adds the local RSA public key; no application workflow found using it."
+    },
+    {
+      "id": "docker",
+      "algorithm": "ED25519",
+      "fingerprint": "SHA256:BjYr/l7B86o5mlIvJcNBtDiwKZuQyFgam4Ug8z7bE6s",
+      "comment": "root@docker",
+      "unrestricted_root_openssh_hosts": [
+        "proxmox-cortex.home.arpa"
+      ],
+      "restricted_dropbear_hosts": [
+        "proxmox-cortex.home.arpa"
+      ],
+      "assessment": "unexplained-removal-candidate",
+      "justification": "No current repository automation caller found. Current Wolf uses a separate dedicated unlock key and the Proxmox API, not this unrestricted root authorization. Historical/private-key custody not established."
+    },
+    {
+      "id": "proxmox-ed25519",
+      "algorithm": "ED25519",
+      "fingerprint": "SHA256:j/93rUyGuucmyEC9ziYOdA6NJEuLp+/CVIFJJnVkTy4",
+      "comment": "root@proxmox",
+      "unrestricted_root_openssh_hosts": [],
+      "restricted_dropbear_hosts": [
+        "proxmox-cortex.home.arpa"
+      ],
+      "assessment": "apparently-historical-removal-candidate",
+      "justification": "No caller explicitly selects it and no matching standard private key exists on Proxmox today. Its present id_ed25519.pub and backup instead match the personal key."
+    },
+    {
+      "id": "wolf",
+      "algorithm": "ED25519",
+      "fingerprint": "SHA256:swR/iIcr6/lgifu4n5gePhskMpkUtR+Q8riOqUwXyvk",
+      "comment": "wolf-dropbear",
+      "unrestricted_root_openssh_hosts": [],
+      "restricted_dropbear_hosts": [
+        "proxmox-cortex.home.arpa"
+      ],
+      "assessment": "justified-unlock-only",
+      "justification": "Running infra-wolf-1 /run/secrets/wolf_dropbear_key fingerprint matches; wolf.py explicitly selects it for Cortex initramfs unlock. Cortex OS operations use scoped API credentials."
+    }
+  ],
+  "root_authorized_keys_path": "/root/.ssh/authorized_keys -> /etc/pve/priv/authorized_keys",
+  "dropbear_restrictions": [
+    "command=\"/usr/bin/zfsunlock\"",
+    "no-port-forwarding",
+    "no-agent-forwarding",
+    "no-x11-forwarding"
+  ],
+  "management": {
+    "proxmox.home.arpa": {
+      "openssh_keys_declared": [],
+      "dropbear_managed": false
+    },
+    "proxmox-cortex.home.arpa": {
+      "openssh_keys_declared": [
+        "docker",
+        "proxmox-rsa"
+      ],
+      "dropbear_managed": true,
+      "dropbear_keys_declared": [
+        "personal",
+        "proxmox-rsa",
+        "docker",
+        "proxmox-ed25519",
+        "wolf"
+      ]
+    }
+  },
+  "unknown_openssh_keys_purged": false,
+  "external_key_source": {
+    "command": "/usr/bin/sss_ssh_authorizedkeys",
+    "command_user": "nobody",
+    "ipa_user": "user",
+    "ipa_user_key": "personal",
+    "root_lookup_empty_on_both_hosts": true,
+    "live_user_lookup_verified_hosts": [
+      "proxmox.home.arpa",
+      "proxmox-cortex.home.arpa"
+    ],
+    "sudo_on_both_hosts": "(ALL) ALL; password required"
+  },
+  "boot_image_findings": [
+    "Cortex current and three configured /boot images match its five declared Dropbear keys; oldest inspected 6.17.2-1-pve image lacks wolf.",
+    "Proxmox configured boot images match its one on-disk Dropbear key.",
+    "Puppet uses update-initramfs -u without -k all; future revocation may leave keys in older images."
+  ],
+  "limitations": [
+    "Actual EFI partition copies not inspected.",
+    "Comments are claimed provenance, not proof of private-key ownership.",
+    "Inventory covers these two hosts, not every machine accepting these keys.",
+    "Loki auth query over preceding 24 hours returned no matching entries; actual key usage not established."
+  ],
+  "log_query": {
+    "endpoint": "https://loki-read.atlas.home.arpa/loki/api/v1/query_range",
+    "query": "{host=~\"proxmox(-cortex)?[.]home[.]arpa\",job=\"systemd-journal\"} |~ \"Accepted (publickey|gssapi)|Authentication refused|Failed publickey\"",
+    "window": "24h preceding inventory",
+    "matching_entries": 0
+  },
+  "investigation": {
+    "nodes_are_standalone": true,
+    "enabled_proxmox_workflows": [
+      "chronicle-backup.timer: unlock Cortex, check/start CT110, shutdown Cortex when appropriate",
+      "vllm-weekly-window.timer: unlock Cortex, control VM220, execute guest commands, shutdown Cortex when appropriate"
+    ],
+    "automation_identity_pinned": false,
+    "rsa_authentication_test": "Proxmox -> Cortex true with IdentitiesOnly=yes and /root/.ssh/id_rsa succeeded; no workload triggered",
+    "native_key_management": "/usr/share/perl5/PVE/Cluster/Setup.pm ssh_merge_keys always adds local id_rsa.pub; updatecerts_and_ssh invokes it.",
+    "evidence_files": [
+      "modules/proxmox_workflows/files/proxmox_orchestration.py",
+      "modules/proxmox_workflows/files/chronicle_backup_orchestrator.py",
+      "modules/proxmox_workflows/files/vllm_weekly_window.py",
+      "docker/wolf/app/wolf.py",
+      "docker/wolf/scripts/10-proxmox-token.py"
+    ],
+    "proposed_enforcement": {
+      "openssh": "OpenVox owns a dedicated root allowlist file; Match User root uses only that AuthorizedKeysFile, disables AuthorizedKeysCommand, and requires publickey. Explicitly retain approved native Proxmox self keys and necessary automation. Proxmox may maintain its own file but it is not an additional effective authorization source.",
+      "automation": "Pin an explicit identity; replace universal host SSH with scoped API tokens following existing Wolf pattern, or a carefully constrained forced command. Retain dedicated unlock-only keys.",
+      "dropbear": "Fully manage key files and config on both nodes, rebuild every retained initramfs and sync/verify EFI copies on changes.",
+      "reporting": "Alert on policy drift and failed/stale OpenVox runs; scheduled convergence alone is not immediate prevention.",
+      "nonroot": "If Kerberos-only human login is intended, disable publickey authentication for the human account; disabling root SSSD lookup alone does not close this path."
+    },
+    "changes_applied": false
+  }
+}
