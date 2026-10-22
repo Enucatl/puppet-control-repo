@@ -11,8 +11,9 @@ each workload VM; disposable builder 9012 used 2048 MiB.
 
 Migration and automated acceptance completed on 2026-10-22. Real-data
 deduplication, CUDA, Qdrant, extraction/orchestration, Wolf identity/encoders,
-production reboot and controller wake/unlock/start checks passed. Actual
-Moonlight streaming requires a client check; it has not been performed.
+production reboot and controller wake/unlock/start checks passed. The user
+confirmed Moonlight streaming works after re-pairing the client. Preserving the
+server UUID and pairing records did not avoid re-pairing in this migration.
 
 The controlling Codex process, checkout, session state and detached jobs run on
 Atlas. The checkout and private evidence directory
@@ -126,8 +127,10 @@ Wolf retained UUID `06a7b1a9-0a90-49e4-9055-a589f7d49940`, both paired
 clients and all three profiles. Its HTTP server-info response retained the UUID.
 Loki recorded NVIDIA H.264, H.265 and AV1 `nvcodec` selection with zero-copy on
 `/dev/dri/renderD128`. Optional VAAPI/MSDK/NVRTC/GStreamer probe warnings preceded
-successful NVIDIA selection; actual streaming was not tested. Clients using the
-old host address must select Cerebrum; preserved pairing does not redirect DNS.
+successful NVIDIA selection. The subsequent user test confirmed Moonlight
+streaming works, but required re-pairing. The copied UUID and pairing records
+therefore did not prove seamless client authentication. Clients using the old
+host address must select Cerebrum; preserved pairing does not redirect DNS.
 
 Atlas's live Wolf controller belongs to Compose project `infra` and retains
 image `sha256:cacca5bd3fe44a62034b03f3fba9360bf423a3300fb0e25b07f453e85dd2bc65`,
@@ -243,4 +246,5 @@ Puppet certificates or enrollment files over Cognition's native identity.
 
 Complex, Cognition, their recovery assets and held snapshots require explicit
 approval before deletion. They remain local rollback assets rather than an
-independent backup. Actual Moonlight streaming requires a client check.
+independent backup. Moonlight streaming was confirmed by the user after
+re-pairing; no client streaming check remains open.
