@@ -29,7 +29,7 @@ own Compose entrypoint. Existing authority and Wolf state volumes retain their
 external names. Bootstrap and authority recovery use their explicit inputs;
 follow [Atlas recovery](atlas-recovery.md).
 Cerebrum's Wolf/vLLM projects have no automatic Git deployments. Their existing
-on-demand controllers select when to start them. See the [Cerebrum handover](cerebrum-cutover.md)
+on-demand controllers select when to start them. See the [Cerebrum handover](archive/migration/cerebrum-cutover.md)
 for controller, routing and NFS transitions.
 
 The completed migration's renderers and frozen Compose outputs are retained only

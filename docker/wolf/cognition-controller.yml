@@ -1,7 +1,0 @@
-# Rollback only: use after restoring Cognition GPU ownership and current data.
-# Production uses cerebrum-controller.yml (VM 230).
-services:
-  wolf:
-    environment:
-      WOLF_GUEST_HOST: cognition.home.arpa
-      WOLF_VM_ID: '220'

@@ -1,6 +1,9 @@
 # Cognition to Cerebrum handover
 
-This procedure transfers the existing services to Cerebrum VM 230 on Cortex.
+> Historical handover record. The migration is complete; do not replay this
+> transaction. Rollback instructions and retention requirements remain applicable.
+
+This procedure transferred the existing services to Cerebrum VM 230 on Cortex.
 Cognition VM 220 and Complex VM 200 remain intact for rollback. Complete XFS
 template, identity, storage and initial-copy validation before this handover.
 Keep Cognition's node data and DNS records available for recovery.
@@ -12,14 +15,15 @@ Active configuration targets `cerebrum.home.arpa`, VM 230:
 | Dependency | Repository location |
 | --- | --- |
 | Provisioning and native host identity | `proxmox/cerebrum-server.sh`, `data/nodes/cerebrum.home.arpa.yaml`, `data/roles/nodes/cerebrum.home.arpa.yaml` |
-| Wolf controller and token ACL | `docker/docker-compose.yml`, `docker/wolf/app/wolf.py`, `docker/wolf/scripts/10-proxmox-token.py`, `docker/wolf/cerebrum-controller.yml` |
+| Wolf controller and token ACL | `docker/docker-compose.yml`, `docker/wolf/app/wolf.py`, `docker/wolf/scripts/10-proxmox-token.py` |
 | Weekly vLLM orchestration | `data/nodes/proxmox.home.arpa.yaml`, `modules/proxmox_workflows/{files/vllm_weekly_window.py,manifests/vllm_weekly_window.pp}` |
 | Authenticated NFS server | `data/nodes/aperture.home.arpa.yaml` |
 | DNS, DHCP and six routed container networks | `provisioning/host_vars/router.yml`, `provisioning/templates/{app_configs,partials}` |
 | Vault admission and shared host configuration | `proxmox/atlas-enroll.py`, `modules/profile/manifests/common/systemd.pp` |
 
 Retain Cognition's DNS/DHCP records, node data, native enrollment admission,
-provisioning reference and rollback controller override. Route deletion commands
+and native identity for rollback. Retired provisioning and controller overrides
+remain in Git history. Route deletion commands
 must still name its old next hop. Historical migration records and source
 recovery paths keep their original names. Aperture retains `/export/cognition`
 and matching systemd unit names as stable client interfaces; their NFS server is
@@ -54,9 +58,10 @@ while preserving unrelated local preferences.
 6. Recreate only Atlas's controller service with its existing Compose project,
    state volume and secrets. Inspect the live Compose labels first: at this
    cutover the controller belonged to project `infra`, even though its saved
-   resolved file named `wolf`. Use `docker/wolf/cerebrum-controller.yml` if a
-   target override is needed; remove the old Cognition override from the
-   invocation. Its target must resolve to `cerebrum.home.arpa`, VM 230.
+   resolved file named `wolf`. The production Compose environment now selects
+   `cerebrum.home.arpa`, VM 230, without a migration override. For rollback,
+   restore the saved resolved controller configuration and explicitly select
+   `WOLF_GUEST_HOST=cognition.home.arpa` and `WOLF_VM_ID=220`.
    Converge the weekly controller on `proxmox.home.arpa` before restoring its
    timer. Preserve on-demand workload behavior and absent deploy watchers.
 7. Converge Aperture's authenticated NFS mount to
@@ -108,7 +113,7 @@ edits. Puppet tracks upstream latest, so a guest-only edit will be overwritten.
 Inspect copied application files for remaining old hostname/VMID dependencies
 without printing `.env` contents or secrets.
 
-Repeat the [previous acceptance checks](archive/migration/cognition-migration.md)
+Repeat the [previous acceptance checks](cognition-migration.md)
 against the refreshed inventory: native identities and TLS, Puppet convergence,
 Kerberos NFS, monitoring, backup configuration, Docker/NVIDIA computation, Wolf
 UUID/pairings/encoders, Qdrant collections plus disposable write/read/delete,

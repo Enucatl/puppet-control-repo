@@ -210,68 +210,19 @@ was preserved before its normal retention cleanup in root-only router archive
 `/config/containers/alloy/migration-wal-replay-20261021.tar.gz`; rejected history
 is not confirmed complete in Loki and the archive has not been replayed.
 
-### Cerebrum cutover
+### Cerebrum routing
 
-The replacement targets `cerebrum.home.arpa`, VM 230, at `10.0.40.135`, MAC
+The GPU workload host is `cerebrum.home.arpa`, VM 230, at `10.0.40.135`, MAC
 `bc:24:11:4e:c0:23` and ULA `fd6b:d722:1738:28:be24:11ff:fe4e:c023`.
 The route templates select `cerebrum_node_ipv6_suffix`, giving next hop
-`fe80::be24:11ff:fe4e:c023` on `eth3`. Move all six existing routes, including
-the retained ISP prefix, only during the coordinated workload/GPU handover.
+`fe80::be24:11ff:fe4e:c023` on `eth3` for all six container routes, including
+the retained ISP prefix.
 Both guests derive the same container pools from their first hostname letter;
 do not activate those networks on both guests.
-See [Cerebrum handover](../docs/cerebrum-cutover.md) for the exact transaction
-and rollback, and the [migration record](../docs/cerebrum-migration.md) for
-execution status. The Cognition record below remains historical recovery
-evidence; do not replay its Complex-to-Cognition commands for this cutover.
-
-### Cognition cutover record
-
-Cognition VM 220 on Cortex reserves `10.0.40.134` for
-`bc:24:11:4e:c0:22`; `cognition.home.arpa` and its reverse record use that
-address. Its verified ULA `fd6b:d722:1738:28:be24:11ff:fe4e:c022` also has
-forward/reverse DNS so IPv6 NFS clients match the server's `*.home.arpa` export
-restriction. Apply it with the existing `--tags dns,healthcheck` workflow above.
-The VM uses virtual graphics and a separate NIC during staging. Its link-local
-address is `fe80::be24:11ff:fe4e:c022` on router interface `eth3`.
-No container IPv6 routes move during staging.
-
-At the coordinated container/GPU cutover, after Complex's workloads are stopped,
-first update the four `c000::/56` and `c100::/64` declarations in
-`templates/partials/nat_routing.j2` to use `cognition_node_ipv6_suffix` and
-`cortex_interface`. Do not change the other Docker/desktop routes. This keeps
-future full applies from returning the routes to Complex.
-
-Then, on the router, move all existing versions of those six routes, including
-the previous ISP prefix retained in the live configuration. The following were
-verified on 2026-10-20; review `show configuration commands | match 'c[01]00'`
-before applying if the ISP prefix changes:
-
-```text
-configure
-delete protocols static route6 2a02:168:6271:c000::/56 next-hop fe80::be24:11ff:feb0:32c9
-delete protocols static route6 2a02:168:6271:c100::/64 next-hop fe80::be24:11ff:feb0:32c9
-delete protocols static route6 2a02:168:6278:c000::/56 next-hop fe80::be24:11ff:feb0:32c9
-delete protocols static route6 2a02:168:6278:c100::/64 next-hop fe80::be24:11ff:feb0:32c9
-delete protocols static route6 fd6b:d722:1738:c000::/56 next-hop fe80::be24:11ff:feb0:32c9
-delete protocols static route6 fd6b:d722:1738:c100::/64 next-hop fe80::be24:11ff:feb0:32c9
-set protocols static route6 2a02:168:6271:c000::/56 next-hop fe80::be24:11ff:fe4e:c022 interface eth3
-set protocols static route6 2a02:168:6271:c100::/64 next-hop fe80::be24:11ff:fe4e:c022 interface eth3
-set protocols static route6 2a02:168:6278:c000::/56 next-hop fe80::be24:11ff:fe4e:c022 interface eth3
-set protocols static route6 2a02:168:6278:c100::/64 next-hop fe80::be24:11ff:fe4e:c022 interface eth3
-set protocols static route6 fd6b:d722:1738:c000::/56 next-hop fe80::be24:11ff:fe4e:c022 interface eth3
-set protocols static route6 fd6b:d722:1738:c100::/64 next-hop fe80::be24:11ff:fe4e:c022 interface eth3
-commit
-save
-exit
-```
-
-Run `--tags healthcheck`, and check `ip -6 route get` plus connectivity to a
-running migrated container in each prefix. Router smoke checks alone do not
-verify workload reachability. For rollback, stop Cognition's workloads, reverse
-the route commands (delete the Cognition next hop, set the Complex next hop),
-and return the four template declarations to `complex_node_ipv6_suffix`.
-Use `eth3` for Complex too: both VMs are on the Cortex DAC segment; the old
-`eth1` route interface is not the correct interface for their link-local hops.
+See the [completed handover](../docs/archive/migration/cerebrum-cutover.md)
+for rollback and the [acceptance record](../docs/archive/migration/cerebrum-migration.md)
+for measurements. Earlier [Cognition router notes](../docs/archive/migration/cognition-migration.md)
+are historical evidence, not current route commands.
 
 ### Recovering adguard_users from the router
 

@@ -1,6 +1,6 @@
 # Cerebrum XFS migration
 
-## Current status
+## Completed result
 
 The infrastructure handover completed at 12:28 UTC on 2026-10-22.
 `cerebrum.home.arpa`, VM 230 on `proxmox-cortex.home.arpa`, now has both GPU
@@ -20,6 +20,21 @@ Atlas. The checkout and private evidence directory
 `/home/user/.local/state/cerebrum-migration` use Atlas's local ext4 disk. Cortex
 also keeps provisioning sources and logs under `/root/cerebrum-provisioning`.
 Neither location depends on Cognition mounts.
+
+
+The user also confirmed Paperless AI OCR processing through Cerebrum. Its local
+ignored `.env` in `/opt/docker/paperless-ai` was corrected from
+`http://complex.home.arpa:8108` to `http://cerebrum.home.arpa:8108`, and only its
+AI container was recreated. Real parsing requests returned HTTP 200 and the OCR
+queue progressed from 14 to 7, with five jobs entering metadata. Chat and metadata
+continue to use OpenRouter. A transient startup health timeout cleared after
+warmup. Extraction was then stopped at the user's request before VM shutdown.
+
+The temporary Wolf target overrides and Cognition rebuild launcher were retired
+after acceptance. Source node/role identity, DNS, native enrollment admission and
+old-hop route cleanup remain for rollback; no VM, volume, snapshot or protected
+recovery evidence was deleted. Reusable XFS provisioning, the pinned vLLM image
+override and monthly Steam deduplication remain operational configuration.
 
 ## Source inventory and staging evidence
 
@@ -61,7 +76,7 @@ Vault's exact agent-name admission includes Cerebrum while retaining Cognition.
 
 ## Template procedure
 
-See [the reproducible XFS template procedure](../proxmox/README.md).
+See [the reproducible XFS template procedure](../../../proxmox/README.md).
 The root archive is pinned separately from the disk image to SHA256
 `ccd08a7a76cdc69034dd2682b4913bdd051cb71ad87d0b66689015aa068e61c8`.
 Canonical's signed manifest was verified using the installed Ubuntu cloud-image
@@ -145,14 +160,16 @@ The preserved session deadline expired during migration, so controller restart
 correctly performed its established VM/host timeout shutdown. At 13:13 UTC the
 real controller then passed wake-on-LAN, unlock, VM 230 startup and Wolf startup.
 It was restarted to load that accepted session into the live server. The
-`migration-acceptance` session uses the existing four-hour timeout (approximately
-17:13 UTC); the controller can end it sooner. The weekly timer is enabled again.
+`migration-acceptance` session used the existing four-hour timeout. After user
+acceptance, extraction and Wolf were stopped and Cerebrum was shut down at
+13:33 UTC. The controller session was completed and its timeout cleared; the
+controller remains idle and the weekly timer remains enabled.
 Qdrant and extraction remain down between uses; no deploy watchers were added.
 Post-wake native mTLS access to Loki and fresh ingestion passed.
 
 The previous accepted vLLM image was recovered from the retained source
 `/root/cognition-migration/image-pulls.log`. After the final comparison,
-[cerebrum-vllm-override.yml](../proxmox/cerebrum-vllm-override.yml) was installed
+[cerebrum-vllm-override.yml](../../../proxmox/cerebrum-vllm-override.yml) was installed
 as `/opt/docker/vllm/docker-compose.override.yml` so both BGE and
 Qwen retain that digest rather than resolving `latest`. Acceptance used pinned
 application images without unrelated upgrades. The optional legacy nightly/Ollama

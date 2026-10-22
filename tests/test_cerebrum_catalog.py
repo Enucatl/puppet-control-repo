@@ -9,7 +9,7 @@ from test_profile_catalogs import DUMMY_SECRETS
 
 
 @pytest.mark.parametrize("hostname", ["cognition", "cerebrum"])
-def test_cognition_catalog(tmp_path: Path, hostname: str) -> None:
+def test_gpu_host_catalog(tmp_path: Path, hostname: str) -> None:
     """Use Atlas services and leave GPU workload lifetime to on-demand controllers."""
     result = resources(
         compile_catalog(
@@ -73,8 +73,9 @@ def test_cognition_catalog(tmp_path: Path, hostname: str) -> None:
             assert unit["ensure"] is False
     assert (ROOT / f"data/roles/nodes/{hostname}.home.arpa.yaml").is_symlink()
     if hostname == "cerebrum":
-        assert "MemoryMax=2G" in result[
-            "File[/etc/systemd/system/steam-dedup.service]"
-        ]["content"]
+        assert (
+            "MemoryMax=2G"
+            in result["File[/etc/systemd/system/steam-dedup.service]"]["content"]
+        )
         assert result["Systemd::Unit_file[steam-dedup.timer]"]["active"] is True
     assert "Class[Profile::Docker_node]" not in result

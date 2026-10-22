@@ -1,7 +1,7 @@
 # Proxmox VM provisioning
 
-Atlas, Aperture and Cerebrum use Ubuntu 26.04; Cerebrum VM 230 is replacing
-Cognition VM 220 through the [staged migration](../docs/cerebrum-migration.md).
+Atlas, Aperture and Cerebrum use Ubuntu 26.04; Cerebrum VM 230 replaced
+Cognition VM 220 through the [completed migration](../docs/archive/migration/cerebrum-migration.md).
 This runbook covers provisioning, bootstrap and publication. Recover established Atlas state
 through the [backup and recovery workflow](../docs/atlas-recovery.md).
 Completed plans and acceptance results are in the
@@ -436,17 +436,15 @@ Desktop provisioning reboots and verifies the short hostname/FQDN again.
 Cerebrum uses the Docker workload path: VM 230, template 9002, eight cores,
 32768 MiB final RAM, a thin 1000 GiB XFS disk and virtio graphics for initial
 provisioning, with MAC `bc:24:11:4e:c0:23` reserved as `10.0.40.135`.
-During staging, both Cerebrum and Cognition use 16384 MiB; raise Cerebrum to
-32768 MiB only after Cognition stops. It enrolls against Atlas and installs
-authenticated system CA trust before FreeIPA enrollment. Transfer both GPU
-functions and all six routed container networks together using the
-[handover instructions](../docs/cerebrum-cutover.md), switching to serial
-graphics after transfer. Its daemon retains disabled user namespace remapping to
+It enrolls against Atlas and installs authenticated system CA trust before
+FreeIPA enrollment. The completed GPU/network handover and staging resources
+are recorded in the [handover record](../docs/archive/migration/cerebrum-cutover.md).
+The production guest uses serial graphics after GPU transfer. Its daemon retains disabled user namespace remapping to
 preserve migrated numeric ownership; other Docker builds retain their existing
 `default` remapping. The Docker provisioning failure path retains
 the guest and writes private diagnostics so an enrolled identity can be repaired
 in place.
-See the [Cerebrum migration record](../docs/cerebrum-migration.md) for current
+See the [Cerebrum migration record](../docs/archive/migration/cerebrum-migration.md) for current
 acceptance evidence and retained recovery data. Preserve Cognition VM 220 and
 Complex VM 200 for rollback; neither may run conflicting GPU or container
 networks alongside Cerebrum. The

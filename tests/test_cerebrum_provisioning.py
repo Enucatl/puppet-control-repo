@@ -1,4 +1,4 @@
-"""Check Cognition staging resources and authenticated infrastructure trust."""
+"""Check Cerebrum provisioning resources and authenticated infrastructure trust."""
 
 import shlex
 import json
@@ -32,11 +32,10 @@ def test_docker_ownership_mode(
 @pytest.mark.parametrize(
     ("hostname", "vmid", "template", "mac"),
     [
-        ("cognition", "220", "9001", "bc:24:11:4e:c0:22"),
         ("cerebrum", "230", "9002", "bc:24:11:4e:c0:23"),
     ],
 )
-def test_cognition_resources(
+def test_cerebrum_resources(
     tmp_path: Path, hostname: str, vmid: str, template: str, mac: str
 ) -> None:
     """Use a distinct VM identity with requested resources and virtual graphics."""

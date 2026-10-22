@@ -1,6 +1,7 @@
 # Completed migration records
 
-Atlas, Aperture and Cognition replaced Docker, Forbearance and Complex. These
+Atlas, Aperture and Cognition replaced Docker, Forbearance and Complex;
+Cerebrum subsequently replaced Cognition with XFS. These
 records preserve plans, investigation notes and acceptance results from their
 original revisions. Commands and staging status in them are historical; some
 referenced helpers have been retired and remain available in Git history.
@@ -54,3 +55,6 @@ and [Atlas recovery](../../atlas-recovery.md). The reusable
 - [Aperture cutover and recovery records](aperture-cutover.md)
 - [Aperture acceptance results](aperture-cutover-results.json)
 - [Cognition cutover, recovery records and retention requirements](cognition-migration.md)
+
+- [Cerebrum XFS migration and acceptance](cerebrum-migration.md)
+- [Cerebrum handover and rollback](cerebrum-cutover.md)

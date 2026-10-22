@@ -1,6 +1,0 @@
-# Use this override only after Cerebrum owns the GPU and final source state.
-services:
-  wolf:
-    environment:
-      WOLF_GUEST_HOST: cerebrum.home.arpa
-      WOLF_VM_ID: '230'

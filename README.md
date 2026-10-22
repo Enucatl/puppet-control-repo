@@ -1,9 +1,9 @@
 # Puppet Control Repository
 
 Atlas and Aperture replace Docker and Forbearance. Cerebrum (VM 230) is the
-XFS replacement for Cognition (VM 220); follow the
-[migration record](docs/cerebrum-migration.md) and
-[handover instructions](docs/cerebrum-cutover.md) for cutover status and rollback.
+XFS replacement for Cognition (VM 220). See the completed
+[migration record](docs/archive/migration/cerebrum-migration.md) and
+[handover record](docs/archive/migration/cerebrum-cutover.md) for acceptance evidence and rollback.
 See [Atlas service configuration](docs/atlas-services.md)
 for the current service sources and environment files, and
 [Atlas recovery](docs/atlas-recovery.md) for established-authority restoration.
