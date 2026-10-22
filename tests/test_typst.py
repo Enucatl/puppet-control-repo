@@ -27,7 +27,7 @@ def test_typst_bootstrap_and_weekly_update(
     catalog = compile_catalog(
         tmp_path,
         "include profile::typst, profile::common::cron",
-        hostname="forbearance",
+        hostname="aperture",
         node_type="desktop",
         fact_overrides={
             "os": {"architecture": architecture, "family": "Debian", "name": "Ubuntu"}

@@ -1,7 +1,7 @@
 class nfs_config (
   Hash   $server_exports = {},
   Hash   $client_mounts  = {},
-  String $ipa_server     = 'freeipa.home.arpa',
+  String $ipa_server     = 'ipa.home.arpa',
 ) {
   include ::nfs
 

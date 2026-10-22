@@ -1,5 +1,9 @@
 # FreeIPA client v7 rollout
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 This describes the legacy client rollout, including its manual repair steps.
 For the Ubuntu 26.04 migration, follow the [current plan](26.04-migration-plan.md):
 script every required setup/repair step, validate CA-less consumers under #14/#8,
@@ -13,7 +17,7 @@ Atlas base creation or authorization to reconfigure the existing fleet.
    stores its password as
    `kv/puppet:freeipa::client::password`. User provisioning uses a separate
    service keytab restricted to `docker.home.arpa`; see
-   [the provisioning migration](freeipa-provisioning.md).
+   [the provisioning migration](../../freeipa-provisioning.md).
 2. Before deployment, inspect every client `/etc/ipa/default.conf`. Its
    normalized `domain` must be `home.arpa` and `server` must be
    `freeipa.home.arpa`; repair mismatches manually.

@@ -1,16 +1,20 @@
 # Development Infrastructure And Cryptography Migration Plan
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 The numbered legacy Vault/bootstrap scripts quoted below have been retired;
 their command names are retained only as design history.
 
 **Historical design:** the mirror-first Ed25519/ECDSA proposals below are
 superseded for #12–#14 by the fresh ML-DSA-44 Vault-held root decision in the
-[current container plan](openvox-container-migration-plan.md). They are retained
+[current container plan](../../openvox-native-clients.md). They are retained
 as design history, not installation commands or prerequisites. The current
 rehearsal uses the accepted OpenVox 24001 packages, a Vault-held ML-DSA root and
-separate OpenVox/FreeIPA intermediates. Follow the [infra runbook](openvox-infra.md),
-[historical offline-root runbook](openvox-offline-root.md) and
-[measured Vault limits](openvox-vault-limitations.md) instead of the legacy
+separate OpenVox/FreeIPA intermediates. Follow the [infra runbook](../../openvox-infra.md),
+[historical offline-root runbook](../../openvox-offline-root.md) and
+[measured Vault limits](../../openvox-vault-limitations.md) instead of the legacy
 online-root/default-RSA paths below. Deploy the new hierarchy on Atlas first;
 subsequent recovery restores it. Enrollment in #13 covers Atlas, then Aperture
 and Cognition as they migrate, leaving existing hosts unchanged.

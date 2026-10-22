@@ -97,7 +97,7 @@ profile::user_toolchain::npm_ignore_scripts: true
 profile::user_toolchain::npm_before_days: 3
 
 freeipa::client::domain: home.arpa
-freeipa::client::server: freeipa.home.arpa
+freeipa::client::server: ipa.home.arpa
 freeipa::client::principal: puppet-enroller
 freeipa::client::mkhomedir: true
 

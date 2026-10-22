@@ -61,16 +61,12 @@ ssh::client_options:
   ProxyCommand: none
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'
 
-freeipa::client::server: ipa.home.arpa
 freeipa::client::hostname: cognition.home.arpa
 freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
 
 profile::common::certs::vault_certs_defaults:
   vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/puppet'
   ca_trust: /etc/ssl/certs/ca-certificates.crt
-
-profile::alloy::loki_url: 'https://loki.atlas.home.arpa/loki/api/v1/push'
-profile::beszel_agent::hub_url: 'https://beszel-agent.atlas.home.arpa'
 
 systemd::dropin_files:
   puppet-crypto.conf:
@@ -81,8 +77,6 @@ systemd::dropin_files:
       ExecStart=
       ExecStart=/opt/puppetlabs/puppet/bin/ruby -r /usr/local/libexec/openvox-child-policy.rb /opt/puppetlabs/puppet/bin/puppet agent $PUPPET_EXTRA_OPTS --no-daemonize
     require: File[/usr/local/libexec/openvox-child-policy.rb]
-
-nfs_config::ipa_server: ipa.home.arpa
 
 profile::common::certs::directories:
   - /opt/docker

@@ -1,5 +1,9 @@
 # OpenVox issue #12 implementation and acceptance
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 ## Current scope
 
 Work is isolated in `/home/user/code/puppet-control-repo`, on GitHub-only `dev`.
@@ -118,7 +122,7 @@ fixtures.
 custody, #18 full Atlas execution and #13 production cutover. BCJSSE conditional
 `disabledAlgorithms` expressions remain unsupported; controlled deployment policy
 and the accepted Vault exception are documented in
-[the runtime audit](openvox-jvm-policy.md) and [Vault limits](openvox-vault-limitations.md).
+[the runtime audit](../../openvox-jvm-policy.md) and [Vault limits](../../openvox-vault-limitations.md).
 Automatic Vault TLS certificate renewal is not implemented here. Production
 backup custody, physical failure-domain independence and full workload recovery
 are not established by fresh lab recovery. No production rollout is implied.

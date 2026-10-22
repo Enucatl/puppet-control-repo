@@ -7,7 +7,6 @@ classes:
   - profile::vault_sso
   - freeipa_users::provision
 
-nfs_config::ipa_server: ipa.home.arpa
 nfs_config::server_exports:
   '/scratch':
     clients: '*.home.arpa(sec=krb5p,rw,sync,no_subtree_check,no_root_squash)'
@@ -52,7 +51,6 @@ ssh::client_options:
   ProxyCommand: none
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'
 
-freeipa::client::server: ipa.home.arpa
 freeipa::client::hostname: atlas.home.arpa
 freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
 
@@ -908,7 +906,6 @@ freeipa_users::provision::users:
     first: Beszel
     last: Agent
 profile::beszel_agent::enable_docker_metrics: true
-profile::beszel_agent::hub_url: https://beszel-agent.atlas.home.arpa
 
 profile::docker_host::scheduled_refresh: true
 profile::docker_host::git_deploy_projects:

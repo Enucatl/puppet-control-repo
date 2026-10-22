@@ -1,5 +1,9 @@
 # Cognition completed migration
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 ## Cutover record — 2026-10-20
 
 Cognition VM 220 on `proxmox-cortex.home.arpa` is now the active guest.

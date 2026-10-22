@@ -1,4 +1,7 @@
 ---
+freeipa::client::hostname: proxmox-cortex.home.arpa
+freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
+
 classes:
   - profile::dropbear_initramfs
   - profile::proxmox_vfio_passthrough

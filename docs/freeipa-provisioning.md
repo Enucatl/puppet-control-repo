@@ -36,18 +36,8 @@ keytabs, including `/etc/krb5-backrest.keytab`. Missing/stale local keytabs use
 FreeIPA documents the underlying scoped operations in
 [Keytab Retrieval](https://www.freeipa.org/page/V4/Keytab_Retrieval).
 
-`docker/freeipa/retire-shared-admin-password.sh` is retained for the legacy
-Docker authority only; do not run it on Atlas. Atlas has independent installer
-credentials and no dependency on those retired shared fields. The legacy script
-requires administrative Vault access and verifies that ordinary Puppet certificate authentication
-cannot read `kv/freeipa-admin`, saves independent `admin_password` and
-`directory_manager_password` values there, rotates and verifies each account,
-and removes the obsolete installation password from the FreeIPA container's
-environment (recreating that container). It then removes exactly the four
-retired shared fields with a version-checked Vault update and verifies that
-unrelated fields, including `freeipa::client::password`, remain unchanged.
-Reruns recover staged credentials after an interruption. Vault version history
-is retained; the old passwords no longer authenticate either rotated account.
+Atlas uses independent installer credentials and has no dependency on the
+retired shared administrator fields.
 
 Broader Vault isolation is a separate change. The shared Puppet entry still
 contains credentials for router provisioning, Vault LDAP, Samba, GeoIP, and

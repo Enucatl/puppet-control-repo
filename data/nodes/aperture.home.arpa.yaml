@@ -20,16 +20,12 @@ ssh::client_options:
   ProxyCommand: none
   KnownHostsCommand: '/usr/bin/sss_ssh_knownhosts %H'
 
-freeipa::client::server: ipa.home.arpa
 freeipa::client::hostname: aperture.home.arpa
 freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
 
 profile::common::certs::vault_certs_defaults:
   vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/puppet'
   ca_trust: /etc/ssl/certs/ca-certificates.crt
-
-profile::alloy::loki_url: 'https://loki.atlas.home.arpa/loki/api/v1/push'
-profile::beszel_agent::hub_url: 'https://beszel-agent.atlas.home.arpa'
 
 systemd::dropin_files:
   puppet-crypto.conf:
@@ -55,7 +51,6 @@ profile::common::acls::posix_acls:
       - 'default:mask::r-X'
     recursive: true
 
-nfs_config::ipa_server: ipa.home.arpa
 nfs_config::server_exports:
   '/home/user/Documents':
     clients: 'atlas.home.arpa(sec=krb5p,ro,sync,no_subtree_check,root_squash)'

@@ -1,10 +1,14 @@
 # Vault Cert Auth Fails for Proxmox Puppet Certificate
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 Date: 2026-04-25
 
 The legacy rotation/bootstrap scripts quoted below have been retired. Their
 commands are historical diagnostic evidence, not runnable maintenance steps.
-Current authority setup and startup are documented in [OpenVox infrastructure](openvox-infra.md).
+Current authority setup and startup are documented in [OpenVox infrastructure](../../openvox-infra.md).
 
 Historical diagnosis and proposed remedies for the legacy authority. The active
 [migration plan](26.04-migration-plan.md) supersedes the broad agent reissue and

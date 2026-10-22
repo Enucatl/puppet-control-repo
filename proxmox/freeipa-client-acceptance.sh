@@ -71,7 +71,7 @@ run_guest() {
 run_guest /bin/bash -lc '
   test -f /etc/ipa/default.conf
   grep -Eq "^[[:space:]]*domain[[:space:]]*=[[:space:]]*home\.arpa[[:space:]]*$" /etc/ipa/default.conf
-  grep -Eq "^[[:space:]]*server[[:space:]]*=[[:space:]]*freeipa\.home\.arpa[[:space:]]*$" /etc/ipa/default.conf
+  grep -Eq "^[[:space:]]*server[[:space:]]*=[[:space:]]*ipa\.home\.arpa[[:space:]]*$" /etc/ipa/default.conf
   test -s /etc/krb5.keytab
   systemctl is-enabled sssd
   systemctl is-active sssd

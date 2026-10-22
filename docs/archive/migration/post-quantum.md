@@ -1,5 +1,9 @@
 # Post-Quantum Cryptography Remediation
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 This is the historical risk assessment of the classical deployment. Its proposed
 shorter lifetimes and exploratory crypto paths are not extra migration requirements.
 Use the [current migration plan](26.04-migration-plan.md), accepted #12 Vault-held

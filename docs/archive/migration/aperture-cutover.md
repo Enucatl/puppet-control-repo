@@ -1,5 +1,9 @@
 # Aperture completed desktop cutover
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 This record covers Forbearance 300 and Aperture 310 on
 `proxmox.home.arpa`. The migration is complete and the one-off hardware
 handover and desktop recovery helpers have been retired. Original VM
@@ -54,7 +58,7 @@ Log checks used the current Atlas Loki read endpoint; the old Docker read
 endpoint from the logs skill failed CA verification. The Proxmox selector
 returned no matching entries; the reset warning above comes from the captured
 startup output. Exact selectors, time range and sanitized results are in
-[the cutover evidence](../docs/aperture-cutover-results.json).
+[the cutover evidence](aperture-cutover-results.json).
 
 After shutdown, Forbearance's forwarded agent disappeared as expected. The
 temporary local key maintained access until Aperture's normal key was usable.

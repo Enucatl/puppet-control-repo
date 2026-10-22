@@ -407,9 +407,9 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("hostname", "node_type"),
     [
-        ("docker", "docker"),
-        ("complex", "docker"),
-        ("forbearance", "desktop"),
+        ("atlas", "docker"),
+        ("cognition", "docker"),
+        ("aperture", "desktop"),
         ("proxmox", "proxmox"),
         ("proxmox-cortex", "proxmox"),
     ],
@@ -424,16 +424,28 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     )
     assert "Service[alloy]" in resources(catalog)
     result = resources(catalog)
-    assert "File[/usr/local/libexec/openvox-child-policy.rb]" not in result
-    assert "File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]" not in result
+    enrollment = result["Freeipa_client_enrollment[default]"]
+    assert enrollment["server"] == "ipa.home.arpa"
+    assert enrollment["hostname"] == f"{hostname}.home.arpa"
+    assert enrollment["ca_cert_file"] == (
+        "/usr/local/share/ca-certificates/atlas-infrastructure.crt"
+    )
+    migrated = node_type != "proxmox"
+    assert ("File[/usr/local/libexec/openvox-child-policy.rb]" in result) == migrated
+    assert (
+        "File[/etc/systemd/system/puppet.service.d/puppet-crypto.conf]" in result
+    ) == migrated
     if node_type in {"docker", "desktop"}:
         ssh_config = result["Concat::Fragment[ssh_config global config]"]["content"]
-        assert "ProxyCommand /usr/bin/sss_ssh_knownhostsproxy -p %p %h\n" in ssh_config
+        assert "ProxyCommand none\n" in ssh_config
+        assert "KnownHostsCommand /usr/bin/sss_ssh_knownhosts %H\n" in ssh_config
     assert ("File[/usr/local/bin/typst]" in result) == (node_type == "desktop")
     assert ("Cron[typst-update]" in result) == (node_type == "desktop")
-    certificate_role = "puppet-docker.home.arpa" if hostname == "docker" else "puppet"
+    certificate_role = "puppet-atlas.home.arpa" if hostname == "atlas" else "puppet"
     for resource_name, parameters in result.items():
         if resource_name.startswith("Vault_cert["):
+            if parameters["auth_name"] == "atlas-transport":
+                continue
             assert parameters["vault_uri"] == (
                 f"https://vault.home.arpa:8200/v1/pki_int/issue/{certificate_role}"
             )
@@ -449,8 +461,8 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     assert result["Exec[dotfiles-rake-links]"]["cwd"] == "/home/user/.vim"
     if node_type == "proxmox":
         assert result["Package[sudo]"]["ensure"] == "installed"
-    assert "Class[Freeipa_users::Provision]" not in result
-    assert "Exec[ipa-user-provision-backrest]" not in result
+    assert ("Class[Freeipa_users::Provision]" in result) == (hostname == "atlas")
+    assert ("Exec[ipa-user-provision-backrest]" in result) == (hostname == "atlas")
     assert result["File[/run/puppet-ipa-admin-pass]"]["ensure"] == "absent"
     assert "kinit admin" not in str(catalog)
     docker_role = node_type == "docker"
@@ -459,8 +471,8 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
     assert ("Exec[allow-wolf-wol-directed-broadcast]" in result) == docker_role
     config = result["File[/etc/alloy/config.alloy]"]["content"]
     assert ('discovery.docker "containers"' in config) == docker_role
-    assert ('loki.source.api "suricata_push"' in config) == (hostname == "docker")
-    if hostname == "docker":
+    assert ('loki.source.api "suricata_push"' in config) == (hostname == "atlas")
+    if hostname == "atlas":
         assert config.count("stage.geoip {") == 4
         assert "__LOCAL_IPV6_PREFIX__" not in config
         assert "2001:db8:1234:" in config
@@ -473,13 +485,6 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
                 "--wait --wait-timeout 300 beszel && docker compose run --rm alerts-init'"
                 in unit.splitlines()
             )
-    if hostname == "complex":
-        for project in ("vllm", "wolf"):
-            unit = result[f"File[/etc/systemd/system/{project}-deploy.service]"][
-                "content"
-            ]
-            assert "up --force-recreate --wait --wait-timeout 300" in unit
-            assert f"File[/etc/systemd/system/{project}-refresh.service]" not in result
     if docker_role:
         assert (
             result["File[/usr/local/sbin/docker-compose-health-check]"]["ensure"]
@@ -494,7 +499,15 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "certname", ["forbearance.home.arpa", "docker.example.org", "ordinary.home.arpa"]
+    "certname",
+    [
+        "aperture.home.arpa",
+        "atlas.example.org",
+        "ordinary.home.arpa",
+        "docker.home.arpa",
+        "complex.home.arpa",
+        "forbearance.home.arpa",
+    ],
 )
 def test_forged_role_cannot_retrieve_docker_secrets(
     tmp_path: Path, certname: str
@@ -504,7 +517,7 @@ def test_forged_role_cannot_retrieve_docker_secrets(
         tmp_path,
         (ROOT / "manifests/site.pp").read_text(),
         DUMMY_SECRETS,
-        hostname="docker",
+        hostname="atlas",
         node_type="docker",
         certname=certname,
     )
@@ -707,7 +720,7 @@ def test_canonical_secret_consumers_and_geoip_gate(tmp_path: Path, mode: str) ->
     elif mode == "partial":
         del data["profile::alloy::maxmind_license_key"]
     catalog = compile_catalog(
-        tmp_path, "lookup('classes', Array[String]).include", data
+        tmp_path, "lookup('classes', Array[String]).include", data, hostname="atlas"
     )
     result = resources(catalog)
     config = result["File[/etc/alloy/config.alloy]"]["content"]

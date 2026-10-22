@@ -34,8 +34,7 @@ or startup checkpoint checks.
 Atlas's reserved IPv4 address is `10.0.0.158`, with stable ULA
 `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`. Atlas remains the canonical PTR.
 The [router configuration](../provisioning/README.md#atlas-infrastructure-dns-and-dhcp)
-contains the reservation and service records. Legacy Docker authorities keep
-existing identities until their clients migrate.
+contains the reservation and service records.
 
 ## Fresh initialization
 
@@ -249,10 +248,10 @@ full-authority archive/restore tools and migration clone tools are retired.
 
 ## Maintenance release and independent recovery
 
-The [initial activation](atlas-infra-results.json),
-[native enrollment](atlas-enrollment-results.json),
-[OpenVox renewal](atlas-openvox-renewal-results.json) and
-[maintenance acceptance](atlas-maintenance-results.json) records describe
+The [initial activation](archive/migration/atlas-infra-results.json),
+[native enrollment](archive/migration/atlas-enrollment-results.json),
+[OpenVox renewal](archive/migration/atlas-openvox-renewal-results.json) and
+[maintenance acceptance](archive/migration/atlas-maintenance-results.json) records describe
 earlier measured deployments and protected off-host kits. They retain
 historical identity and recovery evidence; deleted wrapper commands and old
 `/root/openvox-infra` paths are not current operating instructions.

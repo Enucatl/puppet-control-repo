@@ -1,5 +1,9 @@
 # Issue 12 operational acceptance
 
+> Historical migration record. Commands, status and acceptance limits below describe
+> the recorded revision. For current operations, use the [archive index](README.md)
+> to reach the provisioning, service and recovery runbooks.
+
 The acceptance environment uses fresh test authorities, disposable native guests
 and isolated Docker projects. Existing production configuration and service state
 were unchanged. A new protected directory on Proxmox holds only lab recovery
@@ -95,20 +99,20 @@ against production dependencies.
 ## Provisioning and full-role boundary
 
 The native guests ran the real signed installer and
-[`configure-puppet.sh`](../proxmox/configure-puppet.sh), enrolled against the
+[`configure-puppet.sh`](../../../proxmox/configure-puppet.sh), enrolled against the
 isolated Compose server, applied a marker catalog with a real Vault-backed Hiera
 lookup, and converged again. Complete Docker, desktop and Proxmox catalogs were
 also compiled with actual native Facter facts. **Compilation and the applied
 marker catalog are not full-role application.**
 
-Real roles come from [`manifests/site.pp`](../manifests/site.pp),
-[`data/common.yaml`](../data/common.yaml) and [`data/roles`](../data/roles).
+Real roles come from [`manifests/site.pp`](../../../manifests/site.pp),
+[`data/common.yaml`](../../../data/common.yaml) and [`data/roles`](../../../data/roles).
 Common classes require `freeipa::client`, `freeipa_users`,
-[`profile::common::identity`](../modules/profile/manifests/common/identity.pp)
-and [`profile::common::certs`](../modules/profile/manifests/common/certs.pp): a
+[`profile::common::identity`](../../../modules/profile/manifests/common/identity.pp)
+and [`profile::common::certs`](../../../modules/profile/manifests/common/certs.pp): a
 complete apply therefore needs enrolled FreeIPA/SSSD identities and scoped Vault
 issuance. Docker/desktop roles add NFS and toolchains. The actual
-[`docker.home.arpa` node data](../data/nodes/docker.home.arpa.yaml) also activates
+`docker.home.arpa` node data (retired; retained in Git history) also activates
 Kerberos mounts, exports and Git deployment projects; it is not a generic lab
 fixture.
 
@@ -120,16 +124,16 @@ FreeIPA consumer compatibility belongs to #14/#8; #18 verifies production
 identity-state recovery using #11's pre-rollout recovery evidence.
 
 The actual cloud-init sources are
-[`docker-cloud-init.yml.tmpl`](../proxmox/docker-cloud-init.yml.tmpl),
-[`desktop_cloud_init.py`](../proxmox/desktop_cloud_init.py) and
-[`ubuntu-cloud-init.yml.tmpl`](../proxmox/ubuntu-cloud-init.yml.tmpl). Rendering and
+[`docker-cloud-init.yml.tmpl`](../../../proxmox/docker-cloud-init.yml.tmpl),
+[`desktop_cloud_init.py`](../../../proxmox/desktop_cloud_init.py) and
+[`ubuntu-cloud-init.yml.tmpl`](../../../proxmox/ubuntu-cloud-init.yml.tmpl). Rendering and
 enrollment have regression coverage; shared base provisioning remains #15 and
 full-role deployment #13/#16/#17. A future isolated test can boot rendered output in a fresh
 local VM; full-role application additionally needs real isolated
 FreeIPA/Kerberos and configured NFS/service dependencies.
 
-[`docker-server.sh`](../proxmox/docker-server.sh) and
-[`ubuntu-server-template.sh`](../proxmox/ubuntu-server-template.sh) validate
+[`docker-server.sh`](../../../proxmox/docker-server.sh) and
+[`ubuntu-server-template.sh`](../../../proxmox/ubuntu-server-template.sh) validate
 cluster inventory and the selected target before token issuance or guest mutation.
 Rebuilds require an explicit flag and matching local guest name and ownership
 marker. Template 9000 is protected, and failure cleanup rechecks ownership.

@@ -4,38 +4,20 @@ Atlas, Aperture and Cognition are the active replacements for Docker,
 Forbearance and Complex. See [Atlas service configuration](docs/atlas-services.md)
 for the current service sources and environment files, and
 [Atlas recovery](docs/atlas-recovery.md) for established-authority restoration.
-The migration reports below retain their historical staging and acceptance notes.
 
-A monorepo for home lab infrastructure. It combines Puppet configuration management with the supporting infrastructure that runs the Puppet server itself — plus provisioning tools and Proxmox scripts — all in one place.
+A monorepo for home lab infrastructure: Puppet profiles and Hiera data, Atlas's
+container infrastructure, Proxmox provisioning, and router configuration.
 
-The goal is to reproduce the stack from versioned configuration, provisioning
-scripts, and explicitly identified secrets and backups. VM creation, enrollment,
-and recovery belong in scripted workflows with declared inputs and secret delivery;
-no manual guest setup or repair steps are part of migration acceptance.
-This is the intended contract, not a claim that a complete
-rebuild has already been demonstrated. Start with the
-[Proxmox provisioning runbook](proxmox/README.md) and the
-[OpenVox / Ubuntu 26.04 migration plan](docs/26.04-migration-plan.md).
+Use these current operating instructions:
 
-The planned Ubuntu rebuild order is Atlas (infrastructure), then aperture
-(desktop), then cognition (GPU workloads). Start Atlas at 8192 MiB alongside
-Docker; bootstrap its infra repository before enrolling its native agent.
-Existing hosts remain on the legacy server until their migrations; remaining
-legacy-agent handoff follows the three replacements under #20.
-Fresh installation and recovery
-use the same infrastructure-first order, with identity initialization or state
-restoration as appropriate.
+- [VM provisioning and production publication](proxmox/README.md)
+- [OpenVox, Vault and FreeIPA startup](docs/openvox-infra.md)
+- [Native OpenVox clients](docs/openvox-native-clients.md) and [enrollment](docs/puppet-enrollment.md)
+- [Atlas service configuration](docs/atlas-services.md) and [backup/recovery](docs/atlas-recovery.md)
+- [Disposable OpenVox rehearsal](docs/openvox-rehearsal.md) and [Vault limits](docs/openvox-vault-limitations.md)
 
-OpenVox #12 now has a [disposable rehearsal](docs/openvox-rehearsal.md),
-[tested infra service](docs/openvox-infra.md), and
-[root-custody and historical signing notes](docs/openvox-offline-root.md). The new deployment uses
-a fresh ML-DSA-44 root retained inside Vault and separate OpenVox/FreeIPA
-intermediates. Existing CRL behavior is retained without added refresh jobs;
-#13 owns Atlas deployment/enrollment, #18 independent bootstrap/recovery, and
-#19 staged service/storage cutover. Read the [implementation report](docs/openvox-rehearsal-report.md)
-and [Vault configuration limits](docs/openvox-vault-limitations.md) before use.
-Historical host-service notes below describe the previous installation. Current
-Vault/OpenVox startup uses the root Compose entrypoint.
+The completed migration's plans, cutover reports and acceptance evidence are in
+the [historical archive](docs/archive/migration/README.md).
 
 ## Repository Structure
 
@@ -43,7 +25,7 @@ Vault/OpenVox startup uses the root Compose entrypoint.
 .
 ├── data/                        # Hiera data (Puppet lookups)
 │   ├── common.yaml              # Global defaults
-│   ├── nodes/                   # Per-node overrides (docker.yaml, proxmox.yaml, ...)
+│   ├── nodes/                   # Per-node overrides (atlas.home.arpa.yaml, proxmox.home.arpa.yaml, ...)
 │   ├── os/                      # OS-specific settings (Debian, Ubuntu)
 │   └── roles/                   # Role-based settings (desktop, proxmox)
 ├── manifests/
@@ -54,8 +36,8 @@ Vault/OpenVox startup uses the root Compose entrypoint.
 │   ├── packages/                # Generic package management wrapper
 │   ├── freeipa_users/           # Local user management via IPA
 │   └── ...                      # Other custom modules
-├── docker/                      # Docker Compose stack (runs ON docker.home.arpa)
-│   ├── docker-compose.yml       # Core services: Vault, FreeIPA, APT cache
+├── docker/                      # Docker Compose stack (runs ON atlas.home.arpa)
+│   ├── docker-compose.yml       # Core services: OpenVox, Vault, APT cache
 │   ├── vault/
 │   │   ├── config/              # Vault server configuration
 │   │   └── scripts/             # Runtime export/unseal and administrative helpers
@@ -72,40 +54,23 @@ Vault/OpenVox startup uses the root Compose entrypoint.
 │   ├── inventory/               # Ansible inventory
 │   ├── templates/               # Jinja2 templates (VyOS config, cloud-init partials)
 │   └── pyproject.toml / uv.lock # Python deps managed via uv
-├── scripts/                     # Puppet Server helper scripts
-│   ├── autosign.py              # Policy-based certificate autosigning
-│   ├── configure-puppetserver.sh # Host Puppet Server JRuby tuning
-│   └── external_node_classifier.py # ENC for environment selection
-├── Puppetfile                   # r10k-managed external module list (generated)
-└── post-receive                 # Git hook: triggers r10k deploy on push
+├── scripts/                     # Autosign policy, ENC and runtime helpers
+├── compose.yaml                 # Atlas infrastructure Compose entrypoint
+└── Puppetfile                   # r10k-managed external module list (generated)
 ```
 
 ## How the Pieces Relate
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  docker.home.arpa (VM 200)               │
-│                                                         │
-│  docker/docker-compose.yml                              │
-│  ├── Vault       ← PKI, secrets, cert auth              │
-│  ├── FreeIPA     ← LDAP / Kerberos                      │
-│  └── APT cache   ← package mirror for all nodes         │
-│                                                         │
-│  puppetserver.service (host systemd service)             │
-│  └── Puppet      ← reads THIS repo via r10k               │
-└────────────────┬────────────────────────────────────────┘
-                 │ manages (puppet agent)
-     ┌───────────┼───────────────┐
-     ▼           ▼               ▼
-  docker      proxmox-cortex   other nodes
-  (self)      pihole, ...
-```
+Atlas runs OpenVox and Vault through the root `compose.yaml`; FreeIPA has its
+own entrypoint at `docker/freeipa/atlas-compose.yaml`. OpenVox serves catalogs
+at `openvox.home.arpa:8140`, Vault at `https://vault.home.arpa:8200`, and FreeIPA
+at `ipa.home.arpa`. Atlas, Aperture, Cognition and the Proxmox hosts consume the
+shared Puppet profiles and Hiera configuration.
 
-- **Puppet Server** runs as the host systemd service `puppetserver.service` on `docker.home.arpa` and serves catalogs to all managed nodes, including that host. **`docker/`** contains the accompanying container services.
-- **`modules/` + `data/`** are the Puppet content — profiles, roles, and Hiera data consumed by every node.
-- **`proxmox/`** contains provisioning scripts for new VMs/LXC containers on the hypervisor. These are part of the reproducible setup; their invocation and prerequisites belong in the [provisioning runbook](proxmox/README.md).
-- **`provisioning/`** handles infrastructure that Puppet cannot reach at boot time — primarily router/VyOS configuration via Ansible.
-- **`scripts/`** are server-side Puppet helpers (autosign policy, ENC) deployed alongside the Puppet Server.
+- **`modules/` + `data/`** contain profiles, roles and node settings.
+- **`proxmox/`** creates and enrolls guests with explicit trust and credentials.
+- **`provisioning/`** configures the VyOS router through Ansible.
+- **`scripts/`** supplies the autosign policy, ENC and runtime helpers.
 
 ## Desktop VM Provisioning
 
@@ -114,7 +79,7 @@ first. On the Proxmox host, install `uv` and run the existing command from a
 directory containing your `.env`:
 
 ```bash
-bash /path/to/puppet-control-repo/proxmox/desktop.sh -l a -i 123 -c 8 -m 8000 -d 128G
+bash /path/to/puppet-control-repo/proxmox/desktop.sh -l a -i 123 -c 8 -m 8000 -d 128G --puppet-server openvox.home.arpa
 ```
 
 The launcher runs Python with the repository's locked dependencies. The same
@@ -135,47 +100,14 @@ valid YAML, after the `#cloud-config` header. It embeds `configure-puppet.sh`
 directly and passes enrollment values as command arguments. The temporary
 snippet is restricted to its owner and removed when provisioning exits.
 
-## Puppet Server Host Configuration
+## OpenVox server configuration
 
-The server is installed directly on `docker.home.arpa`; the current bootstrap
-scripts assume it is already installed. The Docker VM provisioning script also
-requires working Vault and Puppet services. A complete cold-start or recovery
-path for this central host remains tracked in
-[#18](https://github.com/Enucatl/puppet-control-repo/issues/18).
-Its runtime configuration lives in
-`/etc/puppetlabs/puppetserver/conf.d/`, and JVM settings are in
-`/etc/default/puppetserver`.
-
-To configure one JRuby worker and recycle it after 10,000 handled HTTP requests,
-run from this repository on the server host:
-
-```bash
-bash scripts/configure-puppetserver.sh
-sudo systemctl restart puppetserver
-```
-
-The script preserves a first-run backup beside `puppetserver.conf` as
-`puppetserver.conf.before-homelab-tuning` and replaces its own tuning block on
-reruns. It preserves the existing 1 GiB heap (`-Xms1024m -Xmx1024m`) and other
-configuration. Restarting applies the changes and briefly interrupts service.
-One worker serializes compilations; recycling reloads Puppet code and can delay
-queued requests. The threshold counts requests, not agent runs or elapsed time.
-This script is run manually; pushing the repo does not apply these settings.
-
-Other explicit settings observed in the host's `puppet.conf`:
-
-| Setting | Purpose |
-|---------|---------|
-| `server = docker.home.arpa` | Agent's primary server |
-| `certificate_revocation = leaf` in `[main]` | Check leaf certificate revocation rather than the whole chain |
-| `autosign = /etc/puppetlabs/code/environments/production/scripts/autosign.py` | Repository autosigning policy |
-| `node_terminus = exec` and `external_nodes = /etc/puppetlabs/code/environments/production/scripts/external_node_classifier.py` | Repository ENC selects `dev` for `.dev.home.arpa` nodes, otherwise `production` |
-| `number_of_facts_soft_limit = 10000` in `[agent]` | Raised fact-count warning threshold |
-
-The server's data/log/run/code paths are explicitly set to the usual package
-locations. The installed systemd unit has no visible local drop-ins. The protected
-`conf.d` files could not be read during this inspection, so this is not a complete
-inventory of server overrides or confirmation of its current worker count.
+The container's runtime configuration is versioned under `docker/openvox/`.
+[infra-runtime.conf](docker/openvox/infra-runtime.conf) configures one JRuby
+worker and recycles it after 10,000 HTTP requests. The infrastructure Compose
+configuration supplies the image, mounts, environment and healthcheck.
+Use the [authority runbook](docs/openvox-infra.md) for startup and
+[recovery runbook](docs/atlas-recovery.md) to restore established state.
 
 ## Puppet Agent Setup (New Node)
 
@@ -190,18 +122,17 @@ Supply authenticated CA trust before enrollment. Guest provisioning requires
 bundle in the guest's `/etc/puppetlabs/puppet/ssl/certs/ca.pem`. Existing native
 hosts use `proxmox/enroll-proxmox.sh` with the same input. It refuses to replace
 different existing trust, and enrollment refuses existing non-ML-DSA identities.
-Keep legacy identities unchanged until their migration; #20 handles remaining
-legacy-agent handoff after the three replacements. Do not delete identity automatically.
-See the [native client instructions](docs/openvox-container-migration-plan.md).
+Existing identities require an explicit migration; do not delete them automatically.
+See the [native client instructions](docs/openvox-native-clients.md).
 
 ## Deployment
 
-Pushing to `production` triggers the `post-receive` git hook, which runs `r10k` and regenerates Puppet types automatically. To trigger manually:
-
-```bash
-sudo -u puppet r10k deploy environment --modules -v info
-sudo -u puppet /opt/puppetlabs/puppet/bin/puppet generate types --environment production
-```
+From Atlas's `production` checkout, `git push origin` publishes to GitHub and
+`/opt/git/openvox/control.git`. The receiver's managed hook deploys through the
+OpenVox container, runs r10k, generates Puppet types and refreshes environment
+caches. Verify both target refs and the deployment receipt using the
+[publication instructions](proxmox/README.md#ordinary-publication); Git may accept
+a push even when deployment fails.
 
 ### Managing External Module Dependencies
 
@@ -212,15 +143,15 @@ generate-puppetfile -p Puppetfile-without-deps
 
 ## Router Observability
 
-Router observability is split between VyOS, the Docker host, and Loki.
+Router observability is split between VyOS, the Atlas host, and Loki.
 
 - VyOS runs local Alloy as the edge collector.
 - DHCP, DNS, and IPv6 NDP identity streams are shipped directly from VyOS Alloy to Loki.
 - Suricata remains limited to IoT and Guest VLANs.
-- Suricata EVE is tailed by VyOS Alloy, sent to the central Alloy receiver on `docker.home.arpa`, enriched there, and then written once to Loki.
-- VyOS exports IPFIX sampled at one in ten packets from `eth1.20` and `eth1.30` only to `docker.home.arpa`.
+- Suricata EVE is tailed by VyOS Alloy, sent to the central Alloy receiver on `atlas.home.arpa`, enriched there, and then written once to Loki.
+- VyOS exports IPFIX sampled at one in ten packets from `eth1.20` and `eth1.30` only to `atlas.home.arpa`.
 - GoFlow2 runs from [docker/docker-compose.yml](/opt/docker/puppet-control-repo/docker/docker-compose.yml), receives IPFIX on UDP/2055, and writes decoded flow JSON to stdout. It does not perform GeoIP enrichment.
-- Docker-host Alloy scrapes GoFlow2 container logs, enriches IPFIX records, and writes them to Loki.
+- Atlas Alloy scrapes GoFlow2 container logs, enriches IPFIX records, and writes them to Loki.
 
 Stable Loki jobs:
 
@@ -252,9 +183,9 @@ Then query Loki:
 
 ### GeoIP Enrichment
 
-GeoIP enrichment is centralized on `docker.home.arpa`.
+GeoIP enrichment is centralized on `atlas.home.arpa`.
 
-- `geoipupdate` is installed on the Docker host, not in a container.
+- `geoipupdate` is installed on the Atlas host, not in a container.
 - MaxMind credentials come from the existing Vault-backed Puppet values:
   - `profile::alloy::maxmind_account_id`
   - `profile::alloy::maxmind_license_key`
@@ -299,7 +230,7 @@ Measure daily count:
 sum(count_over_time({job="ipfix"}[24h]))
 ```
 
-Measure Loki disk growth on `docker.home.arpa`:
+Measure Loki disk growth on `atlas.home.arpa`:
 
 ```bash
 docker volume inspect grafana-loki_loki_data
@@ -312,14 +243,14 @@ During larger transfers or speed tests, watch:
 
 - VyOS CPU and interface drops.
 - GoFlow2 CPU and memory.
-- Docker-host Alloy CPU and memory.
+- Atlas Alloy CPU and memory.
 - Loki ingest, disk growth, and query responsiveness.
 
 Adjust the IPFIX sampling rate or monitored interfaces if the 24-hour volume, disk growth, query latency, or router/resource metrics justify it.
 
 ### Relevant Files
 
-- [data/nodes/docker.home.arpa.yaml](/opt/docker/puppet-control-repo/data/nodes/docker.home.arpa.yaml)
+- [data/nodes/atlas.home.arpa.yaml](/opt/docker/puppet-control-repo/data/nodes/atlas.home.arpa.yaml)
 - [docker/docker-compose.yml](/opt/docker/puppet-control-repo/docker/docker-compose.yml)
 - [modules/profile/manifests/alloy.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/alloy.pp)
 - [modules/profile/manifests/alloy/geoip.pp](/opt/docker/puppet-control-repo/modules/profile/manifests/alloy/geoip.pp)
@@ -360,7 +291,7 @@ Retained helpers in `docker/vault/scripts/` have separate purposes:
 | --- | --- |
 | `unseal.sh` | Existing automatic unseal and healthcheck |
 | `backup.sh` | Existing weekly consistent Vault export for Backrest |
-| `08-vault-puppet-policy.sh` | Runtime certificate issuance and enrollment policies |
+| `08-vault-puppet-policy.sh` | Legacy Docker authority policy helper; Atlas uses `atlas-infra.py` and `atlas-enroll.py` |
 | `10-vault-ldap.sh` | Manual LDAP auth configuration |
 | `13-vault-admin-policy.sh` | Manual administrator policy and LDAP group mapping |
 | `99-revoke-root-token.sh` | Explicit root-token revocation after independent administrator access is verified |

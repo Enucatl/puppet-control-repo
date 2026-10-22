@@ -14,7 +14,7 @@ Agent-supplied `node_type` facts do not grant role membership. No separate Puppe
 | `profile::common` | Certificate, sysctl, cron, service, SSH-key, systemd, udev, identity, and ACL children |
 | `profile::alloy` | Base and Docker logging, optional router enrichment, GeoIP updater, Alloy Docker-group membership |
 | `profile::docker_host` | Docker service and project deployment policy; contains `docker::wolf_network` |
-| `profile::docker_node` | Named Docker server's Samba accounts, Traefik reload, and Loki volume permissions |
+| `profile::atlas` | Atlas Samba accounts, Traefik reload, and Loki volume permissions |
 | `profile::docker_deploy` | Per-project push deployment and optional scheduled refresh |
 | `profile::chronicle_backup`, `profile::vllm_weekly_window` | Stable Hiera interfaces to `proxmox_workflows` |
 | `profile::proxmox_orchestration` | Stable shared-library installation path interface |
@@ -41,11 +41,11 @@ discovery and processing; `manage_docker_user` grants Alloy membership in `docke
 `manage_geoip` installs the database updater when both credentials are available.
 The updater still runs on Docker-role hosts without a router receiver.
 
-Only `data/nodes/docker.home.arpa.yaml` enables the central router layer:
+Only `data/nodes/atlas.home.arpa.yaml` enables the central router layer:
 
 ```yaml
 profile::alloy::enable_router_enrichment: true
-profile::alloy::router_listen_address: '10.0.0.128'
+profile::alloy::router_listen_address: '10.0.0.158'
 ```
 
 `templates/alloy/router.config.epp` implements the Suricata receiver and GoFlow2
@@ -70,8 +70,8 @@ remain unchanged.
 ## Operational contracts
 
 - `common::cron` purges unmanaged cron entries whenever its merged job map is nonempty.
-- Certificate updates retain their notifications, including the Docker certificate's
-  Traefik reload. Private-key ownership and ACLs are declared in Hiera.
+- Certificate updates retain their notifications, including Traefik reloads on
+  Atlas. Private-key ownership and ACLs are declared in Hiera.
 - Identity adjustments run after `freeipa::client`; they retain SSSD restart behavior.
 - Docker packages and repositories remain in role data. Wolf networking remains on
   all existing Docker-role hosts, and runs after the Docker service and common setup.
@@ -113,7 +113,7 @@ uv run --frozen pytest -q
 ```
 
 Catalog tests use a temporary Hiera hierarchy, dummy secrets, and representative
-Ubuntu/Debian facts for Docker, complex, forbearance, proxmox, and proxmox-cortex.
+Ubuntu/Debian facts for Atlas, Aperture, Cognition, proxmox, and proxmox-cortex.
 They compile the real merged class lists and validate dependency graphs, but never
 apply resources or call the production Vault backend. Agent root capability is
 simulated only for resource validation; the tests do not acquire root privileges.

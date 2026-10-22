@@ -136,16 +136,17 @@ full lifecycle evidence. The 15 outbound checks cover existing TLS policy;
 custom outbound CRL enforcement is no longer required. Puppetfile pins the
 published Hiera transport and protocol-setting fix.
 
-The prepared [infra profile](openvox-infra.md),
+The [infrastructure runbook](openvox-infra.md),
 [historical offline-root notes](openvox-offline-root.md),
 [Vault limits](openvox-vault-limitations.md) and
-[BCJSSE audit](openvox-jvm-policy.md) document the next deployment boundaries.
-Final native Ubuntu/Debian, hardened Compose, hosted CI, clean protected off-host
-recovery, Docker-host reboot and image rollback acceptance passed with release
-24001. See the [final report](openvox-rehearsal-report.md) for evidence.
-Full workload application/provisioning remains #15, FreeIPA consumers #14/#8,
-production recovery custody #11 and Atlas execution #18. Production cutover is
-#13. Broader BCJSSE conditional-policy compatibility is not claimed.
+[BCJSSE audit](openvox-jvm-policy.md) describe the deployed configuration and
+its verification limits. Final native Ubuntu/Debian, hardened Compose, hosted CI,
+protected off-host recovery, host reboot and image rollback acceptance passed
+with release 24001. See the [historical report](archive/migration/openvox-rehearsal-report.md)
+for evidence. This disposable rehearsal validates infrastructure behavior;
+verify production workloads through their own checks and follow
+[Atlas recovery](atlas-recovery.md) for established authority state.
+Broader BCJSSE conditional-policy compatibility is not claimed.
 
 The sandbox uses short-lived certificates (one day), so retained test services
 will expire unless renewed. It is intended for disposable verification rather

@@ -1,4 +1,7 @@
 ---
+freeipa::client::hostname: proxmox.home.arpa
+freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
+
 classes:
   - profile::chronicle_backup
   - profile::vllm_weekly_window

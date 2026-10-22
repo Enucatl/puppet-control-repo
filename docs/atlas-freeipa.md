@@ -5,9 +5,10 @@ and [deployment #8](https://github.com/Enucatl/puppet-control-repo/issues/8).
 The final live import preserved all 10 users and 16 groups, including their
 IDs, memberships, HBAC and sudo policies. Atlas is now enrolled through
 OpenVox's `freeipa::client` resource against `ipa.home.arpa`; its full Docker
-catalog passed. The existing `freeipa.home.arpa` service remains on Docker.
-See [migration evidence](atlas-ipa-migration-results.json) and
-[enrollment evidence](atlas-enrollment-results.json).
+catalog passed. Both `ipa.home.arpa` and the compatibility name
+`freeipa.home.arpa` now resolve to Atlas; the old Docker VM is stopped.
+See [migration evidence](archive/migration/atlas-ipa-migration-results.json) and
+[enrollment evidence](archive/migration/atlas-enrollment-results.json).
 
 The realm remains `HOME.ARPA` and the domain remains `home.arpa`. The operator
 confirmed that password Kerberos and SSH GSSAPI are sufficient: the installer
@@ -31,10 +32,10 @@ There is no local derived FreeIPA image, custom entrypoint or entrypoint overrid
 [The hosted build and checks passed](https://github.com/Enucatl/freeipa-container/actions/runs/39654753564),
 including fresh installation, HTTP/LDAP certificate replacement and a standard
 installation with a replica. The established server's
-[initialization evidence](atlas-ipa-initialization-results.json) records its
+[initialization evidence](archive/migration/atlas-ipa-initialization-results.json) records its
 certificate identities, authenticated checks and protected off-host backup.
 
-The [October 21 image acceptance](atlas-ipa-image-upgrade-results.json) passed
+The [October 21 image acceptance](archive/migration/atlas-ipa-image-upgrade-results.json) passed
 on Atlas using the published digest: fresh installation, ML-DSA-44/65/87 and
 RSA/EC compatibility, certificate replacement, existing-volume migration and
 ordinary native startup. The live service is healthy on that digest. All 10
@@ -100,16 +101,44 @@ the Compose file. The preparation helper is only for a fresh installation.
 
 The router publishes `ipa.home.arpa` at Atlas's reserved IPv4 address and stable
 IPv6 ULA. Atlas remains the canonical PTR. The DNS-only deployment and 53 smoke
-checks passed; see [the measured DNS evidence](atlas-ipa-dns-results.json).
+checks passed; see [the measured DNS evidence](archive/migration/atlas-ipa-dns-results.json).
 
-New clients must explicitly select `ipa.home.arpa` and the authenticated new CA.
-Existing clients retain `freeipa.home.arpa` until their migration. Do not globally
-replace the common FreeIPA defaults before their cutover.
+All managed clients, including both Proxmox hypervisors, use the shared
+`ipa.home.arpa` server setting. Each node declares its enrollment hostname and
+`/usr/local/share/ca-certificates/atlas-infrastructure.crt` as its authenticated
+CA file. Install that trust before enrolling a new client.
+
+Changing the server setting does not migrate an existing machine identity.
+The Puppet enrollment provider refuses mismatched existing configuration;
+matching configuration alone does not prove that the host keytab works.
+Moving an existing client from the retired authority therefore requires an
+explicit administrator operation:
+
+1. Preserve a root-only backup of its IPA, Kerberos and SSSD configuration,
+   trust files and keytab. Confirm independent root SSH access and retain the
+   existing SSH/PAM configuration and any non-host keytab principals.
+2. Using an authorized account on `ipa.home.arpa`, issue fresh keys for the
+   existing `host/<fqdn>@HOME.ARPA` identity into a separate private keytab with
+   `ipa-getkeytab -s ipa.home.arpa -p host/<fqdn>@HOME.ARPA -k <new-keytab>`.
+   Supply authenticated Atlas trust with `--cacert`; omitting `-r` creates new
+   keys and invalidates previous keys for that host principal.
+3. Verify the new keytab with `kinit -k -t <new-keytab> host/<fqdn>@HOME.ARPA`,
+   using a temporary Kerberos configuration that explicitly selects
+   `ipa.home.arpa`. Install the authenticated CA trust, update IPA, Kerberos
+   and SSSD server settings, and replace the old host keys while preserving
+   any other principals. Restart SSSD and clear its old identity cache.
+4. Verify host-keytab authentication through the normal client configuration,
+   SSSD user/group lookup, a fresh SSH connection and the Puppet enrollment
+   check before resuming scheduled Puppet runs.
+
+Do not use client uninstall as a keytab repair: it removes every principal in
+the configured realm from `/etc/krb5.keytab` and restores earlier SSH, PAM and
+other client configuration.
 
 ## Established identities and recovery
 
 The completed account migration preserved the original users, numeric IDs,
-memberships and policies. See [migration evidence](atlas-ipa-migration-results.json)
+memberships and policies. See [migration evidence](archive/migration/atlas-ipa-migration-results.json)
 for the measured acceptance. Migration-only import and disposable clone tools
 are retired. Native startup reads the existing `/data` volume; it does not
 repeat that migration.

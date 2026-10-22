@@ -92,7 +92,7 @@ these DNS declarations. Smoke checks verify all four names through AdGuard
 over IPv4/IPv6 and dnsmasq directly, plus the Traefik/Authelia application names
 and Atlas's canonical PTR record.
 
-These records prepare the migration service endpoints: `https://vault.home.arpa:8200`,
+These records publish the active service endpoints: `https://vault.home.arpa:8200`,
 direct TLS `openvox.home.arpa:8140` and FreeIPA at `ipa.home.arpa`. Service certificates must contain the
 corresponding DNS names; Atlas's native agent identity remains `atlas.home.arpa`.
 DNS publication does not initialize or activate Vault/OpenVox/FreeIPA.
@@ -102,14 +102,14 @@ Live acceptance passed on **2026-10-19**, using revision
 including A/AAAA answers for all three names through AdGuard over IPv4/IPv6 and
 dnsmasq directly. Separate checks verified both PTR records, the MAC reservation
 and the legacy service addresses. IPv6 connectivity to Atlas passed from the
-workstation and router. See [sanitized DNS evidence](../docs/atlas-dns-results.json).
+workstation and router. See [sanitized DNS evidence](../docs/archive/migration/atlas-dns-results.json).
 The fixed-MAC creation path passed mocked provisioning tests; a live VM rebuild
 was not performed for this DNS change.
 The `ipa.home.arpa` addition was deployed on **2026-10-19** with **53 router
 smoke checks passed**. Separate checks confirmed all four endpoints' A/AAAA
 answers over IPv4/IPv6, Atlas's IPv4/IPv6 canonical PTR records, and unchanged
-legacy service addresses. See [FreeIPA DNS evidence](../docs/atlas-ipa-dns-results.json).
-FreeIPA service activation remains pending.
+legacy service addresses. See [FreeIPA DNS evidence](../docs/archive/migration/atlas-ipa-dns-results.json).
+FreeIPA is active on Atlas; see the [current service runbook](../docs/atlas-freeipa.md).
 
 ## Secrets (vars/secrets.yml)
 

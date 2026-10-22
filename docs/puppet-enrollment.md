@@ -1,15 +1,13 @@
 # Puppet enrollment
 
-The #12 fresh-chain path uses accepted OpenVox packages and a Vault-held ML-DSA-44
+Production enrollment uses accepted OpenVox packages and a Vault-held ML-DSA-44
 root. Install with `proxmox/install-openvox.sh` and supply operator-authenticated
 public CA trust before enrollment. Guest/native provisioning takes its path
 from `OPENVOX_CA_CERT`; guests receive it at
 `/etc/puppetlabs/puppet/ssl/certs/ca.pem`. The shared helper sets and verifies
 `key_type=mldsa44`, loads native TLS/seed policy, and refuses an existing
-non-ML-DSA key. #13 enrolls Atlas, then Aperture and Cognition as they migrate.
-Existing hosts stay on the old server until their own migration; changing the
-setting does not rotate an old key. See the
-[container plan](openvox-container-migration-plan.md).
+non-ML-DSA key. Changing the setting does not rotate an old key. See the
+[native client instructions](openvox-native-clients.md).
 
 Provisioning creates a two-hour Vault service token for one exact Puppet
 certname. It has only `puppet-enrollment`, which permits
@@ -25,12 +23,11 @@ request, requiring the enrollment-only policy and matching `meta.certname`.
 Vault enforces consumption and concurrent-use protection. No local token state
 or separate revocation request is involved.
 
-## Rollout
+## Enrollment policy
 
-Apply these steps through scripted bootstrap on the new Atlas stack. They do
-not authorize changing the old server or enrolling legacy hosts. Atlas base
-creation does not require a live enrollment token; enrollment follows deployment
-of its own OpenVox/Vault services. See the [migration plan](26.04-migration-plan.md).
+Atlas base creation does not require a live enrollment token; enrollment follows
+deployment of its OpenVox/Vault services. Use the
+[provisioning runbook](../proxmox/README.md) for new hosts.
 
 For the new-chain compiler, set `VAULT_ADDR` to the direct verified HTTPS Vault
 endpoint and `VAULT_CACERT` to authenticated root trust. The autosigner rejects
@@ -51,20 +48,19 @@ NSS. Firefox imports persist in existing browser profiles; withdrawing a
 previously imported CA may require profile cleanup.
 
 Existing CRL behavior is retained. No custom outbound CRL bundle, publisher,
-refresh job or new revocation-enforcement policy is required for this migration.
+refresh job or new revocation-enforcement policy is configured.
 
-1. Install the new policy by running
-   `docker/vault/scripts/08-vault-puppet-policy.sh` with an administrator Vault
-   login and the trusted Vault CA bundle available.
-2. Deploy `scripts/autosign.py` and the `proxmox/` provisioning changes together.
-   The autosign `--policy` override has been removed.
-3. Rebuild the Ubuntu VM template with the updated cloud-init configuration so
-   cloned VMs start with Puppet disabled. Guest cloud-init masks the service
-   during package installation and unmasks it only after enrollment is configured.
-4. Replace outstanding legacy bootstrap tokens. Ordinary `puppet` runtime
-   tokens no longer authorize enrollment. Existing enrolled agents continue to
-   use their certificates. Enrollment does not grant runtime secret access;
-   runtime certificate issuance is restricted as described below.
+Fresh Atlas initialization installs compiler and enrollment policy through
+[atlas-infra.py](../proxmox/atlas-infra.py); [Atlas enrollment](#atlas) configures
+runtime certificate issuance and agent access through `atlas-enroll.py`.
+The retained `08-vault-puppet-policy.sh` contains legacy Docker compiler/issuance
+settings and must not replace these Atlas policies.
+
+Deploy the autosigner and provisioning changes together. Templates leave Puppet
+disabled; guest provisioning enables it after installing trust and enrollment
+configuration. Runtime `puppet` tokens do not authorize enrollment. Existing
+enrolled agents use their certificates; new enrollment grants no runtime secret
+access.
 
 VM provisioning derives the certname once from the chosen VM name and domain.
 Host provisioning uses `hostname -f`. Enrollment stops the background Puppet
@@ -115,7 +111,7 @@ passes it through stdin to the shared helper. Atlas enrolls as `atlas.home.arpa`
 against `openvox.home.arpa`. Its catalog installs the FreeIPA client and runs
 `ipa-client-install` with `ipa.home.arpa` and the authenticated CA file. It also
 creates the website certificate directories and certificates from Atlas's node
-data. Existing Docker clients retain their original node data and endpoints.
+data.
 Enrollment uses ordinary Puppet logging and does not retain migration receipts
 or a separate enrollment evidence archive. Repeating the command with an
 existing certificate resumes an ordinary catalog run. It
@@ -146,7 +142,7 @@ Pass that token securely to the intended host's enrollment script, with the
 same certname (and the correct node type):
 
 ```bash
-sudo proxmox/configure-puppet.sh docker "$VM_TOKEN" node.home.arpa docker.home.arpa
+sudo proxmox/configure-puppet.sh docker "$VM_TOKEN" node.home.arpa openvox.home.arpa
 ```
 
 The required argument order is `node_type vault_token certname [puppet_server]`.
@@ -162,11 +158,11 @@ catalog failure does not restore a consumed token.
 Puppet 8 generates a fresh CSR using the updated attributes when it submits a
 request. An existing pending request on the CA can block that submission. For a
 failed enrollment that has not received a certificate, stop the agent and clean
-the pending request on the Puppet CA before rerunning enrollment with a fresh
-token:
+the pending request on the Puppet CA from Atlas before rerunning enrollment
+with a fresh token:
 
 ```bash
-sudo /opt/puppetlabs/bin/puppetserver ca clean --certname node.home.arpa
+docker exec infra-openvox-1 /opt/puppetlabs/bin/puppetserver ca clean --certname node.home.arpa
 ```
 
 Enrolled-agent certificate rotation is a separate operation; this recovery
@@ -180,57 +176,40 @@ identity alias), allowing that hostname and named subdomains beneath it. It
 rejects wildcards, other nodes' names, localhost, and IP SANs. Both the requested
 CN and DNS SANs are checked, including when `exclude_cn_from_sans` is enabled.
 
-Only the authenticated `docker.home.arpa` identity can use
-`pki_int/issue/puppet-docker.home.arpa`. That role also permits wildcards beneath
-`docker.home.arpa`, including `*.docker.home.arpa` and
-`*.service.docker.home.arpa`. The node-specific Hiera defaults select this
-endpoint; other nodes use `puppet`. Changing a node's facts or requested endpoint
-cannot change its Vault certificate identity or permissions.
+Only the authenticated `atlas.home.arpa` identity can use
+`pki_int/issue/puppet-atlas.home.arpa`. That role also permits wildcard
+certificates beneath `atlas.home.arpa`. Atlas's node data selects this endpoint;
+other nodes use `puppet`. Both roles issue ML-DSA-44 certificates with a maximum
+90-day lifetime. Changing node facts or a requested endpoint cannot change the
+Vault certificate identity or permissions.
 
-The broad `general` issuance role remains available to administrators for manual
-device issuance, but the `puppet` policy no longer grants access to it or to KV.
-
-Deploy the updated Hiera data and run
-`docker/vault/scripts/08-vault-puppet-policy.sh` with administrator credentials
-against the same Vault. The script creates both roles and then replaces the
-shared policy; it can be rerun on an existing installation. The `cert` auth mount,
-its existing `puppet` certificate role, and `pki_int` engine must already exist.
-The cert-auth setup scripts also require
-the login certificate CN to match an admitted node, in addition to its DNS SAN.
-
-Policy changes apply to existing tokens immediately. Cached catalogs that still
-use `general` must be refreshed before they can renew certificates. Previously
-issued certificates remain valid until expiry or revocation.
+[atlas-enroll.py](../proxmox/atlas-enroll.py) configures these runtime roles,
+the `puppet` policy and the exact admitted agent names during Atlas enrollment.
+Policy changes apply to existing tokens immediately; issued certificates remain
+valid until expiry or revocation. The separate `atlas-transport` login permits
+Atlas's certificate resources to renew only the Vault and IPA transport leaves;
+see the [certificate lifecycle](openvox-infra.md#automated-vault-and-ipa-transport-renewal).
 
 ## Runtime secret access
 
-The shared `puppet` certificate role grants only scoped certificate issuance.
-Hiera explicitly logs in as `puppet-server`, whose policy reads only
-`kv/data/puppet`. Vault restricts this login to the Puppet CA and the exact
-`docker.home.arpa` certificate CN. This is the current compiler identity; the
-Docker host's agent shares that identity and therefore the same access boundary.
+The shared `puppet` certificate role grants scoped certificate issuance. Hiera
+logs in as `puppet-server`, whose policy reads `kv/data/puppet`. Atlas's
+[initialization helper](../proxmox/atlas-infra.py) restricts that login to the
+OpenVox CA and the exact `openvox.home.arpa` certificate CN and DNS SAN.
+Atlas's agent uses its separate `atlas.home.arpa` identity.
 
-The `puppet-wolf` login reads only `kv/data/wolf`, and accepts only
-`docker.home.arpa` and `proxmox.home.arpa` certificates from that CA. The Docker
-wake script and Proxmox backup/vLLM workflows select this role explicitly. Wolf's
-existing dedicated `wolf` certificate role is unchanged. KV permissions cover
-the whole document, including all fields; `vault kv get -field=...` does not
-restrict authorization to that field. Administrative bootstrap scripts still
-use an administrator login.
-
-For migration, deploy the Hiera `auth_name` and runtime login changes together
-with `08-vault-puppet-policy.sh`. The script installs the restricted roles before
-removing both KV grants from the shared policy. Existing shared-policy tokens
-lose their KV reads immediately, so refresh deployed workflow scripts before
-their next run. A cached CLI token without the new permission causes those
-scripts to reauthenticate under `puppet-wolf`. Re-running the CA import also
-refreshes the restricted roles' trusted CA.
+The `puppet-wolf` login reads only `kv/data/wolf` and accepts
+`atlas.home.arpa` and `proxmox.home.arpa` certificates from the OpenVox CA.
+The wake script and Proxmox backup/vLLM workflows select this role explicitly.
+KV permissions cover the whole document, including all fields;
+`vault kv get -field=...` does not restrict authorization to that field.
+Administrative bootstrap scripts use an administrator login.
 
 Verify an ordinary node cannot read either KV document or log in under either
 restricted role; verify the compiler can read `kv/puppet`, the runtime consumers
 can read `kv/wolf`, and ordinary certificate renewal still works. The disposable
-Vault tests below exercise these boundaries, including tokens issued before the
-policy replacement and certificates with forged privileged DNS SANs.
+Vault tests below exercise the policy boundaries, including forged privileged
+DNS SANs; the Atlas helper tests check its production identities and roles.
 
 ## Verification
 
@@ -248,12 +227,12 @@ tools and runs these checks on enrollment-related changes.
 
 Catalog role membership comes from a server-controlled symlink under
 `data/roles/nodes/<full-certname>.yaml` pointing to the shared role YAML. For
-example, `data/roles/nodes/docker.home.arpa.yaml` points to `../docker.yaml`.
+example, `data/roles/nodes/atlas.home.arpa.yaml` points to `../docker.yaml`.
 Add the link before provisioning a new node that needs a role; put any
 node-specific settings in `data/nodes/<full-certname>.yaml`. The enrollment
 `node_type` argument still supplies an informational fact; it no longer authorizes a role.
 Unclassified certificates receive only common and OS configuration. A certificate
-for `docker.example.org` cannot select `docker.home.arpa` node configuration.
+for `atlas.example.org` cannot select `atlas.home.arpa` node configuration.
 
 OS name and family facts may select OS defaults, but cannot contain path
 separators or traversal segments. Docker-only MaxMind credentials are looked up
