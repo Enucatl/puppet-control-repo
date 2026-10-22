@@ -106,6 +106,81 @@ only the clone NIC's MAC, retaining its other network options. An explicit
 override must also update the router reservation. This keeps Atlas and its
 `vault.home.arpa` / `openvox.home.arpa` service names stable across rebuilds.
 
+## Separate XFS template
+
+Run `bash proxmox/ubuntu-xfs-template.sh -i 9002 -b 9012` from the
+reviewed checkout on the Proxmox host. Both IDs must be unused; existing
+Ubuntu/ext4 templates remain intact. The disposable builder uses 2048 MiB RAM,
+two cores, a 10 GiB cloud-image boot disk and a separate thin 12 GiB target.
+Check physical pool headroom and host RAM before running. Use the repository's
+`wake-run` workflow when launching the build from a controlling Codex session.
+
+The builder boots the existing pinned Ubuntu 26.04 `release-20260927` cloud
+image under UEFI. The builder identifies only the blank target disk by its explicit
+`openvox-xfs-target` hardware serial, verifies its size and absence of partitions/mounts,
+and passes the validated device path to Curtin (Proxmox udev IDs use a different
+`drive-scsi1` identifier). Curtin creates GPT with a 512 MiB FAT32 EFI partition, 1 GiB ext4 `/boot`, and
+XFS root with `reflink=1,ftype=1`. `/home`, `/var`, Docker and Steam remain on
+root. Native Curtin hooks install the kernel, initramfs and GRUB; a GRUB debconf
+setting requests the removable EFI fallback path for fresh firmware NVRAM.
+
+Ubuntu 26.04 does not publish Curtin APT packages. The builder uses Canonical's
+[Curtin source](https://github.com/canonical/curtin/tree/93c36fb6a0271fefd2bf311418b95eb48f856d5f)
+at commit `93c36fb6a0271fefd2bf311418b95eb48f856d5f`, verifies archive SHA256
+`a98344999b7aab9b51a6d68f6030a857e99b97a4f61b3e354e626d60d3bd92c9`, and
+runs the upstream entry point directly with APT-managed Python/system dependencies.
+The source and helpers remain only on the disposable builder; provenance records
+the revision and checksum.
+
+The matching
+[root-filesystem archive](https://cloud-images.ubuntu.com/releases/resolute/release-20260927/ubuntu-26.04-server-cloudimg-amd64-root.tar.xz)
+has its own pinned SHA256:
+
+```text
+ccd08a7a76cdc69034dd2682b4913bdd051cb71ad87d0b66689015aa068e61c8
+```
+
+This checksum was authenticated independently using Canonical's
+[`SHA256SUMS.gpg`](https://cloud-images.ubuntu.com/releases/resolute/release-20260927/SHA256SUMS.gpg)
+and the Ubuntu cloud-image keyring. To repeat authentication on an Ubuntu
+administrative host, download `SHA256SUMS` and `SHA256SUMS.gpg` from that same
+release directory and run:
+
+```bash
+gpgv --status-fd 1 --keyring /usr/share/keyrings/ubuntu-cloudimage-keyring.gpg SHA256SUMS.gpg SHA256SUMS
+```
+
+Require `VALIDSIG D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81`, then compare the
+archive's specific manifest entry and checksum. The build verifies the pinned
+archive checksum before Curtin extraction; the cloud disk has its separate
+existing checksum. Preserve authenticated manifests with the migration record.
+
+Only the installed target disk moves to the new template VM. Its first boot
+uses a fresh EFI disk and the existing Ubuntu software preparation, including
+QEMU guest agent and the shared OpenVox installer. The build verifies XFS,
+UEFI, partitions, packages and reboot, then clears machine identity, SSH keys
+and cloud-init state. It records Curtin logs, checks, source hashes and image
+provenance under `/var/log/openvox-provisioning`. Failed builds retain VMs,
+disks and snippets for diagnosis; reruns require choosing unused IDs or
+manually reviewing/removing only these owned build resources. Successful builds
+retain the stopped builder for review, with no builder disk attached to the
+template.
+
+Before production, clone with `docker-server.sh -b -t 9002` using a fresh
+identity and 1000G disk. Verify unique machine/SSH identities, cloud-init,
+root expansion, reboot, guest agent, Docker OverlayFS, and disposable reflink,
+deduplication and independent writes. The template build alone does not claim
+these clone/application checks. Enrolled production clones use the same `-t`
+option without `-b` and require the usual Vault/OpenVox inputs.
+
+For later growth, first check physical storage headroom, enlarge the virtual
+disk with `qm resize VMID scsi0 NEW_ABSOLUTE_SIZE`, then run `growpart /dev/sda 3`
+and `xfs_growfs /` inside the guest after confirming the actual root disk and
+partition with `findmnt`/`lsblk`. Root must remain the last partition. XFS can
+grow online; it cannot shrink. Cloud-init normally performs partition/filesystem
+expansion on a new enlarged clone; verify the result using `lsblk`, `xfs_info /`
+and `df -h /`.
+
 ## Independent Atlas tooling bootstrap
 
 After base creation, run [atlas-bootstrap.sh](atlas-bootstrap.sh) on Atlas as

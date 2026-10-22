@@ -29,10 +29,19 @@ def test_docker_ownership_mode(
     assert json.loads(daemon)["userns-remap"] == remap
 
 
-def test_cognition_resources(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("hostname", "vmid", "template", "mac"),
+    [
+        ("cognition", "220", "9001", "bc:24:11:4e:c0:22"),
+        ("cerebrum", "230", "9002", "bc:24:11:4e:c0:23"),
+    ],
+)
+def test_cognition_resources(
+    tmp_path: Path, hostname: str, vmid: str, template: str, mac: str
+) -> None:
     """Use a distinct VM identity with requested resources and virtual graphics."""
-    launcher = tmp_path / "cognition-server.sh"
-    shutil.copy(ROOT / "proxmox/cognition-server.sh", launcher)
+    launcher = tmp_path / f"{hostname}-server.sh"
+    shutil.copy(ROOT / f"proxmox/{hostname}-server.sh", launcher)
     (tmp_path / "docker-server.sh").write_text(
         'test "${DOCKER_USERNS_REMAP-unset}" = "" || exit 1\nprintf \'%s\\n\' "$@"\n'
     )
@@ -41,13 +50,13 @@ def test_cognition_resources(tmp_path: Path) -> None:
     args = result.stdout.splitlines()
     options = dict(zip(args[::2], args[1::2], strict=True))
     assert options == {
-        "-n": "cognition",
-        "-i": "220",
-        "-t": "9001",
+        "-n": hostname,
+        "-i": vmid,
+        "-t": template,
         "-s": "openvox.home.arpa",
         "-m": "32768",
         "-d": "1000G",
-        "-a": "bc:24:11:4e:c0:22",
+        "-a": mac,
         "-v": "virtio",
     }
 

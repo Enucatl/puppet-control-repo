@@ -95,6 +95,7 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
         "atlas.home.arpa",
         "aperture.home.arpa",
         "cognition.home.arpa",
+        "cerebrum.home.arpa",
         "proxmox.home.arpa",
         "proxmox-cortex.home.arpa",
     ]
@@ -102,6 +103,7 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
         "atlas.home.arpa",
         "aperture.home.arpa",
         "cognition.home.arpa",
+        "cerebrum.home.arpa",
         "proxmox.home.arpa",
         "proxmox-cortex.home.arpa",
     ]

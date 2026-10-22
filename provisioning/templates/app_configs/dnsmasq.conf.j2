@@ -124,6 +124,8 @@ address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ula }}
 address=/complex.{{ dhcp_domain }}/{{ complex_node_ip }}
 address=/cognition.{{ dhcp_domain }}/{{ cognition_node_ip }}
 address=/cognition.{{ dhcp_domain }}/{{ cognition_node_ula }}
+address=/cerebrum.{{ dhcp_domain }}/{{ cerebrum_node_ip }}
+address=/cerebrum.{{ dhcp_domain }}/{{ cerebrum_node_ula }}
 address=/freeipa.{{ dhcp_domain }}/{{ atlas_node_ip }}
 address=/freeipa.{{ dhcp_domain }}/{{ atlas_node_ula }}
 address=/hcv.{{ dhcp_domain }}/{{ atlas_node_ip }}
@@ -131,6 +133,7 @@ address=/hcv.{{ dhcp_domain }}/{{ atlas_node_ula }}
 # Exact names, with Atlas first for canonical reverse DNS.
 host-record=atlas.{{ dhcp_domain }},vault.{{ dhcp_domain }},openvox.{{ dhcp_domain }},ipa.{{ dhcp_domain }},{{ atlas_node_ip }},{{ atlas_node_ula }}
 host-record=cognition.{{ dhcp_domain }},{{ cognition_node_ip }},{{ cognition_node_ula }}
+host-record=cerebrum.{{ dhcp_domain }},{{ cerebrum_node_ip }},{{ cerebrum_node_ula }}
 host-record=remarkable.{{ dhcp_domain }},{{ remarkable_ip }},{{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 host-record=remarkable.{{ dhcp_domain }},{{ ipv6_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}
 
@@ -145,6 +148,7 @@ dhcp-host={{ docker_node_mac }},{{ docker_node_ip }},infinite
 dhcp-host={{ atlas_node_mac }},{{ atlas_node_ip }},atlas,infinite
 dhcp-host={{ complex_node_mac }},{{ complex_node_ip }},infinite
 dhcp-host={{ cognition_node_mac }},{{ cognition_node_ip }},cognition,infinite
+dhcp-host={{ cerebrum_node_mac }},{{ cerebrum_node_ip }},cerebrum,infinite
 dhcp-host={{ printer_mac }},{{ printer_ip }},printer,infinite
 dhcp-host={{ proxmox_mac }},proxmox,{{ proxmox_ip }},infinite
 dhcp-host={{ chronicle_mac }},{{ chronicle_ip }},infinite

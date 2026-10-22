@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+set -- \
+    /etc/wolf/profile-data/user/WolfSteam/.steam/steam/steamapps \
+    /etc/wolf/profile-data/riccardo/WolfSteam/.steam/steam/steamapps
+
+for directory in / "$@"; do
+    if [ ! -d "$directory" ] ||
+        [ "$(findmnt -n -o FSTYPE -T "$directory")" != xfs ] ||
+        [ "$(stat -c %d "$directory")" != "$(stat -c %d /)" ]; then
+        echo "Refusing Steam deduplication: $directory must be on the XFS root filesystem" >&2
+        exit 1
+    fi
+done
+
+exec /usr/bin/duperemove -dhr --dedupe-options=only_whole_files \
+    --io-threads=1 --cpu-threads=1 --batchsize=128 \
+    --hashfile=/var/lib/steam-dedup/steam.hash "$@"

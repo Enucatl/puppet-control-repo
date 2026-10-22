@@ -173,6 +173,9 @@ for infra_name in atlas vault openvox ipa freeipa hcv traefik.atlas authelia.atl
     retry_line "dnsmasq $infra_name A" "{{ atlas_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "$infra_name.$DHCP_DOMAIN" A +short
 done
 check_dns_exact "Atlas canonical PTR" "$ADGUARD_V4" PTR "{{ atlas_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "atlas.$DHCP_DOMAIN." 60
+check_dns_exact "AdGuard IPv4 cerebrum A" "$ADGUARD_V4" A "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ip }}" 60
+check_dns_exact "AdGuard IPv6 cerebrum AAAA" "$ADGUARD_V6" AAAA "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ula }}" 60
+check_dns_exact "Cerebrum canonical PTR" "$ADGUARD_V4" PTR "{{ cerebrum_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cerebrum.$DHCP_DOMAIN." 60
 check_dns_exact "AdGuard IPv4 cognition A" "$ADGUARD_V4" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
 check_dns_exact "AdGuard IPv6 cognition A" "$ADGUARD_V6" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
 check_dns_exact "AdGuard IPv4 cognition AAAA" "$ADGUARD_V4" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60

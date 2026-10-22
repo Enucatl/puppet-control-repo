@@ -2,18 +2,21 @@
 
 from pathlib import Path
 
+import pytest
+
 from puppet_catalog import ROOT, compile_catalog, resources
 from test_profile_catalogs import DUMMY_SECRETS
 
 
-def test_cognition_catalog(tmp_path: Path) -> None:
+@pytest.mark.parametrize("hostname", ["cognition", "cerebrum"])
+def test_cognition_catalog(tmp_path: Path, hostname: str) -> None:
     """Use Atlas services and leave GPU workload lifetime to on-demand controllers."""
     result = resources(
         compile_catalog(
             tmp_path,
             (ROOT / "manifests/site.pp").read_text(),
             DUMMY_SECRETS,
-            hostname="cognition",
+            hostname=hostname,
             node_type="docker",
             fact_overrides={
                 "os": {
@@ -27,7 +30,7 @@ def test_cognition_catalog(tmp_path: Path) -> None:
         )
     )
     enrollment = result["Freeipa_client_enrollment[default]"]
-    assert enrollment["hostname"] == "cognition.home.arpa"
+    assert enrollment["hostname"] == f"{hostname}.home.arpa"
     assert enrollment["server"] == "ipa.home.arpa"
     assert enrollment["ca_cert_file"].endswith("atlas-infrastructure.crt")
     certificate = result["Vault_cert[codex]"]
@@ -36,7 +39,7 @@ def test_cognition_catalog(tmp_path: Path) -> None:
         == "https://vault.home.arpa:8200/v1/pki_int/issue/puppet"
     )
     assert certificate["ca_trust"] == "/etc/ssl/certs/ca-certificates.crt"
-    assert certificate["cert_data"]["common_name"] == "codex.cognition.home.arpa"
+    assert certificate["cert_data"]["common_name"] == f"codex.{hostname}.home.arpa"
     assert result["Nfs_config::Ipa_service[nfs]"]["ipa_server"] == "ipa.home.arpa"
     mount = result["Nfs::Client::Mount[/export/scratch]"]
     assert mount["server"] == "atlas.home.arpa"
@@ -68,5 +71,5 @@ def test_cognition_catalog(tmp_path: Path) -> None:
             unit = result[f"Service[{project}-deploy.{suffix}]"]
             assert unit["enable"] is False
             assert unit["ensure"] is False
-    assert (ROOT / "data/roles/nodes/cognition.home.arpa.yaml").is_symlink()
+    assert (ROOT / f"data/roles/nodes/{hostname}.home.arpa.yaml").is_symlink()
     assert "Class[Profile::Docker_node]" not in result
