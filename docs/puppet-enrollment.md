@@ -5,7 +5,7 @@ root. Install with `proxmox/install-openvox.sh` and supply operator-authenticate
 public CA trust before enrollment. Guest/native provisioning takes its path
 from `OPENVOX_CA_CERT`; guests receive it at
 `/etc/puppetlabs/puppet/ssl/certs/ca.pem`. The shared helper sets and verifies
-`key_type=mldsa44`, loads native TLS/seed policy, and refuses an existing
+`key_type=mldsa44`, uses native seed-only key writing, and refuses an existing
 non-ML-DSA key. Changing the setting does not rotate an old key. See the
 [native client instructions](openvox-native-clients.md).
 
@@ -108,8 +108,8 @@ Upgrade existing agents with `proxmox/install-openvox.sh` before using the updat
 enrollment helpers. The installer verifies build 28001 before deleting the legacy
 `puppet-crypto.conf`, `openvox-child-policy.rb` and agent `openssl.cnf`, then reloads
 systemd. It leaves Puppet masked until authenticated enrollment or `--apply`.
-The three migrated node catalogs also remove these files once the installed agent
-is build 28001 or newer; older agents keep their existing compatibility files.
+Future agent updates remain manual. Ordinary Puppet runs do not refresh the
+OpenVox APT archive or upgrade the package.
 
 The script checks enrollment state, installs authenticated public CA trust, runs
 the shared package installer, configures scoped ML-DSA-44
