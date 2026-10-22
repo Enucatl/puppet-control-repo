@@ -1,0 +1,6 @@
+# Preserve the image accepted during the previous migration; do not resolve latest.
+services:
+  bge:
+    image: vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
+  qwen:
+    image: vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34

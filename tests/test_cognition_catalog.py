@@ -72,4 +72,9 @@ def test_cognition_catalog(tmp_path: Path, hostname: str) -> None:
             assert unit["enable"] is False
             assert unit["ensure"] is False
     assert (ROOT / f"data/roles/nodes/{hostname}.home.arpa.yaml").is_symlink()
+    if hostname == "cerebrum":
+        assert "MemoryMax=2G" in result[
+            "File[/etc/systemd/system/steam-dedup.service]"
+        ]["content"]
+        assert result["Systemd::Unit_file[steam-dedup.timer]"]["active"] is True
     assert "Class[Profile::Docker_node]" not in result

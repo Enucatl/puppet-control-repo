@@ -35,13 +35,13 @@ def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None
             ("a100", 64, "atlas", "docker"),
             ("a200", 56, "aperture", "desktop"),
             ("a300", 64, "aperture", "desktop"),
-            ("c000", 56, "cognition", None),
-            ("c100", 64, "cognition", None),
+            ("c000", 56, "cerebrum", "cognition"),
+            ("c100", 64, "cerebrum", "cognition"),
         ):
             network = f"{prefix}:{subnet}::/{length}"
             hop = f"fe80{variables[node + '_node_ipv6_suffix']}"
             interface = variables[
-                "cortex_interface" if node == "cognition" else "lan_interface"
+                "cortex_interface" if node == "cerebrum" else "lan_interface"
             ]
             expected[network] = (hop, interface)
             if old_node:
@@ -50,6 +50,16 @@ def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None
                     f"delete protocols static route6 {network} next-hop {old_hop}"
                     in deletes
                 )
+    for subnet, length in (("c000", 56), ("c100", 64)):
+        network = f"2a02:168:6271:{subnet}::/{length}"
+        expected[network] = (
+            f"fe80{variables['cerebrum_node_ipv6_suffix']}",
+            variables["cortex_interface"],
+        )
+        assert (
+            f"delete protocols static route6 {network} next-hop fe80{variables['cognition_node_ipv6_suffix']}"
+            in deletes
+        )
     assert routes == expected
 
 

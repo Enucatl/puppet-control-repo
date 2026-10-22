@@ -96,35 +96,35 @@ def test_start_runs_fixed_wolf_sequence(
             ("nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222", 0, ""),
             ("expect -", 0, ""),
             ("nc -z -w 1 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "stopped"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/start",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/start",
                 0,
                 '{"data": {}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
@@ -178,29 +178,29 @@ def test_stop_uses_fixed_shutdown_path(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 1, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/shutdown",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/shutdown",
                 0,
                 '{"data": {}}',
             ),
@@ -230,28 +230,28 @@ def test_stop_reports_host_shutdown_api_failure(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/shutdown",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/shutdown",
                 0,
                 '{"data": {}}',
             ),
@@ -283,24 +283,24 @@ def test_failed_start_transitions_to_failed(
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
@@ -329,18 +329,18 @@ def test_status_reports_external_wolf_without_claiming_ownership(
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
@@ -364,30 +364,30 @@ def test_start_claims_already_running_external_wolf(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": "wolf\\n"}}',
             ),
@@ -417,18 +417,18 @@ def test_status_reconciles_lost_app_session(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
             ("nc -z -w 2 proxmox-cortex.home.arpa 8006", 0, ""),
-            ("nc -z -w 1 cognition.home.arpa 22", 0, ""),
+            ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
         ]
     )
     http = FakeHttp(
         [
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/status/current",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/status/current",
                 0,
                 '{"data": {"status": "running"}}',
             ),
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"exitcode": 0, "out-data": ""}}',
             ),
@@ -474,7 +474,7 @@ def test_port_open_returns_false_on_timeout(tmp_path: Path) -> None:
 
     controller.runner.run = timeout_run  # type: ignore[method-assign]
 
-    assert controller.port_open("cognition.home.arpa", 22) is False
+    assert controller.port_open("cerebrum.home.arpa", 22) is False
 
 
 def test_guest_exec_polls_proxmox_agent_status(tmp_path: Path) -> None:
@@ -482,12 +482,12 @@ def test_guest_exec_polls_proxmox_agent_status(tmp_path: Path) -> None:
     http = FakeHttp(
         [
             (
-                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec",
+                "POST https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec",
                 0,
                 '{"data": {"pid": 123}}',
             ),
             (
-                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/220/agent/exec-status?pid=123",
+                "GET https://proxmox-cortex.home.arpa:8006/api2/json/nodes/proxmox-cortex/qemu/230/agent/exec-status?pid=123",
                 0,
                 '{"data": {"exited": 1, "exitcode": 0, "out-data": "ok\\n"}}',
             ),

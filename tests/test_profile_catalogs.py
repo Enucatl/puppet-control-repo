@@ -116,7 +116,7 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
     assert cleanup["context"] == "/files/etc/fstab"
     assert cleanup["changes"] == "rm *[file = '/export/cognition']"
     native_mount = result["File[/etc/systemd/system/export-cognition.mount]"]["content"]
-    assert "What=cognition.home.arpa:/docker" in native_mount
+    assert "What=cerebrum.home.arpa:/docker" in native_mount
     assert "Type=nfs4" in native_mount
     assert "Options=sec=krb5p,proto=tcp" in native_mount
     assert "TimeoutSec=10s" in native_mount

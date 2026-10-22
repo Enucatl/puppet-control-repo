@@ -10,7 +10,7 @@ PVE_USER = os.getenv("WOLF_PVE_USER", "wolf@pve")
 PVE_TOKEN_ID = os.getenv("WOLF_PVE_TOKEN_ID", "wolf")
 PVE_VM_ROLE_NAME = os.getenv("WOLF_PVE_VM_ROLE_NAME", "WolfVmControl")
 PVE_NODE_ROLE_NAME = os.getenv("WOLF_PVE_NODE_ROLE_NAME", "WolfNodePower")
-PVE_VM_ID = os.getenv("WOLF_VM_ID", "220")
+PVE_VM_ID = os.getenv("WOLF_VM_ID", "230")
 PVE_NODE = os.getenv("WOLF_PROXMOX_NODE", "proxmox-cortex")
 
 

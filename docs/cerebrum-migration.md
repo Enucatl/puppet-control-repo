@@ -67,12 +67,42 @@ The SCSI disk uses VirtIO SCSI single, IO Thread, discard and SSD emulation.
 QEMU confirms default direct/no-cache I/O, `io_uring` and a native ZFS volume.
 
 The initial small-template expansion produced 400 allocation groups and a
-64 MiB journal. Before copying data, the template is being rebuilt at the final
-1000 GiB virtual size so XFS chooses geometry for that capacity. No allocation
+64 MiB journal. Before copying data, the template was rebuilt at the final
+1000 GiB virtual size. The final template and clone have four allocation groups
+and a 127807-block internal journal (about 499 MiB). No allocation
 group count, group size or journal size is manually configured. The target
 root partition is 1022462 MiB, leaving EFI, boot and GPT/alignment space.
 Both ZFS reservation properties must be zero before the builder starts.
 Clones of this template must be at least 1000 GiB.
+
+## Copy and acceptance evidence
+
+The staged copy completed at 11:31 UTC on 2026-10-22, including all 16 volumes,
+application trees, homes and private recovery trees. The new root reported
+about 561 GiB used and 438 GiB available; Cortex retained about 309 GiB free.
+The copy preserves numeric IDs, ACLs, xattrs, hard links and sparse files.
+Native home mTLS and the cloud administrator's SSH configuration are excluded
+from restoration. Docker layers/databases are recreated separately.
+
+At 11:37 UTC the corrected acceptance script verified disposable reflinks,
+whole-file deduplication, independent writes, separate inodes and Docker's
+containerd OverlayFS snapshotter. The 16 MiB deduplication trial completed in
+2.01 seconds with 14540 KiB peak RSS. An earlier acceptance launcher consumed
+its remaining input through nested SSH; those skipped checks were rerun.
+The Wolf image was transferred through Docker save/load and its image ID
+matched the source. No application container was started.
+
+Independent checks passed native SSH/DNS, distinct SSH identities, Kerberos
+host authentication, an Atlas NFS ticket/read with `sec=krb5p`, OpenVox chain
+validation, native Cerebrum mTLS access and fresh Loki ingestion. Cortex still
+has no configured backup job, matching the source's existing protection gap.
+
+The previous accepted vLLM image was recovered from the retained source
+`/root/cognition-migration/image-pulls.log`. After the final comparison, install
+[cerebrum-vllm-override.yml](../proxmox/cerebrum-vllm-override.yml) as
+`/opt/docker/vllm/docker-compose.override.yml` so both BGE and Qwen retain that
+digest rather than resolving `latest`. The optional legacy nightly/Ollama
+stack remains dormant; its historical image versions were not recoverable.
 
 Ubuntu 26.04 does not publish the Curtin deb in its configured archive. The
 builder uses checksum-pinned Canonical source instead. Hardware serial

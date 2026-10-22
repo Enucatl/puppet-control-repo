@@ -102,7 +102,7 @@ profile::common::systemd::units:
       Description=Cognition Docker share
 
       [Mount]
-      What=cognition.home.arpa:/docker
+      What=cerebrum.home.arpa:/docker
       Where=/export/cognition
       Type=nfs4
       Options=sec=krb5p,proto=tcp

@@ -35,11 +35,14 @@ set protocols static route6 {{ ipv6_prefix }}:a000::/56 next-hop fe80{{ atlas_no
 set protocols static route6 {{ ipv6_prefix }}:a100::/64 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:a200::/56 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:a300::/64 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}
-set protocols static route6 {{ ipv6_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}
+set protocols static route6 {{ ipv6_prefix }}:c000::/56 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}
+set protocols static route6 {{ ipv6_prefix }}:c100::/64 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}
 set protocols static route6 {{ ula_prefix }}:a000::/56 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ula_prefix }}:a100::/64 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ula_prefix }}:a200::/56 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ula_prefix }}:a300::/64 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ula_prefix }}:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}
-set protocols static route6 {{ ula_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }} interface {{ cortex_interface }}
+set protocols static route6 {{ ula_prefix }}:c000::/56 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}
+set protocols static route6 {{ ula_prefix }}:c100::/64 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}
+# Retain the previous ISP prefix still routed on 2026-10-22.
+set protocols static route6 2a02:168:6271:c000::/56 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}
+set protocols static route6 2a02:168:6271:c100::/64 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}

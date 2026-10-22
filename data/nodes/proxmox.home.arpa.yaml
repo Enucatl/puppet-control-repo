@@ -8,8 +8,8 @@ classes:
 
 profile::chronicle_backup::backup_job_id: backup-9c78eb79-950c
 profile::vllm_weekly_window::timer_calendar: 'Tue *-*-* 01:05:00 UTC'
-profile::vllm_weekly_window::vm_host: cognition.home.arpa
-profile::vllm_weekly_window::vm_id: 220
+profile::vllm_weekly_window::vm_host: cerebrum.home.arpa
+profile::vllm_weekly_window::vm_id: 230
 
 systemd::dropin_files:
   proxmox-cpu-energy-preference.conf:

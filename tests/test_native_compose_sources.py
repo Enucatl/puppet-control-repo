@@ -101,8 +101,8 @@ def test_infrastructure_wolf_and_flow_preserve_runtime_identity() -> None:
         if name == "wolf":
             assert service["image"] == "infra-wolf:atlas"
             assert service["build"]["context"] == str(ROOT / "docker/wolf")
-            assert service["environment"]["WOLF_GUEST_HOST"] == "cognition.home.arpa"
-            assert service["environment"]["WOLF_VM_ID"] == "220"
+            assert service["environment"]["WOLF_GUEST_HOST"] == "cerebrum.home.arpa"
+            assert service["environment"]["WOLF_VM_ID"] == "230"
             assert (
                 service["labels"]["traefik.http.routers.wolf.rule"]
                 == "Host(`wolf.atlas.home.arpa`)"

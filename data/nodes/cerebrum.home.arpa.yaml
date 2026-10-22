@@ -19,6 +19,7 @@ profile::nvidia_docker::temp_target_celsius: 80
 
 classes:
   - profile::nvidia_docker
+  - profile::steam_dedup
 
 packages::sources:
   nvidia-container-toolkit:

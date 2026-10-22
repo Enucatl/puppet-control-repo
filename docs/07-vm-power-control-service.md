@@ -12,8 +12,8 @@ The service does not accept arbitrary targets or shell commands. It controls
 one fixed session:
 
 - Proxmox host: `proxmox-cortex.home.arpa`
-- VM: `220`
-- guest: `cognition.home.arpa`
+- VM: `230`
+- guest: `cerebrum.home.arpa`
 - Wolf compose stack: `/opt/docker/wolf`
 
 The implementation uses an explicit state machine for controller lifecycle
@@ -73,9 +73,9 @@ observed reality before deciding what to do.
 4. Send Wake-on-LAN to `proxmox-cortex`.
 5. Unlock the host through Dropbear SSH using the dedicated key.
 6. Wait for the Proxmox API to return.
-7. Query VM `220` state through the Proxmox API.
-8. Start VM `220` if needed.
-9. Wait for guest SSH readiness on `cognition.home.arpa`.
+7. Query VM `230` state through the Proxmox API.
+8. Start VM `230` if needed.
+9. Wait for guest SSH readiness on `cerebrum.home.arpa`.
 10. Run `cd /opt/docker/wolf && docker compose up -d` inside the guest
     through the Proxmox guest agent.
 11. Start the 4-hour session timer.
@@ -85,7 +85,7 @@ observed reality before deciding what to do.
 `POST /v1/session/stop` runs:
 
 1. `cd /opt/docker/wolf && docker compose down`
-2. Graceful VM `220` shutdown through the Proxmox API
+2. Graceful VM `230` shutdown through the Proxmox API
 3. Host shutdown through the Proxmox API
 
 If the timeout fires, the same stop path is used and the log entry carries
@@ -101,7 +101,7 @@ The controller keeps two views of the world:
 Observed probes currently cover:
 
 - Proxmox API reachability
-- VM `220` status
+- VM `230` status
 - guest SSH reachability
 - Wolf compose state through the guest agent
 
@@ -196,13 +196,13 @@ Store the full `wolf@pve!wolf=<token-secret>` value printed by the script in
 Vault under `kv/wolf:proxmox-cortex-api-token`.
 
 The token is enough for VM lifecycle control and guest-agent execution. If
-you later need to tighten it further, keep the token scoped to `/vms/220` and
+you later need to tighten it further, keep the token scoped to `/vms/230` and
 `/nodes/proxmox-cortex` rather than broadening it to a cluster-wide role.
 
 The Proxmox bootstrap uses two custom roles instead of one combined role:
 
-- `WolfVmControl` on `/vms/220`
-  - `VM.PowerMgmt`: start and shutdown VM `220`
+- `WolfVmControl` on `/vms/230`
+  - `VM.PowerMgmt`: start and shutdown VM `230`
   - `VM.Console`: console access expected by related VM control paths
   - `VM.GuestAgent.Unrestricted`: guest-agent command execution path
   - `VM.Audit`: read VM status/config
@@ -215,7 +215,7 @@ The ACLs are assigned to both the `wolf@pve` user and the separated
 token's effective privileges are constrained by the parent user, so token-only
 ACLs are not sufficient.
 
-The split keeps VM privileges scoped only to VM `220`, and node privileges
+The split keeps VM privileges scoped only to VM `230`, and node privileges
 scoped only to `proxmox-cortex`. A single combined role would likely work
 today, but assigning that combined role at both paths is less clear and more
 fragile if Proxmox privilege semantics change later.

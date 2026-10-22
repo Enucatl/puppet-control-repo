@@ -14,3 +14,9 @@ delete protocols static route6 {{ ula_prefix }}:a000::/56 next-hop fe80{{ docker
 delete protocols static route6 {{ ula_prefix }}:a100::/64 next-hop fe80{{ docker_node_ipv6_suffix }}
 delete protocols static route6 {{ ula_prefix }}:a200::/56 next-hop fe80{{ desktop_node_ipv6_suffix }}
 delete protocols static route6 {{ ula_prefix }}:a300::/64 next-hop fe80{{ desktop_node_ipv6_suffix }}
+delete protocols static route6 {{ ipv6_prefix }}:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }}
+delete protocols static route6 {{ ipv6_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}
+delete protocols static route6 {{ ula_prefix }}:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }}
+delete protocols static route6 {{ ula_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}
+delete protocols static route6 2a02:168:6271:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }}
+delete protocols static route6 2a02:168:6271:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}

@@ -209,6 +209,12 @@ was preserved before its normal retention cleanup in root-only router archive
 `/config/containers/alloy/migration-wal-replay-20261021.tar.gz`; rejected history
 is not confirmed complete in Loki and the archive has not been replayed.
 
+### Cerebrum cutover
+
+The replacement targets Cerebrum VM 230, with both six-route handover and
+rollback documented in [Cerebrum handover](../docs/cerebrum-cutover.md).
+The Cognition record below remains historical recovery evidence.
+
 ### Cognition cutover record
 
 Cognition VM 220 on Cortex reserves `10.0.40.134` for
