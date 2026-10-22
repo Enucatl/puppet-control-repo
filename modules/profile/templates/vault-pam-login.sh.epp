@@ -1,23 +1,23 @@
 #!/bin/bash
-# Vault auto-login via PAM — obtains a Vault token using LDAP auth
-# Called by pam_exec during authentication; password comes via stdin
+# Vault auto-login via PAM; pam_exec supplies a NUL-terminated password on stdin.
 
 export VAULT_ADDR="https://vault.home.arpa:8200"
 export VAULT_CACERT="/etc/ssl/certs/ca-certificates.crt"
+export VAULT_CLIENT_TIMEOUT="5s"
 
-# Only run for interactive login services (not cron, sudo, etc.)
 [ "$PAM_TYPE" = "auth" ] || exit 0
 case "$PAM_SERVICE" in
   sshd|login|gdm-password|lightdm|sddm) ;;
   *) exit 0 ;;
 esac
+[ -n "$PAM_USER" ] || exit 0
 
-# Skip if user already has a valid token
-if HOME="$(eval echo ~"$PAM_USER")" VAULT_TOKEN="$(cat "$(eval echo ~"$PAM_USER")/.vault-token" 2>/dev/null)" \
-   vault token lookup &>/dev/null; then
-  exit 0
-fi
-
-# pam_exec exposes PAM_USER; password is on stdin
-read -r PAM_PASSWORD
-HOME="$(eval echo ~"$PAM_USER")" vault login -method=ldap -no-print username="$PAM_USER" password="$PAM_PASSWORD" 2>/dev/null || true
+# Use the user's token helper and permissions, and keep the password out of argv.
+runuser -u "$PAM_USER" -- /bin/bash -c '
+  unset VAULT_TOKEN VAULT_LDAP_PASSWORD
+  IFS= read -r -d "" VAULT_LDAP_PASSWORD || true
+  [ -n "$VAULT_LDAP_PASSWORD" ] || exit 0
+  vault token lookup >/dev/null 2>&1 && exit 0
+  export VAULT_LDAP_PASSWORD
+  exec vault login -method=ldap -no-print username="$1"
+' vault-pam-login "$PAM_USER" >/dev/null 2>&1 || true

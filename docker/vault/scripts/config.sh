@@ -6,7 +6,7 @@
 
 # Domain
 DOMAIN="home.arpa"
-FREEIPA_FQDN="freeipa.${DOMAIN}"
+FREEIPA_FQDN="ipa.${DOMAIN}"
 
 # LDAP
 LDAP_BASE_DN="dc=home,dc=arpa"

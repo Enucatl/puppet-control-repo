@@ -30,11 +30,13 @@ vault write auth/ldap/config \
     bindpass="${LDAP_BIND_PASSWORD}" \
     userdn="${LDAP_USER_DN}" \
     userattr="uid" \
-    userfilter="(&({{.UserAttr}}={{.Username}})(objectClass=person))" \
+    userfilter="(&(objectClass=person)(|({{.UserAttr}}={{.Username}})(krbPrincipalName={{.Username}})))" \
     groupattr="cn" \
     groupdn="${LDAP_GROUP_DN}" \
     groupfilter="(|(member={{.UserDN}})(mepManagedBy={{.UserDN}}))" \
     tls_server_name="${FREEIPA_FQDN}" \
+    tls_min_version="tls13" \
+    tls_max_version="tls13" \
     starttls="false" \
     request_timeout="10s" \
     certificate=@/etc/ssl/certs/ca-certificates.crt
