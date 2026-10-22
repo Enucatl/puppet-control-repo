@@ -10,7 +10,7 @@ case "$ID:$VERSION_ID:$(dpkg --print-architecture)" in
   *) echo 'No accepted OpenVox package for this OS/architecture; refusing installation.' >&2; exit 1 ;;
 esac
 release=https://github.com/Enucatl/openvox-packages/releases/download/resolute-28001
-version="9.1.0+homelab.28001-1+$target"
+version="9.1.1+homelab.28001-1+$target"
 packages=("openvox-agent=$version")
 native_release=https://github.com/Enucatl/openvox-packages/releases/download/native-client-2-1
 case "$target" in

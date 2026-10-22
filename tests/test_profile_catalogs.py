@@ -50,8 +50,8 @@ def test_native_crypto_cleanup_waits_for_package_upgrade(tmp_path: Path) -> None
     assert all(production_path not in command for production_path in production_paths)
     for version, upgraded in [
         ("9.1.0+homelab.24001-1+ubuntu26.04", False),
-        ("9.1.0+homelab.28001-1+ubuntu26.04", True),
-        ("9.1.0+homelab.29001-1+ubuntu26.04", True),
+        ("9.1.1+homelab.28001-1+ubuntu26.04", True),
+        ("9.1.1+homelab.29001-1+ubuntu26.04", True),
         ("", False),
     ]:
         query.write_text(

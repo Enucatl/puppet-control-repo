@@ -64,7 +64,7 @@ and verifies the same pinned SHA256 on both new downloads and cached files:
 The checksum is published in Canonical's
 [SHA256SUMS](https://cloud-images.ubuntu.com/releases/resolute/release-20260927/SHA256SUMS).
 The template installs QEMU guest agent and the signed, accepted
-`9.1.0+homelab.28001-1+ubuntu26.04` OpenVox agent through
+`9.1.1+homelab.28001-1+ubuntu26.04` OpenVox agent through
 [install-openvox.sh](install-openvox.sh). The same installer provisions applicable
 native curl and IPA library fixes from the signed companion APT repository;
 [openvox-packages](https://github.com/Enucatl/openvox-packages/blob/main/docs/native-client.md) owns their builds

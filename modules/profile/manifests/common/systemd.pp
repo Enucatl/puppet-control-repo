@@ -7,7 +7,7 @@ class profile::common::systemd (
     exec { 'remove-openvox-crypto-workaround':
       command => '/bin/rm -f /etc/systemd/system/puppet.service.d/puppet-crypto.conf /usr/local/libexec/openvox-child-policy.rb /etc/puppetlabs/puppet/openssl.cnf',
       onlyif  => [
-        '/usr/bin/dpkg --compare-versions "$(/usr/bin/dpkg-query -W -f=\'${Version}\' openvox-agent)" ge 9.1.0+homelab.28001-1',
+        '/usr/bin/dpkg --compare-versions "$(/usr/bin/dpkg-query -W -f=\'${Version}\' openvox-agent)" ge 9.1.1+homelab.28001-1',
         '/usr/bin/test -e /etc/systemd/system/puppet.service.d/puppet-crypto.conf -o -e /usr/local/libexec/openvox-child-policy.rb -o -e /etc/puppetlabs/puppet/openssl.cnf',
       ],
       notify  => Systemd::Daemon_reload['openvox-native-crypto'],

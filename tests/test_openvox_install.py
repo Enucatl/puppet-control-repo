@@ -53,7 +53,7 @@ def test_native_install_pins_supported_signed_package(
     commands = tmp_path / "commands"
     binaries = tmp_path / "bin"
     binaries.mkdir()
-    versions = {"openvox-agent": f"9.1.0+homelab.28001-1+{target}"}
+    versions = {"openvox-agent": f"9.1.1+homelab.28001-1+{target}"}
     if target in {"ubuntu26.04", "debian13"}:
         curl_version, ipa_version = (
             ("8.18.0-1ubuntu2.8", "4.13.1-1")
@@ -118,7 +118,7 @@ def test_native_install_pins_supported_signed_package(
         assert not (directory / "apt/sources.list.d/openvox-homelab.list").exists()
     else:
         assert (
-            f"apt-get install -y openvox-agent=9.1.0+homelab.28001-1+{target}" in calls
+            f"apt-get install -y openvox-agent=9.1.1+homelab.28001-1+{target}" in calls
         )
         if target in {"ubuntu26.04", "debian13"}:
             assert f"native-client-2-1/native-client-{target}.pref" in calls
