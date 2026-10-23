@@ -49,7 +49,7 @@ def test_root_defaults_preserve_native_authorities() -> None:
         "ipa",
     }
     services = config["services"]
-    assert services["openvox"]["image"] == "infra-openvox:24001"
+    assert services["openvox"]["image"] == "infra-openvox:36001"
     assert services["openvox"]["command"] == [
         "/opt/puppetlabs/server/apps/puppetserver/cli/apps/foreground"
     ]

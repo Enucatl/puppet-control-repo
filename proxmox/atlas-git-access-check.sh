@@ -2,7 +2,7 @@
 set -euo pipefail
 
 [[ $(hostname -f) == atlas.home.arpa ]] || {
-    echo 'Run on atlas.home.arpa after building infra-openvox:24001.' >&2; exit 1;
+    echo 'Run on atlas.home.arpa after building infra-openvox:36001.' >&2; exit 1;
 }
 docker=(docker --host unix:///var/run/docker.sock)
 bare=/opt/git/openvox/control.git
@@ -15,7 +15,7 @@ revision=$(git --git-dir="$bare" rev-parse production)
     --tmpfs /etc/puppetlabs/code:rw,nosuid,nodev,uid=999,gid=999,mode=0700 \
     --mount "type=bind,source=$bare,target=/git/control.git,readonly" \
     --mount type=bind,source=/opt/docker/puppet-control-repo/docker/openvox/infra-r10k.yaml,target=/infra/infra-r10k.yaml,readonly \
-    --entrypoint /bin/bash infra-openvox:24001 -eus -- "$revision" >&2 <<'CONTAINER'
+    --entrypoint /bin/bash infra-openvox:36001 -eus -- "$revision" >&2 <<'CONTAINER'
 test "$(id -u):$(id -g)" = 999:999
 awk '$1 == 0 && $2 == 100000 && $3 == 65536 { found=1 } END { exit !found }' /proc/self/uid_map
 awk '$1 == 0 && $2 == 100000 && $3 == 65536 { found=1 } END { exit !found }' /proc/self/gid_map
@@ -38,7 +38,7 @@ echo "Remapped read-only source and r10k checkout passed"
 CONTAINER
 
 jq -n --arg date "$(date --iso-8601=seconds)" --arg revision "$revision" \
-    --arg image "$("${docker[@]}" image inspect infra-openvox:24001 --format '{{.Id}}')" \
+    --arg image "$("${docker[@]}" image inspect infra-openvox:36001 --format '{{.Id}}')" \
     '{verified_at:$date, production_revision:$revision, image_id:$image,
       container_uid_gid:"999:999", host_uid_gid:"100999:100999",
       userns_remap_verified:true, source_read_only:true, source_write_denied:true,

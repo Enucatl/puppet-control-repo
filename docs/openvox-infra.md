@@ -212,7 +212,7 @@ scoped role. Hiera fails compilation when its authenticated Vault lookup fails.
 
 ## TLS and service configuration
 
-The accepted `24001` image is pinned in `docker/openvox/infra.Dockerfile`; the
+The accepted `36001` image is pinned in `docker/openvox/infra.Dockerfile`; the
 derived image adds Git and r10k 5.0.3. It keeps the native entrypoint and
 foreground command. Compose declares UID/GID 999, a read-only image, dropped
 capabilities, JVM limits and writable runtime tmpfs. `/tmp` permits executable

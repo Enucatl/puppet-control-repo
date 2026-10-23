@@ -364,7 +364,7 @@ changes. r10k uses `file:///git/control.git` to avoid local-clone hard links
 across ownership boundaries, and the image trusts exactly `/git/control.git`
 through Git's `safe.directory` setting.
 
-After publishing and building `infra-openvox:24001`, run
+After publishing and building `infra-openvox:36001`, run
 `bash proxmox/atlas-git-access-check.sh` on Atlas. It uses a disposable container
 with UID/GID `999:999`, user remapping, no network, a read-only image/source and
 temporary writable deployment/cache/code directories. It checks the numeric

@@ -9,7 +9,7 @@ network; a separate deployment helper downloads modules over an egress network.
 Run from the control-repo checkout:
 
 ```sh
-docker build -t openvox-rehearsal-tools:24001 docker/openvox
+docker build -t openvox-rehearsal-tools:36001 docker/openvox
 python3 scripts/openvox-rehearsal.py run
 python3 scripts/openvox-rehearsal.py status
 python3 scripts/openvox-rehearsal.py stop
@@ -48,7 +48,7 @@ and untracked private state. It does not alter the source repository's history.
 
 ## Hierarchy and initialization
 
-The derived tools image pins the accepted `24001` OpenVox image and Vault 2.2.0
+The derived tools image pins the accepted `36001` OpenVox image and Vault 2.2.0
 by digest. Git and r10k are integration tools; the accepted OpenVox packages and
 provider policy remain image-owned.
 
@@ -142,7 +142,7 @@ The [infrastructure runbook](openvox-infra.md),
 [BCJSSE audit](openvox-jvm-policy.md) describe the deployed configuration and
 its verification limits. Final native Ubuntu/Debian, hardened Compose, hosted CI,
 protected off-host recovery, host reboot and image rollback acceptance passed
-with release 24001. See the [historical report](archive/migration/openvox-rehearsal-report.md)
+with release 36001. See the [historical report](archive/migration/openvox-rehearsal-report.md)
 for evidence. This disposable rehearsal validates infrastructure behavior;
 verify production workloads through their own checks and follow
 [Atlas recovery](atlas-recovery.md) for established authority state.

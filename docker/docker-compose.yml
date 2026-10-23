@@ -10,7 +10,7 @@ services:
     build:
       context: ./openvox
       dockerfile: infra.Dockerfile
-    image: infra-openvox:24001
+    image: infra-openvox:36001
     hostname: openvox.home.arpa
     user: "999:999"
     command: [/opt/puppetlabs/server/apps/puppetserver/cli/apps/foreground]
