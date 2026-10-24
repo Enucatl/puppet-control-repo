@@ -24,9 +24,10 @@ selection above for every command, or export `COMPOSE_ENV_FILES` in the current
 shell. Avoid printing resolved configuration: it can contain credentials.
 
 The control repository's root Compose project includes OpenVox, Vault, its
-unsealer, the APT cache, the Wolf controller and GoFlow2. FreeIPA retains its
-own Compose entrypoint. Existing authority and Wolf state volumes retain their
-external names. Bootstrap and authority recovery use their explicit inputs;
+unsealer, the APT cache, the Wolf controller, GoFlow2 and FreeIPA. The stack owns
+its `infra_traefik` ingress network, which Traefik consumes as an external
+network. Existing authority and Wolf state volumes retain their external names.
+Bootstrap and authority recovery use their explicit inputs;
 follow [Atlas recovery](atlas-recovery.md).
 Cerebrum's Wolf/vLLM projects have no automatic Git deployments. Their existing
 on-demand controllers select when to start them. See the [Cerebrum handover](archive/migration/cerebrum-cutover.md)

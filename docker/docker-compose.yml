@@ -136,10 +136,10 @@ services:
     networks:
       infra:
         aliases: [ipa.home.arpa]
-      traefik_proxy: {}
+      infra_traefik: {}
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik_proxy"
+      - "traefik.docker.network=infra_traefik"
       - "traefik.tcp.routers.freeipa-secure.entrypoints=https"
       - "traefik.tcp.routers.freeipa-secure.rule=HostSNI(`ipa.home.arpa`)"
       - "traefik.tcp.routers.freeipa-secure.tls=true"
@@ -332,10 +332,10 @@ services:
       - wolf_cert
       - wolf_key
     networks:
-      - traefik_proxy
+      - infra_traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik_proxy"
+      - "traefik.docker.network=infra_traefik"
       - "traefik.http.routers.wolf.rule=Host(`wolf.${DOCKER_DOMAIN}`)"
       - "traefik.http.routers.wolf.entrypoints=https"
       - "traefik.http.routers.wolf.tls=true"
@@ -351,8 +351,8 @@ networks:
     enable_ipv6: true
     ipam:
       driver: default
-  traefik_proxy:
-    name: traefik_proxy
+  infra_traefik:
+    name: infra_traefik
     enable_ipv6: true
     attachable: true
     ipam:

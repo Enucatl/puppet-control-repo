@@ -112,7 +112,9 @@ def test_infrastructure_wolf_and_flow_preserve_runtime_identity() -> None:
                 "name": "infra_wolf_state",
                 "external": True,
             }
-            assert set(service["networks"]) == {"traefik_proxy"}
+            assert set(service["networks"]) == {"infra_traefik"}
+            assert service["labels"]["traefik.docker.network"] == "infra_traefik"
+            assert config["networks"]["infra_traefik"]["name"] == "infra_traefik"
             state = next(
                 mount for mount in service["volumes"] if mount["target"] == "/state"
             )
@@ -173,13 +175,13 @@ def test_freeipa_ordinary_entrypoint_preserves_native_service() -> None:
         (464, "udp"),
         (636, "tcp"),
     ]
-    assert set(service["networks"]) == {"infra", "traefik_proxy"}
-    proxy = config["networks"]["traefik_proxy"]
-    assert proxy["name"] == "traefik_proxy"
+    assert set(service["networks"]) == {"infra", "infra_traefik"}
+    proxy = config["networks"]["infra_traefik"]
+    assert proxy["name"] == "infra_traefik"
     assert proxy["enable_ipv6"] is True
     assert service["labels"] == {
         "traefik.enable": "true",
-        "traefik.docker.network": "traefik_proxy",
+        "traefik.docker.network": "infra_traefik",
         "traefik.tcp.routers.freeipa-secure.entrypoints": "https",
         "traefik.tcp.routers.freeipa-secure.rule": "HostSNI(`ipa.home.arpa`)",
         "traefik.tcp.routers.freeipa-secure.tls": "true",

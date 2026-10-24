@@ -45,7 +45,7 @@ observed reality before deciding what to do.
 1. Network access
    - Exposed only through Traefik on `wolf.${DOCKER_DOMAIN}`.
    - Protected by `authelia@docker` and the shared Traefik allowlist.
-   - The container is attached only to `traefik_proxy`.
+   - The container is attached only to `infra_traefik`, shared with Traefik.
    - The app rejects requests unless the peer IP matches a DNS-resolved
      trusted proxy hostname from `WOLF_TRUSTED_PROXY_HOSTS`.
 
