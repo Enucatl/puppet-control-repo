@@ -60,6 +60,10 @@
       ansible.builtin.import_tasks: tasks/03_pull_images.yml
       tags: [apply]
 
+    - name: Stage isolated Technitium DNS
+      ansible.builtin.import_tasks: tasks/12_technitium.yml
+      tags: [apply, technitium]
+
     - name: Diff config against running (load + compare, no commit)
       ansible.builtin.import_tasks: tasks/diff_vyos.yml
       tags: [diff, never]

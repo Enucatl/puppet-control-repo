@@ -84,6 +84,10 @@ adguard_dns_bind_hosts:
   - "{{ ula_prefix }}::1"
 adguard_image: "docker.io/adguard/adguardhome:latest"
 
+# Staged only: loopback DNS on 5354 and web console on 5380, accessed over SSH.
+technitium_image: "docker.io/technitium/dns-server:15.6.2"
+technitium_data_path: "/config/containers/technitium"
+
 # --- DNSMASQ (DHCPv4 + authoritative DNS for home.arpa) ---
 # Runs as a container on VyOS with host networking.
 # DNS on port 5300 to avoid conflict with AdGuard on port 53.

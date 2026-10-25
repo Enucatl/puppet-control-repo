@@ -1,0 +1,89 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+data={{ technitium_data_path | quote }}
+image={{ technitium_image | quote }}
+container=technitium-bootstrap
+
+mkdir -p "$data"
+chmod 700 "$data"
+if [[ ! -s "$data/admin-password" ]]; then
+    openssl rand -hex 32 > "$data/admin-password"
+fi
+
+if podman container exists technitium; then
+    container=technitium
+    podman start "$container" >/dev/null
+else
+    # First startup defaults to port 53; never initialize on the host network.
+    podman run --detach --name "$container" --network none --memory 512m --cpus 0.5 \
+        --volume "$data:/etc/dns" \
+        --env DNS_SERVER_DOMAIN=technitium.{{ dhcp_domain }} \
+        --env DNS_SERVER_ADMIN_PASSWORD_FILE=/etc/dns/admin-password \
+        --env DNS_SERVER_WEB_SERVICE_LOCAL_ADDRESSES=127.0.0.1 \
+        "$image" >/dev/null
+    trap 'podman stop --time 10 "$container" >/dev/null; podman rm "$container" >/dev/null' EXIT
+fi
+
+podman exec "$container" curl --silent --show-error --fail --max-time 2 \
+    --retry 30 --retry-connrefused --retry-delay 1 --retry-max-time 30 \
+    http://127.0.0.1:5380/api/status >/dev/null
+
+token=
+api() {
+    local path=$1 response parameter
+    shift
+    local -a options=()
+    for parameter in "$@"; do
+        options+=(--data-urlencode "$parameter")
+    done
+    response=$(podman exec "$container" curl --silent --show-error --fail --max-time 30 \
+        --data-urlencode "token=$token" "${options[@]}" "http://127.0.0.1:5380/api/$path")
+    if ! jq -e '.status == "ok"' <<< "$response" >/dev/null; then
+        jq -r '.errorMessage // .status' <<< "$response" >&2
+        return 1
+    fi
+    printf '%s\n' "$response"
+}
+token=$(api user/login user=admin "pass=$(cat "$data/admin-password")" | jq -er .token)
+api settings/set \
+    'dnsServerLocalEndPoints=127.0.0.1:5354,[::1]:5354' \
+    'webServiceLocalAddresses=127.0.0.1,[::1]' webServiceHttpPort=5380 \
+    ipv6Mode=Enabled dnssecValidation=true eDnsClientSubnet=false \
+    'forwarders=9.9.9.10,149.112.112.10,[2620:fe::10],[2620:fe::fe:10]' \
+    forwarderProtocol=Udp concurrentForwarding=true \
+    'qpmPrefixLimitsIPv4=32|6000|0' 'qpmPrefixLimitsIPv6=56|6000|0' \
+    enableBlocking=true blockingType=AnyAddress blockingAnswerTtl=10 \
+    blockListUrls=https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt \
+    blockListUpdateIntervalHours=24 serveStale=false cacheMinimumRecordTtl=0 \
+    logQueries=true maxLogFileDays=1 maxStatFileDays=1 >/dev/null
+
+zones=$(api zones/list)
+for zone in {{ dhcp_domain }} 10.in-addr.arpa \
+    {{ (ula_prefix ~ '::/48') | ansible.utils.ipaddr('revdns') }} \
+    {{ (ipv6_prefix ~ '::/48') | ansible.utils.ipaddr('revdns') }}; do
+    if ! jq -e --arg zone "$zone" '.response.zones[] | select(.name == $zone)' <<< "$zones" >/dev/null; then
+        api zones/create "zone=$zone" type=Forwarder forwarder=127.0.0.1:{{ dnsmasq_dns_port }} \
+            protocol=Udp dnssecValidation=false >/dev/null
+    fi
+    api zones/records/add "zone=$zone" "domain=$zone" type=FWD \
+        forwarder=127.0.0.1:{{ dnsmasq_dns_port }} protocol=Udp dnssecValidation=false \
+        overwrite=true >/dev/null
+done
+api zones/records/add zone={{ dhcp_domain }} domain=apt-cacher-ng.{{ dhcp_domain }} \
+    type=A ipAddress={{ atlas_node_ip }} ttl=10 overwrite=true >/dev/null
+api zones/records/add zone={{ dhcp_domain }} domain=_apt_proxy._tcp.{{ dhcp_domain }} \
+    type=SRV priority=0 weight=0 port=3142 target=apt-cacher-ng.{{ dhcp_domain }} \
+    ttl=10 overwrite=true >/dev/null
+for domain in icu version.bind id.server hostname.bind; do
+    api blocked/add "domain=$domain" >/dev/null
+done
+api settings/get | jq -e '
+    (.response.dnsServerLocalEndPoints | sort) == (["127.0.0.1:5354", "[::1]:5354"] | sort)
+    and (.response.webServiceLocalAddresses | sort) == (["127.0.0.1", "[::1]"] | sort)
+    and .response.webServiceHttpPort == 5380
+    and .response.dnssecValidation == true
+    and .response.enableBlocking == true
+' >/dev/null
+api user/logout >/dev/null
+echo 'Technitium configured: loopback DNS 5354, web console 5380; no client cutover'

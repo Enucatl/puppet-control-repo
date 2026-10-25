@@ -1,5 +1,55 @@
 # configure the router
 
+## Staged Technitium DNS
+
+Technitium 15.6.2 runs alongside AdGuard with persistent data at
+`/config/containers/technitium`, limited to 512 MiB RAM and half a CPU.
+DNS listens only on `127.0.0.1:5354` and `[::1]:5354`; the web console listens
+only on loopback port 5380. DHCP, router DNS advertisements and production
+AdGuard remain unchanged. No `intranet.enucatl.com` zone is created yet.
+
+Deploy just this container from `provisioning/`:
+
+```bash
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags technitium
+```
+
+Ansible renders and uploads `technitium-configure.sh`, then applies the shared
+VyOS container template, using the same modules as the other router tasks.
+The configuration script first uses an isolated network because Technitium defaults to
+port 53. It sets loopback listeners before VyOS starts the host-networked
+container. Each `--tags technitium` or `--tags apply` run reapplies the DNS
+settings, forwarding records, rewrites and blocks from this repo through the
+API. UI changes to those managed settings are overwritten on the next apply;
+additional zones/records are left in place. Normal `--tags apply` also ensures
+the container is staged before applying its config.
+
+It uses the same four Quad9 upstreams, DNSSEC validation and enabled AdGuard
+DNS filter URL. Local names and IPv4/IPv6 reverse zones forward to dnsmasq on
+127.0.0.1:5300. The apt-cacher A/SRV rewrites, `.icu` block and diagnostic-name
+blocks are translated into native records/blocked zones. AdAway remains unused.
+Technitium's blocklist parser and cache/rate-limit behavior differ from AdGuard;
+using the same URL does not guarantee identical filtering results. The rate
+limit is approximately equivalent (6,000 UDP queries/minute per IPv4 /32 or
+IPv6 /56 rather than AdGuard's 100/second). Query logs/stats retain one day and
+are not shipped to Loki yet.
+
+Access the web console through SSH:
+
+```bash
+ssh -N -L 5380:127.0.0.1:5380 vyos@10.0.0.1
+# Open http://127.0.0.1:5380; username: admin
+ssh vyos@10.0.0.1 sudo -n cat /config/containers/technitium/admin-password
+```
+
+The generated password is stored root-only on the router. Test DNS explicitly
+without changing any clients:
+
+```bash
+ssh vyos@10.0.0.1 dig @127.0.0.1 -p 5354 atlas.home.arpa
+ssh vyos@10.0.0.1 dig @127.0.0.1 -p 5354 _apt_proxy._tcp.home.arpa SRV
+```
+
 ## Setup
 
 ```bash

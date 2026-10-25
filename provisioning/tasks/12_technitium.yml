@@ -1,0 +1,50 @@
+---
+- name: Render Technitium configuration script locally
+  delegate_to: localhost
+  ansible.builtin.template:
+    src: templates/app_configs/technitium-configure.sh.j2
+    dest: /tmp/technitium-configure.sh
+    mode: "0600"
+
+- name: Upload Technitium configuration script
+  ansible.netcommon.net_put:
+    src: /tmp/technitium-configure.sh
+    dest: /tmp/technitium-configure.sh
+
+- name: Pull Technitium image
+  vyos.vyos.vyos_command:
+    commands:
+      - add container image {{ technitium_image }}
+  vars:
+    ansible_command_timeout: 300
+
+- name: Configure Technitium with isolated networking on first startup
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo -n install -o root -g root -m 0700 /tmp/technitium-configure.sh /config/scripts/technitium-configure.sh
+      - sudo -n /config/scripts/technitium-configure.sh
+      - rm /tmp/technitium-configure.sh
+  vars:
+    ansible_command_timeout: 300
+
+- name: Protect router configuration backups
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backup"
+    state: directory
+    mode: "0700"
+
+- name: Apply only the staged Technitium container
+  vyos.vyos.vyos_config:
+    lines: "{{ lookup('ansible.builtin.template', 'templates/partials/technitium.j2').splitlines() }}"
+    backup: true
+    backup_options:
+      dir_path: "{{ playbook_dir }}/backup"
+    save: true
+  no_log: true
+
+- name: Remove local rendered configuration script
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: /tmp/technitium-configure.sh
+    state: absent
