@@ -177,6 +177,20 @@ systemd::dropin_files:
       RequiresMountsFor=/scratch
 
 profile::common::acls::posix_acls:
+  /opt/docker/traefik/secrets:
+    action: set
+    permission:
+    - user:101000:--x
+    - group::---
+    - mask::--x
+    - other::---
+  /opt/docker/traefik/secrets/cloudflare_dns_api_token:
+    action: set
+    permission:
+    - user:101000:r--
+    - group::---
+    - mask::r--
+    - other::---
   "/opt/docker/traefik/data/certs":
     action: set
     permission:
