@@ -6,7 +6,8 @@ Technitium 15.6.2 runs alongside AdGuard with persistent data at
 `/config/containers/technitium`, limited to 512 MiB RAM and half a CPU.
 DNS listens only on `127.0.0.1:5354` and `[::1]:5354`; the web console listens
 only on loopback port 5380. DHCP, router DNS advertisements and production
-AdGuard remain unchanged. No `intranet.enucatl.com` zone is created yet.
+AdGuard remain unchanged. This staging instance has no `intranet.enucatl.com`
+zone; the separate candidate below includes it.
 
 Deploy just this container from `provisioning/`:
 
@@ -49,6 +50,125 @@ without changing any clients:
 ssh vyos@10.0.0.1 dig @127.0.0.1 -p 5354 atlas.home.arpa
 ssh vyos@10.0.0.1 dig @127.0.0.1 -p 5354 _apt_proxy._tcp.home.arpa SRV
 ```
+
+## Prepared Technitium DNS and DHCP candidate
+
+The full replacement is declared in `vars/technitium.yml` and prepared separately
+with every DHCP scope disabled. It has not been activated. The running
+Technitium staging instance still forwards local DNS to dnsmasq, and dnsmasq
+still serves DHCP.
+
+The candidate owns `home.arpa`, the local IPv4 reverse zone and both IPv6 /48
+reverse zones. It includes the existing static A/AAAA records, service aliases,
+wildcard service names, canonical PTR records, filtering and apt-proxy SRV
+record. It has no DNS forwarding dependency on dnsmasq.
+
+`intranet.enucatl.com` mirrors names below `home.arpa` through one apex DNAME
+record targeting `home.arpa`. This includes static services, wildcard names and
+future DHCP registrations; DNS synthesizes CNAMEs for queried names below the
+new suffix. SRV queries follow the same substitution and retain the existing
+`home.arpa` service targets. Both forward zones use the same query ACL as the
+reverse zones. Canonical PTRs and the DHCP domain remain `home.arpa`; this adds
+service names without changing machine identities. Public DNS and ACME
+certificate issuance are unchanged.
+
+Local forward and reverse zones allow queries from LAN, trusted Wi-Fi, Cortex
+and WireGuard clients, covering IPv4 plus ULA/public IPv6. Other sources are
+denied, including IoT and guest clients. The single IoT exception is the
+printer's reserved IPv4 address, `10.0.20.189`, which can resolve all local
+names for its Samba workflow. No verified printer IPv6 address is declared,
+so IPv6 remains denied for the printer too. Loopback queries remain allowed
+by Technitium. Zone transfers are disabled. Public internet DNS resolution
+is allowed for clients in `10.0.0.0/8` and the local ULA/public IPv6 /48s,
+including IoT/guest. This explicit recursion policy also permits clients using
+public IPv6 source addresses; it does not open recursion to arbitrary internet
+clients. DHCP continues advertising
+`home.arpa` and registering client hostnames on every scope.
+
+| DHCP scope | Dynamic pool | Lease | Domain option | PXE |
+| --- | --- | --- | --- | --- |
+| LAN | 10.0.0.100–200 | 24 hours | home.arpa | iVentoy on Atlas |
+| TrustedWiFi | 10.0.10.100–200 | 24 hours | home.arpa | None |
+| IoT | 10.0.20.100–200 | 1 hour | home.arpa | None |
+| Guest | 10.0.30.100–200 | 1 hour | home.arpa | None |
+| Cortex | 10.0.40.100–200 | 24 hours | home.arpa | None |
+
+All eight MAC reservations are retained. Technitium requires reservations
+inside the scope bounds, so scopes start at their router's `.1` address and
+exclude `.1`–`.99` from dynamic allocation. Reserved addresses can still use
+that exclusion range. Infinite leases are unsupported: reserved clients use
+their scope's finite lease duration. The address remains reserved to the MAC.
+DHCP DNS updates are enabled for all five scopes, with conflicting
+dynamic-client A-record overwrites disabled. Technitium couples automatic DNS
+registration to the advertised domain, so IoT/guest now advertise `home.arpa`
+too. dnsmasq registers their names through its global domain setting while
+omitting the domain option on those two scopes. IPv6 SLAAC, router
+advertisements and prefix delegation remain managed by VyOS; this candidate
+adds no DHCPv6 service.
+
+Prepare or refresh the disabled candidate from `provisioning/`:
+
+```bash
+VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags technitium-prepare
+```
+
+This tag is excluded from normal runs, including `--tags apply`. It uses the
+same Ansible tasks and API helper as staging, but writes a separate root-only
+`/config/containers/technitium-candidate` data directory. It never uses the live
+Technitium container, never commits VyOS configuration and never changes
+AdGuard or dnsmasq. Technitium creates scopes enabled, so preparation always
+uses a temporary container with **no network**, disables each scope, verifies
+all scopes are disabled, then stops and removes the temporary container.
+Before removal, it restarts the isolated candidate and compares its DNS,
+DHCP and access-policy state against the pre-restart state. Preparation fails
+if that state was not persisted.
+DNS and the web console remain configured for loopback staging ports. Each
+preparation also saves a root-only baseline under
+`/config/backups/technitium/prepare-UTC-XXXXXX`: `config.boot`, live VyOS commands,
+AdGuard and dnsmasq configuration, the current dnsmasq lease file, container
+identities and SHA-256 checksums. This snapshot records the preparation state;
+it does not replace a fresh lease capture at cutover.
+
+### Future cutover and rollback plan
+
+No DNS or DHCP cutover is performed by preparation. Keep the candidate at
+`/config/containers/technitium-candidate` disabled until the following migration
+is explicitly scheduled:
+
+1. Preserve the baseline and stop dnsmasq DHCP, then capture its final lease
+   file. Parse each entry as `expiry MAC IPv4 hostname client-id`; retain every
+   unexpired lease and every expiry-zero lease, which must remain held
+   indefinitely. Merge these holds with the eight declared reservations as
+   temporary Technitium MAC/IP reservations. Reject duplicate MACs with different
+   IPs, duplicate IPs with different MACs, conflicts with declared reservations,
+   and addresses outside the five managed subnets. Validate scope bounds and
+   exclusions before enabling anything. Record each hold's source and expiry;
+   do not hand-edit Technitium's binary scope files or rely on ping checks to
+   protect sleeping clients.
+2. Revalidate the merged candidate, then switch the DNS listeners and enable
+   the intended Technitium scopes with `net-raw` available for conflict checks.
+   Only one DHCP server may answer on each subnet. Check client renewals,
+   expected addresses, PXE, local/public DNS and the IPv4/IPv6 query ACLs before
+   retiring AdGuard or dnsmasq. Remove temporary reservations only after lease
+   ownership and expiry are reconciled; expiry-zero holds need an explicit
+   decision.
+3. If rollback is needed after Technitium has issued leases, freeze its DHCP
+   service and export the final current leases with `/api/dhcp/leases/list`.
+   Merge all still-valid leases with the retained dnsmasq holds and declared
+   reservations, rejecting the same conflicts. While dnsmasq is stopped,
+   install a temporary `dhcp-host=MAC,IP` reservation overlay for these leases
+   and restore its saved configuration. Start dnsmasq only after Technitium
+   DHCP is off, then restore AdGuard DNS and verify renewals and resolution.
+   Restoring the old dnsmasq lease file alone is unsafe: it does not know which
+   addresses Technitium subsequently issued. Preserve the Technitium data and
+   both lease snapshots until rollback is verified.
+
+Regression checks are in `tests/test_technitium.py`, using the provisioning
+Ansible environment and pytest inside disposable Docker containers. The real
+API check requires `TECHNITIUM_API_URL` pointing to an isolated test server;
+it creates test DNS records and DHCP scopes and must not target production.
+Source-address checks also use `TECHNITIUM_SOURCE_TEST=1`, `iproute2`, and
+`NET_ADMIN` inside the isolated container to verify IPv4/IPv6 query policies.
 
 ## Setup
 

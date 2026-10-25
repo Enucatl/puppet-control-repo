@@ -92,6 +92,11 @@ adguard_image: "docker.io/adguard/adguardhome:latest"
 # Staged only: loopback DNS on 5354 and web console on 5380, accessed over SSH.
 technitium_image: "docker.io/technitium/dns-server:15.6.2"
 technitium_data_path: "/config/containers/technitium"
+# revdns returns all 32 IPv6 nibbles; discard the 20 host nibbles for each /48.
+technitium_reverse_zones:
+  - 10.in-addr.arpa
+  - "{{ ((ula_prefix ~ '::/48') | ansible.utils.ipaddr('revdns')).split('.')[20:] | join('.') | trim('.') }}"
+  - "{{ ((ipv6_prefix ~ '::/48') | ansible.utils.ipaddr('revdns')).split('.')[20:] | join('.') | trim('.') }}"
 
 # --- DNSMASQ (DHCPv4 + authoritative DNS for home.arpa) ---
 # Runs as a container on VyOS with host networking.

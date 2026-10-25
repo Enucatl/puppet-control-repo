@@ -62,7 +62,16 @@
 
     - name: Stage isolated Technitium DNS
       ansible.builtin.import_tasks: tasks/12_technitium.yml
+      vars:
+        technitium_script_name: technitium-configure
       tags: [apply, technitium]
+
+    - name: Prepare an offline Technitium DNS and DHCP candidate
+      ansible.builtin.import_tasks: tasks/12_technitium.yml
+      vars:
+        technitium_script_name: technitium-prepare
+        technitium_prepare_full: true
+      tags: [technitium-prepare, never]
 
     - name: Diff config against running (load + compare, no commit)
       ansible.builtin.import_tasks: tasks/diff_vyos.yml

@@ -1,15 +1,19 @@
 ---
+- name: Load the full Technitium DNS and DHCP declarations
+  ansible.builtin.include_vars: vars/technitium.yml
+  when: technitium_prepare_full | default(false)
+
 - name: Render Technitium configuration script locally
   delegate_to: localhost
   ansible.builtin.template:
     src: templates/app_configs/technitium-configure.sh.j2
-    dest: /tmp/technitium-configure.sh
+    dest: /tmp/{{ technitium_script_name }}.sh
     mode: "0600"
 
 - name: Upload Technitium configuration script
   ansible.netcommon.net_put:
-    src: /tmp/technitium-configure.sh
-    dest: /tmp/technitium-configure.sh
+    src: /tmp/{{ technitium_script_name }}.sh
+    dest: /tmp/{{ technitium_script_name }}.sh
 
 - name: Pull Technitium image
   vyos.vyos.vyos_command:
@@ -21,13 +25,18 @@
 - name: Configure Technitium with isolated networking on first startup
   vyos.vyos.vyos_command:
     commands:
-      - sudo -n install -o root -g root -m 0700 /tmp/technitium-configure.sh /config/scripts/technitium-configure.sh
-      - sudo -n /config/scripts/technitium-configure.sh
-      - rm /tmp/technitium-configure.sh
+      - >-
+        sudo -n install -o root -g root -m 0700 /tmp/{{ technitium_script_name }}.sh /config/scripts/{{ technitium_script_name }}.sh &&
+        sudo -n /config/scripts/{{ technitium_script_name }}.sh &&
+        rm /tmp/{{ technitium_script_name }}.sh && echo TECHNITIUM_CONFIGURED
+    wait_for:
+      - result[0] contains 'TECHNITIUM_CONFIGURED'
+    retries: 1
   vars:
     ansible_command_timeout: 300
 
 - name: Protect router configuration backups
+  when: not (technitium_prepare_full | default(false))
   delegate_to: localhost
   ansible.builtin.file:
     path: "{{ playbook_dir }}/backup"
@@ -35,6 +44,7 @@
     mode: "0700"
 
 - name: Apply only the staged Technitium container
+  when: not (technitium_prepare_full | default(false))
   vyos.vyos.vyos_config:
     lines: "{{ lookup('ansible.builtin.template', 'templates/partials/technitium.j2').splitlines() }}"
     backup: true
@@ -46,5 +56,5 @@
 - name: Remove local rendered configuration script
   delegate_to: localhost
   ansible.builtin.file:
-    path: /tmp/technitium-configure.sh
+    path: /tmp/{{ technitium_script_name }}.sh
     state: absent

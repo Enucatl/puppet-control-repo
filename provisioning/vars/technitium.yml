@@ -1,0 +1,98 @@
+---
+# Candidate only. Reuse the addresses, pools and MACs managed for dnsmasq.
+technitium_intranet_domain: intranet.enucatl.com
+
+technitium_recursion_acl:
+  - 10.0.0.0/8
+  - "{{ ula_prefix }}::/48"
+  - "{{ ipv6_prefix }}::/48"
+
+# All other clients, including IoT/guest IPv6 and link-local sources, are denied.
+technitium_local_query_acl:
+  - "{{ printer_ip }}/32"
+  - "{{ lan_subnet }}"
+  - "{{ trusted_wifi_subnet }}"
+  - "{{ cortex_subnet }}"
+  - "{{ wg_subnet | ansible.utils.ipaddr('network/prefix') }}"
+  - "{{ ula_prefix }}::/64"
+  - "{{ ula_prefix }}:{{ '%x' | format(trusted_wifi_vlan | int) }}::/64"
+  - "{{ ula_prefix }}:{{ '%x' | format(cortex_vlan | int) }}::/64"
+  - "{{ ula_prefix }}:c8::/64"
+  - "{{ ipv6_prefix }}::/64"
+  - "{{ ipv6_prefix }}:{{ '%x' | format(trusted_wifi_vlan | int) }}::/64"
+  - "{{ ipv6_prefix }}:{{ '%x' | format(cortex_vlan | int) }}::/64"
+  - "{{ ipv6_prefix }}:c8::/64"
+
+technitium_dns_hosts:
+  - {name: router, addresses: ["{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}", "{{ ula_prefix }}::1"], wildcard: true, ptr: true}
+  - {name: proxmox, addresses: ["{{ proxmox_ip }}", "{{ proxmox_ula }}"], wildcard: true, ptr: true}
+  - {name: proxmox-cortex, addresses: ["{{ proxmox_cortex_ip }}", "{{ proxmox_cortex_ula }}"], wildcard: true, ptr: true}
+  - {name: chronicle, addresses: ["{{ chronicle_ip }}"], wildcard: true, ptr: true}
+  - {name: dropbear.proxmox-cortex, addresses: ["{{ proxmox_cortex_ip }}"], wildcard: true}
+  - {name: dropbear.proxmox, addresses: ["{{ proxmox_ip }}"], wildcard: true}
+  - {name: docker, addresses: ["{{ docker_node_ip }}"], wildcard: true, ptr: true}
+  - {name: atlas, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"], wildcard: true, ptr: true}
+  - {name: complex, addresses: ["{{ complex_node_ip }}"], wildcard: true}
+  - {name: cognition, addresses: ["{{ cognition_node_ip }}", "{{ cognition_node_ula }}"], wildcard: true, ptr: true}
+  - {name: cerebrum, addresses: ["{{ cerebrum_node_ip }}", "{{ cerebrum_node_ula }}"], wildcard: true, ptr: true}
+  - {name: freeipa, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"], wildcard: true}
+  - {name: hcv, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"], wildcard: true}
+  - {name: vault, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"]}
+  - {name: openvox, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"]}
+  - {name: ipa, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"]}
+  - name: remarkable
+    addresses:
+      - "{{ remarkable_ip }}"
+      - "{{ ula_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}"
+      - "{{ ipv6_prefix }}:{{ '%x' | format(iot_vlan | int) }}:{{ remarkable_ipv6_host }}"
+    ptr: true
+  - {name: aperture, addresses: ["{{ aperture_node_ip }}"], ptr: true}
+  - {name: printer, addresses: ["{{ printer_ip }}"], ptr: true}
+  - {name: apt-cacher-ng, addresses: ["{{ atlas_node_ip }}"], wildcard: true}
+
+technitium_dhcp_scopes:
+  - name: LAN
+    router: "{{ vyos_lan_ip }}"
+    start: "{{ lan_dhcp_start }}"
+    end: "{{ lan_dhcp_end }}"
+    lease_hours: 24
+    domain: "{{ dhcp_domain }}"
+    boot_server: "{{ atlas_node_ip }}"
+    boot_file: iventoy_loader_16000_uefi
+    reserved_leases:
+      - "atlas|{{ atlas_node_mac }}|{{ atlas_node_ip }}|Ansible"
+      - "aperture|{{ aperture_node_mac }}|{{ aperture_node_ip }}|Ansible"
+      - "proxmox|{{ proxmox_mac }}|{{ proxmox_ip }}|Ansible"
+  - name: TrustedWiFi
+    router: "{{ trusted_wifi_ip }}"
+    start: "{{ trusted_wifi_dhcp_start }}"
+    end: "{{ trusted_wifi_dhcp_end }}"
+    lease_hours: 24
+    domain: "{{ dhcp_domain }}"
+    reserved_leases: []
+  - name: IoT
+    router: "{{ iot_ip }}"
+    start: "{{ iot_dhcp_start }}"
+    end: "{{ iot_dhcp_end }}"
+    lease_hours: 1
+    domain: "{{ dhcp_domain }}"
+    reserved_leases:
+      - "printer|{{ printer_mac }}|{{ printer_ip }}|Ansible"
+      - "remarkable|{{ remarkable_mac }}|{{ remarkable_ip }}|Ansible"
+  - name: Guest
+    router: "{{ guest_ip }}"
+    start: "{{ guest_dhcp_start }}"
+    end: "{{ guest_dhcp_end }}"
+    lease_hours: 1
+    domain: "{{ dhcp_domain }}"
+    reserved_leases: []
+  - name: Cortex
+    router: "{{ cortex_ip }}"
+    start: "{{ cortex_dhcp_start }}"
+    end: "{{ cortex_dhcp_end }}"
+    lease_hours: 24
+    domain: "{{ dhcp_domain }}"
+    reserved_leases:
+      - "cerebrum|{{ cerebrum_node_mac }}|{{ cerebrum_node_ip }}|Ansible"
+      - "chronicle|{{ chronicle_mac }}|{{ chronicle_ip }}|Ansible"
+      - "proxmox-cortex|{{ proxmox_cortex_mac }}|{{ proxmox_cortex_ip }}|Ansible"

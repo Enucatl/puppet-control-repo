@@ -132,8 +132,7 @@ user_rules:
   # 2a02:0168:6278:001e:1c5c:6da3:c02e:9205 on 2026-05-10.
   - '||icu^$important'
 dhcp:
-  # DHCP disabled: all subnets (LAN, Trusted WiFi, IoT, Guest) are now
-  # served by the VyOS native DHCP server. AdGuard handles DNS only.
+  # DHCP disabled: dnsmasq serves all subnets. AdGuard handles DNS only.
   enabled: false
   interface_name: ""
   local_domain_name: home.arpa

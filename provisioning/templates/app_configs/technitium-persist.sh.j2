@@ -1,0 +1,34 @@
+# API success alone does not prove that the candidate was saved to disk.
+candidate_state() {
+    api settings/get | jq -Sc '.response | {
+        dnsServerLocalEndPoints, webServiceLocalAddresses, webServiceHttpPort,
+        ipv6Mode, dnssecValidation, recursion, recursionNetworkACL, forwarders,
+        forwarderProtocol, enableBlocking, blockingType, blockListUrls,
+        qpmPrefixLimitsIPv4, qpmPrefixLimitsIPv6, serveStale, logQueries
+    }'
+    api dhcp/scopes/list | jq -Sc '.response.scopes | map({name, enabled}) | sort_by(.name)'
+    for scope in {{ technitium_dhcp_scopes | map(attribute='name') | join(' ') }}; do
+        api dhcp/scopes/get "name=$scope" | jq -Sc '.response | del(.interfaceAddress) | .reservedLeases |= ((. // []) | sort_by(.hardwareAddress))'
+    done
+    for zone in {{ dhcp_domain }} {{ technitium_intranet_domain }} {{ technitium_reverse_zones | join(' ') }}; do
+        api zones/options/get "zone=$zone" | jq -Sc '.response | {queryAccess, queryAccessNetworkACL, zoneTransfer}'
+        api zones/records/get "domain=$zone" listZone=true | jq -Sc '.response.records | map({name, type, ttl, rData}) | sort_by(.name, .type, (.rData | tojson))'
+    done
+}
+expected_state=$(candidate_state | sha256sum)
+api user/logout >/dev/null
+podman stop --time 30 "$container" >/dev/null
+podman start "$container" >/dev/null
+wait_ready
+token=$(api user/login user=admin "pass=$(cat "$data/admin-password")" | jq -er .token)
+for attempt in {1..30}; do
+    if [[ $(candidate_state | sha256sum) == "$expected_state" ]]; then
+        echo 'Candidate configuration survived a restart'
+        break
+    fi
+    if [[ $attempt == 30 ]]; then
+        echo 'Candidate persistence verification failed' >&2
+        exit 1
+    fi
+    sleep 1
+done
