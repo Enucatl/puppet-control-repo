@@ -103,6 +103,16 @@ Never put that file in Git.
 Use Compose for ordinary startup and restoration, following the instructions in
 the Compose file. The preparation helper is only for a fresh installation.
 
+## Jellyfin TV identity
+
+User `tv` is reserved for Jellyfin playback, with shell `/usr/sbin/nologin`,
+home `/nonexistent`, and no membership in `ipausers` or privileged groups.
+The live HBAC rules `allow_all` and `allow_systemd-user` use `ipausers` and
+`admins` instead of `usercategory=all`, preserving existing users' host access
+while excluding `tv`. A recreated `tv` must be removed from the automatic
+`ipausers` group. Both Vault authentication setup scripts exclude `uid=tv`.
+Its password and Jellyfin pairing instructions live in the Jellyfin stack.
+
 ## DNS and client selection
 
 The router publishes `ipa.home.arpa` at Atlas's reserved IPv4 address and stable

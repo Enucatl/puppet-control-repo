@@ -30,7 +30,7 @@ vault write auth/ldap/config \
     bindpass="${LDAP_BIND_PASSWORD}" \
     userdn="${LDAP_USER_DN}" \
     userattr="uid" \
-    userfilter="(&(objectClass=person)(|({{.UserAttr}}={{.Username}})(krbPrincipalName={{.Username}})))" \
+    userfilter="(&(objectClass=person)(!(uid=tv))(|({{.UserAttr}}={{.Username}})(krbPrincipalName={{.Username}})))" \
     groupattr="cn" \
     groupdn="${LDAP_GROUP_DN}" \
     groupfilter="(|(member={{.UserDN}})(mepManagedBy={{.UserDN}}))" \

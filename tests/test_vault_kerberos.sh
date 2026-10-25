@@ -73,7 +73,7 @@ case "$*" in
     [[ "$(cat)" = "$(printf 'test-secret-keytab' | base64 -w0)" ]]
     touch "$TEST_WORK/keytab-written" ;;
   'write auth/kerberos/config/ldap -')
-    jq -e '.url == "ldaps://ipa.home.arpa" and .binddn == "uid=ldap_ro" and .userdn == "cn=users" and .groupdn == "cn=groups" and .userattr == "uid" and .groupfilter == "(|(member=uid={{.Username}},cn=users,cn=accounts,dc=home,dc=arpa)(mepManagedBy=uid={{.Username}},cn=users,cn=accounts,dc=home,dc=arpa))" and .bindpass == "test-secret-bindpass" and .upndomain == "HOME.ARPA" and .userfilter == "(krbPrincipalName={{.Username}})" and .tls_min_version == "tls13" and .tls_max_version == "tls13" and .token_ttl == "8h" and .token_max_ttl == "24h"' >/dev/null
+    jq -e '.url == "ldaps://ipa.home.arpa" and .binddn == "uid=ldap_ro" and .userdn == "cn=users" and .groupdn == "cn=groups" and .userattr == "uid" and .groupfilter == "(|(member=uid={{.Username}},cn=users,cn=accounts,dc=home,dc=arpa)(mepManagedBy=uid={{.Username}},cn=users,cn=accounts,dc=home,dc=arpa))" and .bindpass == "test-secret-bindpass" and .upndomain == "HOME.ARPA" and .userfilter == "(&(krbPrincipalName={{.Username}})(!(uid=tv)))" and .tls_min_version == "tls13" and .tls_max_version == "tls13" and .token_ttl == "8h" and .token_max_ttl == "24h"' >/dev/null
     touch "$TEST_WORK/ldap-written" ;;
   'write auth/kerberos/groups/admins -')
     jq -e '.policies == ["admin"]' >/dev/null

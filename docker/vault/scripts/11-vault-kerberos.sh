@@ -56,7 +56,7 @@ base64 -w0 "$work/vault.keytab" |
 jq --rawfile bindpass "$work/bindpass" --arg userdn "$LDAP_USER_DN" '.data |
   .bindpass = ($bindpass | rtrimstr("\n")) |
   .upndomain = "HOME.ARPA" |
-  .userfilter = "(krbPrincipalName={{.Username}})" |
+  .userfilter = "(&(krbPrincipalName={{.Username}})(!(uid=tv)))" |
   .groupfilter = "(|(member=uid={{.Username}},\($userdn))(mepManagedBy=uid={{.Username}},\($userdn)))" |
   .tls_min_version = "tls13" | .tls_max_version = "tls13" |
   .token_ttl = "8h" | .token_max_ttl = "24h"' "$work/ldap.json" |
