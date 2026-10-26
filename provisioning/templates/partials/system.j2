@@ -28,3 +28,8 @@ set system task-scheduler task record-vyos-ndp crontab-spec '*/5 * * * *'
 set system task-scheduler task record-vyos-ndp executable path /config/scripts/vyos-ndp-snapshot.sh
 set system task-scheduler task update-ids-rules crontab-spec '0 2 * * *'
 set system task-scheduler task update-ids-rules executable path /config/scripts/suricata-update.sh
+
+{% if technitium_active | default(false) %}
+set system task-scheduler task technitium-rebind crontab-spec '* * * * *'
+set system task-scheduler task technitium-rebind executable path /config/scripts/technitium-rebind.sh
+{% endif %}

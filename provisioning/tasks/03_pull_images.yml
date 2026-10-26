@@ -4,6 +4,7 @@
 # must be present before the vyos_config task runs.
 
 - name: Pull dnsmasq container image
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - add container image {{ dnsmasq_image }}
@@ -18,6 +19,7 @@
     ansible_command_timeout: 300
 
 - name: Pull AdGuard container image
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - add container image {{ adguard_image }}

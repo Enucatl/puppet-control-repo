@@ -237,6 +237,11 @@
 - name: Run the full deployment after an upgrade check
   ansible.builtin.import_tasks: tasks/03_pull_images.yml
 
+- name: Configure Technitium after an upgrade check
+  ansible.builtin.import_tasks: tasks/12_technitium.yml
+  vars:
+    technitium_script_name: technitium-configure
+
 - name: Run the full deployment after an upgrade check
   ansible.builtin.import_tasks: tasks/04_apply_vyos.yml
 
@@ -251,11 +256,13 @@
   vyos.vyos.vyos_command:
     commands:
       - restart container adguard
+  when: not (technitium_active | default(false))
 
 - name: Run the full deployment after an upgrade check
   vyos.vyos.vyos_command:
     commands:
       - restart container dnsmasq
+  when: not (technitium_active | default(false))
 
 - name: Run the full deployment after an upgrade check
   vyos.vyos.vyos_command:

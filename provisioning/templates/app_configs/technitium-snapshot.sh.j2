@@ -4,7 +4,8 @@ backup=$(mktemp -d "/config/backups/technitium/prepare-$(date -u +%Y%m%dT%H%M%SZ
 tar --directory=/ -czf "$backup/production-configs.tgz" \
     config/config.boot \
     {{ (adguard_data_path ~ '/conf').lstrip('/') | quote }} \
-    {{ (dnsmasq_data_path ~ '/conf').lstrip('/') | quote }}
+    {{ (dnsmasq_data_path ~ '/conf').lstrip('/') | quote }} \
+    {{ (alloy_data_path ~ '/conf').lstrip('/') | quote }}
 /opt/vyatta/bin/vyatta-op-cmd-wrapper show configuration commands > "$backup/running-config.commands"
 cp {{ (dnsmasq_data_path ~ '/leases/dnsmasq.leases') | quote }} "$backup/dnsmasq.leases"
 sha256sum /config/config.boot \
@@ -12,3 +13,4 @@ sha256sum /config/config.boot \
     {{ (dnsmasq_data_path ~ '/conf/dnsmasq.conf') | quote }} > "$backup/production.sha256"
 container_format='{% raw %}{{.Name}} {{.Id}} {{.State.StartedAt}}{% endraw %}'
 podman inspect --format "$container_format" adguard dnsmasq technitium alloy > "$backup/containers.txt"
+podman inspect --format '{% raw %}{{.Name}} {{.Image}} {{.ImageName}}{% endraw %}' adguard dnsmasq technitium > "$backup/images.txt"

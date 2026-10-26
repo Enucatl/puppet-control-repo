@@ -11,9 +11,9 @@ IOT_IFACE="{{ iot_interface }}"
 GUEST_IFACE="{{ guest_interface }}"
 WG_IFACE="{{ wg_interface }}"
 WG_V6_ADDR="{{ ipv6_prefix }}:c8::1/64"
-ADGUARD_V4="{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
-ADGUARD_V6="{{ ula_prefix }}::1"
-DNSMASQ_PORT="{{ dnsmasq_dns_port }}"
+DNS_V4="{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
+DNS_V6="{{ ula_prefix }}::1"
+AUTHORITATIVE_PORT="{{ 53 if technitium_active | default(false) else dnsmasq_dns_port }}"
 DHCP_DOMAIN="{{ dhcp_domain }}"
 
 log() {
@@ -148,41 +148,45 @@ retry_match "WAN IPv6 route" "dev $WAN_IFACE" 60 sudo -n ip -6 route get 2606:47
 retry_success "IPv4 ping to WAN" 60 timeout --foreground 5s sudo -n ping -4 -c 1 -W 2 1.1.1.1
 retry_success "IPv6 ping to WAN" 90 timeout --foreground 5s sudo -n ping -6 -c 1 -W 2 2606:4700:4700::1111
 
+{% if technitium_active | default(false) %}
+retry_line "Technitium container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' technitium
+{% else %}
 retry_line "AdGuard container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' adguard
 retry_line "dnsmasq container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' dnsmasq
+{% endif %}
 retry_line "Alloy container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' alloy
 retry_success "Alloy HTTP readiness" 60 timeout --foreground 5s sudo -n curl --fail --silent --show-error http://127.0.0.1:12345/-/ready
 
 retry_success "Suricata service active" 60 timeout --foreground 10s sudo -n systemctl is-active --quiet suricata
 retry_success "Suricata eve log present" 60 timeout --foreground 5s sudo -n test -e /var/log/suricata/eve.json
 
-check_dns_nonempty "AdGuard IPv4 public A" "$ADGUARD_V4" A example.com 60
-check_dns_nonempty "AdGuard IPv4 public AAAA" "$ADGUARD_V4" AAAA example.com 60
-check_dns_nonempty "AdGuard IPv6 public A" "$ADGUARD_V6" A example.com 90
-check_dns_nonempty "AdGuard IPv6 public AAAA" "$ADGUARD_V6" AAAA example.com 90
-check_dns_exact "AdGuard IPv4 router A" "$ADGUARD_V4" A router."$DHCP_DOMAIN" "10.0.0.1" 60
-check_dns_exact "AdGuard IPv6 router A" "$ADGUARD_V6" A router."$DHCP_DOMAIN" "10.0.0.1" 90
-retry_line "dnsmasq router A" "10.0.0.1" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" router."$DHCP_DOMAIN" A +short
+check_dns_nonempty "DNS IPv4 public A" "$DNS_V4" A example.com 60
+check_dns_nonempty "DNS IPv4 public AAAA" "$DNS_V4" AAAA example.com 60
+check_dns_nonempty "DNS IPv6 public A" "$DNS_V6" A example.com 90
+check_dns_nonempty "DNS IPv6 public AAAA" "$DNS_V6" AAAA example.com 90
+check_dns_exact "DNS IPv4 router A" "$DNS_V4" A router."$DHCP_DOMAIN" "10.0.0.1" 60
+check_dns_exact "DNS IPv6 router A" "$DNS_V6" A router."$DHCP_DOMAIN" "10.0.0.1" 90
+retry_line "Authoritative router A" "10.0.0.1" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$AUTHORITATIVE_PORT" router."$DHCP_DOMAIN" A +short
 
 for infra_name in atlas vault openvox ipa freeipa hcv traefik.atlas authelia.atlas; do
-    check_dns_exact "AdGuard IPv4 $infra_name A" "$ADGUARD_V4" A "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ip }}" 60
-    check_dns_exact "AdGuard IPv6 $infra_name A" "$ADGUARD_V6" A "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ip }}" 60
-    check_dns_exact "AdGuard IPv4 $infra_name AAAA" "$ADGUARD_V4" AAAA "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ula }}" 60
-    check_dns_exact "AdGuard IPv6 $infra_name AAAA" "$ADGUARD_V6" AAAA "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ula }}" 60
-    retry_line "dnsmasq $infra_name AAAA" "{{ atlas_node_ula }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "$infra_name.$DHCP_DOMAIN" AAAA +short
-    retry_line "dnsmasq $infra_name A" "{{ atlas_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "$infra_name.$DHCP_DOMAIN" A +short
+    check_dns_exact "DNS IPv4 $infra_name A" "$DNS_V4" A "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ip }}" 60
+    check_dns_exact "DNS IPv6 $infra_name A" "$DNS_V6" A "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ip }}" 60
+    check_dns_exact "DNS IPv4 $infra_name AAAA" "$DNS_V4" AAAA "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ula }}" 60
+    check_dns_exact "DNS IPv6 $infra_name AAAA" "$DNS_V6" AAAA "$infra_name.$DHCP_DOMAIN" "{{ atlas_node_ula }}" 60
+    retry_line "Authoritative $infra_name AAAA" "{{ atlas_node_ula }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$AUTHORITATIVE_PORT" "$infra_name.$DHCP_DOMAIN" AAAA +short
+    retry_line "Authoritative $infra_name A" "{{ atlas_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$AUTHORITATIVE_PORT" "$infra_name.$DHCP_DOMAIN" A +short
 done
-check_dns_exact "Atlas canonical PTR" "$ADGUARD_V4" PTR "{{ atlas_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "atlas.$DHCP_DOMAIN." 60
-check_dns_exact "AdGuard IPv4 cerebrum A" "$ADGUARD_V4" A "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ip }}" 60
-check_dns_exact "AdGuard IPv6 cerebrum AAAA" "$ADGUARD_V6" AAAA "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ula }}" 60
-check_dns_exact "Cerebrum canonical PTR" "$ADGUARD_V4" PTR "{{ cerebrum_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cerebrum.$DHCP_DOMAIN." 60
-check_dns_exact "AdGuard IPv4 cognition A" "$ADGUARD_V4" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
-check_dns_exact "AdGuard IPv6 cognition A" "$ADGUARD_V6" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
-check_dns_exact "AdGuard IPv4 cognition AAAA" "$ADGUARD_V4" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
-check_dns_exact "AdGuard IPv6 cognition AAAA" "$ADGUARD_V6" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
-retry_line "dnsmasq cognition A" "{{ cognition_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "cognition.$DHCP_DOMAIN" A +short
-retry_line "dnsmasq cognition AAAA" "{{ cognition_node_ula }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$DNSMASQ_PORT" "cognition.$DHCP_DOMAIN" AAAA +short
-check_dns_exact "Cognition canonical PTR" "$ADGUARD_V4" PTR "{{ cognition_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cognition.$DHCP_DOMAIN." 60
-retry_line "Cognition IPv6 canonical PTR" "cognition.$DHCP_DOMAIN." 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 "@$ADGUARD_V4" -x "{{ cognition_node_ula }}" +short
+check_dns_exact "Atlas canonical PTR" "$DNS_V4" PTR "{{ atlas_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "atlas.$DHCP_DOMAIN." 60
+check_dns_exact "DNS IPv4 cerebrum A" "$DNS_V4" A "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ip }}" 60
+check_dns_exact "DNS IPv6 cerebrum AAAA" "$DNS_V6" AAAA "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ula }}" 60
+check_dns_exact "Cerebrum canonical PTR" "$DNS_V4" PTR "{{ cerebrum_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cerebrum.$DHCP_DOMAIN." 60
+check_dns_exact "DNS IPv4 cognition A" "$DNS_V4" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
+check_dns_exact "DNS IPv6 cognition A" "$DNS_V6" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
+check_dns_exact "DNS IPv4 cognition AAAA" "$DNS_V4" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
+check_dns_exact "DNS IPv6 cognition AAAA" "$DNS_V6" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
+retry_line "Authoritative cognition A" "{{ cognition_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$AUTHORITATIVE_PORT" "cognition.$DHCP_DOMAIN" A +short
+retry_line "Authoritative cognition AAAA" "{{ cognition_node_ula }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$AUTHORITATIVE_PORT" "cognition.$DHCP_DOMAIN" AAAA +short
+check_dns_exact "Cognition canonical PTR" "$DNS_V4" PTR "{{ cognition_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cognition.$DHCP_DOMAIN." 60
+retry_line "Cognition IPv6 canonical PTR" "cognition.$DHCP_DOMAIN." 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 "@$DNS_V4" -x "{{ cognition_node_ula }}" +short
 
 log "DONE router smoke checks"

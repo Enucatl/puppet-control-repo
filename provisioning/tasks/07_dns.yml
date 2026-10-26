@@ -1,6 +1,12 @@
 ---
-# DNS-only updates avoid applying unrelated firewall, route or container changes.
+# DNS-only updates avoid applying unrelated firewall or route changes.
+- name: Update active Technitium DNS
+  ansible.builtin.import_tasks: tasks/12_technitium.yml
+  vars:
+    technitium_script_name: technitium-configure
+  when: technitium_active | default(false)
 - name: Render DNS configuration and smoke checks locally
+  when: not (technitium_active | default(false)) or item != "dnsmasq.conf"
   delegate_to: localhost
   ansible.builtin.template:
     src: "templates/app_configs/{{ item }}.j2"
@@ -11,11 +17,13 @@
     - router-smoke-check.sh
 
 - name: Upload staged dnsmasq configuration
+  when: not (technitium_active | default(false))
   ansible.netcommon.net_put:
     src: /tmp/dnsmasq.conf
     dest: /tmp/dnsmasq.conf
 
 - name: Validate staged dnsmasq configuration before replacement
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - >-
@@ -25,6 +33,7 @@
       - result[0] contains 'syntax check OK'
 
 - name: Back up and install validated dnsmasq configuration
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - >-
@@ -39,12 +48,17 @@
     src: /tmp/router-smoke-check.sh
     dest: /tmp/router-smoke-check.sh
 
-- name: Install smoke checks and restart DNS containers to clear cached answers
+- name: Install smoke checks
   vyos.vyos.vyos_command:
     commands:
       - >-
         sudo -n install -o root -g vyattacfg -m 0755 /tmp/router-smoke-check.sh /config/scripts/router-smoke-check.sh &&
-        rm /tmp/dnsmasq.conf /tmp/router-smoke-check.sh
+        rm -f /tmp/dnsmasq.conf /tmp/router-smoke-check.sh
+
+- name: Restart legacy DNS containers to clear cached answers
+  when: not (technitium_active | default(false))
+  vyos.vyos.vyos_command:
+    commands:
       - restart container dnsmasq
       - restart container adguard
 

@@ -1,64 +1,60 @@
 # configure the router
 
-## Staged Technitium DNS
+## Active Technitium DNS and DHCP
 
-Technitium 15.6.2 runs alongside AdGuard with persistent data at
-`/config/containers/technitium`, limited to 512 MiB RAM and half a CPU.
-DNS listens only on `127.0.0.1:5354` and `[::1]:5354`; the web console listens
-only on loopback port 5380. DHCP, router DNS advertisements and production
-AdGuard remain unchanged. This staging instance has no `intranet.enucatl.com`
-zone; the separate candidate below includes it.
+Technitium 15.6.2 replaced AdGuard Home and dnsmasq on **2026-10-26**.
+`technitium_active: true` selects production DNS port 53 and persistent data at
+`/config/containers/technitium-candidate`, limited to 512 MiB RAM and half a CPU.
+The web console remains on loopback port 5380. The protected cutover backup is
+`/config/backups/technitium/prepare-20261026T114017Z-8wZ849`.
 
-Deploy just this container from `provisioning/`:
+Normal applies preserve DHCP scopes and imported lease holds. The local flag
+must match the router's `cutover-active` marker before configuration changes.
+AdGuard and dnsmasq are excluded from active deployments. Managed DNS settings,
+forwarders, records and blocks are reapplied through the API; additional
+zones and records remain in place.
 
-```bash
-VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags technitium
-```
+Live validation passed 60 UDP/TCP DNS probes covering local/public IPv4/IPv6,
+query ACLs, aliases, SRV and PTR records. A graceful production restart preserved
+all five enabled scopes and their complete DHCP configurations; all 88 router
+smoke checks passed afterward. Technitium issued preserved addresses
+to an IoT client and Cortex client `cerebrum.home.arpa` (`10.0.40.135`). Physical
+iVentoy PXE boot has not been verified. Cortex's scope was rebound after its
+link came up. The saved `technitium-rebind` task checks every minute and rebinds
+only enabled scopes with an available interface that remained bound to
+`0.0.0.0`; recovery may take until the next minute tick. It preserves DHCP
+settings and does nothing after rollback.
 
-Ansible renders and uploads `technitium-configure.sh`, then applies the shared
-VyOS container template, using the same modules as the other router tasks.
-The configuration script first uses an isolated network because Technitium defaults to
-port 53. It sets loopback listeners before VyOS starts the host-networked
-container. Each `--tags technitium` or `--tags apply` run reapplies the DNS
-settings, forwarding records, rewrites and blocks from this repo through the
-API. UI changes to those managed settings are overwritten on the next apply;
-additional zones/records are left in place. Normal `--tags apply` also ensures
-the container is staged before applying its config.
+Technitium logs reach Loki through the existing central Alloy receiver. Delivery
+was confirmed using `{job="technitium",host="router.home.arpa"}` over the preceding
+ten minutes at `https://loki-read.atlas.home.arpa/loki/api/v1/query_range`.
+The pre-existing direct Loki output still fails its TLS handshake for other
+router log sources; that separate issue was not changed by this migration.
 
 It uses the same four Quad9 upstreams, DNSSEC validation and enabled AdGuard
-DNS filter URL. Local names and IPv4/IPv6 reverse zones forward to dnsmasq on
-127.0.0.1:5300. The apt-cacher A/SRV rewrites, `.icu` block and diagnostic-name
-blocks are translated into native records/blocked zones. AdAway remains unused.
-Technitium's blocklist parser and cache/rate-limit behavior differ from AdGuard;
-using the same URL does not guarantee identical filtering results. The rate
-limit is approximately equivalent (6,000 UDP queries/minute per IPv4 /32 or
-IPv6 /56 rather than AdGuard's 100/second). Query logs/stats retain one day and
-are not shipped to Loki yet.
+DNS filter URL. AdAway remains unused. Technitium's filtering, cache and rate
+limits differ from AdGuard; the shared URL does not guarantee identical results.
+The UDP rate limit is 6,000 queries/minute per IPv4 /32 or IPv6 /56.
 
 Access the web console through SSH:
 
 ```bash
 ssh -N -L 5380:127.0.0.1:5380 vyos@10.0.0.1
 # Open http://127.0.0.1:5380; username: admin
-ssh vyos@10.0.0.1 sudo -n cat /config/containers/technitium/admin-password
+ssh vyos@10.0.0.1 sudo -n cat /config/containers/technitium-candidate/admin-password
 ```
 
-The generated password is stored root-only on the router. Test DNS explicitly
-without changing any clients:
+The generated password is stored root-only on the router. Check production DNS:
 
 ```bash
-ssh vyos@10.0.0.1 dig @127.0.0.1 -p 5354 atlas.home.arpa
-ssh vyos@10.0.0.1 dig @127.0.0.1 -p 5354 _apt_proxy._tcp.home.arpa SRV
+ssh vyos@10.0.0.1 dig @127.0.0.1 atlas.home.arpa
+ssh vyos@10.0.0.1 dig @127.0.0.1 _apt_proxy._tcp.home.arpa SRV
 ```
 
-## Prepared Technitium DNS and DHCP candidate
+### DNS and DHCP configuration
 
-The full replacement is declared in `vars/technitium.yml` and prepared separately
-with every DHCP scope disabled. It has not been activated. The running
-Technitium staging instance still forwards local DNS to dnsmasq, and dnsmasq
-still serves DHCP.
-
-The candidate owns `home.arpa`, the local IPv4 reverse zone and both IPv6 /48
+The replacement is declared in `vars/technitium.yml`.
+Technitium owns `home.arpa`, the local IPv4 reverse zone and both IPv6 /48
 reverse zones. It includes the existing static A/AAAA records, service aliases,
 wildcard service names, canonical PTR records, filtering and apt-proxy SRV
 record. It has no DNS forwarding dependency on dnsmasq.
@@ -101,67 +97,58 @@ their scope's finite lease duration. The address remains reserved to the MAC.
 DHCP DNS updates are enabled for all five scopes, with conflicting
 dynamic-client A-record overwrites disabled. Technitium couples automatic DNS
 registration to the advertised domain, so IoT/guest now advertise `home.arpa`
-too. dnsmasq registers their names through its global domain setting while
-omitting the domain option on those two scopes. IPv6 SLAAC, router
-advertisements and prefix delegation remain managed by VyOS; this candidate
+too. Previously, dnsmasq registered their names through its global domain setting
+while omitting the domain option on those two scopes. IPv6 SLAAC, router
+advertisements and prefix delegation remain managed by VyOS; Technitium
 adds no DHCPv6 service.
 
-Prepare or refresh the disabled candidate from `provisioning/`:
+### Preparation and migration tools
+
+`--tags technitium-prepare` prepares a disabled candidate only when Technitium
+is inactive. It refuses to overwrite the active production data directory.
+Preparation uses an isolated container with no network, disables every newly
+created scope, and verifies DNS, DHCP and access-policy persistence after a
+restart. It saves the old VyOS configuration, AdGuard/dnsmasq configuration,
+lease file, container identities and checksums under
+`/config/backups/technitium/prepare-UTC-XXXXXX`.
+
+`--tags technitium-migration-tools` installs the root-only cutover script,
+lease validator and resolved declarations, and validates current lease ownership
+without activating anything. On an inactive installation, run
+`sudo /config/scripts/technitium-cutover.sh rehearse` to exercise lease import
+and restart persistence without stopping production services, then run
+`sudo /config/scripts/technitium-cutover.sh cutover` only after isolated checks
+and candidate preparation pass. It freezes dnsmasq, captures final leases,
+rejects ownership conflicts, imports continuity reservations while isolated,
+checks persistence, then switches only the three DNS/DHCP container nodes and
+enables the configured scopes. The output names its protected backup directory.
+
+`host_vars/router.yml` now has `technitium_active: true`. Use the DNS,
+technitium-monitoring and healthcheck tags to refresh the active configuration.
+
+For rollback use the protected backup from this cutover:
 
 ```bash
-VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags technitium-prepare
+sudo /config/scripts/technitium-cutover.sh rollback /config/backups/technitium/prepare-20261026T114017Z-8wZ849
 ```
 
-This tag is excluded from normal runs, including `--tags apply`. It uses the
-same Ansible tasks and API helper as staging, but writes a separate root-only
-`/config/containers/technitium-candidate` data directory. It never uses the live
-Technitium container, never commits VyOS configuration and never changes
-AdGuard or dnsmasq. Technitium creates scopes enabled, so preparation always
-uses a temporary container with **no network**, disables each scope, verifies
-all scopes are disabled, then stops and removes the temporary container.
-Before removal, it restarts the isolated candidate and compares its DNS,
-DHCP and access-policy state against the pre-restart state. Preparation fails
-if that state was not persisted.
-DNS and the web console remain configured for loopback staging ports. Each
-preparation also saves a root-only baseline under
-`/config/backups/technitium/prepare-UTC-XXXXXX`: `config.boot`, live VyOS commands,
-AdGuard and dnsmasq configuration, the current dnsmasq lease file, container
-identities and SHA-256 checksums. This snapshot records the preparation state;
-it does not replace a fresh lease capture at cutover.
+The script stops Technitium, exports its leases in an isolated container, merges
+those leases with durable holds, validates a dnsmasq reservation overlay, and
+restores the original DNS/DHCP and Alloy container nodes and their saved
+configuration. Set `technitium_active: false` after rollback,
+then verify DNS, DHCP renewals and router health. A failed validation leaves DHCP
+stopped; correct the reported ownership conflict before restoring a server.
 
-### Future cutover and rollback plan
+The active data directory's `continuity.json` retains source and expiry metadata.
+Ordinary applies never delete these holds, including expired or indefinite entries.
+Rollback retains this file and both lease histories. A second cutover requires
+explicit reconciliation of the previous migration; do not delete the continuity
+file merely to bypass the guard. Keep the entire candidate data directory and
+the printed backup together when backing up or restoring this migration.
 
-No DNS or DHCP cutover is performed by preparation. Keep the candidate at
-`/config/containers/technitium-candidate` disabled until the following migration
-is explicitly scheduled:
-
-1. Preserve the baseline and stop dnsmasq DHCP, then capture its final lease
-   file. Parse each entry as `expiry MAC IPv4 hostname client-id`; retain every
-   unexpired lease and every expiry-zero lease, which must remain held
-   indefinitely. Merge these holds with the eight declared reservations as
-   temporary Technitium MAC/IP reservations. Reject duplicate MACs with different
-   IPs, duplicate IPs with different MACs, conflicts with declared reservations,
-   and addresses outside the five managed subnets. Validate scope bounds and
-   exclusions before enabling anything. Record each hold's source and expiry;
-   do not hand-edit Technitium's binary scope files or rely on ping checks to
-   protect sleeping clients.
-2. Revalidate the merged candidate, then switch the DNS listeners and enable
-   the intended Technitium scopes with `net-raw` available for conflict checks.
-   Only one DHCP server may answer on each subnet. Check client renewals,
-   expected addresses, PXE, local/public DNS and the IPv4/IPv6 query ACLs before
-   retiring AdGuard or dnsmasq. Remove temporary reservations only after lease
-   ownership and expiry are reconciled; expiry-zero holds need an explicit
-   decision.
-3. If rollback is needed after Technitium has issued leases, freeze its DHCP
-   service and export the final current leases with `/api/dhcp/leases/list`.
-   Merge all still-valid leases with the retained dnsmasq holds and declared
-   reservations, rejecting the same conflicts. While dnsmasq is stopped,
-   install a temporary `dhcp-host=MAC,IP` reservation overlay for these leases
-   and restore its saved configuration. Start dnsmasq only after Technitium
-   DHCP is off, then restore AdGuard DNS and verify renewals and resolution.
-   Restoring the old dnsmasq lease file alone is unsafe: it does not know which
-   addresses Technitium subsequently issued. Preserve the Technitium data and
-   both lease snapshots until rollback is verified.
+Run `tests/run-technitium.sh` for isolated real-server, lease-parser, migration,
+and active/inactive configuration tests. It removes its temporary containers.
+These tests cannot establish physical client renewal or iVentoy PXE success.
 
 Regression checks are in `tests/test_technitium.py`, using the provisioning
 Ansible environment and pytest inside disposable Docker containers. The real
@@ -232,7 +219,7 @@ VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run ansible-playbook -i inven
 `host_vars/router.yml` reserves Atlas at `10.0.0.158` for MAC
 `bc:24:11:4e:a4:9e`. The Atlas VM creation script keeps that MAC across rebuilds;
 update both declarations together if the NIC reservation changes.
-The dnsmasq template publishes exact A and AAAA records for `atlas.home.arpa`,
+The Technitium declarations publish exact A and AAAA records for `atlas.home.arpa`,
 `vault.home.arpa`, `openvox.home.arpa` and `ipa.home.arpa` at this address and Atlas's verified
 EUI-64 ULA `fd6b:d722:1738:0:be24:11ff:fe4e:a49e`. The ULA is retained across
 ISP prefix changes; the pinned NIC MAC preserves its interface identifier on
@@ -243,7 +230,7 @@ host's own record remains unchanged. Vault uses `vault.home.arpa` on Atlas.
 
 The `atlas.home.arpa` suffix also resolves application subdomains such as
 `traefik.atlas.home.arpa` and `authelia.atlas.home.arpa` to Atlas over IPv4 and
-IPv6, using the same dnsmasq wildcard pattern as `docker.home.arpa`. Exact
+IPv6, using the same wildcard names as `docker.home.arpa`. Exact
 infrastructure records and Atlas's canonical PTR remain in place. Application
 certificates and Traefik routes must cover these names before use.
 
@@ -253,14 +240,11 @@ Apply only DNS/DHCP and its smoke checks with:
 VAULT_CACERT=/etc/ssl/certs/ca-certificates.crt uv run --frozen ansible-playbook -i inventory/router.yml router.yml --vault-password-file vars/password --tags dns,healthcheck
 ```
 
-This path validates the staged configuration with the running dnsmasq image,
-backs up the prior file to `/config/containers/dnsmasq/dnsmasq.conf.previous`,
-installs the configuration and updated smoke script, then restarts dnsmasq and
-AdGuard to clear cached DNS answers. It does not apply the declarative router
-configuration or update other containers. Full `--tags apply` also includes
-these DNS declarations. Smoke checks verify all four names through AdGuard
-over IPv4/IPv6 and dnsmasq directly, plus the Traefik/Authelia application names
-and Atlas's canonical PTR record.
+With Technitium active, this path reapplies its DNS declarations and updates
+the smoke script while preserving DHCP scopes and continuity reservations.
+Full `--tags apply` includes the same declarations. Smoke checks query production
+DNS over IPv4/IPv6, including infrastructure and application names and Atlas's
+canonical PTR record.
 
 These records publish the active service endpoints: `https://vault.home.arpa:8200`,
 direct TLS `openvox.home.arpa:8140` and FreeIPA at `ipa.home.arpa`. Service certificates must contain the
@@ -344,8 +328,10 @@ any retained previous ISP prefixes need the same next-hop replacement while
 preserving their prefixes. The Cerebrum `c000`/`c100` routes use `eth3`; their
 handover from Cognition is coordinated separately below.
 
-Router logs use verified HTTPS to `loki.atlas.home.arpa`. Alloy is pinned to
-v1.21.0, built with Go 1.27.2 and native ML-DSA TLS support. The deployment copies
+The October 21 deployment sent router logs over verified HTTPS to
+`loki.atlas.home.arpa`. During the October 26 cutover, direct TLS delivery failed;
+the pipeline is being switched to the existing central Alloy receiver. Alloy is
+pinned to v1.21.0, built with Go 1.27.2 and native ML-DSA TLS support. The deployment copies
 the controller's system CA bundle from `/etc/ssl/certs/ca-certificates.crt`
 to persistent storage and mounts it read-only at the same standard path inside
 Alloy; certificate verification remains enabled. Reapply after controller trust

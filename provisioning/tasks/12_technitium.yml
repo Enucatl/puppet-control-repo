@@ -1,7 +1,7 @@
 ---
 - name: Load the full Technitium DNS and DHCP declarations
   ansible.builtin.include_vars: vars/technitium.yml
-  when: technitium_prepare_full | default(false)
+  when: technitium_prepare_full | default(false) or technitium_active | default(false)
 
 - name: Render Technitium configuration script locally
   delegate_to: localhost

@@ -89,7 +89,9 @@ adguard_dns_bind_hosts:
   - "{{ ula_prefix }}::1"
 adguard_image: "docker.io/adguard/adguardhome:latest"
 
-# Staged only: loopback DNS on 5354 and web console on 5380, accessed over SSH.
+# Enable only after the lease-preserving cutover has completed.
+technitium_active: true
+# Before cutover: loopback DNS on 5354; web console always on loopback 5380.
 technitium_image: "docker.io/technitium/dns-server:15.6.2"
 technitium_data_path: "/config/containers/technitium"
 # revdns returns all 32 IPv6 nibbles; discard the 20 host nibbles for each /48.

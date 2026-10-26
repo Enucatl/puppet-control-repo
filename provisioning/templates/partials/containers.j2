@@ -1,4 +1,5 @@
 {% include 'partials/technitium.j2' %}
+{% if not (technitium_active | default(false)) %}
 set container name adguard cpu-quota 0.5
 set container name adguard memory 512
 set container name adguard allow-host-networks
@@ -11,6 +12,7 @@ set container name adguard volume adguard_conf source {{ adguard_data_path }}/co
 set container name adguard volume adguard_work destination /opt/adguardhome/work
 set container name adguard volume adguard_work mode rw
 set container name adguard volume adguard_work source {{ adguard_data_path }}/work
+{% endif %}
 set container name alloy cpu-quota 0.5
 set container name alloy memory 512
 set container name alloy allow-host-networks
@@ -19,9 +21,16 @@ set container name alloy environment GOMEMLIMIT value 256MiB
 set container name alloy command 'run /etc/alloy/config.alloy --storage.path=/var/lib/alloy/data --disable-reporting --stability.level=experimental'
 set container name alloy image {{ alloy_image }}
 set container name alloy restart on-failure
+{% if not (technitium_active | default(false)) %}
 set container name alloy volume alloy_adguard_work destination /var/adguard/work
 set container name alloy volume alloy_adguard_work mode ro
 set container name alloy volume alloy_adguard_work source {{ adguard_data_path }}/work
+{% endif %}
+{% if technitium_active | default(false) %}
+set container name alloy volume alloy_technitium_logs destination /var/log/technitium
+set container name alloy volume alloy_technitium_logs mode ro
+set container name alloy volume alloy_technitium_logs source {{ technitium_data_path }}-candidate/logs
+{% endif %}
 set container name alloy volume alloy_conf destination /etc/alloy
 set container name alloy volume alloy_conf mode ro
 set container name alloy volume alloy_conf source {{ alloy_data_path }}/conf
@@ -31,9 +40,11 @@ set container name alloy volume alloy_ca source {{ alloy_data_path }}/conf/ca-ce
 set container name alloy volume alloy_data destination /var/lib/alloy/data
 set container name alloy volume alloy_data mode rw
 set container name alloy volume alloy_data source {{ alloy_data_path }}/data
+{% if not (technitium_active | default(false)) %}
 set container name alloy volume alloy_dnsmasq_log destination /var/dnsmasq/log
 set container name alloy volume alloy_dnsmasq_log mode ro
 set container name alloy volume alloy_dnsmasq_log source {{ dnsmasq_data_path }}/log
+{% endif %}
 set container name alloy volume alloy_suricata_logs destination /var/log/suricata
 set container name alloy volume alloy_suricata_logs mode ro
 set container name alloy volume alloy_suricata_logs source /var/log/suricata
@@ -43,6 +54,7 @@ set container name alloy volume alloy_suricata_config source /config/suricata
 set container name alloy volume alloy_vyos_logs destination /var/log/host
 set container name alloy volume alloy_vyos_logs mode ro
 set container name alloy volume alloy_vyos_logs source /var/log
+{% if not (technitium_active | default(false)) %}
 set container name dnsmasq allow-host-networks
 set container name dnsmasq capability net-admin
 set container name dnsmasq capability net-raw
@@ -57,3 +69,4 @@ set container name dnsmasq volume dnsmasq_leases source {{ dnsmasq_data_path }}/
 set container name dnsmasq volume dnsmasq_log destination /var/log/dnsmasq
 set container name dnsmasq volume dnsmasq_log mode rw
 set container name dnsmasq volume dnsmasq_log source {{ dnsmasq_data_path }}/log
+{% endif %}

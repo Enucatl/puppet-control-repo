@@ -3,12 +3,14 @@
 # These live under /config/ so they survive reboots.
 
 - name: Create AdGuard data directories
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - mkdir -p {{ adguard_data_path }}/work
       - mkdir -p {{ adguard_data_path }}/conf
 
 - name: Create dnsmasq data directories
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - mkdir -p {{ dnsmasq_data_path }}/conf

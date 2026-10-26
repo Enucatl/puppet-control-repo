@@ -1,13 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 umask 077
-data={{ (technitium_data_path ~ ('-candidate' if technitium_prepare_full | default(false) else '')) | quote }}
+data={{ (technitium_data_path ~ ('-candidate' if (technitium_prepare_full | default(false) or technitium_active | default(false)) else '')) | quote }}
 image={{ technitium_image | quote }}
+{% if technitium_prepare_full | default(false) %}
+[[ ! -e "$data/cutover-active" ]] || { echo 'Cannot prepare the active candidate' >&2; exit 1; }
+{% endif %}
 container={{ 'technitium-candidate' if technitium_prepare_full | default(false) else 'technitium-bootstrap' }}
 
 {% if technitium_prepare_full | default(false) %}
 {% include 'technitium-snapshot.sh.j2' %}
 
+{% endif %}
+{% if technitium_active | default(false) and not technitium_prepare_full | default(false) %}
+[[ -f "$data/cutover-active" ]] || { echo 'Run the controlled cutover before active apply' >&2; exit 1; }
+[[ -s "$data/admin-password" ]]
 {% endif %}
 mkdir -p "$data"
 chmod 700 "$data"
@@ -29,35 +36,13 @@ else
     trap 'podman stop --time 10 "$container" >/dev/null; podman rm "$container" >/dev/null' EXIT
 fi
 
-wait_ready() {
-    podman exec "$container" curl --silent --show-error --fail --max-time 2 \
-        --retry 30 --retry-connrefused --retry-delay 1 --retry-max-time 30 \
-        http://127.0.0.1:5380/api/status >/dev/null
-}
-wait_ready
+{% include 'technitium-api.sh.j2' %}
 
-token=
-api() {
-    local path=$1 response parameter
-    shift
-    local -a options=()
-    for parameter in "$@"; do
-        options+=(--data-urlencode "$parameter")
-    done
-    response=$(podman exec "$container" curl --silent --show-error --fail --max-time 30 \
-        --data-urlencode "token=$token" "${options[@]}" "http://127.0.0.1:5380/api/$path")
-    if ! jq -e '.status == "ok"' <<< "$response" >/dev/null; then
-        jq -r '.errorMessage // .status' <<< "$response" >&2
-        return 1
-    fi
-    printf '%s\n' "$response"
-}
-token=$(api user/login user=admin "pass=$(cat "$data/admin-password")" | jq -er .token)
 api settings/set \
-    'dnsServerLocalEndPoints=127.0.0.1:5354,[::1]:5354' \
+    'dnsServerLocalEndPoints={{ ('127.0.0.1:53,[::1]:53,' ~ (vyos_lan_ip | ansible.utils.ipaddr('address')) ~ ':53,[' ~ ula_prefix ~ '::1]:53') if technitium_active | default(false) and not technitium_prepare_full | default(false) else '127.0.0.1:5354,[::1]:5354' }}' \
     'webServiceLocalAddresses=127.0.0.1,[::1]' webServiceHttpPort=5380 \
     ipv6Mode=Enabled dnssecValidation=true eDnsClientSubnet=false \
-{% if technitium_prepare_full | default(false) %}
+{% if technitium_prepare_full | default(false) or technitium_active | default(false) %}
     recursion=UseSpecifiedNetworkACL \
     {{ ('recursionNetworkACL=' ~ technitium_recursion_acl | join(',')) | quote }} \
 {% endif %}
@@ -67,12 +52,15 @@ api settings/set \
     enableBlocking=true blockingType=AnyAddress blockingAnswerTtl=10 \
     blockListUrls=https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt \
     blockListUpdateIntervalHours=24 serveStale=false cacheMinimumRecordTtl=0 \
-    logQueries=true maxLogFileDays=1 maxStatFileDays=1 >/dev/null
+    logQueries=true logFolder=/etc/dns/logs maxLogFileDays=1 maxStatFileDays=1 >/dev/null
 
-{% if technitium_prepare_full | default(false) %}
+{% if technitium_prepare_full | default(false) or technitium_active | default(false) %}
 {% include 'technitium-authoritative.sh.j2' %}
 
+{% if technitium_prepare_full | default(false) %}
+
 {% include 'technitium-dhcp.sh.j2' %}
+{% endif %}
 
 {% else %}
 zones=$(api zones/list)
@@ -96,7 +84,7 @@ for domain in icu version.bind id.server hostname.bind; do
     api blocked/add "domain=$domain" >/dev/null
 done
 api settings/get | jq -e '
-    (.response.dnsServerLocalEndPoints | sort) == (["127.0.0.1:5354", "[::1]:5354"] | sort)
+    (.response.dnsServerLocalEndPoints | sort) == ({{ (['127.0.0.1:53', '[::1]:53', (vyos_lan_ip | ansible.utils.ipaddr('address')) ~ ':53', '[' ~ ula_prefix ~ '::1]:53'] if technitium_active | default(false) and not technitium_prepare_full | default(false) else ['127.0.0.1:5354', '[::1]:5354']) | to_json }} | sort)
     and (.response.webServiceLocalAddresses | sort) == (["127.0.0.1", "[::1]"] | sort)
     and .response.webServiceHttpPort == 5380
     and .response.dnssecValidation == true
@@ -112,6 +100,8 @@ sha256sum --check "$backup/production.sha256"
 podman inspect --format "$container_format" adguard dnsmasq technitium alloy | cmp - "$backup/containers.txt"
 echo 'Technitium candidate saved with all DHCP scopes disabled; no client cutover'
 echo "Production configuration and lease snapshot: $backup"
+{% elif technitium_active | default(false) %}
+echo 'Technitium active DNS refreshed; DHCP reservations preserved'
 {% else %}
 echo 'Technitium configured: loopback DNS 5354, web console 5380; no client cutover'
 {% endif %}

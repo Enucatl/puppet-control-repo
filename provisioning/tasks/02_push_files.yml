@@ -14,6 +14,7 @@
     mode: "0600"
 
 - name: Template app configs locally
+  when: not (technitium_active | default(false)) or item.dest not in ["AdGuardHome.yaml", "dnsmasq.conf"]
   delegate_to: localhost
   ansible.builtin.template:
     src: "templates/app_configs/{{ item.src }}"
@@ -35,6 +36,7 @@
 # STEP 2: Upload all files to /tmp/ on VyOS
 # ============================================================
 - name: Upload app configs to VyOS
+  when: not (technitium_active | default(false)) or item not in ["AdGuardHome.yaml", "dnsmasq.conf"]
   ansible.netcommon.net_put:
     src: "/tmp/{{ item }}"
     dest: "/tmp/{{ item }}"
@@ -55,6 +57,7 @@
 # STEP 3: Install each file to its persistent destination
 # ============================================================
 - name: Install AdGuard config
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - sudo mv /tmp/AdGuardHome.yaml {{ adguard_data_path }}/conf/AdGuardHome.yaml
@@ -62,6 +65,7 @@
       - sudo chmod 0600 {{ adguard_data_path }}/conf/AdGuardHome.yaml
 
 - name: Install dnsmasq config
+  when: not (technitium_active | default(false))
   vyos.vyos.vyos_command:
     commands:
       - sudo mv /tmp/dnsmasq.conf {{ dnsmasq_data_path }}/conf/dnsmasq.conf

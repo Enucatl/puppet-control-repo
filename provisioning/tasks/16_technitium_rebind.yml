@@ -1,0 +1,38 @@
+---
+- name: Load managed DHCP scopes for interface recovery
+  ansible.builtin.include_vars: vars/technitium.yml
+
+- name: Render Technitium DHCP interface recovery
+  delegate_to: localhost
+  ansible.builtin.template:
+    src: templates/app_configs/technitium-rebind.sh.j2
+    dest: /tmp/technitium-rebind.sh
+    mode: "0600"
+
+- name: Upload Technitium DHCP interface recovery
+  ansible.netcommon.net_put:
+    src: /tmp/technitium-rebind.sh
+    dest: /tmp/technitium-rebind.sh
+
+- name: Install Technitium DHCP interface recovery
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n install -o root -g root -m 0700 /tmp/technitium-rebind.sh /config/scripts/technitium-rebind.sh &&
+        rm /tmp/technitium-rebind.sh && echo TECHNITIUM_REBIND_INSTALLED
+    wait_for:
+      - result[0] contains 'TECHNITIUM_REBIND_INSTALLED'
+    retries: 1
+
+- name: Schedule Technitium DHCP interface recovery
+  vyos.vyos.vyos_config:
+    lines:
+      - set system task-scheduler task technitium-rebind crontab-spec '* * * * *'
+      - set system task-scheduler task technitium-rebind executable path /config/scripts/technitium-rebind.sh
+    save: true
+
+- name: Remove local interface recovery script
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: /tmp/technitium-rebind.sh
+    state: absent

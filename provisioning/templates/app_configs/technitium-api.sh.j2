@@ -1,0 +1,24 @@
+wait_ready() {
+    podman exec "$container" curl --silent --show-error --fail --max-time 2 \
+        --retry 30 --retry-connrefused --retry-delay 1 --retry-max-time 30 \
+        http://127.0.0.1:5380/api/status >/dev/null
+}
+wait_ready
+
+token=
+api() {
+    local path=$1 response parameter
+    shift
+    local -a options=()
+    for parameter in "$@"; do
+        options+=(--data-urlencode "$parameter")
+    done
+    response=$(podman exec "$container" curl --silent --show-error --fail --max-time 30 --retry 3 --retry-connrefused --retry-delay 1 \
+        --data-urlencode "token=$token" "${options[@]}" "http://127.0.0.1:5380/api/$path")
+    if ! jq -e '.status == "ok"' <<< "$response" >/dev/null; then
+        jq -r '.errorMessage // .status' <<< "$response" >&2
+        return 1
+    fi
+    printf '%s\n' "$response"
+}
+token=$(api user/login user=admin "pass=$(cat "$data/admin-password")" | jq -er .token)

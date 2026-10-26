@@ -1,0 +1,41 @@
+---
+- name: Render active DNS log shipping
+  delegate_to: localhost
+  ansible.builtin.template:
+    src: templates/app_configs/alloy-vyos.alloy.j2
+    dest: /tmp/technitium-alloy.conf
+    mode: "0600"
+
+- name: Upload active DNS log shipping
+  ansible.netcommon.net_put:
+    src: /tmp/technitium-alloy.conf
+    dest: /tmp/technitium-alloy.conf
+
+- name: Install active DNS log shipping
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n install -o root -g vyattacfg -m 0644 /tmp/technitium-alloy.conf {{ alloy_data_path }}/conf/config.alloy &&
+        rm /tmp/technitium-alloy.conf && echo TECHNITIUM_LOGS_INSTALLED
+    wait_for:
+      - result[0] contains 'TECHNITIUM_LOGS_INSTALLED'
+    retries: 1
+
+- name: Mount Technitium logs in Alloy
+  vyos.vyos.vyos_config:
+    lines:
+      - set container name alloy volume alloy_technitium_logs destination /var/log/technitium
+      - set container name alloy volume alloy_technitium_logs mode ro
+      - set container name alloy volume alloy_technitium_logs source {{ technitium_data_path }}-candidate/logs
+    save: true
+
+- name: Restart Alloy with active DNS log shipping
+  vyos.vyos.vyos_command:
+    commands:
+      - restart container alloy
+
+- name: Remove local log configuration
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: /tmp/technitium-alloy.conf
+    state: absent

@@ -14,6 +14,10 @@
     cloudflare_api_token: "{{ _vault_kv_puppet['cloudflare_api_token'] }}"
 
   pre_tasks:
+    - name: Guard the production DNS mode before changing router state
+      ansible.builtin.import_tasks: tasks/13_technitium_guard.yml
+      tags: [apply, vyos_config, dns, technitium, upgrade, technitium-monitoring, technitium-rebind]
+
     - name: Verify secrets were retrieved from Vault
       ansible.builtin.assert:
         that:
@@ -24,6 +28,20 @@
         fail_msg: "Failed to retrieve secrets from HashiCorp Vault (kv/puppet)"
 
   tasks:
+    - name: Install the controlled Technitium migration and rollback tools
+      ansible.builtin.import_tasks: tasks/14_technitium_cutover.yml
+      tags: [technitium-migration-tools, never]
+
+    - name: Integrate active Technitium logs without a full router apply
+      ansible.builtin.import_tasks: tasks/15_technitium_monitoring.yml
+      when: technitium_active | default(false)
+      tags: [technitium-monitoring, never]
+
+    - name: Recover active DHCP scopes when an interface gains carrier
+      ansible.builtin.import_tasks: tasks/16_technitium_rebind.yml
+      when: technitium_active | default(false)
+      tags: [apply, dns, technitium-monitoring, technitium-rebind]
+
     - name: Upgrade VyOS to the latest signed rolling image
       ansible.builtin.import_tasks: tasks/06_upgrade_vyos.yml
       tags: [upgrade, never]
@@ -60,7 +78,7 @@
       ansible.builtin.import_tasks: tasks/03_pull_images.yml
       tags: [apply]
 
-    - name: Stage isolated Technitium DNS
+    - name: Configure Technitium DNS
       ansible.builtin.import_tasks: tasks/12_technitium.yml
       vars:
         technitium_script_name: technitium-configure
@@ -90,12 +108,14 @@
       tags: [apply]
 
     - name: Restart AdGuard container
+      when: not (technitium_active | default(false))
       vyos.vyos.vyos_command:
         commands:
           - restart container adguard
       tags: [apply]
 
     - name: Restart dnsmasq container
+      when: not (technitium_active | default(false))
       vyos.vyos.vyos_command:
         commands:
           - restart container dnsmasq

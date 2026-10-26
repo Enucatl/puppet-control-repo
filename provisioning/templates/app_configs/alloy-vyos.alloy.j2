@@ -120,6 +120,7 @@ loki.source.file "suricata_update" {
 }
 
 // ============================================================
+{% if not (technitium_active | default(false)) %}
 // AdGuard Home query log
 // Work dir mounted read-only at /var/adguard/work.
 // dir_path in AdGuardHome.yaml is set to /opt/adguardhome/work
@@ -177,3 +178,20 @@ loki.source.file "dnsmasq_dhcp" {
   targets    = local.file_match.dnsmasq_dhcp.targets
   forward_to = [loki.write.remote_loki.receiver]
 }
+{% endif %}
+
+{% if technitium_active | default(false) %}
+// Native query and DHCP messages; retain client/name fields in the log body.
+local.file_match "technitium" {
+  path_targets = [{
+    __path__ = "/var/log/technitium/*.log",
+    job      = "technitium",
+    host     = "router.{{ dhcp_domain }}",
+  }]
+}
+
+loki.source.file "technitium" {
+  targets    = local.file_match.technitium.targets
+  forward_to = [loki.write.central_alloy.receiver]
+}
+{% endif %}

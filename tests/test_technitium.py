@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shlex
 import shutil
 import socket
 import struct
@@ -91,6 +90,10 @@ def test_modes_and_safety(rendered: dict) -> None:
     assert "api dhcp/scopes/set" not in rendered["staged"]
     assert "production-configs.tgz" not in rendered["staged"]
     candidate = rendered["candidate"]
+    for script in (rendered["staged"], candidate):
+        for line in script.splitlines():
+            if line.lstrip().startswith("token=$(api user/login"):
+                assert line.rstrip().endswith("| jq -er .token)"), line
     assert candidate.index("production-configs.tgz") < candidate.index("podman run")
     assert (
         'cp /config/containers/dnsmasq/leases/dnsmasq.leases "$backup/dnsmasq.leases"'
@@ -215,8 +218,8 @@ def test_static_and_reservation_parity(rendered: dict) -> None:
     assert len(reservations) == 8
 
 
-def test_candidate_api_twice(rendered: dict) -> None:
-    """Execute the rendered candidate API section twice against isolated Technitium."""
+def test_candidate_api_twice(rendered: dict, tmp_path: Path) -> None:
+    """Execute the complete candidate script twice against isolated Technitium."""
     base = os.environ.get("TECHNITIUM_API_URL")
     if not base:
         pytest.skip("Set TECHNITIUM_API_URL for an isolated Technitium 15.6.2 server")
@@ -234,27 +237,48 @@ def test_candidate_api_twice(rendered: dict) -> None:
         return result
 
     token = api("user/login", user="admin", **{"pass": "test-password"})["token"]
-    candidate = rendered["candidate"]
-    section = candidate[
-        candidate.index("api settings/set") : candidate.index("api user/logout")
-    ]
-    preamble = f"""set -euo pipefail
-container=technitium-candidate
-podman() {{ printf '%s\\n' none; }}
-api() {{
- local path=$1 result parameter
- shift
- local -a options=()
- for parameter in "$@"; do options+=(--data-urlencode "$parameter"); done
- result=$(curl --silent --show-error --fail --max-time 30 --data-urlencode {shlex.quote("token=" + token)} "${{options[@]}}" {shlex.quote(base)}"$path")
- jq -e '.status == "ok"' <<< "$result" >/dev/null || {{ printf '%s\\n' "$path: $result" >&2; return 1; }}
- printf '%s\\n' "$result"
-}}
-"""
-    # After an external container stop/start, verify disk state without reapplying.
+    config = tmp_path / "config"
+    for name, content in {
+        "config.boot": "synthetic config",
+        "containers/adguard/conf/AdGuardHome.yaml": "synthetic config",
+        "containers/dnsmasq/conf/dnsmasq.conf": rendered["dnsmasq"],
+        "containers/dnsmasq/leases/dnsmasq.leases": "",
+        "containers/alloy/conf/config.alloy": "synthetic config",
+        "containers/technitium-candidate/admin-password": "test-password",
+    }.items():
+        path = config / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    commands = tmp_path / "commands"
+    commands.mkdir()
+    podman = commands / "podman"
+    podman.write_text("""#!/bin/bash
+set -euo pipefail
+case "$1" in
+exec) shift 2; exec "$@";;
+inspect)
+    case "$*" in
+    *HostConfig.NetworkMode*) echo none;;
+    *) echo 'synthetic container identity';;
+    esac;;
+run|stop|start|rm) exit 0;;
+*) exit 2;;
+esac
+""")
+    podman.chmod(0o755)
+    wrapper = commands / "vyatta-op-cmd-wrapper"
+    wrapper.write_text("#!/bin/sh\necho 'set container name technitium memory 512'\n")
+    wrapper.chmod(0o755)
+    # Only platform commands and absolute paths change; all shell control flow runs.
+    candidate = rendered["candidate"].replace("/config/", str(config) + "/")
+    candidate = candidate.replace("tar --directory=/ ", f"tar --directory={tmp_path} ")
+    candidate = candidate.replace("/opt/vyatta/bin/vyatta-op-cmd-wrapper", str(wrapper))
+    candidate = candidate.replace("http://127.0.0.1:5380/api/", base)
+    environment = dict(os.environ, PATH=str(commands) + os.pathsep + os.environ["PATH"])
+    # External harness restart separately verifies actual disk persistence.
     for _ in range(0 if os.environ.get("TECHNITIUM_VERIFY_PERSISTED") == "1" else 2):
         run = subprocess.run(
-            ["bash"], input=preamble + section, text=True, capture_output=True
+            ["bash"], input=candidate, text=True, capture_output=True, env=environment
         )
         assert run.returncode == 0, run.stdout + run.stderr
     zones = api("zones/list", token=token)["response"]["zones"]
@@ -391,7 +415,10 @@ api() {{
                 + struct.pack("!HHIH", 1, 1, 300, 4)
                 + socket.inet_aton("192.0.2.10")
             )
-            upstream.sendto(reply, peer)
+            try:
+                upstream.sendto(reply, peer)
+            except OSError:
+                return
 
     threading.Thread(target=answer_public, daemon=True).start()
     api(

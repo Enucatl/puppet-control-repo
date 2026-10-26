@@ -49,9 +49,9 @@ def test_infrastructure_dns_checks_preserve_names_and_canonical_addresses() -> N
     checks = loop.group().replace("{{ atlas_node_ip }}", variables["atlas_node_ip"])
     checks = checks.replace("{{ atlas_node_ula }}", declared_ipv6)
     recorder = r"""
-ADGUARD_V4=10.0.0.1
-ADGUARD_V6=fd6b:d722:1738::1
-DNSMASQ_PORT=5300
+DNS_V4=10.0.0.1
+DNS_V6=fd6b:d722:1738::1
+AUTHORITATIVE_PORT=5300
 DHCP_DOMAIN=home.arpa
 retry_line() {
     printf '%s|%s|' "$1" "$2"
