@@ -6,7 +6,6 @@ import re
 import shlex
 import subprocess
 
-
 PROVISIONING = Path(__file__).resolve().parents[1] / "provisioning"
 
 
@@ -17,7 +16,10 @@ def test_infrastructure_dns_checks_preserve_names_and_canonical_addresses() -> N
     declarations = yaml.safe_load((PROVISIONING / "vars/technitium.yml").read_text())
     hosts = {host["name"]: host for host in declarations["technitium_dns_hosts"]}
     for name in ("atlas", "vault", "openvox", "ipa", "freeipa", "hcv"):
-        assert hosts[name]["addresses"] == ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"]
+        assert hosts[name]["addresses"] == [
+            "{{ atlas_node_ip }}",
+            "{{ atlas_node_ula }}",
+        ]
     for name in ("atlas", "freeipa", "hcv", "docker"):
         assert hosts[name]["wildcard"]
     assert hosts["atlas"]["ptr"]

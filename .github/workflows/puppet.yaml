@@ -118,6 +118,10 @@ jobs:
           /opt/puppetlabs/bin/puppet parser validate docker/openvox/fixture/manifests
           find modules/profile/templates -name '*.epp' -print0 | xargs -0 -r /opt/puppetlabs/bin/puppet epp validate
           for script in docker/openvox/*.rb docker/vault/scripts/offline-intermediate.rb; do /opt/puppetlabs/puppet/bin/ruby -c "$script"; done
+      - name: Install locked router rendering dependencies
+        run: |
+          uv sync --frozen --project provisioning
+          echo "$GITHUB_WORKSPACE/provisioning/.venv/bin" >> "$GITHUB_PATH"
       - name: Test source, catalogs and controllers with dummy secrets
         run: >-
           uv run --frozen python -m pytest -q tests
