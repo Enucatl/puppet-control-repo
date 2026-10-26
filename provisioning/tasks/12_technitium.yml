@@ -1,4 +1,8 @@
 ---
+- name: Load historical DNS provider paths for offline preparation
+  ansible.builtin.include_vars: vars/technitium-legacy.yml
+  when: technitium_prepare_full | default(false)
+
 - name: Load the full Technitium DNS and DHCP declarations
   ansible.builtin.include_vars: vars/technitium.yml
   when: technitium_prepare_full | default(false) or technitium_active | default(false)

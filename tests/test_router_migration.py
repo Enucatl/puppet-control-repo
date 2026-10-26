@@ -82,8 +82,10 @@ def test_logging_and_pxe_use_atlas() -> None:
             f"delete system static-host-mapping host-name {name}.docker.home.arpa"
             in deletes
         )
-    dnsmasq = (PROVISIONING / "templates/app_configs/dnsmasq.conf.j2").read_text()
-    assert "dhcp-boot=tag:lan,iventoy_loader_16000_uefi,,{{ atlas_node_ip }}" in dnsmasq
+    scopes = yaml.safe_load((PROVISIONING / "vars/technitium.yml").read_text())["technitium_dhcp_scopes"]
+    lan = next(scope for scope in scopes if scope["name"] == "LAN")
+    assert lan["boot_server"] == "{{ atlas_node_ip }}"
+    assert lan["boot_file"] == "iventoy_loader_16000_uefi"
     alloy = (PROVISIONING / "templates/app_configs/alloy-vyos.alloy.j2").read_text()
     assert "insecure_skip_verify" not in alloy
 

@@ -42,7 +42,7 @@ def rendered(tmp_path_factory: pytest.TempPathFactory) -> dict:
         [
             {
                 "ansible.builtin.template": {
-                    "src": str(ROOT / "templates/app_configs/dnsmasq.conf.j2"),
+                    "src": str(ROOT / "legacy/templates/dnsmasq.conf.j2"),
                     "dest": str(directory / "dnsmasq"),
                 }
             },
@@ -62,6 +62,7 @@ def rendered(tmp_path_factory: pytest.TempPathFactory) -> dict:
             "vars_files": [
                 str(ROOT / "host_vars/router.yml"),
                 str(ROOT / "vars/technitium.yml"),
+                str(ROOT / "vars/technitium-legacy.yml"),
             ],
             "vars": {"ipv6_prefix": "2001:db8:1234"},
             "tasks": tasks,

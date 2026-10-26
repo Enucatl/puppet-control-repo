@@ -13,7 +13,7 @@ WG_IFACE="{{ wg_interface }}"
 WG_V6_ADDR="{{ ipv6_prefix }}:c8::1/64"
 DNS_V4="{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
 DNS_V6="{{ ula_prefix }}::1"
-AUTHORITATIVE_PORT="{{ 53 if technitium_active | default(false) else dnsmasq_dns_port }}"
+AUTHORITATIVE_PORT="53"
 DHCP_DOMAIN="{{ dhcp_domain }}"
 
 log() {
@@ -148,12 +148,7 @@ retry_match "WAN IPv6 route" "dev $WAN_IFACE" 60 sudo -n ip -6 route get 2606:47
 retry_success "IPv4 ping to WAN" 60 timeout --foreground 5s sudo -n ping -4 -c 1 -W 2 1.1.1.1
 retry_success "IPv6 ping to WAN" 90 timeout --foreground 5s sudo -n ping -6 -c 1 -W 2 2606:4700:4700::1111
 
-{% if technitium_active | default(false) %}
 retry_line "Technitium container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' technitium
-{% else %}
-retry_line "AdGuard container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' adguard
-retry_line "dnsmasq container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' dnsmasq
-{% endif %}
 retry_line "Alloy container running" "true" 60 timeout --foreground 5s sudo -n podman inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' alloy
 retry_success "Alloy HTTP readiness" 60 timeout --foreground 5s sudo -n curl --fail --silent --show-error http://127.0.0.1:12345/-/ready
 

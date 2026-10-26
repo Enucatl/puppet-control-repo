@@ -1,5 +1,5 @@
 ---
-# Candidate only. Reuse the addresses, pools and MACs managed for dnsmasq.
+# Active DNS and DHCP declarations; preserve existing addresses, pools and MACs.
 technitium_intranet_domain: intranet.enucatl.com
 
 technitium_recursion_acl:

@@ -5,43 +5,14 @@
   vars:
     technitium_script_name: technitium-configure
   when: technitium_active | default(false)
-- name: Render DNS configuration and smoke checks locally
-  when: not (technitium_active | default(false)) or item != "dnsmasq.conf"
+- name: Render DNS smoke checks locally
   delegate_to: localhost
   ansible.builtin.template:
     src: "templates/app_configs/{{ item }}.j2"
     dest: "/tmp/{{ item }}"
     mode: "0600"
   loop:
-    - dnsmasq.conf
     - router-smoke-check.sh
-
-- name: Upload staged dnsmasq configuration
-  when: not (technitium_active | default(false))
-  ansible.netcommon.net_put:
-    src: /tmp/dnsmasq.conf
-    dest: /tmp/dnsmasq.conf
-
-- name: Validate staged dnsmasq configuration before replacement
-  when: not (technitium_active | default(false))
-  vyos.vyos.vyos_command:
-    commands:
-      - >-
-        sudo -n install -o root -g vyattacfg -m 0644 /tmp/dnsmasq.conf {{ dnsmasq_data_path }}/conf/.dnsmasq.conf.next &&
-        sudo -n podman exec dnsmasq dnsmasq --test --conf-file=/etc/dnsmasq.d/.dnsmasq.conf.next
-    wait_for:
-      - result[0] contains 'syntax check OK'
-
-- name: Back up and install validated dnsmasq configuration
-  when: not (technitium_active | default(false))
-  vyos.vyos.vyos_command:
-    commands:
-      - >-
-        sudo -n cp {{ dnsmasq_data_path }}/conf/dnsmasq.conf {{ dnsmasq_data_path }}/dnsmasq.conf.previous &&
-        sudo -n install -o root -g vyattacfg -m 0644 {{ dnsmasq_data_path }}/conf/.dnsmasq.conf.next {{ dnsmasq_data_path }}/conf/dnsmasq.conf &&
-        sudo -n rm {{ dnsmasq_data_path }}/conf/.dnsmasq.conf.next && echo DNS_INSTALLED
-    wait_for:
-      - result[0] contains 'DNS_INSTALLED'
 
 - name: Upload updated DNS smoke checks
   ansible.netcommon.net_put:
@@ -53,14 +24,7 @@
     commands:
       - >-
         sudo -n install -o root -g vyattacfg -m 0755 /tmp/router-smoke-check.sh /config/scripts/router-smoke-check.sh &&
-        rm -f /tmp/dnsmasq.conf /tmp/router-smoke-check.sh
-
-- name: Restart legacy DNS containers to clear cached answers
-  when: not (technitium_active | default(false))
-  vyos.vyos.vyos_command:
-    commands:
-      - restart container dnsmasq
-      - restart container adguard
+        rm -f /tmp/router-smoke-check.sh
 
 - name: Remove local rendered files
   delegate_to: localhost
@@ -68,5 +32,4 @@
     path: "/tmp/{{ item }}"
     state: absent
   loop:
-    - dnsmasq.conf
     - router-smoke-check.sh

@@ -1,4 +1,7 @@
 ---
+- name: Load historical DNS provider paths for migration and rollback
+  ansible.builtin.include_vars: vars/technitium-legacy.yml
+
 - name: Load Technitium declarations for migration
   ansible.builtin.include_vars: vars/technitium.yml
 

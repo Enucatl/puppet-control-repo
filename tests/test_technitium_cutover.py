@@ -35,6 +35,7 @@ def cutover_scripts(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
             "vars_files": [
                 str(ROOT / "host_vars/router.yml"),
                 str(ROOT / "vars/technitium.yml"),
+                str(ROOT / "vars/technitium-legacy.yml"),
             ],
             "vars": {"ipv6_prefix": "2001:db8:1234"},
             "tasks": tasks,

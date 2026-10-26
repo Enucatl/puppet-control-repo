@@ -11,9 +11,9 @@ yaml = pytest.importorskip("yaml")
 ROOT = Path(__file__).parents[1] / "provisioning"
 
 
-@pytest.mark.parametrize("active", [False, True])
-def test_router_deployment_modes(tmp_path: Path, active: bool) -> None:
-    """Render both providers and verify service, logging and smoke targets agree."""
+def test_router_deployment_modes(tmp_path: Path) -> None:
+    """Normal deployment must contain only the active DNS provider."""
+    active = True
     if not shutil.which("ansible-playbook"):
         pytest.skip("Use the provisioning environment for Ansible rendering")
     # Give includes the same template search root as the router playbook.
@@ -83,3 +83,15 @@ def test_router_deployment_modes(tmp_path: Path, active: bool) -> None:
         directory = Path(output) / "alloy"
         directory.mkdir(exist_ok=True)
         (directory / "config.alloy").write_text(alloy)
+
+
+def test_retired_mode_is_rejected(tmp_path: Path) -> None:
+    guard = yaml.safe_load((ROOT / "tasks/13_technitium_guard.yml").read_text())[0]
+    play = [{"hosts": "localhost", "connection": "local", "gather_facts": False,
+             "vars": {"technitium_active": False}, "tasks": [guard]}]
+    path = tmp_path / "guard.yml"
+    path.write_text(yaml.safe_dump(play))
+    result = subprocess.run(["ansible-playbook", "-i", "localhost,", str(path)],
+                            text=True, capture_output=True)
+    assert result.returncode != 0
+    assert "Normal provisioning requires active Technitium" in result.stdout

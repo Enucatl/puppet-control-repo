@@ -1,4 +1,9 @@
 ---
+- name: Require the retired legacy DNS mode to remain disabled
+  ansible.builtin.assert:
+    that: technitium_active | default(false) | bool
+    fail_msg: "Normal provisioning requires active Technitium. Use the saved migration tools and historical revision for rollback."
+
 - name: Require repository DNS mode to match the completed cutover
   vyos.vyos.vyos_command:
     commands:

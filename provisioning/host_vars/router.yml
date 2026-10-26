@@ -78,20 +78,10 @@ snmp_location: "VyOS Datacenter"
 snmp_engineid: "800000000102030405060710"
 snmp_user: "vyos"
 
-# --- ADGUARD (DNS only; DHCP handled by dnsmasq) ---
-# All segments point DNS to 10.0.0.1 / {ula_prefix}::1
-# (AdGuard on router via host networking).
-# IOT-LOCAL and GUEST-LOCAL firewall chains allow port 53 inbound to router.
-# AdGuard forwards home.arpa queries to dnsmasq for local hostname resolution.
-adguard_data_path: "/config/containers/adguard"
-adguard_dns_bind_hosts:
-  - "{{ vyos_lan_ip | ansible.utils.ipaddr('address') }}"
-  - "{{ ula_prefix }}::1"
-adguard_image: "docker.io/adguard/adguardhome:latest"
-
-# Enable only after the lease-preserving cutover has completed.
+# --- TECHNITIUM (production DNS and DHCPv4) ---
+# Required by the cutover guard; historical rollback uses the saved tools.
 technitium_active: true
-# Before cutover: loopback DNS on 5354; web console always on loopback 5380.
+# Production DNS on port 53; web console on loopback 5380.
 technitium_image: "docker.io/technitium/dns-server:15.6.2"
 technitium_data_path: "/config/containers/technitium"
 # revdns returns all 32 IPv6 nibbles; discard the 20 host nibbles for each /48.
@@ -100,13 +90,6 @@ technitium_reverse_zones:
   - "{{ ((ula_prefix ~ '::/48') | ansible.utils.ipaddr('revdns')).split('.')[20:] | join('.') | trim('.') }}"
   - "{{ ((ipv6_prefix ~ '::/48') | ansible.utils.ipaddr('revdns')).split('.')[20:] | join('.') | trim('.') }}"
 
-# --- DNSMASQ (DHCPv4 + authoritative DNS for home.arpa) ---
-# Runs as a container on VyOS with host networking.
-# DNS on port 5300 to avoid conflict with AdGuard on port 53.
-# Only resolves hostnames for addresses it has assigned via DHCP (IPv4 only).
-dnsmasq_image: "docker.io/andyshinn/dnsmasq:latest"
-dnsmasq_data_path: "/config/containers/dnsmasq"
-dnsmasq_dns_port: "5300"
 dhcp_domain: "home.arpa"
 
 # --- SURICATA IDS ---

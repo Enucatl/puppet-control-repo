@@ -5,8 +5,6 @@
 //   - VyOS syslog       → host /var/log              mounted at /var/log/host
 //   - Suricata EVE JSON → central Alloy receiver      via HTTP push
 //   - Suricata updater  → host /config/suricata/      mounted at /var/lib/suricata-config
-//   - AdGuard querylog  → host adguard work dir       mounted at /var/adguard/work
-//   - dnsmasq DHCP log  → host dnsmasq log dir        mounted at /var/dnsmasq/log
 
 // ============================================================
 // OUTPUT
@@ -120,65 +118,6 @@ loki.source.file "suricata_update" {
 }
 
 // ============================================================
-{% if not (technitium_active | default(false)) %}
-// AdGuard Home query log
-// Work dir mounted read-only at /var/adguard/work.
-// dir_path in AdGuardHome.yaml is set to /opt/adguardhome/work
-// so the file lands at querylog.json in that directory.
-// ============================================================
-
-local.file_match "adguard_querylog" {
-  path_targets = [{
-    __path__ = "/var/adguard/work/querylog.json",
-    job      = "adguard",
-    host     = "router.{{ dhcp_domain }}",
-  }]
-}
-
-loki.source.file "adguard_querylog" {
-  targets    = local.file_match.adguard_querylog.targets
-  forward_to = [loki.process.label_adguard.receiver]
-}
-
-// Promote Result.IsFiltered as a label (true/false) so blocked queries
-// are a distinct stream. Domain (QH), client IP, and query type are left
-// in the log line body for LogQL json parsing.
-loki.process "label_adguard" {
-  stage.json {
-    expressions = {
-      filtered = "Result.IsFiltered",
-    }
-  }
-
-  stage.labels {
-    values = {
-      filtered = "filtered",
-    }
-  }
-
-  forward_to = [loki.write.remote_loki.receiver]
-}
-
-// ============================================================
-// dnsmasq DHCP log
-// Log dir mounted read-only at /var/dnsmasq/log.
-// dnsmasq.conf sets log-facility=/var/log/dnsmasq/dnsmasq.log
-// inside the container, backed by this volume on the host.
-// ============================================================
-
-local.file_match "dnsmasq_dhcp" {
-  path_targets = [{
-    __path__ = "/var/dnsmasq/log/dnsmasq.log",
-    job      = "dnsmasq",
-    host     = "router.{{ dhcp_domain }}",
-  }]
-}
-
-loki.source.file "dnsmasq_dhcp" {
-  targets    = local.file_match.dnsmasq_dhcp.targets
-  forward_to = [loki.write.remote_loki.receiver]
-}
-{% endif %}
 
 {% if technitium_active | default(false) %}
 // Native query and DHCP messages; retain client/name fields in the log body.

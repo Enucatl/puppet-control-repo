@@ -12,18 +12,16 @@ PROVISIONING = Path(__file__).resolve().parents[1] / "provisioning"
 
 def test_infrastructure_dns_checks_preserve_names_and_canonical_addresses() -> None:
     """Query each endpoint once per transport/type despite shell helper globals."""
-    dnsmasq = (PROVISIONING / "templates/app_configs/dnsmasq.conf.j2").read_text()
-    assert (
-        "host-record=atlas.{{ dhcp_domain }},vault.{{ dhcp_domain }},"
-        "openvox.{{ dhcp_domain }},ipa.{{ dhcp_domain }},"
-        "{{ atlas_node_ip }},{{ atlas_node_ula }}"
-    ) in dnsmasq
-    for name in ("freeipa", "hcv"):
-        assert "address=/" + name + ".{{ dhcp_domain }}/{{ atlas_node_ip }}" in dnsmasq
-        assert "address=/" + name + ".{{ dhcp_domain }}/{{ atlas_node_ula }}" in dnsmasq
-    assert "address=/docker.{{ dhcp_domain }}/{{ docker_node_ip }}" in dnsmasq
-    assert "address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ip }}" in dnsmasq
-    assert "address=/atlas.{{ dhcp_domain }}/{{ atlas_node_ula }}" in dnsmasq
+    import yaml
+
+    declarations = yaml.safe_load((PROVISIONING / "vars/technitium.yml").read_text())
+    hosts = {host["name"]: host for host in declarations["technitium_dns_hosts"]}
+    for name in ("atlas", "vault", "openvox", "ipa", "freeipa", "hcv"):
+        assert hosts[name]["addresses"] == ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"]
+    for name in ("atlas", "freeipa", "hcv", "docker"):
+        assert hosts[name]["wildcard"]
+    assert hosts["atlas"]["ptr"]
+    assert hosts["docker"]["addresses"] == ["{{ docker_node_ip }}"]
     variables = dict(
         re.findall(
             r'^(\w+): "([^"\n]*)"$',
@@ -51,7 +49,7 @@ def test_infrastructure_dns_checks_preserve_names_and_canonical_addresses() -> N
     recorder = r"""
 DNS_V4=10.0.0.1
 DNS_V6=fd6b:d722:1738::1
-AUTHORITATIVE_PORT=5300
+AUTHORITATIVE_PORT=53
 DHCP_DOMAIN=home.arpa
 retry_line() {
     printf '%s|%s|' "$1" "$2"
@@ -76,7 +74,7 @@ retry_line() {
         server = next(argument for argument in arguments if argument.startswith("@"))
         actual.add((arguments[-3], arguments[-2], server, expected))
         if server == "@127.0.0.1":
-            assert arguments[arguments.index("-p") + 1] == "5300"
+            assert arguments[arguments.index("-p") + 1] == "53"
     assert actual == {
         (f"{name}.home.arpa", record_type, server, address)
         for name in (

@@ -2,8 +2,6 @@
 - name: Configure VyOS Router
   hosts: router
   gather_facts: no
-  vars_files:
-    - vars/secrets.yml
 
   vars:
     # --- SECRETS (from HashiCorp Vault kv/puppet) ---
@@ -105,20 +103,6 @@
           - sudo /config/scripts/suricata-update.sh
       vars:
         ansible_command_timeout: 300
-      tags: [apply]
-
-    - name: Restart AdGuard container
-      when: not (technitium_active | default(false))
-      vyos.vyos.vyos_command:
-        commands:
-          - restart container adguard
-      tags: [apply]
-
-    - name: Restart dnsmasq container
-      when: not (technitium_active | default(false))
-      vyos.vyos.vyos_command:
-        commands:
-          - restart container dnsmasq
       tags: [apply]
 
     - name: Restart Alloy container

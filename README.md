@@ -149,7 +149,7 @@ generate-puppetfile -p Puppetfile-without-deps
 Router observability is split between VyOS, the Atlas host, and Loki.
 
 - VyOS runs local Alloy as the edge collector.
-- DHCP, DNS, and IPv6 NDP identity streams are shipped directly from VyOS Alloy to Loki.
+- Technitium DHCP/DNS logs pass through central Alloy to Loki. IPv6 NDP uses the existing direct Loki output.
 - Suricata remains limited to IoT and Guest VLANs.
 - Suricata EVE is tailed by VyOS Alloy, sent to the central Alloy receiver on `atlas.home.arpa`, enriched there, and then written once to Loki.
 - VyOS exports IPFIX sampled at one in ten packets from `eth1.20` and `eth1.30` only to `atlas.home.arpa`.
@@ -158,15 +158,14 @@ Router observability is split between VyOS, the Atlas host, and Loki.
 
 Stable Loki jobs:
 
-- `job="dnsmasq"`
-- `job="adguard"`
+- `job="technitium"`
 - `job="vyos-ndp"`
 - `job="suricata"`
 - `job="ipfix"`
 
 ### Identity Logs
 
-`dnsmasq` DHCP logging and AdGuard query logging remain collected on the router and shipped directly to Loki.
+Technitium DHCP and query logs are collected on the router and shipped through central Alloy to Loki. The retired AdGuard/dnsmasq inputs are archived; their data is retained for rollback.
 
 IPv6 neighbor discovery is captured by a VyOS task that runs `/config/scripts/vyos-ndp-snapshot.sh`. The script writes newline-delimited JSON to `/var/log/vyos-ndp/vyos-ndp.jsonl`; Alloy tails this as line-oriented input. The NDP log has a persistent logrotate config under `/config/logrotate.d`.
 

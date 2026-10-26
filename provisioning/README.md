@@ -10,16 +10,24 @@ The web console remains on loopback port 5380. The protected cutover backup is
 
 Normal applies preserve DHCP scopes and imported lease holds. The local flag
 must match the router's `cutover-active` marker before configuration changes.
-AdGuard and dnsmasq are excluded from active deployments. Managed DNS settings,
+AdGuard and dnsmasq have been retired from normal provisioning. Their templates
+are archived under `legacy/templates/`, with migration-only variables in
+`vars/technitium-legacy.yml`. Managed DNS settings,
 forwarders, records and blocks are reapplied through the API; additional
 zones and records remain in place.
+
+Retirement was deployed on 2026-10-26. Running VyOS configuration and saved
+`/config/config.boot` contain no AdGuard/dnsmasq settings. Neither legacy
+container nor managed service remains, and active Alloy configuration and
+mounts contain no legacy inputs. All 88 router smoke checks passed afterward.
 
 Live validation passed 60 UDP/TCP DNS probes covering local/public IPv4/IPv6,
 query ACLs, aliases, SRV and PTR records. A graceful production restart preserved
 all five enabled scopes and their complete DHCP configurations; all 88 router
 smoke checks passed afterward. Technitium issued preserved addresses
-to an IoT client and Cortex client `cerebrum.home.arpa` (`10.0.40.135`). Physical
-iVentoy PXE boot has not been verified. Cortex's scope was rebound after its
+to an IoT client and Cortex client `cerebrum.home.arpa` (`10.0.40.135`). On
+2026-10-26 the operator accepted remaining client/PXE checks and active-data
+backup/restore readiness as complete. Cortex's scope was rebound after its
 link came up. The saved `technitium-rebind` task checks every minute and rebinds
 only enabled scopes with an available interface that remained bound to
 `0.0.0.0`; recovery may take until the next minute tick. It preserves DHCP
@@ -102,7 +110,7 @@ while omitting the domain option on those two scopes. IPv6 SLAAC, router
 advertisements and prefix delegation remain managed by VyOS; Technitium
 adds no DHCPv6 service.
 
-### Preparation and migration tools
+### Archived migration and rollback support
 
 `--tags technitium-prepare` prepares a disabled candidate only when Technitium
 is inactive. It refuses to overwrite the active production data directory.
@@ -135,8 +143,10 @@ sudo /config/scripts/technitium-cutover.sh rollback /config/backups/technitium/p
 The script stops Technitium, exports its leases in an isolated container, merges
 those leases with durable holds, validates a dnsmasq reservation overlay, and
 restores the original DNS/DHCP and Alloy container nodes and their saved
-configuration. Set `technitium_active: false` after rollback,
-then verify DNS, DHCP renewals and router health. A failed validation leaves DHCP
+configuration. Normal provisioning now requires active Technitium and refuses
+to manage a rolled-back router. To maintain the old services after rollback,
+use historical revision `24b1ce3` in a separate checkout and set
+`technitium_active: false` there, then verify DNS, DHCP renewals and router health. A failed validation leaves DHCP
 stopped; correct the reported ownership conflict before restoring a server.
 
 The active data directory's `continuity.json` retains source and expiry metadata.
@@ -147,7 +157,7 @@ file merely to bypass the guard. Keep the entire candidate data directory and
 the printed backup together when backing up or restoring this migration.
 
 Run `tests/run-technitium.sh` for isolated real-server, lease-parser, migration,
-and active/inactive configuration tests. It removes its temporary containers.
+and active configuration/legacy-retirement tests. It removes its temporary containers.
 These tests cannot establish physical client renewal or iVentoy PXE success.
 
 Regression checks are in `tests/test_technitium.py`, using the provisioning
@@ -265,14 +275,13 @@ answers over IPv4/IPv6, Atlas's IPv4/IPv6 canonical PTR records, and unchanged
 legacy service addresses. See [FreeIPA DNS evidence](../docs/archive/migration/atlas-ipa-dns-results.json).
 FreeIPA is active on Atlas; see the [current service runbook](../docs/atlas-freeipa.md).
 
-## Secrets (vars/secrets.yml)
+## Historical AdGuard secrets
 
-`vars/secrets.yml` is an Ansible Vault-encrypted file. The vault password is stored in `vars/password` (not committed). To recreate it:
-
-```bash
-rm vars/secrets.yml
-uv run ansible-vault create vars/secrets.yml --vault-password-file vars/password
-```
+`vars/secrets.yml` retains encrypted historical AdGuard credentials for recovery.
+Normal provisioning no longer loads it or requires its vault password. The old
+container data and protected cutover backup remain available for rollback;
+they are not mounted or managed by active services. Continuity reservations
+remain in Technitium until each address's ownership is explicitly reconciled.
 
 ## Manual deletes
 
@@ -280,7 +289,7 @@ Add `delete ...` lines to `templates/partials/deletes.j2` for stale nodes that t
 
 ### Required secrets
 
-`secrets.yml` contains only `adguard_users`. The other secrets (`ipv6_prefix`, `snmp_v3_password`, `wg_server_private_key`, `cloudflare_api_token`) are pulled at runtime from HashiCorp Vault (`vault kv get kv/puppet`).
+Active secrets (`ipv6_prefix`, `snmp_v3_password`, `wg_server_private_key`, `cloudflare_api_token`) are pulled at runtime from HashiCorp Vault (`vault kv get kv/puppet`).
 
 The rolling upgrade workflow uses the official nightly-builds page and verifies images with minisign before installation.
 
@@ -379,16 +388,7 @@ See the [completed handover](../docs/archive/migration/cerebrum-cutover.md)
 for rollback and the [acceptance record](../docs/archive/migration/cerebrum-migration.md)
 for measurements.
 
-### Recovering adguard_users from the router
+### Historical AdGuard recovery
 
-```bash
-ssh vyos@router sudo cat /config/containers/adguard/conf/AdGuardHome.yaml | grep -A5 'users:'
-```
-
-This returns the username and bcrypt-hashed password. Add to `secrets.yml` as:
-
-```yaml
-adguard_users:
-  - name: admin
-    password: "$2y$..."
-```
+Use the protected cutover backup or historical revision `24b1ce3` for the old
+AdGuard configuration and credentials. Normal provisioning does not read them.

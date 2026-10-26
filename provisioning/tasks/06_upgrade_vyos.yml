@@ -255,18 +255,6 @@
 - name: Run the full deployment after an upgrade check
   vyos.vyos.vyos_command:
     commands:
-      - restart container adguard
-  when: not (technitium_active | default(false))
-
-- name: Run the full deployment after an upgrade check
-  vyos.vyos.vyos_command:
-    commands:
-      - restart container dnsmasq
-  when: not (technitium_active | default(false))
-
-- name: Run the full deployment after an upgrade check
-  vyos.vyos.vyos_command:
-    commands:
       - restart container alloy
 
 - name: Run the full deployment after an upgrade check
