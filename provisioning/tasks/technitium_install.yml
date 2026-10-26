@@ -1,0 +1,44 @@
+---
+- name: Load Technitium declarations
+  ansible.builtin.include_vars: vars/technitium.yml
+
+- name: Render Technitium configuration data
+  delegate_to: localhost
+  ansible.builtin.template:
+    src: templates/app_configs/technitium.json.j2
+    dest: /tmp/technitium.json
+    mode: "0600"
+
+- name: Upload Technitium utility and configuration
+  ansible.netcommon.net_put:
+    src: "{{ item.src }}"
+    dest: "/tmp/{{ item.dest }}"
+  loop:
+    - {src: "{{ playbook_dir }}/files/technitium.py", dest: technitium.py}
+    - {src: "{{ playbook_dir }}/src/router_technitium/__init__.py", dest: technitium-init.py}
+    - {src: "{{ playbook_dir }}/src/router_technitium/api.py", dest: technitium-api.py}
+    - {src: /tmp/technitium.json, dest: technitium.json}
+
+- name: Install Technitium utility and configuration
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n install -d -o root -g root -m 0700 /config/scripts/router_technitium &&
+        sudo -n install -o root -g root -m 0600 /tmp/technitium-init.py /config/scripts/router_technitium/__init__.py &&
+        sudo -n install -o root -g root -m 0600 /tmp/technitium-api.py /config/scripts/router_technitium/api.py &&
+        sudo -n install -o root -g root -m 0700 /tmp/technitium.py /config/scripts/technitium.py &&
+        sudo -n install -o root -g root -m 0600 /tmp/technitium.json /config/scripts/technitium.json &&
+        rm /tmp/technitium-init.py /tmp/technitium-api.py /tmp/technitium.py /tmp/technitium.json
+
+- name: Remove local rendered configuration
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: /tmp/technitium.json
+    state: absent
+
+- name: Pull Technitium image
+  vyos.vyos.vyos_command:
+    commands:
+      - add container image {{ technitium_image }}
+  vars:
+    ansible_command_timeout: 300

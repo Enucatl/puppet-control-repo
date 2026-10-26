@@ -1,11 +1,12 @@
 set container name technitium cpu-quota 0.5
 set container name technitium memory 512
 set container name technitium allow-host-networks
-{% if technitium_active | default(false) %}
 set container name technitium capability net-raw
-{% endif %}
 set container name technitium image {{ technitium_image }}
 set container name technitium restart on-failure
 set container name technitium volume config destination /etc/dns
 set container name technitium volume config mode rw
-set container name technitium volume config source {{ technitium_data_path }}{{ '-candidate' if technitium_active | default(false) else '' }}
+set container name technitium volume config source {{ technitium_data_path }}
+set system task-scheduler task technitium-rebind crontab-spec '* * * * *'
+set system task-scheduler task technitium-rebind executable path /usr/bin/python3
+set system task-scheduler task technitium-rebind executable arguments '/config/scripts/technitium.py rebind /config/scripts/technitium.json'

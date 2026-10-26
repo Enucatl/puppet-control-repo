@@ -18,7 +18,7 @@ docker run --rm --userns=host --detach --name "$name" \
 run_tests() {
     docker run --rm --userns=host --cap-add NET_ADMIN \
         --network "container:$name" --volume "$root:/repo:ro" \
-        --volume "$name:/rollback" --env TECHNITIUM_ROLLBACK_CONFIG=/rollback \
+        --volume "$name:/fixtures" --env TECHNITIUM_TEST_CONFIG=/fixtures \
         --env TECHNITIUM_API_URL=http://127.0.0.1:5380/api/ \
         --env TECHNITIUM_SOURCE_TEST="$1" \
         --env TECHNITIUM_VERIFY_PERSISTED="$2" \
@@ -26,6 +26,7 @@ run_tests() {
             apt-get update -qq
             apt-get install -y -qq --no-install-recommends jq curl iproute2 libssh-dev busybox >/dev/null
             cp /repo/provisioning/pyproject.toml /repo/provisioning/uv.lock /tmp/
+            cp -r /repo/provisioning/src /tmp/
             cd /tmp
             uv sync --frozen --quiet
             for attempt in {1..30}; do
@@ -42,10 +43,7 @@ run_tests() {
 tests=("$root"/tests/test_technitium*.py "$root"/tests/test_router_dns.py)
 run_tests 1 0 "${tests[@]/$root/\/repo}"
 docker restart --time 30 "$name" >/dev/null
-run_tests 0 1 /repo/tests/test_technitium.py::test_candidate_api_twice /repo/tests/test_technitium_migration.py /repo/tests/test_technitium_cutover.py::test_scope_readiness_real_api
-
-docker run --rm --userns=host --network none \
-    --volume "$name:/etc/dnsmasq.d:ro" andyshinn/dnsmasq:latest --test
+run_tests 0 1 /repo/tests/test_technitium.py::test_configuration_and_persistence
 
 docker run --rm --userns=host --network none \
     --volume "$name:/fixtures:ro" grafana/alloy:v1.21.0 \

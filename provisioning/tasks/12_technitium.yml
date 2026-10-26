@@ -1,64 +1,28 @@
 ---
-- name: Load historical DNS provider paths for offline preparation
-  ansible.builtin.include_vars: vars/technitium-legacy.yml
-  when: technitium_prepare_full | default(false)
-
-- name: Load the full Technitium DNS and DHCP declarations
-  ansible.builtin.include_vars: vars/technitium.yml
-  when: technitium_prepare_full | default(false) or technitium_active | default(false)
-
-- name: Render Technitium configuration script locally
-  delegate_to: localhost
-  ansible.builtin.template:
-    src: templates/app_configs/technitium-configure.sh.j2
-    dest: /tmp/{{ technitium_script_name }}.sh
-    mode: "0600"
-
-- name: Upload Technitium configuration script
-  ansible.netcommon.net_put:
-    src: /tmp/{{ technitium_script_name }}.sh
-    dest: /tmp/{{ technitium_script_name }}.sh
-
-- name: Pull Technitium image
-  vyos.vyos.vyos_command:
-    commands:
-      - add container image {{ technitium_image }}
-  vars:
-    ansible_command_timeout: 300
-
-- name: Configure Technitium with isolated networking on first startup
+- name: Require initialized Technitium data before ordinary provisioning
   vyos.vyos.vyos_command:
     commands:
       - >-
-        sudo -n install -o root -g root -m 0700 /tmp/{{ technitium_script_name }}.sh /config/scripts/{{ technitium_script_name }}.sh &&
-        sudo -n /config/scripts/{{ technitium_script_name }}.sh &&
-        rm /tmp/{{ technitium_script_name }}.sh && echo TECHNITIUM_CONFIGURED
+        sudo -n test -s {{ technitium_data_path }}/dns.config &&
+        sudo -n test -s {{ technitium_data_path }}/admin-password && echo TECHNITIUM_INITIALIZED
+    wait_for:
+      - result[0] contains 'TECHNITIUM_INITIALIZED'
+    retries: 1
+
+- name: Install Technitium utility and configuration
+  ansible.builtin.import_tasks: tasks/technitium_install.yml
+
+- name: Manage Technitium service
+  ansible.builtin.import_tasks: tasks/technitium_service.yml
+
+- name: Refresh Technitium DNS while preserving DHCP scopes and reservations
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n /usr/bin/python3 /config/scripts/technitium.py configure /config/scripts/technitium.json &&
+        echo TECHNITIUM_CONFIGURED
     wait_for:
       - result[0] contains 'TECHNITIUM_CONFIGURED'
     retries: 1
   vars:
     ansible_command_timeout: 300
-
-- name: Protect router configuration backups
-  when: not (technitium_prepare_full | default(false))
-  delegate_to: localhost
-  ansible.builtin.file:
-    path: "{{ playbook_dir }}/backup"
-    state: directory
-    mode: "0700"
-
-- name: Apply only the staged Technitium container
-  when: not (technitium_prepare_full | default(false))
-  vyos.vyos.vyos_config:
-    lines: "{{ lookup('ansible.builtin.template', 'templates/partials/technitium.j2').splitlines() }}"
-    backup: true
-    backup_options:
-      dir_path: "{{ playbook_dir }}/backup"
-    save: true
-  no_log: true
-
-- name: Remove local rendered configuration script
-  delegate_to: localhost
-  ansible.builtin.file:
-    path: /tmp/{{ technitium_script_name }}.sh
-    state: absent

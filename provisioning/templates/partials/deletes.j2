@@ -20,9 +20,3 @@ delete protocols static route6 {{ ula_prefix }}:c000::/56 next-hop fe80{{ cognit
 delete protocols static route6 {{ ula_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}
 delete protocols static route6 2a02:168:6271:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }}
 delete protocols static route6 2a02:168:6271:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}
-{% if technitium_active | default(false) %}
-delete container name adguard
-delete container name dnsmasq
-delete container name alloy volume alloy_adguard_work
-delete container name alloy volume alloy_dnsmasq_log
-{% endif %}

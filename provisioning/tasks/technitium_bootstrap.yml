@@ -1,0 +1,73 @@
+---
+- name: Require a fresh installation
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n test ! -e {{ technitium_data_path }}/dns.config &&
+        ! sudo -n podman container exists technitium && echo TECHNITIUM_FRESH
+    wait_for:
+      - result[0] contains 'TECHNITIUM_FRESH'
+    retries: 1
+
+- name: Install Technitium utility and configuration
+  ansible.builtin.import_tasks: tasks/technitium_install.yml
+
+- name: Create the initial administrator password
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n install -d -o root -g root -m 0700 {{ technitium_data_path }} &&
+        sudo -n sh -c 'umask 077; test -s {{ technitium_data_path }}/admin-password ||
+        openssl rand -hex 32 > {{ technitium_data_path }}/admin-password'
+
+- name: Initialize DNS and DHCP without access to client networks
+  block:
+    - name: Start an isolated bootstrap container
+      vyos.vyos.vyos_command:
+        commands:
+          - >-
+            sudo -n podman run --detach --name technitium-bootstrap --network none
+            --cap-add NET_RAW --memory 512m --cpus 0.5
+            --volume {{ technitium_data_path }}:/etc/dns
+            --env DNS_SERVER_DOMAIN=technitium.{{ dhcp_domain }}
+            --env DNS_SERVER_ADMIN_PASSWORD_FILE=/etc/dns/admin-password
+            --env DNS_SERVER_WEB_SERVICE_LOCAL_ADDRESSES=127.0.0.1
+            {{ technitium_image }}
+
+    - name: Configure through the isolated container's loopback interface
+      vyos.vyos.vyos_command:
+        commands:
+          - >-
+            sudo -n nsenter --target $(sudo -n podman inspect --format '{% raw %}{{.State.Pid}}{% endraw %}' technitium-bootstrap)
+            --net /usr/bin/python3 /config/scripts/technitium.py bootstrap /config/scripts/technitium.json &&
+            echo TECHNITIUM_BOOTSTRAPPED
+        wait_for:
+          - result[0] contains 'TECHNITIUM_BOOTSTRAPPED'
+        retries: 1
+      vars:
+        ansible_command_timeout: 300
+  always:
+    - name: Stop and remove the bootstrap container
+      vyos.vyos.vyos_command:
+        commands:
+          - >-
+            if sudo -n podman container exists technitium-bootstrap; then
+            sudo -n podman stop --time 30 technitium-bootstrap &&
+            sudo -n podman rm technitium-bootstrap; fi
+      vars:
+        ansible_command_timeout: 60
+
+- name: Manage Technitium service
+  ansible.builtin.import_tasks: tasks/technitium_service.yml
+
+- name: Enable initial DHCP scopes on the production container
+  vyos.vyos.vyos_command:
+    commands:
+      - >-
+        sudo -n /usr/bin/python3 /config/scripts/technitium.py enable-dhcp /config/scripts/technitium.json &&
+        echo TECHNITIUM_DHCP_ENABLED
+    wait_for:
+      - result[0] contains 'TECHNITIUM_DHCP_ENABLED'
+    retries: 1
+  vars:
+    ansible_command_timeout: 300

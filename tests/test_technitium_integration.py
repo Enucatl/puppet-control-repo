@@ -1,4 +1,4 @@
-"""Keep normal router deployments consistent with the DNS cutover state."""
+"""Render active router container, smoke checks and logging configuration."""
 
 import os
 from pathlib import Path
@@ -11,9 +11,8 @@ yaml = pytest.importorskip("yaml")
 ROOT = Path(__file__).parents[1] / "provisioning"
 
 
-def test_router_deployment_modes(tmp_path: Path) -> None:
+def test_router_deployment(tmp_path: Path) -> None:
     """Normal deployment must contain only the active DNS provider."""
-    active = True
     if not shutil.which("ansible-playbook"):
         pytest.skip("Use the provisioning environment for Ansible rendering")
     # Give includes the same template search root as the router playbook.
@@ -50,8 +49,6 @@ def test_router_deployment_modes(tmp_path: Path) -> None:
             "-i",
             "localhost,",
             str(path),
-            "-e",
-            '{"technitium_active": ' + str(active).lower() + "}",
         ],
         text=True,
         capture_output=True,
@@ -61,37 +58,55 @@ def test_router_deployment_modes(tmp_path: Path) -> None:
         (tmp_path / name).read_text() for name in templates
     )
     subprocess.run(["sh", "-n"], input=smoke, text=True, check=True)
-    assert (
-        "volume config source /config/containers/technitium-candidate" in containers
-    ) == active
-    assert ("set container name technitium capability net-raw" in containers) == active
-    assert ('AUTHORITATIVE_PORT="53"' in smoke) == active
-    assert ("Technitium container running" in smoke) == active
+    assert "volume config source /config/containers/technitium-candidate" in containers
+    assert "set container name technitium capability net-raw" in containers
+    assert 'AUTHORITATIVE_PORT="53"' in smoke
+    assert "Technitium container running" in smoke
     for provider in ["adguard", "dnsmasq"]:
-        assert (f"set container name {provider} " in containers) != active
-        assert (f"delete container name {provider}\n" in deletes) == active
-        assert (f'job      = "{provider}"' in alloy) != active
-    assert ("AdGuard container running" in smoke) != active
-    assert ("dnsmasq container running" in smoke) != active
+        assert (f"set container name {provider} " in containers) is False
+        assert (f'job      = "{provider}"' in alloy) is False
+    assert ("AdGuard container running" in smoke) is False
+    assert ("dnsmasq container running" in smoke) is False
     assert "Alloy HTTP readiness" in smoke
     assert 'job      = "suricata"' in alloy
-    if active:
-        assert 'loki.source.file "technitium" {\n  targets    = local.file_match.technitium.targets\n  forward_to = [loki.write.central_alloy.receiver]' in alloy
+    assert (
+        'loki.source.file "technitium" {\n  targets    = local.file_match.technitium.targets\n  forward_to = [loki.write.central_alloy.receiver]'
+        in alloy
+    )
 
-    output = os.environ.get("TECHNITIUM_ROLLBACK_CONFIG")
-    if active and output:
+    output = os.environ.get("TECHNITIUM_TEST_CONFIG")
+    if output:
         directory = Path(output) / "alloy"
         directory.mkdir(exist_ok=True)
         (directory / "config.alloy").write_text(alloy)
 
 
-def test_retired_mode_is_rejected(tmp_path: Path) -> None:
-    guard = yaml.safe_load((ROOT / "tasks/13_technitium_guard.yml").read_text())[0]
-    play = [{"hosts": "localhost", "connection": "local", "gather_facts": False,
-             "vars": {"technitium_active": False}, "tasks": [guard]}]
-    path = tmp_path / "guard.yml"
-    path.write_text(yaml.safe_dump(play))
-    result = subprocess.run(["ansible-playbook", "-i", "localhost,", str(path)],
-                            text=True, capture_output=True)
-    assert result.returncode != 0
-    assert "Normal provisioning requires active Technitium" in result.stdout
+def test_apply_excludes_bootstrap(tmp_path: Path) -> None:
+    """List real playbook tasks without credentials or executing router commands."""
+    (tmp_path / "tasks").symlink_to(ROOT / "tasks", target_is_directory=True)
+    play = yaml.safe_load((ROOT / "router.yml").read_text())[0]
+    play["vars"] = {}
+    play["pre_tasks"] = []
+    path = tmp_path / "list.yml"
+    path.write_text(yaml.safe_dump([play]))
+    result = subprocess.run(
+        [
+            "ansible-playbook",
+            "-i",
+            "router,",
+            str(path),
+            "--list-tasks",
+            "--tags",
+            "apply",
+        ],
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (
+        result.stdout.count(
+            "Refresh Technitium DNS while preserving DHCP scopes and reservations"
+        )
+        == 1
+    )
+    assert "technitium-bootstrap" not in result.stdout

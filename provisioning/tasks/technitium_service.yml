@@ -1,0 +1,21 @@
+---
+- name: Protect router configuration backups
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backup"
+    state: directory
+    mode: "0700"
+
+- name: Manage the Technitium container and DHCP recovery schedule
+  vyos.vyos.vyos_config:
+    lines: "{{ lookup('ansible.builtin.template', 'templates/partials/technitium.j2').splitlines() }}"
+    backup: true
+    backup_options:
+      dir_path: "{{ playbook_dir }}/backup"
+    save: true
+  no_log: true
+
+- name: Start Technitium
+  vyos.vyos.vyos_command:
+    commands:
+      - sudo -n systemctl start vyos-container-technitium.service

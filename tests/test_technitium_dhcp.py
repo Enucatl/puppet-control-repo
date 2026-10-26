@@ -10,9 +10,11 @@ import urllib.parse
 import urllib.request
 
 import pytest
-import yaml
+import sys
 
-from test_technitium_leases import leases
+sys.path.insert(0, str(Path(__file__).parents[1] / "provisioning/src"))
+from router_technitium import rebind
+from router_technitium.api import Api
 
 
 @pytest.mark.parametrize("interface_down", [False, True])
@@ -115,77 +117,19 @@ def test_dhcp_ack_and_renewal(tmp_path: Path, interface_down: bool) -> None:
                 ),
             )
             assert probe.returncode != 0
-            candidate = tmp_path / "technitium-candidate"
-            candidate.mkdir()
-            (candidate / "admin-password").write_text("test-password")
-            (candidate / "cutover-active").touch()
-            helper = tmp_path / "rebind.sh"
-            play = [
-                {
-                    "hosts": "localhost",
-                    "connection": "local",
-                    "gather_facts": False,
-                    "vars": {
-                        "technitium_data_path": str(tmp_path / "technitium"),
-                        "technitium_dhcp_scopes": [{"name": "Handshake"}],
-                    },
-                    "tasks": [
-                        {
-                            "ansible.builtin.template": {
-                                "src": str(
-                                    Path(__file__).parents[1]
-                                    / "provisioning/templates/app_configs/technitium-rebind.sh.j2"
-                                ),
-                                "dest": str(helper),
-                            }
-                        }
-                    ],
-                }
-            ]
-            play_path = tmp_path / "render.yml"
-            play_path.write_text(yaml.safe_dump(play))
-            subprocess.run(
-                ["ansible-playbook", "-i", "localhost,", str(play_path)],
-                check=True,
-                capture_output=True,
-            )
-            rebind_script = helper.read_text().replace(
-                "/run/lock/technitium-cutover.lock", str(tmp_path / "rebind.lock")
-            )
-            rebind_script = (
-                'podman() { shift 2; "$@"; }; systemctl() { return 0; }; logger() { :; }\n'
-                + rebind_script
-            )
+            config = {"data_path": str(tmp_path), "scopes": [{"name": "Handshake"}]}
             before = api("dhcp/scopes/get", token=token, name="Handshake")["response"]
-            subprocess.run(
-                ["bash"],
-                input=rebind_script,
-                text=True,
-                check=True,
-                capture_output=True,
-            )
-            assert (
-                api("dhcp/scopes/get", token=token, name="Handshake")["response"]
-                == before
-            )
-            subprocess.run(
-                ["bash"],
-                input=rebind_script,
-                text=True,
-                check=True,
-                capture_output=True,
-            )
-            assert not list(candidate.glob("*.pending"))
-            # Rollback removes this marker; scheduled recovery must then be inert.
-            (candidate / "cutover-active").unlink()
-            subprocess.run(
-                ["bash"],
-                input=rebind_script.replace(
-                    "systemctl() { return 0; }", "systemctl() { exit 99; }"
-                ),
-                text=True,
-                check=True,
-            )
+            with Api("test-password", base_url=base) as client:
+                rebind(client, config)
+                assert (
+                    api("dhcp/scopes/get", token=token, name="Handshake")["response"]
+                    == before
+                )
+                # Resume a recovery interrupted between disabling and enabling.
+                client("dhcp/scopes/disable", name="Handshake")
+                (tmp_path / "rebind-Handshake.pending").touch()
+                rebind(client, config)
+            assert not list(tmp_path.glob("*.pending"))
 
             assert (
                 next(
@@ -256,22 +200,8 @@ def test_dhcp_ack_and_renewal(tmp_path: Path, interface_down: bool) -> None:
                 for row in exported["response"]["leases"]
                 if row["scope"] == "Handshake"
             ]
-            merged = leases.merge(
-                [
-                    {
-                        "name": "Handshake",
-                        "router": "198.19.0.1/24",
-                        "start": "198.19.0.100",
-                        "end": "198.19.0.110",
-                        "reserved_leases": [],
-                    }
-                ],
-                "",
-                [],
-                exported,
-                int(time.time()),
-            )
-            assert merged["dnsmasq"] == "dhcp-host=02:00:00:aa:bb:dd,198.19.0.11\n"
+            assert len(exported["response"]["leases"]) == 1
+            assert exported["response"]["leases"][0]["address"] == "198.19.0.11"
             if not interface_down:
                 process.terminate()
                 process.wait(timeout=5)

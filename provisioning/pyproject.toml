@@ -21,4 +21,10 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.uv]
-package = false
+package = true
+
+[project.scripts]
+technitium = "router_technitium:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

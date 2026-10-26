@@ -2,9 +2,6 @@
 # DNS-only updates avoid applying unrelated firewall or route changes.
 - name: Update active Technitium DNS
   ansible.builtin.import_tasks: tasks/12_technitium.yml
-  vars:
-    technitium_script_name: technitium-configure
-  when: technitium_active | default(false)
 - name: Render DNS smoke checks locally
   delegate_to: localhost
   ansible.builtin.template:

@@ -239,8 +239,6 @@
 
 - name: Configure Technitium after an upgrade check
   ansible.builtin.import_tasks: tasks/12_technitium.yml
-  vars:
-    technitium_script_name: technitium-configure
 
 - name: Run the full deployment after an upgrade check
   ansible.builtin.import_tasks: tasks/04_apply_vyos.yml

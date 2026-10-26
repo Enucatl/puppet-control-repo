@@ -165,7 +165,7 @@ Stable Loki jobs:
 
 ### Identity Logs
 
-Technitium DHCP and query logs are collected on the router and shipped through central Alloy to Loki. The retired AdGuard/dnsmasq inputs are archived; their data is retained for rollback.
+Technitium DHCP and query logs are collected on the router and shipped through central Alloy to Loki.
 
 IPv6 neighbor discovery is captured by a VyOS task that runs `/config/scripts/vyos-ndp-snapshot.sh`. The script writes newline-delimited JSON to `/var/log/vyos-ndp/vyos-ndp.jsonl`; Alloy tails this as line-oriented input. The NDP log has a persistent logrotate config under `/config/logrotate.d`.
 

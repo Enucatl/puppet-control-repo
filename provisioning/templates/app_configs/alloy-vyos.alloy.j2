@@ -119,7 +119,6 @@ loki.source.file "suricata_update" {
 
 // ============================================================
 
-{% if technitium_active | default(false) %}
 // Native query and DHCP messages; retain client/name fields in the log body.
 local.file_match "technitium" {
   path_targets = [{
@@ -133,4 +132,3 @@ loki.source.file "technitium" {
   targets    = local.file_match.technitium.targets
   forward_to = [loki.write.central_alloy.receiver]
 }
-{% endif %}

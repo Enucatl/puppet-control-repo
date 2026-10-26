@@ -1,22 +1,25 @@
-"""Render staged DNS and offline DHCP candidates and check the real DNS API."""
+"""Exercise rendered configuration against an isolated Technitium server."""
 
 import ipaddress
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import socket
 import struct
 import subprocess
-import tempfile
 import threading
+import sys
 
 import pytest
 
 yaml = pytest.importorskip("yaml")
 
 ROOT = Path(__file__).parents[1] / "provisioning"
+sys.path.insert(0, str(ROOT / "src"))
+
+from router_technitium import bootstrap, configure
+from router_technitium.api import Api
 
 
 @pytest.fixture(scope="module")
@@ -25,35 +28,20 @@ def rendered(tmp_path_factory: pytest.TempPathFactory) -> dict:
     if not shutil.which("ansible-playbook"):
         pytest.skip("Use the provisioning environment for Ansible rendering")
     directory = tmp_path_factory.mktemp("technitium")
-    tasks = []
-    for full, name in [(False, "staged"), (True, "candidate")]:
-        tasks.append(
-            {
-                "ansible.builtin.template": {
-                    "src": str(
-                        ROOT / "templates/app_configs/technitium-configure.sh.j2"
-                    ),
-                    "dest": str(directory / name),
-                },
-                "vars": {"technitium_prepare_full": full},
+    tasks = [
+        {
+            "ansible.builtin.template": {
+                "src": str(ROOT / "templates/app_configs/technitium.json.j2"),
+                "dest": str(directory / "config.json"),
             }
-        )
-    tasks.extend(
-        [
-            {
-                "ansible.builtin.template": {
-                    "src": str(ROOT / "legacy/templates/dnsmasq.conf.j2"),
-                    "dest": str(directory / "dnsmasq"),
-                }
-            },
-            {
-                "ansible.builtin.copy": {
-                    "content": "{{ {'hosts': technitium_dns_hosts, 'scopes': technitium_dhcp_scopes, 'domain': dhcp_domain, 'intranet': technitium_intranet_domain, 'dns': (vyos_lan_ip | ansible.utils.ipaddr('address')), 'acl': technitium_local_query_acl, 'printer': printer_ip, 'wireguard': wg_subnet, 'recursion_acl': technitium_recursion_acl} | to_json }}",
-                    "dest": str(directory / "declarations.json"),
-                }
-            },
-        ]
-    )
+        },
+        {
+            "ansible.builtin.copy": {
+                "content": "{{ {'printer': printer_ip, 'wireguard': wg_subnet, 'recursion_acl': technitium_recursion_acl} | to_json }}",
+                "dest": str(directory / "declarations.json"),
+            }
+        },
+    ]
     play = [
         {
             "hosts": "localhost",
@@ -62,7 +50,6 @@ def rendered(tmp_path_factory: pytest.TempPathFactory) -> dict:
             "vars_files": [
                 str(ROOT / "host_vars/router.yml"),
                 str(ROOT / "vars/technitium.yml"),
-                str(ROOT / "vars/technitium-legacy.yml"),
             ],
             "vars": {"ipv6_prefix": "2001:db8:1234"},
             "tasks": tasks,
@@ -76,151 +63,24 @@ def rendered(tmp_path_factory: pytest.TempPathFactory) -> dict:
         capture_output=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    output = {
-        name: (directory / name).read_text()
-        for name in ["staged", "candidate", "dnsmasq"]
-    }
+    output = json.loads((directory / "config.json").read_text())
     output.update(json.loads((directory / "declarations.json").read_text()))
     return output
 
 
-def test_modes_and_safety(rendered: dict) -> None:
-    """Keep normal apply DNS-only and the complete candidate isolated and disabled."""
-    for name in ["staged", "candidate"]:
-        subprocess.run(["bash", "-n"], input=rendered[name], text=True, check=True)
-    assert "api dhcp/scopes/set" not in rendered["staged"]
-    assert "production-configs.tgz" not in rendered["staged"]
-    candidate = rendered["candidate"]
-    for script in (rendered["staged"], candidate):
-        for line in script.splitlines():
-            if line.lstrip().startswith("token=$(api user/login"):
-                assert line.rstrip().endswith("| jq -er .token)"), line
-    assert candidate.index("production-configs.tgz") < candidate.index("podman run")
-    assert (
-        'cp /config/containers/dnsmasq/leases/dnsmasq.leases "$backup/dnsmasq.leases"'
-        in candidate
-    )
-    assert 'sha256sum --check "$backup/production.sha256"' in candidate
-    assert 'cmp - "$backup/containers.txt"' in candidate
-    assert (
-        candidate.index("expected_state=$(candidate_state | sha256sum)")
-        < candidate.index('podman stop --time 30 "$container"')
-        < candidate.index(
-            'podman start "$container"', candidate.index("expected_state=")
-        )
-    )
-    assert '[[ $(candidate_state | sha256sum) == "$expected_state" ]]' in candidate
-    assert "-candidate" in candidate and "container=technitium-candidate" in candidate
-    assert "--network none" in candidate
-    guard = candidate.index("[[ $(podman inspect")
-    assert guard < candidate.index("api dhcp/scopes/set")
-    assert "== none ]]" in candidate
-    assert candidate.count("api dhcp/scopes/set") == 5
-    assert candidate.count("api dhcp/scopes/disable") == 5
-    assert "api dhcp/scopes/enable" not in candidate
-    assert "all(.response.scopes[]; .enabled == false)" in candidate
-    play = yaml.safe_load((ROOT / "router.yml").read_text())[0]
-    preparation = next(
-        task
-        for task in play["tasks"]
-        if task.get("vars", {}).get("technitium_prepare_full")
-    )
-    assert set(preparation["tags"]) == {"technitium-prepare", "never"}
-    tasks = yaml.safe_load((ROOT / "tasks/12_technitium.yml").read_text())
-    commit = next(task for task in tasks if "vyos.vyos.vyos_config" in task)
-    assert commit["when"] == "not (technitium_prepare_full | default(false))"
-    # List tasks without loading encrypted production variables or running anything.
-    play["vars_files"] = []
-    play["vars"] = {}
-    play["pre_tasks"] = []
-    for task in play["tasks"]:
-        if "ansible.builtin.import_tasks" in task:
-            task["ansible.builtin.import_tasks"] = str(
-                ROOT / task["ansible.builtin.import_tasks"]
-            )
-    with tempfile.TemporaryDirectory() as directory:
-        (Path(directory) / "tasks").symlink_to(ROOT / "tasks", target_is_directory=True)
-        path = Path(directory) / "list.yml"
-        path.write_text(yaml.safe_dump([play]))
-        listed = subprocess.run(
-            [
-                "ansible-playbook",
-                "-i",
-                "router,",
-                str(path),
-                "--list-tasks",
-                "--tags",
-                "apply",
-            ],
-            text=True,
-            capture_output=True,
-        )
-    assert listed.returncode == 0, listed.stdout + listed.stderr
-    assert (
-        listed.stdout.count(
-            "Configure Technitium with isolated networking on first startup"
-        )
-        == 1
-    )
-    assert "technitium-prepare" not in listed.stdout
-
-
 def expected_dns(rendered: dict) -> dict:
-    """Read existing dnsmasq records independently of the candidate declarations."""
+    """List the expected exact and wildcard addresses from the configuration."""
     expected = {}
-    for line in rendered["dnsmasq"].splitlines():
-        if line.startswith("address=/"):
-            _, name, address = line.split("/")
-            for owner in [name, "*." + name]:
-                expected.setdefault(owner, set()).add(address)
-        elif line.startswith("host-record="):
-            fields = line.removeprefix("host-record=").split(",")
-            names, addresses = [], []
-            for field in fields:
-                try:
-                    ipaddress.ip_address(field)
-                    addresses.append(field)
-                except ValueError:
-                    names.append(field)
-            for name in names:
-                expected.setdefault(name, set()).update(addresses)
-    return {
-        owner: {str(ipaddress.ip_address(address)) for address in addresses}
-        for owner, addresses in expected.items()
-    }
-
-
-def test_static_and_reservation_parity(rendered: dict) -> None:
-    """Retain all current static names, wildcard addresses and eight reservations."""
-    actual = {}
     for host in rendered["hosts"]:
         name = host["name"] + "." + rendered["domain"]
-        actual[name] = {
-            str(ipaddress.ip_address(address)) for address in host["addresses"]
-        }
+        expected[name] = {str(ipaddress.ip_address(a)) for a in host["addresses"]}
         if host.get("wildcard"):
-            actual["*." + name] = actual[name]
-    for owner, addresses in expected_dns(rendered).items():
-        assert actual[owner] == addresses, owner
-    original = set()
-    for line in rendered["dnsmasq"].splitlines():
-        if line.startswith("dhcp-host="):
-            fields = line.removeprefix("dhcp-host=").split(",")
-            address = next(
-                field for field in fields if re.fullmatch(r"\d+\.\d+\.\d+\.\d+", field)
-            )
-            original.add((fields[0].lower(), address))
-    reservations = [
-        entry.split("|")
-        for scope in rendered["scopes"]
-        for entry in scope["reserved_leases"]
-    ]
-    assert {(entry[1].lower(), entry[2]) for entry in reservations} == original
-    assert len(reservations) == 8
+            expected["*." + name] = expected[name]
+    return expected
 
 
-def test_candidate_api_twice(rendered: dict, tmp_path: Path) -> None:
-    """Execute the complete candidate script twice against isolated Technitium."""
+def test_configuration_and_persistence(rendered: dict, tmp_path: Path) -> None:
+    """Bootstrap, preserve DHCP on repeat applies, and verify real DNS policies."""
     base = os.environ.get("TECHNITIUM_API_URL")
     if not base:
         pytest.skip("Set TECHNITIUM_API_URL for an isolated Technitium 15.6.2 server")
@@ -238,50 +98,42 @@ def test_candidate_api_twice(rendered: dict, tmp_path: Path) -> None:
         return result
 
     token = api("user/login", user="admin", **{"pass": "test-password"})["token"]
-    config = tmp_path / "config"
-    for name, content in {
-        "config.boot": "synthetic config",
-        "containers/adguard/conf/AdGuardHome.yaml": "synthetic config",
-        "containers/dnsmasq/conf/dnsmasq.conf": rendered["dnsmasq"],
-        "containers/dnsmasq/leases/dnsmasq.leases": "",
-        "containers/alloy/conf/config.alloy": "synthetic config",
-        "containers/technitium-candidate/admin-password": "test-password",
-    }.items():
-        path = config / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
-    commands = tmp_path / "commands"
-    commands.mkdir()
-    podman = commands / "podman"
-    podman.write_text("""#!/bin/bash
-set -euo pipefail
-case "$1" in
-exec) shift 2; exec "$@";;
-inspect)
-    case "$*" in
-    *HostConfig.NetworkMode*) echo none;;
-    *) echo 'synthetic container identity';;
-    esac;;
-run|stop|start|rm) exit 0;;
-*) exit 2;;
-esac
-""")
-    podman.chmod(0o755)
-    wrapper = commands / "vyatta-op-cmd-wrapper"
-    wrapper.write_text("#!/bin/sh\necho 'set container name technitium memory 512'\n")
-    wrapper.chmod(0o755)
-    # Only platform commands and absolute paths change; all shell control flow runs.
-    candidate = rendered["candidate"].replace("/config/", str(config) + "/")
-    candidate = candidate.replace("tar --directory=/ ", f"tar --directory={tmp_path} ")
-    candidate = candidate.replace("/opt/vyatta/bin/vyatta-op-cmd-wrapper", str(wrapper))
-    candidate = candidate.replace("http://127.0.0.1:5380/api/", base)
-    environment = dict(os.environ, PATH=str(commands) + os.pathsep + os.environ["PATH"])
-    # External harness restart separately verifies actual disk persistence.
-    for _ in range(0 if os.environ.get("TECHNITIUM_VERIFY_PERSISTED") == "1" else 2):
-        run = subprocess.run(
-            ["bash"], input=candidate, text=True, capture_output=True, env=environment
+    if os.environ.get("TECHNITIUM_VERIFY_PERSISTED") != "1":
+        config = dict(rendered)
+        config["settings"] = dict(
+            rendered["settings"], dnsServerLocalEndPoints="127.0.0.1:5354,[::1]:5354"
         )
-        assert run.returncode == 0, run.stdout + run.stderr
+        with Api("test-password", base_url=base) as client:
+            bootstrap(client, config)
+            # A reservation added after initial setup must survive ordinary applies.
+            scope = config["scopes"][0]
+            reservations = scope["reserved_leases"] + [
+                f"existing|02:00:00:aa:bb:ee|{scope['end']}|Existing lease"
+            ]
+            client(
+                "dhcp/scopes/set",
+                name=scope["name"],
+                reservedLeases="|".join(reservations),
+            )
+            before = {
+                scope["name"]: client("dhcp/scopes/get", name=scope["name"])["response"]
+                for scope in config["scopes"]
+            }
+            for _ in range(2):
+                configure(client, config)
+                assert {
+                    scope["name"]: client("dhcp/scopes/get", name=scope["name"])[
+                        "response"
+                    ]
+                    for scope in config["scopes"]
+                } == before
+    with Api("test-password", base_url=base) as client:
+        with pytest.raises(RuntimeError, match="Bootstrap"):
+            bootstrap(client, rendered)
+    with pytest.raises(RuntimeError) as failure:
+        with Api("incorrect-test-password", base_url=base):
+            pytest.fail("Invalid credentials must not open a session")
+    assert "incorrect-test-password" not in str(failure.value)
     zones = api("zones/list", token=token)["response"]["zones"]
     names = {zone["name"] for zone in zones}
     expected_reverse = {
@@ -299,7 +151,7 @@ esac
         assert options["zoneTransfer"] == "Deny"
         assert {
             ipaddress.ip_network(value) for value in options["queryAccessNetworkACL"]
-        } == {ipaddress.ip_network(value) for value in rendered["acl"]}
+        } == {ipaddress.ip_network(value) for value in rendered["local_query_acl"]}
     for scope in rendered["scopes"]:
         observed = api("dhcp/scopes/get", token=token, name=scope["name"])["response"]
         listed = api("dhcp/scopes/list", token=token)["response"]["scopes"]
@@ -315,7 +167,9 @@ esac
         assert observed["dnsServers"] == [rendered["dns"]]
         assert observed["dnsUpdates"] == ("domain" in scope)
         assert observed["dnsOverwriteForDynamicLease"] is False
-        assert len(observed["reservedLeases"]) == len(scope["reserved_leases"])
+        assert len(observed["reservedLeases"]) == len(scope["reserved_leases"]) + (
+            scope == rendered["scopes"][0]
+        )
         assert observed["exclusions"] == [
             {
                 "startingAddress": str(ipaddress.ip_interface(scope["router"]).ip),
@@ -513,3 +367,37 @@ esac
 
     assert forwarded, "Public answer must come from the synthetic upstream"
     upstream.close()
+
+
+@pytest.mark.parametrize("loads", [True, False])
+def test_enable_dhcp_waits_for_saved_scopes(
+    monkeypatch: pytest.MonkeyPatch, loads: bool
+) -> None:
+    """Never enable a partial set of scopes while saved configuration is loading."""
+    from router_technitium import enable_dhcp
+
+    monkeypatch.setattr("router_technitium.time.sleep", lambda _: None)
+    scopes = [{"name": "LAN"}, {"name": "IoT"}]
+    listed = 0
+    enabled = []
+
+    def api(path: str, **parameters: object) -> dict:
+        """Expose all saved scopes only after two incomplete responses."""
+        nonlocal listed
+        if path == "dhcp/scopes/list":
+            listed += 1
+            return {
+                "response": {"scopes": scopes if loads and listed >= 3 else scopes[:1]}
+            }
+        assert path == "dhcp/scopes/enable"
+        assert listed >= 3
+        enabled.append(parameters["name"])
+        return {}
+
+    if loads:
+        enable_dhcp(api, {"scopes": scopes})
+        assert enabled == ["LAN", "IoT"]
+    else:
+        with pytest.raises(RuntimeError, match="did not finish loading"):
+            enable_dhcp(api, {"scopes": scopes})
+        assert enabled == []

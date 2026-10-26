@@ -2,42 +2,21 @@
 
 ## Active Technitium DNS and DHCP
 
-Technitium 15.6.2 replaced AdGuard Home and dnsmasq on **2026-10-26**.
-`technitium_active: true` selects production DNS port 53 and persistent data at
-`/config/containers/technitium-candidate`, limited to 512 MiB RAM and half a CPU.
-The web console remains on loopback port 5380. The protected cutover backup is
-`/config/backups/technitium/prepare-20261026T114017Z-8wZ849`.
+Technitium 15.6.2 serves production DNS on port 53 and DHCPv4, using persistent
+data at `/config/containers/technitium-candidate`, limited to 512 MiB RAM and
+half a CPU. The web console listens on loopback port 5380.
 
-Normal applies preserve DHCP scopes and imported lease holds. The local flag
-must match the router's `cutover-active` marker before configuration changes.
-AdGuard and dnsmasq have been retired from normal provisioning. Their templates
-are archived under `legacy/templates/`, with migration-only variables in
-`vars/technitium-legacy.yml`. Managed DNS settings,
-forwarders, records and blocks are reapplied through the API; additional
-zones and records remain in place.
+Normal applies preserve existing DHCP scopes, reservations and imported lease
+holds. Managed DNS settings, forwarders, records and blocks are reapplied
+through the API; additional zones and records remain in place.
 
-Retirement was deployed on 2026-10-26. Running VyOS configuration and saved
-`/config/config.boot` contain no AdGuard/dnsmasq settings. Neither legacy
-container nor managed service remains, and active Alloy configuration and
-mounts contain no legacy inputs. All 88 router smoke checks passed afterward.
+The `technitium-rebind` scheduled task checks every minute and rebinds only
+enabled DHCP scopes with an available interface that remained bound to
+`0.0.0.0`. This handles interfaces whose carrier arrives after server startup;
+recovery may take until the next minute tick. It preserves DHCP settings.
 
-Live validation passed 60 UDP/TCP DNS probes covering local/public IPv4/IPv6,
-query ACLs, aliases, SRV and PTR records. A graceful production restart preserved
-all five enabled scopes and their complete DHCP configurations; all 88 router
-smoke checks passed afterward. Technitium issued preserved addresses
-to an IoT client and Cortex client `cerebrum.home.arpa` (`10.0.40.135`). On
-2026-10-26 the operator accepted remaining client/PXE checks and active-data
-backup/restore readiness as complete. Cortex's scope was rebound after its
-link came up. The saved `technitium-rebind` task checks every minute and rebinds
-only enabled scopes with an available interface that remained bound to
-`0.0.0.0`; recovery may take until the next minute tick. It preserves DHCP
-settings and does nothing after rollback.
-
-Technitium logs reach Loki through the existing central Alloy receiver. Delivery
-was confirmed using `{job="technitium",host="router.home.arpa"}` over the preceding
-ten minutes at `https://loki-read.atlas.home.arpa/loki/api/v1/query_range`.
-The pre-existing direct Loki output still fails its TLS handshake for other
-router log sources; that separate issue was not changed by this migration.
+Technitium logs reach Loki through the existing central Alloy receiver with
+`{job="technitium",host="router.home.arpa"}`.
 
 It uses the same four Quad9 upstreams, DNSSEC validation and enabled AdGuard
 DNS filter URL. AdAway remains unused. Technitium's filtering, cache and rate
@@ -110,55 +89,29 @@ while omitting the domain option on those two scopes. IPv6 SLAAC, router
 advertisements and prefix delegation remain managed by VyOS; Technitium
 adds no DHCPv6 service.
 
-### Archived migration and rollback support
+### Configuration and verification
 
-`--tags technitium-prepare` prepares a disabled candidate only when Technitium
-is inactive. It refuses to overwrite the active production data directory.
-Preparation uses an isolated container with no network, disables every newly
-created scope, and verifies DNS, DHCP and access-policy persistence after a
-restart. It saves the old VyOS configuration, AdGuard/dnsmasq configuration,
-lease file, container identities and checksums under
-`/config/backups/technitium/prepare-UTC-XXXXXX`.
+Use `--tags dns` or `--tags technitium` to refresh DNS settings and install the
+DHCP recovery task. `--tags technitium-monitoring` refreshes log shipping;
+`--tags healthcheck` runs router smoke checks.
 
-`--tags technitium-migration-tools` installs the root-only cutover script,
-lease validator and resolved declarations, and validates current lease ownership
-without activating anything. On an inactive installation, run
-`sudo /config/scripts/technitium-cutover.sh rehearse` to exercise lease import
-and restart persistence without stopping production services, then run
-`sudo /config/scripts/technitium-cutover.sh cutover` only after isolated checks
-and candidate preparation pass. It freezes dnsmasq, captures final leases,
-rejects ownership conflicts, imports continuity reservations while isolated,
-checks persistence, then switches only the three DNS/DHCP container nodes and
-enables the configured scopes. The output names its protected backup directory.
+On a fresh router, run `--tags technitium-bootstrap` before the first ordinary
+apply. Bootstrap creates and configures DNS and DHCP in an isolated container
+before starting the production service. It refuses to run if `dns.config` or
+the production `technitium` container already exists.
 
-`host_vars/router.yml` now has `technitium_active: true`. Use the DNS,
-technitium-monitoring and healthcheck tags to refresh the active configuration.
+Configuration is rendered as JSON and applied by `src/router_technitium/`,
+using the router entry point `files/technitium.py`. API sessions use the same generated administrator
+password as the web console, stored root-only in the data directory.
 
-For rollback use the protected backup from this cutover:
+The Python utility was deployed on 2026-10-26. All 88 router smoke checks passed,
+the complete DHCP scope configuration checksum was unchanged, and the saved
+recovery schedule uses Python. The one-time configuration deletes were removed
+after application.
 
-```bash
-sudo /config/scripts/technitium-cutover.sh rollback /config/backups/technitium/prepare-20261026T114017Z-8wZ849
-```
-
-The script stops Technitium, exports its leases in an isolated container, merges
-those leases with durable holds, validates a dnsmasq reservation overlay, and
-restores the original DNS/DHCP and Alloy container nodes and their saved
-configuration. Normal provisioning now requires active Technitium and refuses
-to manage a rolled-back router. To maintain the old services after rollback,
-use historical revision `24b1ce3` in a separate checkout and set
-`technitium_active: false` there, then verify DNS, DHCP renewals and router health. A failed validation leaves DHCP
-stopped; correct the reported ownership conflict before restoring a server.
-
-The active data directory's `continuity.json` retains source and expiry metadata.
-Ordinary applies never delete these holds, including expired or indefinite entries.
-Rollback retains this file and both lease histories. A second cutover requires
-explicit reconciliation of the previous migration; do not delete the continuity
-file merely to bypass the guard. Keep the entire candidate data directory and
-the printed backup together when backing up or restoring this migration.
-
-Run `tests/run-technitium.sh` for isolated real-server, lease-parser, migration,
-and active configuration/legacy-retirement tests. It removes its temporary containers.
-These tests cannot establish physical client renewal or iVentoy PXE success.
+Run `tests/run-technitium.sh` for isolated real-server and configuration tests.
+It removes its temporary containers. These tests cannot establish physical
+client renewal or iVentoy PXE success.
 
 Regression checks are in `tests/test_technitium.py`, using the provisioning
 Ansible environment and pytest inside disposable Docker containers. The real
@@ -275,14 +228,6 @@ answers over IPv4/IPv6, Atlas's IPv4/IPv6 canonical PTR records, and unchanged
 legacy service addresses. See [FreeIPA DNS evidence](../docs/archive/migration/atlas-ipa-dns-results.json).
 FreeIPA is active on Atlas; see the [current service runbook](../docs/atlas-freeipa.md).
 
-## Historical AdGuard secrets
-
-`vars/secrets.yml` retains encrypted historical AdGuard credentials for recovery.
-Normal provisioning no longer loads it or requires its vault password. The old
-container data and protected cutover backup remain available for rollback;
-they are not mounted or managed by active services. Continuity reservations
-remain in Technitium until each address's ownership is explicitly reconciled.
-
 ## Manual deletes
 
 Add `delete ...` lines to `templates/partials/deletes.j2` for stale nodes that the set-command partials won't naturally overwrite. Remove the line once confirmed absent on the router.
@@ -387,8 +332,3 @@ do not activate those networks on both guests.
 See the [completed handover](../docs/archive/migration/cerebrum-cutover.md)
 for rollback and the [acceptance record](../docs/archive/migration/cerebrum-migration.md)
 for measurements.
-
-### Historical AdGuard recovery
-
-Use the protected cutover backup or historical revision `24b1ce3` for the old
-AdGuard configuration and credentials. Normal provisioning does not read them.

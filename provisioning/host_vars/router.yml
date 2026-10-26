@@ -79,11 +79,9 @@ snmp_engineid: "800000000102030405060710"
 snmp_user: "vyos"
 
 # --- TECHNITIUM (production DNS and DHCPv4) ---
-# Required by the cutover guard; historical rollback uses the saved tools.
-technitium_active: true
 # Production DNS on port 53; web console on loopback 5380.
 technitium_image: "docker.io/technitium/dns-server:15.6.2"
-technitium_data_path: "/config/containers/technitium"
+technitium_data_path: "/config/containers/technitium-candidate"
 # revdns returns all 32 IPv6 nibbles; discard the 20 host nibbles for each /48.
 technitium_reverse_zones:
   - 10.in-addr.arpa

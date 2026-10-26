@@ -24,11 +24,9 @@
 - name: Mount Technitium logs in Alloy
   vyos.vyos.vyos_config:
     lines:
-      - delete container name alloy volume alloy_adguard_work
-      - delete container name alloy volume alloy_dnsmasq_log
       - set container name alloy volume alloy_technitium_logs destination /var/log/technitium
       - set container name alloy volume alloy_technitium_logs mode ro
-      - set container name alloy volume alloy_technitium_logs source {{ technitium_data_path }}-candidate/logs
+      - set container name alloy volume alloy_technitium_logs source {{ technitium_data_path }}/logs
     save: true
 
 - name: Restart Alloy with active DNS log shipping

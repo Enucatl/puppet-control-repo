@@ -7,11 +7,9 @@ set container name alloy environment GOMEMLIMIT value 256MiB
 set container name alloy command 'run /etc/alloy/config.alloy --storage.path=/var/lib/alloy/data --disable-reporting --stability.level=experimental'
 set container name alloy image {{ alloy_image }}
 set container name alloy restart on-failure
-{% if technitium_active | default(false) %}
 set container name alloy volume alloy_technitium_logs destination /var/log/technitium
 set container name alloy volume alloy_technitium_logs mode ro
-set container name alloy volume alloy_technitium_logs source {{ technitium_data_path }}-candidate/logs
-{% endif %}
+set container name alloy volume alloy_technitium_logs source {{ technitium_data_path }}/logs
 set container name alloy volume alloy_conf destination /etc/alloy
 set container name alloy volume alloy_conf mode ro
 set container name alloy volume alloy_conf source {{ alloy_data_path }}/conf
