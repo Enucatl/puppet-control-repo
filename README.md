@@ -1,13 +1,5 @@
 # Puppet Control Repository
 
-Atlas and Aperture replace Docker and Forbearance. Cerebrum (VM 230) is the
-XFS replacement for Cognition (VM 220). See the completed
-[migration record](docs/archive/migration/cerebrum-migration.md) and
-[handover record](docs/archive/migration/cerebrum-cutover.md) for acceptance evidence and rollback.
-See [Atlas service configuration](docs/atlas-services.md)
-for the current service sources and environment files, and
-[Atlas recovery](docs/atlas-recovery.md) for established-authority restoration.
-
 A monorepo for home lab infrastructure: Puppet profiles and Hiera data, Atlas's
 container infrastructure, Proxmox provisioning, and router configuration.
 
@@ -18,9 +10,6 @@ Use these current operating instructions:
 - [Native OpenVox clients](docs/openvox-native-clients.md) and [enrollment](docs/puppet-enrollment.md)
 - [Atlas service configuration](docs/atlas-services.md) and [backup/recovery](docs/atlas-recovery.md)
 - [Disposable OpenVox rehearsal](docs/openvox-rehearsal.md) and [Vault limits](docs/openvox-vault-limitations.md)
-
-The completed migration's plans, cutover reports and acceptance evidence are in
-the [historical archive](docs/archive/migration/README.md).
 
 ## Repository Structure
 
