@@ -13,6 +13,7 @@ def synchronize(
     ipa_ca_dir: Path,
     firefox: Path,
     chromium: Path,
+    baseline: Path,
     *,
     check: bool = False,
 ) -> bool:
@@ -32,15 +33,16 @@ def synchronize(
         for digest, der in certificates.items()
     }
     # shortcut: Firefox retains imported profile CAs; use a trust module if removals must propagate.
-    firefox_policy = {
-        "policies": {"Certificates": {"Install": [str(path) for path in expected]}}
+    firefox_policy = json.loads(baseline.read_text())
+    firefox_policy["policies"]["Certificates"] = {
+        "Install": [str(path) for path in expected]
     }
     chromium_policy = {
         "CACertificates": [
             base64.b64encode(der).decode() for der in certificates.values()
         ]
     }
-    expected[firefox / "policies.json"] = json.dumps(firefox_policy) + "\n"
+    expected[firefox / "policies.json"] = json.dumps(firefox_policy, indent=2) + "\n"
     expected[chromium / "system-ca.json"] = json.dumps(chromium_policy) + "\n"
 
     obsolete = set((firefox / "certs").glob("*.crt")) - expected.keys()
@@ -67,6 +69,7 @@ if __name__ == "__main__":
         Path("/usr/local/share/ca-certificates/ipa-ca"),
         Path("/etc/firefox/policies"),
         Path("/etc/chromium-browser/policies/managed"),
+        Path("/etc/firefox/policies/baseline.json"),
         check=check,
     )
     sys.exit(int(check and not current))

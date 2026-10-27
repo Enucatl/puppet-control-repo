@@ -47,6 +47,35 @@ policies add only the FreeIPA-managed CA certificates under
 NSS. Firefox imports persist in existing browser profiles; withdrawing a
 previously imported CA may require profile cleanup.
 
+Firefox settings are maintained in
+`modules/freeipa_firefox/files/firefox-policies.json`, imported from the
+ffprofile export on 2026-10-27. Puppet installs this as
+`/etc/firefox/policies/baseline.json`; the browser trust hook combines it with
+the enrolled CA paths into the single `/etc/firefox/policies/policies.json`.
+The generated file must not be managed by another resource. It applies to all
+profiles using that Firefox installation. Form history is allowed; Firefox's
+password manager, address autofill, and credit-card autofill are disabled.
+
+Preferences outside Firefox's policy allowlist are kept in
+`modules/freeipa_firefox/files/firefox-user.js`. Puppet runs the profile updater
+as `freeipa_firefox::username` (default `user`), preserving unrelated `user.js`
+content inside each existing profile. It discovers profiles with `prefs.js`
+under `~/.mozilla/firefox`, `~/.config/mozilla/firefox`, and
+`~/snap/firefox/common/.mozilla/firefox`. Custom profile locations are not
+discovered. New profiles receive the fallback on the next Puppet run. Restart
+Firefox after Puppet applies changes, then check `about:policies` and the
+preferences in each profile. The fallback reapplies preferences at startup;
+it does not lock them during the session.
+
+The policy file uses locked preferences and named policies for tracking
+protection, DNS, telemetry, and studies. The export's obsolete
+`privacy.query_stripping` key is replaced by
+`privacy.query_stripping.enabled` and `.enabled.pbmode` in the fallback.
+The deprecated `DisablePocket` policy is omitted; other exported preference
+entries are retained, including legacy entries Firefox may ignore. uBlock
+Origin is installed from its Mozilla Add-ons URL rather than the ZIP's bundled
+binary. Browser profile data and the downloaded ZIPs are not stored in Git.
+
 Existing CRL behavior is retained. No custom outbound CRL bundle, publisher,
 refresh job or new revocation-enforcement policy is configured.
 

@@ -1,0 +1,230 @@
+{
+  "policies": {
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "DNSOverHTTPS": {
+      "Enabled": false,
+      "Locked": true
+    },
+    "CaptivePortal": false,
+    "NetworkPrediction": false,
+    "ExtensionSettings": {
+      "uBlock0@raymondhill.net": {
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi",
+        "installation_mode": "normal_installed"
+      }
+    },
+    "DisableFirefoxAccounts": true,
+    "PasswordManagerEnabled": false,
+    "OfferToSaveLogins": false,
+    "AutofillAddressEnabled": false,
+    "AutofillCreditCardEnabled": false,
+    "DisableFormHistory": false,
+    "EnableTrackingProtection": {
+      "Value": true,
+      "Locked": true,
+      "Cryptomining": true,
+      "Fingerprinting": true
+    },
+    "Preferences": {
+      "browser.aboutConfig.showWarning": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.crashReports.unsubmittedCheck.autoSubmit": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.crashReports.unsubmittedCheck.autoSubmit2": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.crashReports.unsubmittedCheck.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.disableResetPrompt": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "browser.fixup.alternate.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.newtab.preload": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.newtabpage.activity-stream.section.highlights.includePocket": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.newtabpage.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.newtabpage.enhanced": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.newtabpage.introShown": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "browser.search.suggest.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.selfsupport.url": {
+        "Value": "",
+        "Status": "locked"
+      },
+      "browser.send_pings": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.sessionstore.privacy_level": {
+        "Value": 0,
+        "Status": "locked",
+        "Type": "number"
+      },
+      "browser.shell.checkDefaultBrowser": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.startup.homepage_override.mstone": {
+        "Value": "ignore",
+        "Status": "locked"
+      },
+      "browser.tabs.crashReporting.sendReport": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.urlbar.groupLabels.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.urlbar.quicksuggest.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.urlbar.speculativeConnect.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.urlbar.trimURLs": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "dom.battery.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "dom.private-attribution.submission.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "extensions.autoDisableScopes": {
+        "Value": 14,
+        "Status": "locked",
+        "Type": "number"
+      },
+      "extensions.getAddons.cache.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "extensions.getAddons.showPane": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "extensions.greasemonkey.stats.optedin": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "extensions.greasemonkey.stats.url": {
+        "Value": "",
+        "Status": "locked"
+      },
+      "extensions.pocket.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "extensions.shield-recipe-client.api_url": {
+        "Value": "",
+        "Status": "locked"
+      },
+      "extensions.shield-recipe-client.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "extensions.webservice.discoverURL": {
+        "Value": "",
+        "Status": "locked"
+      },
+      "media.autoplay.default": {
+        "Value": 1,
+        "Status": "locked",
+        "Type": "number"
+      },
+      "media.autoplay.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "media.video_stats.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "network.IDN_show_punycode": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "network.allow-experiments": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "network.cookie.cookieBehavior": {
+        "Value": 1,
+        "Status": "locked",
+        "Type": "number"
+      },
+      "network.dns.disablePrefetch": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "network.dns.disablePrefetchFromHTTPS": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "network.http.sendRefererHeader": {
+        "Value": 0,
+        "Status": "locked",
+        "Type": "number"
+      },
+      "network.http.speculative-parallel-limit": {
+        "Value": 0,
+        "Status": "locked",
+        "Type": "number"
+      },
+      "network.predictor.enable-prefetch": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "network.predictor.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "network.prefetch-next": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "privacy.globalprivacycontrol.enabled": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "signon.autofillForms": {
+        "Value": false,
+        "Status": "locked"
+      }
+    }
+  }
+}
