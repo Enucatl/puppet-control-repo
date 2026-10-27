@@ -315,3 +315,29 @@ Wolf-specific bootstrap scripts:
 ## Security baseline
 
 This compose project uses the shared [docker-compose-security-baseline](https://github.com/Enucatl/docker-compose-security-baseline) for common container hardening defaults, including capabilities, no-new-privileges, memory/swap, and PID limits.
+
+## Local checks before pushing
+
+Install the repository's pre-push hook once per checkout:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+Every push runs the same enrollment, lint, Puppet/EPP syntax, catalog and Python
+checks as `.github/workflows/puppet.yaml` in a disposable Ubuntu 24.04 Docker
+container. The hook checks each pushed branch or tag tip, so uncommitted edits
+cannot hide failures. A failing check blocks the push. Docker and network access
+are required; runtimes and locked dependencies are downloaded inside the container
+each time.
+No Docker socket or writable source mounts are passed to tests.
+
+To check current edits before committing, run:
+
+```sh
+scripts/check.sh
+```
+
+The manual check copies tracked and nonignored untracked working-tree files,
+excluding `.env` and service `secrets` directories. Both modes remove the container
+and its dependencies on exit; they do not start or change production services.

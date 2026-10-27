@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [[ $local_sha != 0000000000000000000000000000000000000000 ]] || continue
+    echo "Checking $local_ref ($local_sha) in Docker before pushing"
+    git archive --format=tar.gz "$local_sha" | scripts/check.sh --archive
+done
