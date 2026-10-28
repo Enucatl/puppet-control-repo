@@ -3,6 +3,16 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 while read -r local_ref local_sha remote_ref remote_sha; do
     [[ $local_sha != 0000000000000000000000000000000000000000 ]] || continue
+    image=$(scripts/check.sh --image "$local_sha")
+    image_id=$(docker image inspect --format '{{.Id}}' "$image")
+    key=$( { printf '%s\n' "$local_sha" "$image_id"; sha256sum .githooks/pre-push scripts/check.sh; } | sha256sum | cut -d ' ' -f 1)
+    cache=$(git rev-parse --git-path pre-push-checks)
+    if [[ -f $cache/$key ]]; then
+        echo "Using successful Docker check for $local_ref ($local_sha)"
+        continue
+    fi
     echo "Checking $local_ref ($local_sha) in Docker before pushing"
     git archive --format=tar.gz "$local_sha" | scripts/check.sh --archive
+    mkdir -p "$cache"
+    touch "$cache/$key"
 done

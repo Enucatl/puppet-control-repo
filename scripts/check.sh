@@ -2,27 +2,47 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-# Tests receive a disposable source copy with no writable host mounts.
-if [[ ${1:-} != --archive ]]; then
-    git ls-files --cached --others --exclude-standard -z |
-        tar --null --verbatim-files-from --exclude=.env --exclude=secrets \
-            --ignore-failed-read -czf - -T - | "$0" --archive
+source_dir=$PWD
+if [[ ${1:-} == --archive || ( ${1:-} == --image && -n ${2:-} ) ]]; then
+    source_dir=$(mktemp -d)
+    trap 'rm -rf "$source_dir"' EXIT
+    if [[ $1 == --archive ]]; then
+        tar -xzf - -C "$source_dir"
+    else
+        git archive "$2" | tar -xf - -C "$source_dir"
+    fi
+fi
+
+# Build only dependency inputs; source changes reuse the prepared runtime.
+image_inputs=(docker/checks/Dockerfile scripts/check.sh scripts/ci/install-enrollment.sh scripts/ci/install-profiles.sh Puppetfile pyproject.toml uv.lock provisioning/pyproject.toml provisioning/uv.lock provisioning/src)
+image_key=$(cd "$source_dir"; find "${image_inputs[@]}" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+image="puppet-control-checks:$image_key"
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+    tar -C "$source_dir" -czf - "${image_inputs[@]}" |
+        docker build --platform linux/amd64 -t "$image" -f docker/checks/Dockerfile - >&2
+fi
+if [[ ${1:-} == --image ]]; then
+    printf '%s\n' "$image"
     exit
 fi
-exec docker run --rm --userns=host --platform linux/amd64 -i ubuntu:24.04 bash -euc '
-    export DEBIAN_FRONTEND=noninteractive UV_PYTHON=3.14
-    mkdir -p /workspace/puppet-control-repo
-    tar -xzf - -C /workspace/puppet-control-repo
-    apt-get update
-    apt-get install -y ca-certificates curl git gnupg sudo unzip systemd docker.io docker-compose-v2
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="/root/.local/bin:/opt/puppetlabs/puppet/bin:$PATH"
-    cd /workspace/puppet-control-repo
-    git clone https://github.com/Enucatl/docker-compose-security-baseline.git /workspace/compose-security-baseline
-    git -C /workspace/compose-security-baseline checkout 41c57257d33d471e2ae7cc7264938944c67434fd
-    scripts/ci/enrollment.sh
-    # OpenVox selects its systemd provider by PID 1 name when compiling catalogs.
-    printf systemd > /proc/1/comm
-    scripts/ci/profiles.sh
-    : # Keep this shell as PID 1 so its provider simulation survives.
-'
+
+run_checks() {
+    docker run --rm --userns=host --platform linux/amd64 -i "$image" bash -euc '
+        tar -xzf - -C /workspace/puppet-control-repo
+        cd /workspace/puppet-control-repo
+        scripts/ci/enrollment.sh
+        # OpenVox selects its systemd provider by PID 1 name when compiling catalogs.
+        printf systemd > /proc/1/comm
+        scripts/ci/profiles.sh
+        : # Keep this shell as PID 1 so its provider simulation survives.
+    '
+}
+
+# Tests receive a disposable source copy with no writable host mounts.
+if [[ ${1:-} == --archive ]]; then
+    tar -C "$source_dir" -czf - . | run_checks
+else
+    git ls-files --cached --others --exclude-standard -z |
+        tar --null --verbatim-files-from --exclude=.env --exclude=secrets \
+            --ignore-failed-read -czf - -T - | run_checks
+fi
