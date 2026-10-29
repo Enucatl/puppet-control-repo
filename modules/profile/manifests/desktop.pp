@@ -1,4 +1,8 @@
 class profile::desktop {
+  systemd::udev::rule { '41-nitrokey.rules':
+    rules => [file('profile/udev/41-nitrokey.rules')],
+  }
+
   file { '/etc/netplan/99-networkd.yaml':
     ensure  => file,
     owner   => 'root',

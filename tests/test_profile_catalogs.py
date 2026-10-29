@@ -159,6 +159,18 @@ def test_aperture_catalog_uses_atlas_services(tmp_path: Path) -> None:
         "content"
     ]
     assert 'ATTRS{idVendor}=="046d", ATTRS{idProduct}=="085b"' in webcam
+    nitrokey = result["File[/etc/udev/rules.d/41-nitrokey.rules]"]["content"]
+    vendor_rules = ROOT / "modules/profile/files/udev/41-nitrokey.rules"
+    assert vendor_rules.read_text() in nitrokey
+    keychron = result["File[/etc/udev/rules.d/70-keychron-uaccess.rules]"]["content"]
+    assert 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3434", TAG+="uaccess"' in keychron
+    for name in ("41-nitrokey.rules", "70-keychron-uaccess.rules"):
+        assert (
+            "Exec[systemd-udev_reload]"
+            in result[f"File[/etc/udev/rules.d/{name}]"]["notify"]
+        )
+    assert result["Exec[systemd-udev_reload]"]["refreshonly"] is True
+    assert result["File[/etc/udev/rules.d]"]["purge"] is False
 
 
 def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
