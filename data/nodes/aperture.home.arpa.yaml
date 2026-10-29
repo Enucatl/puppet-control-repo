@@ -9,6 +9,7 @@ classes:
 
 packages::list:
   - alsa-utils
+  - libudev-dev
 
 systemd::timezone: Europe/Zurich
 
