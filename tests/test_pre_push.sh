@@ -78,7 +78,13 @@ tar -C "$repository" -cf - docker/checks/Dockerfile scripts/ci/install-enrollmen
 cat > bin/docker <<'DOCKER'
 #!/bin/bash
 set -euo pipefail
-if [[ $1 == image && $2 == inspect ]]; then exit 0; fi
+if [[ $1 == image && $2 == inspect ]]; then exit "${DOCKER_TEST_CACHE_MISS:-0}"; fi
+if [[ $1 == build ]]; then
+    tar --numeric-owner -tzvf - > build-context
+    awk '$2 != "0/0" { exit 1 } END { if (NR == 0) exit 1 }' build-context
+    printf 'built\n' >> builds
+    exit
+fi
 cat >/dev/null
 printf 'called\n' >> docker-calls
 exit "${DOCKER_TEST_STATUS:-0}"
@@ -98,6 +104,10 @@ git commit -qm runtime
 sha=$(git rev-parse HEAD)
 image=$(scripts/check.sh --image)
 [[ $(scripts/check.sh --image "$sha") == "$image" ]]
+[[ $(DOCKER_TEST_CACHE_MISS=1 scripts/check.sh --image) == "$image" ]]
+[[ $(DOCKER_TEST_CACHE_MISS=1 scripts/check.sh --image "$sha") == "$image" ]]
+[[ $(wc -l < builds) == 2 ]]
+echo 'Build contexts use root ownership for working trees and committed snapshots'
 printf '\n# changed dependency\n' >> uv.lock
 [[ $(scripts/check.sh --image) != "$image" ]]
 [[ $(scripts/check.sh --image "$sha") == "$image" ]]

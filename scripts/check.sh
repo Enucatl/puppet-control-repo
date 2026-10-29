@@ -18,7 +18,8 @@ image_inputs=(docker/checks/Dockerfile scripts/check.sh scripts/ci/install-enrol
 image_key=$(cd "$source_dir"; find "${image_inputs[@]}" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
 image="puppet-control-checks:$image_key"
 if ! docker image inspect "$image" >/dev/null 2>&1; then
-    tar -C "$source_dir" -czf - "${image_inputs[@]}" |
+    # Directory-service UIDs may exceed Docker's user namespace mapping.
+    tar --owner=0 --group=0 --numeric-owner -C "$source_dir" -czf - "${image_inputs[@]}" |
         docker build --platform linux/amd64 -t "$image" -f docker/checks/Dockerfile - >&2
 fi
 if [[ ${1:-} == --image ]]; then
