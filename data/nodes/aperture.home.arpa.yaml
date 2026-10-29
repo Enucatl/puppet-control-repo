@@ -24,6 +24,12 @@ ssh::client_options:
 freeipa::client::hostname: aperture.home.arpa
 freeipa::client::ca_cert_file: /usr/local/share/ca-certificates/atlas-infrastructure.crt
 
+# shortcut: skip mount inventory until sys-filesystem handles offline automounts safely.
+puppet_configuration::facter_blocklist:
+  - dhcp_servers
+  - mountpoints
+  - partitions
+
 profile::common::certs::vault_certs_defaults:
   vault_uri: 'https://vault.home.arpa:8200/v1/pki_int/issue/puppet'
   ca_trust: /etc/ssl/certs/ca-certificates.crt
