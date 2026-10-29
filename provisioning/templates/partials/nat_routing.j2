@@ -31,14 +31,12 @@ set nat source rule 140 translation address masquerade
 set nat source rule 150 outbound-interface name {{ wan_interface }}
 set nat source rule 150 source address {{ cortex_subnet }}
 set nat source rule 150 translation address masquerade
-set protocols static route6 {{ ipv6_prefix }}:a000::/56 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ipv6_prefix }}:a100::/64 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a400::/56 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
+set protocols static route6 {{ ipv6_prefix }}:a500::/64 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:a200::/56 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:a300::/64 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ipv6_prefix }}:c000::/56 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}
 set protocols static route6 {{ ipv6_prefix }}:c100::/64 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}
-set protocols static route6 {{ ula_prefix }}:a000::/56 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
-set protocols static route6 {{ ula_prefix }}:a100::/64 next-hop fe80{{ atlas_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ula_prefix }}:a200::/56 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ula_prefix }}:a300::/64 next-hop fe80{{ aperture_node_ipv6_suffix }} interface {{ lan_interface }}
 set protocols static route6 {{ ula_prefix }}:c000::/56 next-hop fe80{{ cerebrum_node_ipv6_suffix }} interface {{ cortex_interface }}

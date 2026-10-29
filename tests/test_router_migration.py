@@ -1,4 +1,4 @@
-"""Check that route handover removes old hops without changing container prefixes."""
+"""Check that route migration removes retired networks and replaces old hops."""
 
 from pathlib import Path
 import re
@@ -30,9 +30,12 @@ def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None
     deletes = set(render("deletes.j2").splitlines())
     expected = {}
     for prefix in (variables["ipv6_prefix"], variables["ula_prefix"]):
+        for subnet, length in (("a000", 56), ("a100", 64)):
+            assert (
+                f"delete protocols static route6 {prefix}:{subnet}::/{length}"
+                in deletes
+            )
         for subnet, length, node, old_node in (
-            ("a000", 56, "atlas", "docker"),
-            ("a100", 64, "atlas", "docker"),
             ("a200", 56, "aperture", "desktop"),
             ("a300", 64, "aperture", "desktop"),
             ("c000", 56, "cerebrum", "cognition"),
@@ -50,6 +53,11 @@ def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None
                     f"delete protocols static route6 {network} next-hop {old_hop}"
                     in deletes
                 )
+    for subnet, length in (("a400", 56), ("a500", 64)):
+        expected[f"{variables['ipv6_prefix']}:{subnet}::/{length}"] = (
+            f"fe80{variables['atlas_node_ipv6_suffix']}",
+            variables["lan_interface"],
+        )
     for subnet, length in (("c000", 56), ("c100", 64)):
         network = f"2a02:168:6271:{subnet}::/{length}"
         expected[network] = (
@@ -82,7 +90,9 @@ def test_logging_and_pxe_use_atlas() -> None:
             f"delete system static-host-mapping host-name {name}.docker.home.arpa"
             in deletes
         )
-    scopes = yaml.safe_load((PROVISIONING / "vars/technitium.yml").read_text())["technitium_dhcp_scopes"]
+    scopes = yaml.safe_load((PROVISIONING / "vars/technitium.yml").read_text())[
+        "technitium_dhcp_scopes"
+    ]
     lan = next(scope for scope in scopes if scope["name"] == "LAN")
     assert lan["boot_server"] == "{{ atlas_node_ip }}"
     assert lan["boot_file"] == "iventoy_loader_16000_uefi"

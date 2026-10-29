@@ -273,11 +273,13 @@ TLS client cannot negotiate the ML-DSA ingress; HTTPS reads retain mTLS.
 
 ### Completed migration residuals
 
-The current template routes `a000::/56` and `a100::/64` through Atlas, and
-`a200::/56` and `a300::/64` through Aperture's verified link-local address
-`fe80::be24:11ff:fe60:9e28` on `eth1`, for both the current ISP prefix and ULA.
-The delete partial removes the previous next hops before installing these
-routes. Review `show configuration commands | match 'a[0123]00'` before applying:
+The current template routes Atlas's public Docker pool `a400::/56` and default
+bridge `a500::/64` through `fe80::be24:11ff:fe4e:a49e` on `eth1`. The delete
+partial removes the retired Docker host's `a000::/56` and `a100::/64` routes
+in both the current ISP prefix and ULA. Aperture's `a200::/56` and `a300::/64`
+routes use `fe80::be24:11ff:fe60:9e28` on `eth1` in both address spaces;
+the delete partial removes their previous next hops before installing them.
+Review `show configuration commands | match 'a[0-5]00'` before applying:
 any retained previous ISP prefixes need the same next-hop replacement while
 preserving their prefixes. The Cerebrum `c000`/`c100` routes use `eth3`; their
 handover from Cognition is coordinated separately below.

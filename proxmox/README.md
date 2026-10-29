@@ -260,8 +260,9 @@ allocating networks from that pool. The IPv6 pool and bridge are separate from
 each other and the existing hosts' IPv6 ranges.
 The proposed `a200::/56` and `a300::/64` ranges are already assigned to the desktop
 in [the router template](../provisioning/templates/partials/nat_routing.j2).
-Before enabling routed IPv6 workloads, provision routes for `a400::/56` and
-`a500::/64` to Atlas's actual next hop. This bootstrap does not apply router changes.
+The router template routes `a400::/56` and `a500::/64` through Atlas's link-local
+address. Apply router provisioning before enabling routed IPv6 workloads;
+this bootstrap does not apply router changes.
 
 The bootstrap installs
 [Sysbox CE 0.7.1](https://github.com/nestybox/sysbox/releases/tag/v0.7.1) from
