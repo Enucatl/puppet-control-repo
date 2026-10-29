@@ -492,8 +492,8 @@ def test_failed_setup_never_records_success(bootstrap: Path, failure: str) -> No
         assert "systemctl enable --now" not in calls
 
 
-def test_daemon_networks_do_not_overlap_existing_routes(bootstrap: Path) -> None:
-    """Reuse legacy IPv4 settings while reserving separate Atlas IPv6 allocations."""
+def test_daemon_networks_match_router_allocations(bootstrap: Path) -> None:
+    """Route Atlas IPv6 allocations without overlapping other hosts' networks."""
     result = run_bootstrap(bootstrap)
     assert result.returncode == 0, result.stderr
     daemon = json.loads((bootstrap / "etc/docker/daemon.json").read_text())
@@ -510,15 +510,20 @@ def test_daemon_networks_do_not_overlap_existing_routes(bootstrap: Path) -> None
             if pool.version == bridge.version == 6:
                 assert not pool.overlaps(bridge)
     router = SCRIPT.parents[1] / "provisioning/templates/partials/nat_routing.j2"
-    suffixes = re.findall(r"route6 \{\{ ipv6_prefix \}\}:(\S+)", router.read_text())
-    assert suffixes
-    for suffix in suffixes:
+    routes = re.findall(
+        r"route6 \{\{ ipv6_prefix \}\}:(\S+) next-hop fe80\{\{ (\w+) \}\}",
+        router.read_text(),
+    )
+    assert routes
+    atlas_networks = {network for network in pools + bridges if network.version == 6}
+    atlas_routes = set()
+    for suffix, hop in routes:
         allocated = ipaddress.ip_network("2a02:168:6278:" + suffix)
-        assert all(
-            not allocated.overlaps(network)
-            for network in pools + bridges
-            if network.version == 6
-        )
+        if hop == "atlas_node_ipv6_suffix":
+            atlas_routes.add(allocated)
+        else:
+            assert all(not allocated.overlaps(network) for network in atlas_networks)
+    assert atlas_routes == atlas_networks
     assert daemon["default-address-pools"][0] == {
         "base": "172.17.0.0/12",
         "size": 20,
