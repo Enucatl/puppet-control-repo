@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 import socket
@@ -19,13 +20,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 NODES = (
     "atlas.home.arpa",
-    "complex.home.arpa",
-    "docker.home.arpa",
-    "forbearance.home.arpa",
+    "cerebrum.home.arpa",
+    "aperture.home.arpa",
     "proxmox.home.arpa",
     "proxmox-cortex.home.arpa",
 )
-DOCKER_ROLE = "puppet-docker.home.arpa"
+ATLAS_ROLE = "puppet-atlas.home.arpa"
 
 
 @pytest.fixture(scope="module")
@@ -36,7 +36,7 @@ def vault(
     binary = shutil.which("vault")
     if binary is None:
         pytest.skip("Vault executable is required for disposable integration tests")
-    directory = tmp_path_factory.mktemp("puppet-pki-vault")
+    directory = tmp_path_factory.mktemp("atlas-access-vault")
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
@@ -111,22 +111,37 @@ def vault(
             root.secrets.pki.create_or_update_role(
                 "nodes", extra_params=broad_role, mount_point="puppet_ca"
             )
-            root.sys.enable_auth_method("cert")
-            root.write(
-                "auth/cert/certs/puppet",
-                certificate=root.read("puppet_ca/cert/ca")["data"]["certificate"],
-                allowed_common_names=list(NODES),
-                allowed_dns_sans=list(NODES),
-                token_policies=["puppet"],
+
+            def api(
+                method: str,
+                path: str,
+                body: dict | None = None,
+                accepted: tuple[int, ...] = (200,),
+            ) -> dict:
+                """Apply the production controller's requests to disposable Vault."""
+                # Test authorization with Vault's portable RSA issuer; production uses ML-DSA.
+                if path.startswith("pki_int/roles/"):
+                    body = {**body, "key_type": "rsa", "key_bits": 2048}
+                    body.pop("parameter_set", None)
+                response = root.adapter.request(method, "/v1/" + path, json=body)
+                return response or {}
+
+            spec = importlib.util.spec_from_file_location(
+                "atlas_enroll_access", ROOT / "proxmox/atlas-enroll.py"
             )
-            root.sys.create_or_update_policy(
-                "puppet",
-                'path "pki_int/issue/general" { capabilities = ["update"] }\n'
-                'path "kv/data/puppet" { capabilities = ["read"] }\n'
-                'path "kv/data/wolf" { capabilities = ["read"] }',
-            )
+            assert spec and spec.loader
+            enrollment = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(enrollment)
+            enrollment.infra.api = api
+            enrollment.infra.SOURCE = ROOT
+            enrollment.infra.mount = lambda *args, **kwargs: None
+            enrollment.infra.openvox = lambda *args: root.read("puppet_ca/cert/ca")[
+                "data"
+            ]["certificate"]
+            enrollment.infra.configure_access()
+            enrollment.configure_runtime()
             clients = {}
-            for node in NODES:
+            for node in (*NODES, "openvox.home.arpa"):
                 certificate = root.secrets.pki.generate_certificate(
                     "nodes", common_name=node, mount_point="puppet_ca"
                 )["data"]
@@ -136,30 +151,11 @@ def vault(
                 key_file.write_text(certificate["private_key"])
                 client = hvac.Client(url=address, verify=str(ca))
                 client.auth.cert.login(
-                    name="puppet", cert_pem=str(cert_file), key_pem=str(key_file)
+                    name="puppet-server" if node == "openvox.home.arpa" else "puppet",
+                    cert_pem=str(cert_file),
+                    key_pem=str(key_file),
                 )
                 clients[node] = client
-                for path in ("puppet", "wolf"):
-                    assert client.read(f"kv/data/{path}")["data"]["data"] == {
-                        "value": "fixture-secret"
-                    }
-            # Keep these pre-existing tokens through policy replacement.
-            assert clients[NODES[0]].write(
-                "pki_int/issue/general", common_name="*.home.arpa"
-            )["data"]["certificate"]
-            for _ in range(2):
-                result = subprocess.run(
-                    [
-                        "bash",
-                        str(ROOT / "docker/vault/scripts/08-vault-puppet-policy.sh"),
-                    ],
-                    env=environment,
-                    cwd=directory,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                assert result.returncode == 0, result.stderr
             yield root, clients
         finally:
             process.terminate()
@@ -185,29 +181,29 @@ def test_node_can_issue_own_names(
 @pytest.mark.parametrize(
     "payload",
     [
-        {"common_name": "*.complex.home.arpa"},
-        {"common_name": "wild*.complex.home.arpa"},
-        {"common_name": "user@complex.home.arpa"},
-        {"common_name": "*.service.complex.home.arpa"},
-        {"common_name": "docker.home.arpa"},
-        {"common_name": "complex.home.arpa.evil.example"},
+        {"common_name": "*.cerebrum.home.arpa"},
+        {"common_name": "wild*.cerebrum.home.arpa"},
+        {"common_name": "user@cerebrum.home.arpa"},
+        {"common_name": "*.service.cerebrum.home.arpa"},
+        {"common_name": "atlas.home.arpa"},
+        {"common_name": "cerebrum.home.arpa.evil.example"},
         {"common_name": "home.arpa"},
         {"common_name": "localhost"},
         {"common_name": "127.0.0.1"},
-        {"common_name": "complex.home.arpa", "alt_names": "docker.home.arpa"},
+        {"common_name": "cerebrum.home.arpa", "alt_names": "atlas.home.arpa"},
         {
-            "common_name": "docker.home.arpa",
-            "alt_names": "complex.home.arpa",
+            "common_name": "atlas.home.arpa",
+            "alt_names": "cerebrum.home.arpa",
             "exclude_cn_from_sans": True,
         },
         {
-            "common_name": "complex.home.arpa",
-            "alt_names": "docker.home.arpa",
+            "common_name": "cerebrum.home.arpa",
+            "alt_names": "atlas.home.arpa",
             "exclude_cn_from_sans": True,
         },
-        {"common_name": "complex.home.arpa", "alt_names": "*.complex.home.arpa"},
-        {"common_name": "complex.home.arpa", "ip_sans": "127.0.0.1"},
-        {"common_name": "complex.home.arpa", "uri_sans": "spiffe://other/node"},
+        {"common_name": "cerebrum.home.arpa", "alt_names": "*.cerebrum.home.arpa"},
+        {"common_name": "cerebrum.home.arpa", "ip_sans": "127.0.0.1"},
+        {"common_name": "cerebrum.home.arpa", "uri_sans": "spiffe://other/node"},
     ],
 )
 def test_node_cannot_escape_namespace(
@@ -216,7 +212,7 @@ def test_node_cannot_escape_namespace(
     """Role validation covers subject names and every requested SAN type."""
     _, clients = vault
     with pytest.raises(hvac.exceptions.InvalidRequest):
-        clients["complex.home.arpa"].write("pki_int/issue/puppet", **payload)
+        clients["cerebrum.home.arpa"].write("pki_int/issue/puppet", **payload)
 
 
 @pytest.mark.parametrize("node", NODES)
@@ -224,61 +220,61 @@ def test_node_cannot_escape_namespace(
     "path",
     ("issue/general", "sign/general", "sign/puppet", "roles/puppet", "roles/general"),
 )
-def test_existing_tokens_lose_broad_issuance_and_admin_access(
+def test_agents_cannot_use_broad_issuance_or_admin_access(
     vault: tuple[hvac.Client, dict[str, hvac.Client]], node: str, path: str
 ) -> None:
-    """Policy replacement restricts tokens issued before the migration too."""
+    """Runtime policy denies broad issuance and administration."""
     _, clients = vault
     with pytest.raises(hvac.exceptions.Forbidden):
         clients[node].write(f"pki_int/{path}", common_name=node)
 
 
-@pytest.mark.parametrize("node", ("complex.home.arpa", "forbearance.home.arpa"))
-def test_only_docker_identity_can_use_wildcard_role(
+@pytest.mark.parametrize("node", ("cerebrum.home.arpa", "aperture.home.arpa"))
+def test_only_atlas_identity_can_use_wildcard_role(
     vault: tuple[hvac.Client, dict[str, hvac.Client]], node: str
 ) -> None:
-    """Knowing the Docker role name does not authorize another node to use it."""
+    """Knowing the Atlas role name does not authorize another node to use it."""
     _, clients = vault
     with pytest.raises(hvac.exceptions.Forbidden):
         clients[node].write(
-            f"pki_int/issue/{DOCKER_ROLE}", common_name="*.docker.home.arpa"
+            f"pki_int/issue/{ATLAS_ROLE}", common_name="*.atlas.home.arpa"
         )
 
 
 @pytest.mark.parametrize(
     "name",
     (
-        "docker.home.arpa",
-        "service.docker.home.arpa",
-        "*.docker.home.arpa",
-        "*.service.docker.home.arpa",
+        "atlas.home.arpa",
+        "service.atlas.home.arpa",
+        "*.atlas.home.arpa",
+        "*.service.atlas.home.arpa",
     ),
 )
-def test_docker_can_issue_wildcards_within_own_namespace(
+def test_atlas_can_issue_wildcards_within_own_namespace(
     vault: tuple[hvac.Client, dict[str, hvac.Client]], name: str
 ) -> None:
-    """Docker retains wildcard issuance under its authenticated hostname."""
+    """Atlas retains wildcard issuance under its authenticated hostname."""
     _, clients = vault
-    assert clients["docker.home.arpa"].write(
-        f"pki_int/issue/{DOCKER_ROLE}", common_name=name
+    assert clients["atlas.home.arpa"].write(
+        f"pki_int/issue/{ATLAS_ROLE}", common_name=name
     )["data"]["certificate"]
 
 
 @pytest.mark.parametrize(
-    "name", ("complex.home.arpa", "*.complex.home.arpa", "*.home.arpa", "localhost")
+    "name", ("cerebrum.home.arpa", "*.cerebrum.home.arpa", "*.home.arpa", "localhost")
 )
-def test_docker_cannot_issue_other_namespaces(
+def test_atlas_cannot_issue_other_namespaces(
     vault: tuple[hvac.Client, dict[str, hvac.Client]], name: str
 ) -> None:
-    """Docker's wildcard exception does not grant another node's namespace."""
+    """Atlas's wildcard exception does not grant another node's namespace."""
     _, clients = vault
     with pytest.raises(hvac.exceptions.InvalidRequest):
-        clients["docker.home.arpa"].write(
-            f"pki_int/issue/{DOCKER_ROLE}", common_name=name
+        clients["atlas.home.arpa"].write(
+            f"pki_int/issue/{ATLAS_ROLE}", common_name=name
         )
 
 
-@pytest.mark.parametrize("role", ("puppet", DOCKER_ROLE))
+@pytest.mark.parametrize("role", ("puppet", ATLAS_ROLE))
 def test_policy_without_certificate_identity_cannot_issue(
     vault: tuple[hvac.Client, dict[str, hvac.Client]], role: str
 ) -> None:
@@ -289,21 +285,21 @@ def test_policy_without_certificate_identity_cannot_issue(
         url=root.url, token=token, verify=root.adapter._kwargs["verify"]
     )
     with pytest.raises((hvac.exceptions.Forbidden, hvac.exceptions.InvalidRequest)):
-        client.write(f"pki_int/issue/{role}", common_name="docker.home.arpa")
+        client.write(f"pki_int/issue/{role}", common_name="atlas.home.arpa")
 
 
 @pytest.mark.parametrize("node", NODES)
 @pytest.mark.parametrize("path", ("puppet", "wolf"))
-def test_existing_agent_tokens_lose_kv_access(
+def test_agents_have_no_kv_access(
     vault: tuple[hvac.Client, dict[str, hvac.Client]], node: str, path: str
 ) -> None:
-    """Replacing the shared policy removes KV access from existing tokens."""
+    """Runtime agents have no secret access through their issuance policy."""
     _, clients = vault
     with pytest.raises(hvac.exceptions.Forbidden):
         clients[node].read(f"kv/data/{path}")
 
 
-@pytest.mark.parametrize("node", NODES)
+@pytest.mark.parametrize("node", (*NODES, "openvox.home.arpa"))
 @pytest.mark.parametrize("role", ("puppet", "puppet-server", "puppet-wolf", ""))
 def test_certificate_roles_enforce_kv_boundaries(
     vault: tuple[hvac.Client, dict[str, hvac.Client]], node: str, role: str
@@ -318,10 +314,12 @@ def test_certificate_roles_enforce_kv_boundaries(
         "key_pem": str(directory / f"{node}.key"),
     }
     allowed_nodes = {
-        "puppet-server": ("docker.home.arpa",),
+        "puppet-server": ("openvox.home.arpa",),
         "puppet-wolf": ("atlas.home.arpa", "proxmox.home.arpa"),
     }
-    if role in allowed_nodes and node not in allowed_nodes[role]:
+    if (role in allowed_nodes and node not in allowed_nodes[role]) or (
+        role == "puppet" and node == "openvox.home.arpa"
+    ):
         with pytest.raises(hvac.exceptions.InvalidRequest):
             client.auth.cert.login(**login)
         return
@@ -350,12 +348,12 @@ def test_privileged_login_requires_puppet_ca_and_exact_common_name(
     role: str,
     mount: str,
 ) -> None:
-    """A privileged SAN or a service-CA certificate cannot impersonate Docker."""
+    """A privileged SAN or a service-CA certificate cannot impersonate a privileged node."""
     root, _ = vault
-    identity = "atlas.home.arpa" if role == "puppet-wolf" else "docker.home.arpa"
+    identity = "atlas.home.arpa" if role == "puppet-wolf" else "openvox.home.arpa"
     certificate = root.secrets.pki.generate_certificate(
         "nodes" if mount == "puppet_ca" else "general",
-        common_name="complex.home.arpa" if mount == "puppet_ca" else identity,
+        common_name="cerebrum.home.arpa" if mount == "puppet_ca" else identity,
         extra_params={"alt_names": identity},
         mount_point=mount,
     )["data"]

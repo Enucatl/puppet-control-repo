@@ -8,8 +8,8 @@ if [[ ${PUPPET_CHECK_PREPARED:-} != 1 ]]; then scripts/ci/install-profiles.sh; f
 /opt/puppetlabs/bin/puppet parser validate modules/profile/manifests modules/proxmox_workflows/manifests
 /opt/puppetlabs/bin/puppet parser validate docker/openvox/fixture/manifests
 find modules/profile/templates -name '*.epp' -print0 | xargs -0 -r /opt/puppetlabs/bin/puppet epp validate
-for script in docker/openvox/*.rb docker/vault/scripts/offline-intermediate.rb; do /opt/puppetlabs/puppet/bin/ruby -c "$script"; done
+for script in docker/openvox/*.rb; do /opt/puppetlabs/puppet/bin/ruby -c "$script"; done
 
 export PATH="$PWD/provisioning/.venv/bin:$PATH"
 
-uv run --frozen python -m pytest -q tests --ignore=tests/test_puppet_enrollment_vault.py --ignore=tests/test_puppet_pki_vault.py
+uv run --frozen python -m pytest -q tests --ignore=tests/test_puppet_enrollment_vault.py --ignore=tests/test_atlas_access_vault.py

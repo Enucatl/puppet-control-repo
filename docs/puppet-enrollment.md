@@ -82,8 +82,6 @@ refresh job or new revocation-enforcement policy is configured.
 Fresh Atlas initialization installs compiler and enrollment policy through
 [atlas-infra.py](../proxmox/atlas-infra.py); [Atlas enrollment](#atlas) configures
 runtime certificate issuance and agent access through `atlas-enroll.py`.
-The retained `08-vault-puppet-policy.sh` contains legacy Docker compiler/issuance
-settings and must not replace these Atlas policies.
 
 Deploy the autosigner and provisioning changes together. Templates leave Puppet
 disabled; guest provisioning enables it after installing trust and enrollment
@@ -250,7 +248,7 @@ DNS SANs; the Atlas helper tests check its production identities and roles.
 ## Verification
 
 ```bash
-uv run --frozen pytest -q tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_puppet_pki_vault.py tests/test_puppet_provisioning.py
+uv run --frozen pytest -q tests/test_autosign.py tests/test_puppet_enrollment_vault.py tests/test_atlas_access_vault.py tests/test_puppet_provisioning.py
 ```
 
 The Vault tests launch a disposable localhost server and require the `vault`

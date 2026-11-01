@@ -68,7 +68,7 @@ user file and runtime state alone.
 │   └── pyproject.toml / uv.lock # Python deps managed via uv
 ├── scripts/                     # Autosign policy, ENC and runtime helpers
 ├── compose.yaml                 # Atlas infrastructure Compose entrypoint
-└── Puppetfile                   # r10k-managed external module list (generated)
+└── Puppetfile                   # r10k-managed external module list
 ```
 
 ## How the Pieces Relate
@@ -148,10 +148,10 @@ a push even when deployment fails.
 
 ### Managing External Module Dependencies
 
-Direct dependencies go in `Puppetfile-without-deps`. To resolve and regenerate the full `Puppetfile`:
-```bash
-generate-puppetfile -p Puppetfile-without-deps
-```
+Edit pinned module versions directly in `Puppetfile`. The managed deployment
+runs r10k to install them when production is published. For a local module
+installation, use `/opt/puppetlabs/puppet/bin/r10k puppetfile install` from the
+repository root.
 
 ## Router Observability
 
@@ -302,12 +302,10 @@ Retained helpers in `docker/vault/scripts/` have separate purposes:
 | --- | --- |
 | `unseal.sh` | Existing automatic unseal and healthcheck |
 | `backup.sh` | Existing weekly consistent Vault export for Backrest |
-| `08-vault-puppet-policy.sh` | Legacy Docker authority policy helper; Atlas uses `atlas-infra.py` and `atlas-enroll.py` |
 | `10-vault-ldap.sh` | Manual LDAP auth configuration |
 | `13-vault-admin-policy.sh` | Manual administrator policy and LDAP group mapping |
 | `99-revoke-root-token.sh` | Explicit root-token revocation after independent administrator access is verified |
 | `issue-device-cert.sh` | Manual device certificate/PKCS#12 export |
-| `offline-intermediate.rb` | Separate historical offline-root experiment; not Atlas startup |
 
 The weekly `vault-snapshot.timer` still runs Monday at 01:00 UTC. Its existing
 export and Backrest handling remain unchanged. Recovery inputs must also be

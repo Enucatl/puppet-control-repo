@@ -41,7 +41,6 @@ nfs::client_gssd_service: false
 nfs::server_enabled: true
 nfs::client_enabled: true
 nfs::nfs_v4_client_services_enable: true
-nfs::nfs_v4_idmap_conf: true
 
 packages::sources:
   hashicorp:
