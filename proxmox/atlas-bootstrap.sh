@@ -115,13 +115,9 @@ fingerprints=$(gpg --batch --show-keys --with-colons "$work/docker.asc" |
 }
 install -d -m 0755 /etc/apt/keyrings /etc/docker
 install -m 0644 "$work/docker.asc" /etc/apt/keyrings/docker.asc
-cat > /etc/apt/sources.list.d/docker.sources <<'SOURCES'
-Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: resolute
-Components: stable
-Architectures: amd64
-Signed-By: /etc/apt/keyrings/docker.asc
+rm -f /etc/apt/sources.list.d/docker.sources
+cat > /etc/apt/sources.list.d/docker.list <<'SOURCES'
+deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu resolute stable
 SOURCES
 install -m 0644 "$work/daemon.json" /etc/docker/daemon.json
 apt-get update
