@@ -214,23 +214,9 @@ direct TLS `openvox.home.arpa:8140` and FreeIPA at `ipa.home.arpa`. Service cert
 corresponding DNS names; Atlas's native agent identity remains `atlas.home.arpa`.
 DNS publication does not initialize or activate Vault/OpenVox/FreeIPA.
 
-Live acceptance passed on **2026-10-19**, using revision
-`b72af4ee85df77bb8b7f04c595cd421073e0e25b`: **47 router smoke checks passed**,
-including A/AAAA answers for all three names through AdGuard over IPv4/IPv6 and
-dnsmasq directly. Separate checks verified both PTR records, the MAC reservation
-and the legacy service addresses. IPv6 connectivity to Atlas passed from the
-workstation and router. See [sanitized DNS evidence](../docs/archive/migration/atlas-dns-results.json).
-The fixed-MAC creation path passed mocked provisioning tests; a live VM rebuild
-was not performed for this DNS change.
-The `ipa.home.arpa` addition was deployed on **2026-10-19** with **53 router
-smoke checks passed**. Separate checks confirmed all four endpoints' A/AAAA
-answers over IPv4/IPv6, Atlas's IPv4/IPv6 canonical PTR records, and unchanged
-legacy service addresses. See [FreeIPA DNS evidence](../docs/archive/migration/atlas-ipa-dns-results.json).
+Historical DNS cutover measurements and frozen acceptance records are preserved
+in Git history. For current behavior, run the router smoke checks.
 FreeIPA is active on Atlas; see the [current service runbook](../docs/atlas-freeipa.md).
-
-## Manual deletes
-
-Add `delete ...` lines to `templates/partials/deletes.j2` for stale nodes that the set-command partials won't naturally overwrite. Remove the line once confirmed absent on the router.
 
 ### Required secrets
 
@@ -271,66 +257,38 @@ Atlas's dedicated Alloy pipeline enriches flow records with GeoIP. Its local
 Loki write URL uses the loopback-only published port 3100 because Alloy's Go
 TLS client cannot negotiate the ML-DSA ingress; HTTPS reads retain mTLS.
 
-### Completed migration residuals
+### Container routing and logs
 
-The current template routes Atlas's public Docker pool `a400::/56` and default
-bridge `a500::/64` through `fe80::be24:11ff:fe4e:a49e` on `eth1`. The delete
-partial removes the retired Docker host's `a000::/56` and `a100::/64` routes
-in both the current ISP prefix and ULA. Aperture's `a200::/56` and `a300::/64`
-routes use `fe80::be24:11ff:fe60:9e28` on `eth1` in both address spaces;
-the delete partial removes their previous next hops before installing them.
-Review `show configuration commands | match 'a[0-5]00'` before applying:
-any retained previous ISP prefixes need the same next-hop replacement while
-preserving their prefixes. The Cerebrum `c000`/`c100` routes use `eth3`; their
-handover from Cognition is coordinated separately below.
+Atlas's public Docker pool `a400::/56` and default bridge `a500::/64` route
+through `fe80::be24:11ff:fe4e:a49e` on `eth1`. Aperture's `a200::/56` and
+`a300::/64` use `fe80::be24:11ff:fe60:9e28` on `eth1` in both public and ULA
+address spaces. Cerebrum's `c000::/56` and `c100::/64` use
+`fe80::be24:11ff:fe4e:c023` on `eth3` in both address spaces.
+The historical route hops, firewall rules, log hostnames and previous ISP prefix
+cleanup were confirmed absent on the live router on 2026-11-01. Retired Cognition
+forward and reverse DNS records were also removed; Cerebrum records and Cortex
+DHCP reservations were verified intact. All 80 current router smoke checks passed.
 
-The October 21 deployment sent router logs over verified HTTPS to
-`loki.atlas.home.arpa`. During the October 26 cutover, direct TLS delivery failed;
-the pipeline is being switched to the existing central Alloy receiver. Alloy is
-pinned to v1.21.0, built with Go 1.27.2 and native ML-DSA TLS support. The deployment copies
-the controller's system CA bundle from `/etc/ssl/certs/ca-certificates.crt`
-to persistent storage and mounts it read-only at the same standard path inside
-Alloy; certificate verification remains enabled. Reapply after controller trust
-updates to refresh the router's copy.
-Suricata still uses its existing enrichment API on port 12345.
-The explicit Alloy command enables the stability level required by the existing
-write-ahead logs; `CUSTOM_ARGS` is not consumed by the official image. Smoke checks
-verify Alloy's HTTP readiness as well as the container state.
-Router Loki/Alloy static mappings now use Atlas. FreeIPA and
-HCV aliases follow Atlas, and the PXE boot server points at Atlas without
-activating iVentoy. Tor NAT rule 20 and IPv4/IPv6 rules 39/40 are removed because
-no Tor relay was migrated; I2P forwarding remains active on Atlas.
+Router Alloy sends logs to the central Atlas Alloy receiver. The image is pinned
+to v1.21.0. The deployment copies the controller's system CA bundle from
+`/etc/ssl/certs/ca-certificates.crt` to persistent storage and mounts it read-only
+at the same standard path inside Alloy; certificate verification remains enabled.
+Reapply after controller trust updates to refresh the router's copy.
+Suricata uses its enrichment API on port 12345. Smoke checks verify Alloy's HTTP
+readiness and container state. Loki/Alloy static mappings use Atlas, and the PXE
+boot server points at Atlas without activating iVentoy.
 
-Use the full `--tags apply` workflow above to install DNS and Alloy configuration,
-apply route/rule deletes and sets, restart the containers, and run smoke checks.
+Use the full `--tags apply` workflow to install DNS and Alloy configuration,
+apply routes and rules, restart containers, and run smoke checks.
 Route-only `--tags vyos_config` does not update DNS or Alloy configuration.
 
-Applied on **2026-10-21**, preserving all twelve routes across the current ISP
-prefix, retained `2a02:168:6271` prefix and ULA. All **86 router smoke checks**
-passed. The official Alloy v1.21.0 image reports Go 1.27.2, whose
-[TLS implementation supports ML-DSA](https://go.dev/doc/go1.27).
-Verified HTTPS delivery through the deployed pipeline in Loki with
-`{job="vyos-syslog",host="router.home.arpa"}`: the fixed acceptance message
-arrived at **14:01:15 UTC**, following native TLS probes from Aperture and the
-router. The container remained ready with zero restarts and no new warnings.
-
-Replaying the existing WAL produced historical ingress rejections (HTTP 418/400
-and rate limiting), with 127,503 dropped entries reported before new delivery
-settled. The counter then stayed unchanged while successful sends increased.
-No WAL or position files were deleted or manually truncated. The remaining WAL
-was preserved before its normal retention cleanup in root-only router archive
-`/config/containers/alloy/migration-wal-replay-20261021.tar.gz`; rejected history
-is not confirmed complete in Loki and the archive has not been replayed.
+The historical rejected log WAL was preserved in the root-only router archive
+`/config/containers/alloy/migration-wal-replay-20261021.tar.gz`. Rejected history
+is not confirmed complete in Loki; the archive has not been replayed.
 
 ### Cerebrum routing
 
 The GPU workload host is `cerebrum.home.arpa`, VM 230, at `10.0.40.135`, MAC
 `bc:24:11:4e:c0:23` and ULA `fd6b:d722:1738:28:be24:11ff:fe4e:c023`.
-The route templates select `cerebrum_node_ipv6_suffix`, giving next hop
-`fe80::be24:11ff:fe4e:c023` on `eth3` for all six container routes, including
-the retained ISP prefix.
-Both guests derive the same container pools from their first hostname letter;
-do not activate those networks on both guests.
-See the [completed handover](../docs/archive/migration/cerebrum-cutover.md)
-for rollback and the [acceptance record](../docs/archive/migration/cerebrum-migration.md)
-for measurements.
+The route templates select `cerebrum_node_ipv6_suffix`. Its first hostname letter
+determines its container pools; avoid activating those pools on another guest.

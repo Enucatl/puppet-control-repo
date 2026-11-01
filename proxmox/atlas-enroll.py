@@ -84,7 +84,6 @@ path "auth/token/lookup-self" {{
             "allowed_common_names": [
                 CERTNAME,
                 "aperture.home.arpa",
-                "cognition.home.arpa",
                 "cerebrum.home.arpa",
                 "proxmox.home.arpa",
                 "proxmox-cortex.home.arpa",
@@ -92,7 +91,6 @@ path "auth/token/lookup-self" {{
             "allowed_dns_sans": [
                 CERTNAME,
                 "aperture.home.arpa",
-                "cognition.home.arpa",
                 "cerebrum.home.arpa",
                 "proxmox.home.arpa",
                 "proxmox-cortex.home.arpa",

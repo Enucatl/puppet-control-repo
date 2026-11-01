@@ -175,13 +175,5 @@ check_dns_exact "Atlas canonical PTR" "$DNS_V4" PTR "{{ atlas_node_ip.split('.')
 check_dns_exact "DNS IPv4 cerebrum A" "$DNS_V4" A "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ip }}" 60
 check_dns_exact "DNS IPv6 cerebrum AAAA" "$DNS_V6" AAAA "cerebrum.$DHCP_DOMAIN" "{{ cerebrum_node_ula }}" 60
 check_dns_exact "Cerebrum canonical PTR" "$DNS_V4" PTR "{{ cerebrum_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cerebrum.$DHCP_DOMAIN." 60
-check_dns_exact "DNS IPv4 cognition A" "$DNS_V4" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
-check_dns_exact "DNS IPv6 cognition A" "$DNS_V6" A "cognition.$DHCP_DOMAIN" "{{ cognition_node_ip }}" 60
-check_dns_exact "DNS IPv4 cognition AAAA" "$DNS_V4" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
-check_dns_exact "DNS IPv6 cognition AAAA" "$DNS_V6" AAAA "cognition.$DHCP_DOMAIN" "{{ cognition_node_ula }}" 60
-retry_line "Authoritative cognition A" "{{ cognition_node_ip }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$AUTHORITATIVE_PORT" "cognition.$DHCP_DOMAIN" A +short
-retry_line "Authoritative cognition AAAA" "{{ cognition_node_ula }}" 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 @127.0.0.1 -p "$AUTHORITATIVE_PORT" "cognition.$DHCP_DOMAIN" AAAA +short
-check_dns_exact "Cognition canonical PTR" "$DNS_V4" PTR "{{ cognition_node_ip.split('.') | reverse | join('.') }}.in-addr.arpa" "cognition.$DHCP_DOMAIN." 60
-retry_line "Cognition IPv6 canonical PTR" "cognition.$DHCP_DOMAIN." 60 timeout --foreground 5s sudo -n dig +time=2 +tries=1 "@$DNS_V4" -x "{{ cognition_node_ula }}" +short
 
 log "DONE router smoke checks"

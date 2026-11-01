@@ -1,4 +1,4 @@
-"""Check that route migration removes retired networks and replaces old hops."""
+"""Check current container routes, logging and PXE configuration."""
 
 from pathlib import Path
 import re
@@ -9,8 +9,8 @@ import yaml
 PROVISIONING = Path(__file__).resolve().parents[1] / "provisioning"
 
 
-def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None:
-    """Avoid ECMP toward retired hosts when applying the migrated IPv6 routes."""
+def test_container_routes_use_current_hosts_in_both_address_spaces() -> None:
+    """Route each container pool through its current host and interface."""
     variables = yaml.safe_load((PROVISIONING / "host_vars/router.yml").read_text())
     variables["ipv6_prefix"] = "2001:db8:1234"
 
@@ -27,19 +27,13 @@ def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None
         if line.startswith("set protocols static route6 ")
         for parts in [line.split()]
     }
-    deletes = set(render("deletes.j2").splitlines())
     expected = {}
     for prefix in (variables["ipv6_prefix"], variables["ula_prefix"]):
-        for subnet, length in (("a000", 56), ("a100", 64)):
-            assert (
-                f"delete protocols static route6 {prefix}:{subnet}::/{length}"
-                in deletes
-            )
-        for subnet, length, node, old_node in (
-            ("a200", 56, "aperture", "desktop"),
-            ("a300", 64, "aperture", "desktop"),
-            ("c000", 56, "cerebrum", "cognition"),
-            ("c100", 64, "cerebrum", "cognition"),
+        for subnet, length, node in (
+            ("a200", 56, "aperture"),
+            ("a300", 64, "aperture"),
+            ("c000", 56, "cerebrum"),
+            ("c100", 64, "cerebrum"),
         ):
             network = f"{prefix}:{subnet}::/{length}"
             hop = f"fe80{variables[node + '_node_ipv6_suffix']}"
@@ -47,28 +41,10 @@ def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None
                 "cortex_interface" if node == "cerebrum" else "lan_interface"
             ]
             expected[network] = (hop, interface)
-            if old_node:
-                old_hop = f"fe80{variables[old_node + '_node_ipv6_suffix']}"
-                assert (
-                    f"delete protocols static route6 {network} next-hop {old_hop}"
-                    in deletes
-                )
     for subnet, length in (("a400", 56), ("a500", 64)):
         expected[f"{variables['ipv6_prefix']}:{subnet}::/{length}"] = (
             f"fe80{variables['atlas_node_ipv6_suffix']}",
             variables["lan_interface"],
-        )
-    for subnet, length in (
-        ("a000", 56),
-        ("a100", 64),
-        ("a200", 56),
-        ("a300", 64),
-        ("c000", 56),
-        ("c100", 64),
-    ):
-        assert (
-            f"delete protocols static route6 2a02:168:6271:{subnet}::/{length}"
-            in deletes
         )
     assert routes == expected
 
@@ -82,15 +58,10 @@ def test_logging_and_pxe_use_atlas() -> None:
         == "http://alloy.atlas.home.arpa:12345/loki/api/v1/push"
     )
     system = (PROVISIONING / "templates/partials/system.j2").read_text()
-    deletes = (PROVISIONING / "templates/partials/deletes.j2").read_text()
     for name in ("loki", "alloy"):
         assert (
             f"set system static-host-mapping host-name {name}.atlas.home.arpa inet {{{{ atlas_node_ip }}}}"
             in system
-        )
-        assert (
-            f"delete system static-host-mapping host-name {name}.docker.home.arpa"
-            in deletes
         )
     scopes = yaml.safe_load((PROVISIONING / "vars/technitium.yml").read_text())[
         "technitium_dhcp_scopes"

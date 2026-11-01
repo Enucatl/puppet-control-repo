@@ -33,7 +33,6 @@ technitium_dns_hosts:
   - {name: docker, addresses: ["{{ docker_node_ip }}"], wildcard: true, ptr: true}
   - {name: atlas, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"], wildcard: true, ptr: true}
   - {name: complex, addresses: ["{{ complex_node_ip }}"], wildcard: true}
-  - {name: cognition, addresses: ["{{ cognition_node_ip }}", "{{ cognition_node_ula }}"], wildcard: true, ptr: true}
   - {name: cerebrum, addresses: ["{{ cerebrum_node_ip }}", "{{ cerebrum_node_ula }}"], wildcard: true, ptr: true}
   - {name: freeipa, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"], wildcard: true}
   - {name: hcv, addresses: ["{{ atlas_node_ip }}", "{{ atlas_node_ula }}"], wildcard: true}

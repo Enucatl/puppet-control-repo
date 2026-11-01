@@ -19,7 +19,6 @@ def test_router_deployment(tmp_path: Path) -> None:
     (tmp_path / "templates").symlink_to(ROOT / "templates", target_is_directory=True)
     templates = {
         "containers": "partials/containers.j2",
-        "deletes": "partials/deletes.j2",
         "smoke": "app_configs/router-smoke-check.sh.j2",
         "alloy": "app_configs/alloy-vyos.alloy.j2",
     }
@@ -54,9 +53,7 @@ def test_router_deployment(tmp_path: Path) -> None:
         capture_output=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    containers, deletes, smoke, alloy = (
-        (tmp_path / name).read_text() for name in templates
-    )
+    containers, smoke, alloy = ((tmp_path / name).read_text() for name in templates)
     subprocess.run(["sh", "-n"], input=smoke, text=True, check=True)
     assert "volume config source /config/containers/technitium-candidate" in containers
     assert "set container name technitium capability net-raw" in containers

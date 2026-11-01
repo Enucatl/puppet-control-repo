@@ -94,7 +94,6 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
     assert auth["allowed_common_names"] == [
         "atlas.home.arpa",
         "aperture.home.arpa",
-        "cognition.home.arpa",
         "cerebrum.home.arpa",
         "proxmox.home.arpa",
         "proxmox-cortex.home.arpa",
@@ -102,7 +101,6 @@ def test_runtime_policy_is_scoped(enrollment: ModuleType) -> None:
     assert auth["allowed_dns_sans"] == [
         "atlas.home.arpa",
         "aperture.home.arpa",
-        "cognition.home.arpa",
         "cerebrum.home.arpa",
         "proxmox.home.arpa",
         "proxmox-cortex.home.arpa",
