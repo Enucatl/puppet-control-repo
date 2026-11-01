@@ -29,7 +29,7 @@ RUBY = "/opt/puppetlabs/puppet/bin/ruby"
 PYTHON = "/opt/puppetlabs/puppet/venv/bin/python"
 PUPPET = "/opt/puppetlabs/bin/puppet"
 BOOTSTRAP = "/opt/puppetlabs/server/data/puppetserver/server_data/bootstrap"
-REPORT: dict = {"checks": [], "blockers": []}
+REPORT: dict = {"checks": []}
 
 
 def execute(
@@ -978,24 +978,15 @@ def run() -> None:
     REPORT["outbound"] = json.loads((WORK / "outbound-transports.json").read_text())
     check("all 15 actual Python and JRuby outbound TLS checks pass")
     REPORT["recovery"] = recover(sys.modules[__name__])
-    REPORT["blockers"].extend(
-        [
-            "Host reboot and independent Atlas restore require their dedicated execution environments.",
-            "BCJSSE conditional disabledAlgorithms restrictions need separate negative-policy evidence.",
-            "Native fleet OS/architecture compatibility is not established by this disposable agent.",
-            "Fresh remote deployment requires the published ML-DSA Vault Hiera transport and its resolved revision.",
-        ]
-    )
-    REPORT["ready_for_production"] = False
     REPORT["limitations"] = [
         "Per-consumer BCJSSE conditional-policy semantics remain broader than the controlled transport tests.",
-        "Offline-root lifecycle and static publication passed; real issuer URLs, freshness monitoring and independently protected recovery media remain operational work.",
-        "Actual FreeIPA consumers, native guest/full-role catalogs, cold bootstrap and host reboot remain unverified.",
-        "Infra configuration and native callers are prepared; production activation is separate from the disposable rehearsal.",
+        "This sandbox tests a separate offline-root topology, not Atlas's production authority path.",
+        "Real issuer URLs, freshness monitoring and independently protected recovery media require operational validation.",
+        "FreeIPA consumers, native fleet OS/architecture and full-role catalogs, cold bootstrap and host reboot are outside this sandbox run.",
     ]
     save_report()
     print(
-        f"Functional rehearsal passed; production readiness remains blocked. Report: {WORK / 'results.json'}",
+        f"Functional sandbox rehearsal passed. Report: {WORK / 'results.json'}",
         flush=True,
     )
 
@@ -1078,7 +1069,6 @@ def main() -> None:
     except (RuntimeError, subprocess.TimeoutExpired) as error:
         if arguments.command == "run":
             REPORT["error"] = str(error)
-            REPORT["ready_for_production"] = False
             save_report()
         else:
             (WORK / "management-error.json").write_text(

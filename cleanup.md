@@ -4,6 +4,38 @@ Prepared 2026-11-01 from a read-only repository audit. A later session will
 implement this plan. Recheck references and host state before each deletion;
 file locations describe the audited revision and may move.
 
+## Implementation status (2026-11-01)
+
+Implemented the Beszel catalog ordering fix; retired the old Vault policy and
+offline-intermediate paths, unused Docker Python project, duplicate NFS setting,
+Cognition configuration, completed router migration commands, historical archive
+and dated SSH inventory. Current Atlas authorization tests replace the obsolete
+policy fixture. Recovery protections and unresolved operational limits moved into
+current runbooks. The supported rehearsal remains, with sandbox-scoped output;
+OpenVox versioning no longer includes Puppet Enterprise compatibility.
+
+Live evidence confirmed all 31 router delete targets and Atlas's four obsolete
+renewal units absent. The retired health checker, shared credential and Cerebrum
+Wolf/vLLM deployment units were also absent; their markers are retired. Focused Docker checks passed for catalogs, router rendering
+and current real-Vault authorization/enrollment.
+
+Conditional items retained:
+
+- Cortex SSH-key removal remains: live files are clean, but three retained
+  initramfs images still contain `root@docker`; EFI copies need inspection.
+- Codex migration markers remain: both hypervisors still have the old config
+  symlink. Proxmox cache-prune overrides remain to prevent job reinstallation.
+- Documented targeted router tasks, Rakefile and manual wake-on-LAN CLI remain;
+  operator use has not been ruled out. Optional ansible.cfg trimming was skipped.
+- All six live Cognition DNS records were removed with exact-value API calls;
+  no Cognition DHCP reservation/lease existed. Installed DNS configuration and
+  smoke checks were updated to prevent reintroduction. Cerebrum DNS and Cortex
+  DHCP reservations were unchanged; 80 router smoke checks passed.
+
+No VM, disk, snapshot, volume or backup was deleted.
+
+The original plan below records the audit context and conditional decisions.
+
 ## Decisions and completed work
 
 - The user confirmed Cognition is completely gone. Its rollback-only DNS,

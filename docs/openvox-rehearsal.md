@@ -137,13 +137,12 @@ custom outbound CRL enforcement is no longer required. Puppetfile pins the
 published Hiera transport and protocol-setting fix.
 
 The [infrastructure runbook](openvox-infra.md),
-[historical offline-root notes](openvox-offline-root.md),
+[current root custody and recovery](openvox-infra.md),
 [Vault limits](openvox-vault-limitations.md) and
 [BCJSSE audit](openvox-jvm-policy.md) describe the deployed configuration and
 its verification limits. Final native Ubuntu/Debian, hardened Compose, hosted CI,
 protected off-host recovery, host reboot and image rollback acceptance passed
-with release 36001. See the [historical report](archive/migration/openvox-rehearsal-report.md)
-for evidence. This disposable rehearsal validates infrastructure behavior;
+with release 36001; historical acceptance evidence remains in Git history. This disposable rehearsal validates infrastructure behavior;
 verify production workloads through their own checks and follow
 [Atlas recovery](atlas-recovery.md) for established authority state.
 Broader BCJSSE conditional-policy compatibility is not claimed.

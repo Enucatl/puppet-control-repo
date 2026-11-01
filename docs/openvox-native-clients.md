@@ -2,8 +2,7 @@
 
 Atlas serves production catalogs through `openvox.home.arpa`. Use the
 [authority runbook](openvox-infra.md) for server startup and
-[Atlas recovery](atlas-recovery.md) for established state. Completed deployment
-plans and acceptance results are in the [migration archive](archive/migration/README.md).
+[Atlas recovery](atlas-recovery.md) for established state. Completed deployment plans and acceptance results remain in Git history.
 
 ## Fresh enrollment
 
@@ -45,6 +44,5 @@ matching rollback artifacts independently.
 ## Verification
 
 The [disposable rehearsal](openvox-rehearsal.md) exercises enrollment, catalogs,
-renewal and TLS rejection. Historical measured results are retained in the
-[migration archive](archive/migration/README.md). Validate each host's role and
+renewal and TLS rejection. Historical measured results remain in Git history. Validate each host's role and
 workloads after provisioning; package acceptance alone does not verify them.

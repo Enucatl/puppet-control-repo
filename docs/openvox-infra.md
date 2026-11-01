@@ -247,10 +247,12 @@ full-authority archive/restore tools and migration clone tools are retired.
 
 ## Maintenance release and independent recovery
 
-The [initial activation](archive/migration/atlas-infra-results.json),
-[native enrollment](archive/migration/atlas-enrollment-results.json),
-[OpenVox renewal](archive/migration/atlas-openvox-renewal-results.json) and
-[maintenance acceptance](archive/migration/atlas-maintenance-results.json) records describe
-earlier measured deployments and protected off-host kits. They retain
-historical identity and recovery evidence; deleted wrapper commands and old
-`/root/openvox-infra` paths are not current operating instructions.
+Earlier activation, enrollment, renewal and maintenance acceptance records remain
+in Git history. Protected off-host kits retain their original identity and
+recovery evidence; deleted wrapper commands and old `/root/openvox-infra` paths
+are not current operating instructions. Use [Atlas recovery](atlas-recovery.md)
+for the current deployment.
+
+The production root signing key stays in Vault. OpenVox receives issued CA
+certificates rather than the root private key. The disposable rehearsal's
+offline-root topology is separate from this production custody model.

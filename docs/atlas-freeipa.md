@@ -7,8 +7,7 @@ IDs, memberships, HBAC and sudo policies. Atlas is now enrolled through
 OpenVox's `freeipa::client` resource against `ipa.home.arpa`; its full Docker
 catalog passed. Both `ipa.home.arpa` and the compatibility name
 `freeipa.home.arpa` now resolve to Atlas; the old Docker VM is stopped.
-See [migration evidence](archive/migration/atlas-ipa-migration-results.json) and
-[enrollment evidence](archive/migration/atlas-enrollment-results.json).
+Historical migration and enrollment evidence remain in Git history.
 
 The realm remains `HOME.ARPA` and the domain remains `home.arpa`. The operator
 confirmed that password Kerberos and SSH GSSAPI are sufficient: the installer
@@ -31,11 +30,10 @@ comes from fork revision `63b0aa68606946268dcaff1e2d1113febada1183`, pinned to
 There is no local derived FreeIPA image, custom entrypoint or entrypoint override.
 [The hosted build and checks passed](https://github.com/Enucatl/freeipa-container/actions/runs/39654753564),
 including fresh installation, HTTP/LDAP certificate replacement and a standard
-installation with a replica. The established server's
-[initialization evidence](archive/migration/atlas-ipa-initialization-results.json) records its
-certificate identities, authenticated checks and protected off-host backup.
+installation with a replica. The established server's initialization evidence remains in Git history;
+retain its protected off-host backup.
 
-The [October 21 image acceptance](archive/migration/atlas-ipa-image-upgrade-results.json) passed
+The October 21 image acceptance passed
 on Atlas using the published digest: fresh installation, ML-DSA-44/65/87 and
 RSA/EC compatibility, certificate replacement, existing-volume migration and
 ordinary native startup. The live service is healthy on that digest. All 10
@@ -116,8 +114,8 @@ Its password and Jellyfin pairing instructions live in the Jellyfin stack.
 ## DNS and client selection
 
 The router publishes `ipa.home.arpa` at Atlas's reserved IPv4 address and stable
-IPv6 ULA. Atlas remains the canonical PTR. The DNS-only deployment and 53 smoke
-checks passed; see [the measured DNS evidence](archive/migration/atlas-ipa-dns-results.json).
+IPv6 ULA. Atlas remains the canonical PTR. The DNS-only deployment and 53 smoke checks passed; historical evidence remains
+in Git history.
 
 All managed clients, including both Proxmox hypervisors, use the shared
 `ipa.home.arpa` server setting. Each node declares its enrollment hostname and
@@ -170,8 +168,7 @@ other client configuration.
 ## Established identities and recovery
 
 The completed account migration preserved the original users, numeric IDs,
-memberships and policies. See [migration evidence](archive/migration/atlas-ipa-migration-results.json)
-for the measured acceptance. Migration-only import and disposable clone tools
+memberships and policies. Measured acceptance remains in Git history. Migration-only import and disposable clone tools
 are retired. Native startup reads the existing `/data` volume; it does not
 repeat that migration.
 

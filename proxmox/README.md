@@ -1,11 +1,9 @@
 # Proxmox VM provisioning
 
-Atlas, Aperture and Cerebrum use Ubuntu 26.04; Cerebrum VM 230 replaced
-Cognition VM 220 through the [completed migration](../docs/archive/migration/cerebrum-migration.md).
-This runbook covers provisioning, bootstrap and publication. Recover established Atlas state
-through the [backup and recovery workflow](../docs/atlas-recovery.md).
-Completed plans and acceptance results are in the
-[migration archive](../docs/archive/migration/README.md).
+Atlas, Aperture and Cerebrum use Ubuntu 26.04. This runbook covers provisioning,
+bootstrap and publication. Recover established Atlas state through the
+[backup and recovery workflow](../docs/atlas-recovery.md). Completed migration
+plans and acceptance records remain in Git history.
 
 ## Prerequisites and inputs
 
@@ -438,18 +436,21 @@ Cerebrum uses the Docker workload path: VM 230, template 9002, eight cores,
 32768 MiB final RAM, a thin 1000 GiB XFS disk and virtio graphics for initial
 provisioning, with MAC `bc:24:11:4e:c0:23` reserved as `10.0.40.135`.
 It enrolls against Atlas and installs authenticated system CA trust before
-FreeIPA enrollment. The completed GPU/network handover and staging resources
-are recorded in the [handover record](../docs/archive/migration/cerebrum-cutover.md).
-The production guest uses serial graphics after GPU transfer. Its daemon retains disabled user namespace remapping to
+FreeIPA enrollment. The production guest uses serial graphics after GPU transfer. Its daemon retains disabled user namespace remapping to
 preserve migrated numeric ownership; other Docker builds retain their existing
 `default` remapping. The Docker provisioning failure path retains
 the guest and writes private diagnostics so an enrolled identity can be repaired
 in place.
-See the [Cerebrum migration record](../docs/archive/migration/cerebrum-migration.md) for current
-acceptance evidence and retained recovery data. Preserve Cognition VM 220 and
-Complex VM 200 for rollback; neither may run conflicting GPU or container
-networks alongside Cerebrum. The one-time Complex-to-Cognition migration tools
-have been retired.
+Wolf and the weekly vLLM controller target VM 230. The six container routes use
+`fe80::be24:11ff:fe4e:c023` on `eth3`; Aperture mounts
+`cerebrum.home.arpa:/docker` at `/export/cerebrum`. Preserve Qdrant's hidden data
+under `/home/user/zanzara-archive/.git/zanzara-qdrant` and the pinned vLLM image.
+Cerebrum has no configured backup job; local snapshots are not independent backups.
+
+Complex VM 200 and its recovery assets remain protected. Do not activate its
+conflicting GPU or container networks alongside Cerebrum, or delete its disks,
+held snapshots or recovery copies without separate authorization. Cognition is
+retired; its rollback procedures no longer apply.
 
 Aperture VM 310 on `proxmox.home.arpa` uses the desktop role with Atlas IPA,
 Vault, monitoring and Kerberos NFS endpoints. Its catalog creates the user-owned
@@ -457,8 +458,12 @@ Documents directory and exports it read-only to Atlas. Fresh enrolled guests
 need authenticated Atlas system CA trust and admission of their exact identity
 in Vault's certificate-authentication policy. Provisioning does not transfer
 user or application state; preserve that data through backups and recovery.
-See the [completed Aperture cutover record](../docs/archive/migration/aperture-cutover.md)
-for hardware ownership and retained recovery evidence.
+Aperture owns PCI functions `09:00.0`, `.1`, `.3` and `.4`, with `vga=none`
+and `x-vga=1`. Preserve Forbearance VM 300 and the private records under
+`/root/aperture-cutover`, including `310-before-cidata-removal.conf` and the
+retained 4 MiB seed volume. The seed medium was ejected; IDE slot deletion awaits
+a shutdown. GPU reset/reboot reliability and comprehensive audio/licence checks
+were not established by the cutover.
 
 The FreeIPA acceptance fixture also loads optional `.env` settings: set
 `PUPPET_SERVER=openvox.home.arpa` there to test the new server. Its readiness check
@@ -466,8 +471,7 @@ uses the shared 30-minute timeout and retains the failed VM/snippet for diagnosi
 
 ## Acceptance and recovery
 
-Template, bootstrap, enrollment and cutover acceptance records are retained in
-the [migration archive](../docs/archive/migration/README.md). The one-time Atlas
+Template, bootstrap, enrollment and cutover acceptance records remain in Git history. The one-time Atlas
 base acceptance harness has been retired. Current provisioning retains its
 ownership checks, promotion guard and shared readiness checks. Use the
 [Atlas recovery workflow](../docs/atlas-recovery.md) for established authorities;

@@ -45,3 +45,33 @@ Previously created protected backup kits and acceptance records remain historica
 recovery material; retiring tooling does not delete those archives. Historical
 restore transcripts are evidence of their original layouts, not current startup
 instructions.
+
+## Retained recovery material and limits
+
+Repository cleanup does not authorize deleting private backup kits, VM disks,
+held snapshots, staging copies or protected archives. Inventory those assets
+separately before changing retention. Complex VM 200, Forbearance VM 300 and
+their recovery material remain protected; Cognition's retirement does not
+change their retention. See [guest recovery constraints](../proxmox/README.md).
+
+The protected lab kit at
+`root@proxmox.home.arpa:/root/openvox-issue12-rehearsal/final-baseline-24001`
+contains sensitive test recovery inputs (directory 0700, files 0600); do not
+publish it. Earlier revisions 1–3 restore a retired strict-CRL configuration,
+not the final baseline. Historical standalone restore needs exact images,
+verified configuration/volume/recovery archives and authenticated SSH access
+on a fresh Docker/Compose host. It proves lab recovery, not production backup
+custody, FreeIPA/NFS state recovery or independent physical storage.
+
+Preserve Atlas's pre-13.3 Grafana data archive: schema migration can prevent an
+image-only downgrade. Retain private Aperture records and seed media described
+in the provisioning runbook. Cerebrum's missing backup job remains a protection
+gap; local rollback assets are not independent backups.
+
+The November 1 live inspection found `root@docker` in Cortex's retained initramfs
+images for `6.17.13-21-pve`, `6.17.2-1-pve` and `7.0.14-23-pve`, despite clean
+live authorization files. Keep the Puppet key-removal marker until boot-image
+revocation is complete. `update-initramfs -u` without `-k all` can leave revoked
+Dropbear keys in older images; verify every retained initramfs and EFI copy.
+The October inventory did not establish actual key usage; key comments alone
+do not prove private-key ownership.

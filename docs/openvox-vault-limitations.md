@@ -98,8 +98,8 @@ UTF8String forms of an otherwise identical CN can therefore fail to chain.
 Sources: [Vault verification](https://github.com/hashicorp/vault/blob/2891bfd23893ebd302307050edaf03d871ea8351/builtin/credential/cert/path_login.go#L978-L1005),
 [Go parent lookup](https://github.com/golang/go/blob/go1.27.2/src/crypto/x509/cert_pool.go#L137-L171).
 
-The earlier [issuer-encoding investigation](archive/migration/05-vault-cert-auth-puppet-issuer-encoding.md)
-documents this failure on the old CA. The disposable new chain already passed
+The earlier issuer-encoding investigation, retained in Git history,
+documented this failure on the old CA. The disposable new chain already passed
 CA-backed Vault cert auth. Preserve the exact-DER gate
 `leaf.RawIssuer == issuer.RawSubject` for future CA imports and signer changes;
 do not assume a matching printed CN proves compatibility.
@@ -119,6 +119,5 @@ the server's configured TLS protocol list into its Java HTTP client. The CRL
 option and custom validation adapters have been removed.
 
 The accepted classical Vault TLS fallback and verified internal PKI seed storage
-remain as described above. Fleet compatibility, independent recovery and final
-released-artifact acceptance are tracked in the
-[rehearsal report](archive/migration/openvox-rehearsal-report.md).
+remain as described above. Validate fleet compatibility separately from the [sandbox rehearsal](openvox-rehearsal.md),
+and use the [current recovery runbook](atlas-recovery.md) for independent recovery.

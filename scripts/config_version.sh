@@ -19,11 +19,6 @@ if [ -e $1/$2/.r10k-deploy.json ]; then
   # version using the r10k data.
   ruby $1/$2/scripts/config_version-r10k.rb $1 $2
 
-elif [ -e /opt/puppetlabs/server/pe_version ]; then
-  # This is a Puppet Enterprise system and we can rely on the rugged ruby gem
-  # being available.
-  ruby $1/$2/scripts/config_version-rugged.rb $1 $2
-
 elif type git >/dev/null && [ -d "$1/$2/.git" ]; then
   # The git command is available.
   git --git-dir $1/$2/.git rev-parse HEAD

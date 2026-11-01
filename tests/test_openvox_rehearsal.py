@@ -72,7 +72,7 @@ def rehearsal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(module, "WORK", tmp_path / "work")
     module.WORK.mkdir()
     monkeypatch.setattr(module, "STAGE", tmp_path / "work/repo")
-    monkeypatch.setattr(module, "REPORT", {"checks": [], "blockers": []})
+    monkeypatch.setattr(module, "REPORT", {"checks": []})
     return module
 
 
@@ -166,7 +166,7 @@ def test_outbound_checks_preserve_evidence_and_fail_on_invalid_peer(
         json.loads((rehearsal.WORK / "outbound-transports.json").read_text())
         == evidence
     )
-    assert rehearsal.REPORT == {"checks": [], "blockers": []}
+    assert rehearsal.REPORT == {"checks": []}
 
 
 @pytest.mark.parametrize("status", (200, 204, 501, 503))
