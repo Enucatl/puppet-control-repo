@@ -67,3 +67,24 @@ def test_gpu_host_catalog(tmp_path: Path) -> None:
     )
     assert result["Systemd::Unit_file[steam-dedup.timer]"]["active"] is True
     assert "Class[Profile::Docker_node]" not in result
+
+    prune = result[
+        "File[/etc/systemd/system/docker-prune.service.d/retain-paddle.conf]"
+    ]["content"]
+    assert result["Systemd::Dropin_file[retain-paddle.conf]"]["notify_service"] is False
+    assert "ExecStart=\nExecStart=" in prune
+    assert (
+        "paddleocr-genai-vllm-server@sha256:bffd525308facf5dba2f8eca44ab476704a0ae3bfdcba25f77655973e4c0a7ca"
+        in prune
+    )
+    assert "docker create --pull=never" in prune
+    assert "--network none --userns host --entrypoint /bin/true" in prune
+    assert "{{.Image}}" in prune and "{{.Id}}" in prune
+    assert "{{.Config.Labels.puppet_keep_paddle_recognition}}" in prune
+    assert (
+        "system prune --all --force --filter until=24h --filter label!=puppet_keep_paddle_recognition=true"
+        in prune
+    )
+    assert result["Systemd::Unit_file[docker-prune.timer]"]["active"] is True
+    timer = result["File[/etc/systemd/system/docker-prune.timer]"]["content"]
+    assert "OnCalendar=*-*-* 03:00:00 UTC" in timer

@@ -65,3 +65,24 @@ profile::common::certs::vault_certs_defaults:
 
 profile::common::certs::directories:
   - /opt/docker
+
+# Docker cannot exclude an image digest from prune. A never-started, labelled
+# container keeps this costly pinned image referenced without using GPU or RAM.
+# On pin upgrades, explicitly remove/recreate the anchor; a mismatch stops prune.
+systemd::dropin_files:
+  retain-paddle.conf:
+    unit: docker-prune.service
+    notify_service: false
+    content: |
+      [Service]
+      Environment=RETAIN_IMAGE=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddleocr-genai-vllm-server@sha256:bffd525308facf5dba2f8eca44ab476704a0ae3bfdcba25f77655973e4c0a7ca
+      Environment=RETAIN_CONTAINER=puppet-retain-paddle-recognition
+      ExecStartPre=/bin/sh -ec '\
+        if /usr/bin/docker container inspect "$$RETAIN_CONTAINER" >/dev/null 2>&1; then \
+          test "$$(/usr/bin/docker container inspect --format "{{.Image}}" "$$RETAIN_CONTAINER")" = "$$(/usr/bin/docker image inspect --format "{{.Id}}" "$$RETAIN_IMAGE")"; \
+          test "$$(/usr/bin/docker container inspect --format "{{.Config.Labels.puppet_keep_paddle_recognition}}" "$$RETAIN_CONTAINER")" = true; \
+        elif /usr/bin/docker image inspect "$$RETAIN_IMAGE" >/dev/null 2>&1; then \
+          /usr/bin/docker create --pull=never --name "$$RETAIN_CONTAINER" --label puppet_keep_paddle_recognition=true --network none --userns host --entrypoint /bin/true "$$RETAIN_IMAGE"; \
+        fi'
+      ExecStart=
+      ExecStart=/bin/sh -c '/usr/bin/docker system prune --all --force --filter until=24h --filter label!=puppet_keep_paddle_recognition=true 2>&1 | /usr/bin/logger -t docker-prune -p user.info'
