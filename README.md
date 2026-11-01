@@ -11,6 +11,26 @@ Use these current operating instructions:
 - [Atlas service configuration](docs/atlas-services.md) and [backup/recovery](docs/atlas-recovery.md)
 - [Disposable OpenVox rehearsal](docs/openvox-rehearsal.md) and [Vault limits](docs/openvox-vault-limitations.md)
 
+## Codex configuration
+
+Desktop and Docker roles include `profile::codex_config`, which deploys
+`modules/profile/files/codex-config.toml` to root-owned `/etc/codex/config.toml`.
+This file contains intentional defaults and integrations; trusted folders,
+hook hashes, onboarding state and model migration notices belong to Codex's
+writable `~/.codex/config.toml`. User overrides take precedence over the system
+defaults, so the deployed model is the initial default and subsequent local
+model choices survive Puppet runs. See the [Codex config precedence](https://learn.chatgpt.com/docs/config-file/config-basic).
+
+Before updating the dotfiles repository, running `rake links`, or synchronizing
+plugins, Puppet removes the user config only when it is the old absolute
+`~/.vim/dotfiles/codex/config.toml` symlink. Regular files and other symlinks are
+left untouched. The dotfiles repository continues to link instructions and
+skills, but no longer ships the config. This simple cutover intentionally
+discards state from the old symlink without migration or merging. Reboot the
+machines after deployment; Codex recreates its writable user config as needed,
+and trust confirmations may appear again once. Later Puppet runs leave that
+user file and runtime state alone.
+
 ## Repository Structure
 
 ```

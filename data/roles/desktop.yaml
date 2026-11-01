@@ -4,6 +4,7 @@ classes:
   - neovim
   - nfs_config
   - profile::codex_mtls
+  - profile::codex_config
   - profile::user_toolchain
   - profile::codex_plugins
   - profile::typst

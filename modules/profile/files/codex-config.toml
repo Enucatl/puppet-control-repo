@@ -1,0 +1,42 @@
+approvals_reviewer = "user"
+model = "gpt-6-luna"
+model_reasoning_effort = "medium"
+plan_mode_reasoning_effort = "high"
+analytics.enabled = false
+check_for_update_on_startup = false
+suppress_unstable_features_warning = true
+[features.code_mode]
+enabled = true
+default_exec_yield_time_ms = 600000
+
+[features.multi_agent_v2]
+enabled = true
+min_wait_timeout_ms = 1_500_000
+default_wait_timeout_ms = 1_500_000
+max_wait_timeout_ms = 3_600_000
+
+[model_providers.ollama-complex]
+name = "ollama"
+base_url = "http://cerebrum.home.arpa:8111/v1"
+
+[profiles.qwen]
+model = "qwen"
+model_provider = "ollama-complex"
+approvals_reviewer = "user"
+
+[notice]
+hide_full_access_warning = true
+
+[tui]
+fullscreen_transcript = false
+theme = "solarized-light"
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[marketplaces.ponytail]
+source_type = "local"
+source = "/home/user/.local/share/codex/ponytail-marketplace"
+
+[plugins."ponytail@ponytail"]
+enabled = true
