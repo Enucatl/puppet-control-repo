@@ -58,14 +58,16 @@ def test_container_routes_replace_the_old_hosts_in_both_address_spaces() -> None
             f"fe80{variables['atlas_node_ipv6_suffix']}",
             variables["lan_interface"],
         )
-    for subnet, length in (("c000", 56), ("c100", 64)):
-        network = f"2a02:168:6271:{subnet}::/{length}"
-        expected[network] = (
-            f"fe80{variables['cerebrum_node_ipv6_suffix']}",
-            variables["cortex_interface"],
-        )
+    for subnet, length in (
+        ("a000", 56),
+        ("a100", 64),
+        ("a200", 56),
+        ("a300", 64),
+        ("c000", 56),
+        ("c100", 64),
+    ):
         assert (
-            f"delete protocols static route6 {network} next-hop fe80{variables['cognition_node_ipv6_suffix']}"
+            f"delete protocols static route6 2a02:168:6271:{subnet}::/{length}"
             in deletes
         )
     assert routes == expected

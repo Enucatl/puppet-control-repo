@@ -18,5 +18,14 @@ delete protocols static route6 {{ ipv6_prefix }}:c000::/56 next-hop fe80{{ cogni
 delete protocols static route6 {{ ipv6_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}
 delete protocols static route6 {{ ula_prefix }}:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }}
 delete protocols static route6 {{ ula_prefix }}:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}
-delete protocols static route6 2a02:168:6271:c000::/56 next-hop fe80{{ cognition_node_ipv6_suffix }}
-delete protocols static route6 2a02:168:6271:c100::/64 next-hop fe80{{ cognition_node_ipv6_suffix }}
+delete protocols static route6 2a02:168:6271:a000::/56
+delete protocols static route6 2a02:168:6271:a100::/64
+delete protocols static route6 2a02:168:6271:a200::/56
+delete protocols static route6 2a02:168:6271:a300::/64
+delete protocols static route6 2a02:168:6271:c000::/56
+delete protocols static route6 2a02:168:6271:c100::/64
+delete interfaces wireguard wg0 peer andrea allowed-ips 2a02:168:6271:c8::5/128
+delete interfaces wireguard wg0 peer phone allowed-ips 2a02:168:6271:c8::2/128
+delete interfaces wireguard wg0 peer riccardo allowed-ips 2a02:168:6271:c8::3/128
+delete interfaces wireguard wg0 peer test allowed-ips 2a02:168:6271:c8::4/128
+delete service suricata address-group home-net address 2a02:168:6271::/48
