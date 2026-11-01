@@ -16,15 +16,23 @@ OpenVox versioning no longer includes Puppet Enterprise compatibility.
 
 Live evidence confirmed all 31 router delete targets and Atlas's four obsolete
 renewal units absent. The retired health checker, shared credential and Cerebrum
-Wolf/vLLM deployment units were also absent; their markers are retired. Focused Docker checks passed for catalogs, router rendering
-and current real-Vault authorization/enrollment.
+Wolf/vLLM deployment units were also absent; their markers are retired.
+Docker publication checks passed: 571 tests passed, 3 skipped. Production was
+verified on GitHub, Atlas and the OpenVox receipt at `af5cbad`.
+
+The 14:03 UTC recheck confirmed Codex defaults and regular user configs on all
+three intended desktop/Docker targets (Atlas, Aperture and Cerebrum), allowing
+retirement of its symlink migration. Hypervisors do not include that class;
+their old symlinks are outside this rollout.
 
 Conditional items retained:
 
 - Cortex SSH-key removal remains: live files are clean, but three retained
-  initramfs images still contain `root@docker`; EFI copies need inspection.
-- Codex migration markers remain: both hypervisors still have the old config
-  symlink. Proxmox cache-prune overrides remain to prevent job reinstallation.
+  initramfs images still contain `root@docker`. Read-only inspection of both
+  managed EFI partitions also found it in two older kernel versions; normal
+  convergence rebuilds only the current initramfs. Keep the marker until all
+  retained boot images are clean.
+- Proxmox cache-prune overrides remain to prevent job reinstallation.
 - Documented targeted router tasks, Rakefile and manual wake-on-LAN CLI remain;
   operator use has not been ruled out. Optional ansible.cfg trimming was skipped.
 - All six live Cognition DNS records were removed with exact-value API calls;

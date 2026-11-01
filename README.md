@@ -21,15 +21,8 @@ writable `~/.codex/config.toml`. User overrides take precedence over the system
 defaults, so the deployed model is the initial default and subsequent local
 model choices survive Puppet runs. See the [Codex config precedence](https://learn.chatgpt.com/docs/config-file/config-basic).
 
-Before updating the dotfiles repository, running `rake links`, or synchronizing
-plugins, Puppet removes the user config only when it is the old absolute
-`~/.vim/dotfiles/codex/config.toml` symlink. Regular files and other symlinks are
-left untouched. The dotfiles repository continues to link instructions and
-skills, but no longer ships the config. This simple cutover intentionally
-discards state from the old symlink without migration or merging. Reboot the
-machines after deployment; Codex recreates its writable user config as needed,
-and trust confirmations may appear again once. Later Puppet runs leave that
-user file and runtime state alone.
+The dotfiles repository links instructions and skills; Codex manages its writable
+user config and runtime state. Puppet leaves user config files and symlinks alone.
 
 ## Repository Structure
 

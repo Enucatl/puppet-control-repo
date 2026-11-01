@@ -70,7 +70,10 @@ gap; local rollback assets are not independent backups.
 
 The November 1 live inspection found `root@docker` in Cortex's retained initramfs
 images for `6.17.13-21-pve`, `6.17.2-1-pve` and `7.0.14-23-pve`, despite clean
-live authorization files. Keep the Puppet key-removal marker until boot-image
+live authorization files. Read-only inspection of both EFI partitions
+(`7A10-831F` and `E1F1-1158`) also found that key in their retained
+`6.17.13-21-pve` and `7.0.14-23-pve` initramfs copies; current `7.0.14-25-pve`
+images were clean. Keep the Puppet key-removal marker until boot-image
 revocation is complete. `update-initramfs -u` without `-k all` can leave revoked
 Dropbear keys in older images; verify every retained initramfs and EFI copy.
 The October inventory did not establish actual key usage; key comments alone
