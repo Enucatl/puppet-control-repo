@@ -90,8 +90,8 @@ Profile-gated maintenance and setup jobs remain excluded from normal deployment;
 do not enable their profiles unless the deployment explicitly needs them.
 
 The Python checker and its post-start invocation are removed.
-`profile::docker_deploy::health_check` temporarily remains as a cleanup class,
-ensuring `/usr/local/sbin/docker-compose-health-check` is absent on existing hosts.
+The obsolete checker is absent on Atlas and Cerebrum; its temporary Puppet
+cleanup class has been retired.
 
 The plan intentionally avoids:
 
@@ -104,7 +104,7 @@ The plan intentionally avoids:
 Verify changes before rollout with:
 
 - Puppet parser validation for the touched manifests
-- catalog tests for both services, custom commands, timeout overrides, and checker removal
+- catalog tests for both services, custom commands, and timeout overrides
 - disposable Compose projects covering readiness, timeout, early exit, running-only
   services, successful/failed setup dependencies, and no selected services
 
@@ -114,7 +114,6 @@ Deploy through the normal Puppet process, then inspect:
 - `systemctl cat <project>-refresh.timer`
 - `systemctl cat <project>-deploy.service`
 - `systemctl cat <project>-refresh.service`
-- removal of `/usr/local/sbin/docker-compose-health-check`
 
 Observe the next deployment or refresh through its systemd result and
 `journalctl -u <project>-deploy.service` or `journalctl -u <project>-refresh.service`.

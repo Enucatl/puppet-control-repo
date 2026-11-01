@@ -278,15 +278,6 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         timer = result[f"Systemd::Unit_file[{job}.timer]"]
         assert timer["enable"] is True and timer["active"] is True
     vault_backup = result["File[/etc/systemd/system/vault-snapshot.service]"]["content"]
-    for unit in (
-        "atlas-transport-renew.service",
-        "atlas-transport-renew.timer",
-        "atlas-openvox-renew.service",
-        "atlas-openvox-renew.timer",
-    ):
-        assert result[f"File[/etc/systemd/system/{unit}]"]["ensure"] == "absent"
-        assert result[f"Service[{unit}]"]["enable"] is False
-        assert result[f"Service[{unit}]"]["ensure"] is False
     assert "RequiresMountsFor=/scratch" in vault_backup
     assert "backup.sh" in vault_backup
     assert "Cron[vault-snapshot]" not in result
@@ -402,6 +393,12 @@ def test_atlas_catalog_uses_new_infrastructure(tmp_path: Path) -> None:
         assert not directory.get("recurse", False)
     assert "File[/opt/docker/compose-security-baseline]" not in result
     pairs = ordered_pairs(catalog)
+    for directory in (
+        "/etc/beszel-agent",
+        "/var/cache/beszel-agent",
+        "/var/lib/beszel-agent",
+    ):
+        assert ("Exec[ipa-user-provision-beszel]", f"File[{directory}]") in pairs
     assert result["Exec[sync-user-toolchain-user]"]["cwd"] == "/home/user"
     assert ("File[/home/user]", "Exec[sync-user-toolchain-user]") in pairs
     assert ("Exec[apt_update]", "Package[alloy]") in pairs
@@ -485,7 +482,6 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
         assert result["Package[sudo]"]["ensure"] == "installed"
     assert ("Class[Freeipa_users::Provision]" in result) == (hostname == "atlas")
     assert ("Exec[ipa-user-provision-backrest]" in result) == (hostname == "atlas")
-    assert result["File[/run/puppet-ipa-admin-pass]"]["ensure"] == "absent"
     assert "kinit admin" not in str(catalog)
     docker_role = node_type == "docker"
     assert ("User[alloy]" in result) == docker_role
@@ -506,11 +502,6 @@ def test_node_catalog(tmp_path: Path, hostname: str, node_type: str) -> None:
                 "ExecStart=/bin/bash -c 'docker compose up -d --force-recreate'"
                 in unit.splitlines()
             )
-    if docker_role:
-        assert (
-            result["File[/usr/local/sbin/docker-compose-health-check]"]["ensure"]
-            == "absent"
-        )
     if hostname == "proxmox":
         assert "File[/usr/local/lib/proxmox_orchestration.py]" in result
         assert (
@@ -685,10 +676,6 @@ def test_docker_deploy_catalog(
         node_type="proxmox",
     )
     result = resources(catalog)
-    assert (
-        result["File[/usr/local/sbin/docker-compose-health-check]"]["ensure"]
-        == "absent"
-    )
     assert ("File[/etc/systemd/system/example-refresh.service]" in result) == refresh
     for action in ("deploy", "refresh") if refresh else ("deploy",):
         unit = result[f"File[/etc/systemd/system/example-{action}.service]"]["content"]

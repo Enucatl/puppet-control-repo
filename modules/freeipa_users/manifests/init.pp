@@ -1,10 +1,6 @@
 class freeipa_users (
   Hash $user_groups = {},
 ) {
-  file { '/run/puppet-ipa-admin-pass':
-    ensure => absent,
-  }
-
   # Add existing IPA users to local groups (e.g. docker).
   # Skipped if the user doesn't exist locally yet (SSSD may not have synced).
   $user_groups.each |$username, $groups_array| {

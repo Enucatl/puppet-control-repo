@@ -1,6 +1,6 @@
 # Installs the Beszel agent binary and manages its systemd unit.
 #
-# Runs as the FreeIPA `beszel` user (created via freeipa_users on docker,
+# Runs as the FreeIPA `beszel` user (provisioned via freeipa_users on Atlas,
 # available on all hosts through SSSD). Do not use get.beszel.dev — it would
 # create a conflicting local user. Pin $version to the hub image tag.
 #
@@ -42,10 +42,9 @@ class profile::beszel_agent (
   $token_file   = "${config_dir}/token"
   $marker       = "${cache_dir}/.installed-${version}"
 
-  # IPA user is created on the docker node; other hosts resolve it via SSSD.
+  # IPA user is provisioned on Atlas; other hosts resolve it via SSSD.
   # Collectors avoid parse-order issues with defined().
-  Exec <| title == "ipa-user-add-${user}" |> -> File[$config_dir]
-  Exec <| title == "ipa-user-add-${user}" |> -> File[$data_dir]
+  Exec <| title == "ipa-user-provision-${user}" |> -> File[$config_dir, $cache_dir, $data_dir]
   Exec <| title == "add_ipa_user_${user}_to_groups" |> -> Systemd::Unit_file['beszel-agent.service']
 
   if $ensure == 'present' {

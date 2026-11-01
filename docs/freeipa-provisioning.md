@@ -1,7 +1,6 @@
 # FreeIPA provisioning on Atlas
 
-`freeipa_users` only manages local group membership and removes the retired
-`/run/puppet-ipa-admin-pass` file. `freeipa_users::provision` and its users are
+`freeipa_users` only manages local group membership. `freeipa_users::provision` and its users are
 included by `data/nodes/atlas.home.arpa.yaml`. The class requires Puppet's authenticated
 remote certname to equal `atlas.home.arpa`, regardless of hostname/role facts.
 

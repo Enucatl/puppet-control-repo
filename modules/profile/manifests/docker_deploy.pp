@@ -55,8 +55,6 @@ define profile::docker_deploy (
   Boolean                  $scheduled_refresh = false,
   String                   $refresh_calendar  = 'Sun *-*-01..07 04:00:00',
 ) {
-  include profile::docker_deploy::health_check
-
   $base_dir = "/opt/docker/${name}"
 
   # Build the global docker compose flags (--env-file and -f apply to all subcommands)
@@ -110,7 +108,6 @@ define profile::docker_deploy (
     }),
     enable  => false,
     active  => false,
-    require => Class['profile::docker_deploy::health_check'],
   }
 
   if $scheduled_refresh {
@@ -123,7 +120,6 @@ define profile::docker_deploy (
       }),
       enable  => false,
       active  => false,
-      require => Class['profile::docker_deploy::health_check'],
     }
 
     systemd::unit_file { "${name}-refresh.timer":

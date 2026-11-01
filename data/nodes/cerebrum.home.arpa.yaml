@@ -49,12 +49,6 @@ packages::list:
   - rsync
   - ubuntu-drivers-common
 
-profile::docker_host::git_deploy_projects:
-  wolf:
-    ensure: absent
-  vllm:
-    ensure: absent
-
 kmod::list_of_loads:
   'uinput': {}
 

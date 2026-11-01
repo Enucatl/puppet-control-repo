@@ -569,22 +569,6 @@ profile::common::acls::posix_acls:
     - mask::r--
 
 profile::common::systemd::units:
-  atlas-openvox-renew.service:
-    ensure: absent
-    enable: false
-    active: false
-  atlas-openvox-renew.timer:
-    ensure: absent
-    enable: false
-    active: false
-  atlas-transport-renew.service:
-    ensure: absent
-    enable: false
-    active: false
-  atlas-transport-renew.timer:
-    ensure: absent
-    enable: false
-    active: false
   paperless-snapshot.service:
     content: |
       [Unit]
