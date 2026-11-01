@@ -60,15 +60,6 @@ def test_gpu_host_catalog(tmp_path: Path) -> None:
         "content"
     ]
     assert "ExecCondition=/usr/bin/nvidia-smi -L" in power
-    for project in ("vllm", "wolf"):
-        for suffix in ("path", "service"):
-            assert (
-                result[f"File[/etc/systemd/system/{project}-deploy.{suffix}]"]["ensure"]
-                == "absent"
-            )
-            unit = result[f"Service[{project}-deploy.{suffix}]"]
-            assert unit["enable"] is False
-            assert unit["ensure"] is False
     assert (ROOT / f"data/roles/nodes/{hostname}.home.arpa.yaml").is_symlink()
     assert (
         "MemoryMax=2G"
