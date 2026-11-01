@@ -68,13 +68,15 @@ image-only downgrade. Retain private Aperture records and seed media described
 in the provisioning runbook. Cerebrum's missing backup job remains a protection
 gap; local rollback assets are not independent backups.
 
-The November 1 live inspection found `root@docker` in Cortex's retained initramfs
-images for `6.17.13-21-pve`, `6.17.2-1-pve` and `7.0.14-23-pve`, despite clean
-live authorization files. Read-only inspection of both EFI partitions
-(`7A10-831F` and `E1F1-1158`) also found that key in their retained
-`6.17.13-21-pve` and `7.0.14-23-pve` initramfs copies; current `7.0.14-25-pve`
-images were clean. Keep the Puppet key-removal marker until boot-image
-revocation is complete. `update-initramfs -u` without `-k all` can leave revoked
-Dropbear keys in older images; verify every retained initramfs and EFI copy.
+On November 1, Cortex's retained boot images were regenerated with
+`update-initramfs -u -k all`; its normal hook refreshed both EFI partitions
+(`7A10-831F` and `E1F1-1158`). The retired `root@docker` key
+(`SHA256:BjYr/l7B86o5mlIvJcNBtDiwKZuQyFgam4Ug8z7bE6s`) was absent by key
+material from live authorization files, all four retained `/boot` initramfs
+images and all six EFI copies. All three allowed Dropbear keys, including Wolf,
+remained in every image; kernel selection and live authorization files were
+unchanged. The completed Puppet removal marker is retired. No reboot was run.
+`update-initramfs -u` without `-k all` can leave revoked Dropbear keys in older
+images; verify every retained initramfs and EFI copy after key revocation.
 The October inventory did not establish actual key usage; key comments alone
 do not prove private-key ownership.

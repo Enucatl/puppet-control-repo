@@ -29,11 +29,6 @@ profile::common::cron::jobs:
     ensure: absent
 
 profile::common::ssh_keys::authorized_keys:
-  root-docker:
-    ensure: absent
-    user: root
-    name: 'root@docker'
-
   root-proxmox-rsa:
     user: root
     type: ssh-rsa

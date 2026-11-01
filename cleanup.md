@@ -25,13 +25,15 @@ three intended desktop/Docker targets (Atlas, Aperture and Cerebrum), allowing
 retirement of its symlink migration. Hypervisors do not include that class;
 their old symlinks are outside this rollout.
 
+Cortex's retained initramfs images were regenerated with
+`update-initramfs -u -k all`; its normal hook refreshed both EFI partitions. The exact retired
+`root@docker` key material was absent from live authorization files, all four
+`/boot` images and all six EFI copies afterward. Allowed Dropbear keys, including
+Wolf, remained in every image; kernel selection and live authorization files
+were unchanged. Its completed removal marker is retired. No reboot was run.
+
 Conditional items retained:
 
-- Cortex SSH-key removal remains: live files are clean, but three retained
-  initramfs images still contain `root@docker`. Read-only inspection of both
-  managed EFI partitions also found it in two older kernel versions; normal
-  convergence rebuilds only the current initramfs. Keep the marker until all
-  retained boot images are clean.
 - Proxmox cache-prune overrides remain to prevent job reinstallation.
 - Documented targeted router tasks, Rakefile and manual wake-on-LAN CLI remain;
   operator use has not been ruled out. Optional ansible.cfg trimming was skipped.
