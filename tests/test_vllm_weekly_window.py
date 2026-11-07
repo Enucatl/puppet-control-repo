@@ -34,6 +34,7 @@ class FakeRunner:
     def __init__(self, responses: list[tuple[str, int, str]]) -> None:
         self.responses = responses
         self.commands: list[str] = []
+        self.timeouts: list[int | None] = []
 
     def run(
         self,
@@ -45,7 +46,8 @@ class FakeRunner:
         check: bool = True,
         capture_output: bool = True,
     ) -> subprocess.CompletedProcess[str]:
-        del input_text, env, timeout, capture_output
+        del input_text, env, capture_output
+        self.timeouts.append(timeout)
         command_text = " ".join(command)
         self.commands.append(command_text)
         if not self.responses:
@@ -75,73 +77,76 @@ def guest_output(output: str = "", exitcode: int = 0) -> str:
     return json.dumps({"exited": 1, "exitcode": exitcode, "out-data": output})
 
 
+def running_host_responses(existing: str = "") -> list[tuple[str, int, str]]:
+    """Reach a running VM and snapshot ownership before model startup."""
+    return [
+        ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
+        ("qm status 230", 0, "status: running\n"),
+        ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
+        ("config --services", 0, guest_output("bge\npaddleocr-gateway\n")),
+        ("ps --services --filter status=running", 0, guest_output(existing)),
+        ("up --wait --wait-timeout 600 --no-recreate", 0, guest_output()),
+    ]
+
+
+def worker_response(exitcode: int = 0) -> tuple[str, int, str]:
+    """Finish one standalone worker pass after model health succeeds."""
+    return (
+        "docker compose run --rm --no-deps workstation --once",
+        0,
+        guest_output(exitcode=exitcode),
+    )
+
+
 class TestVllmWeeklyWindow:
-    def test_hosts_already_on_starts_and_cleans_up_vllm(self) -> None:
-        result, commands = run_case(
-            [
-                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 230",
-                    0,
-                    "status: running\n",
-                ),
-                ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
-                ("ps --services --filter status=running", 0, guest_output()),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 230",
-                    0,
-                    guest_output(),
-                ),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 230",
-                    0,
-                    guest_output(),
-                ),
+    def test_hosts_already_on_runs_worker_then_stops_owned_models(self) -> None:
+        """Even a zero window completes one pass before model cleanup."""
+        runner = FakeRunner(
+            running_host_responses()
+            + [
+                worker_response(),
+                ("stop bge paddleocr-gateway", 0, guest_output()),
             ]
         )
-
-        assert result == 0
-        assert any(
-            "docker compose --profile extraction up --wait --wait-timeout 600 --no-recreate"
-            in cmd
-            for cmd in commands
+        assert vllm.Orchestrator(FastConfig(), runner).run() == 0
+        assert not runner.responses
+        worker_index = next(
+            i for i, cmd in enumerate(runner.commands) if "workstation --once" in cmd
         )
-        assert any(
-            "docker compose --profile extraction down" in cmd for cmd in commands
-        )
-        assert all("qm shutdown 230" not in cmd for cmd in commands)
-        assert all("shutdown -h now" not in cmd for cmd in commands)
-
-    def test_already_running_vllm_is_left_alone(self) -> None:
-        result, commands = run_case(
-            [
-                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 230",
-                    0,
-                    "status: running\n",
-                ),
-                ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
-                (
-                    "ps --services --filter status=running",
-                    0,
-                    guest_output("bge\npaddleocr-gateway\n"),
-                ),
-                ("up --wait --wait-timeout 600 --no-recreate", 0, guest_output()),
-            ]
-        )
-
-        assert result == 0
+        assert "/opt/docker/vllm/paperless-workstation" in runner.commands[worker_index]
+        assert runner.timeouts[worker_index] == 0
         assert all(
-            "docker compose --profile extraction down" not in cmd for cmd in commands
+            "qm shutdown" not in cmd and "shutdown -h now" not in cmd
+            for cmd in runner.commands
         )
-        assert any(
-            "up --wait --wait-timeout 600 --no-recreate" in cmd for cmd in commands
+
+    def test_existing_models_still_run_worker_and_remain_running(self) -> None:
+        """A preexisting healthy stack does not suppress weekly processing."""
+        result, commands = run_case(
+            running_host_responses("bge\npaddleocr-gateway\n") + [worker_response()]
         )
-        assert all("qm shutdown 230" not in cmd for cmd in commands)
+        assert result == 0
+        assert any("workstation --once" in command for command in commands)
+        assert all(
+            " stop " not in command and " down" not in command for command in commands
+        )
+
+    def test_partial_existing_stack_preserves_its_services(self) -> None:
+        """Cleanup targets only services absent from the running snapshot."""
+        runner = FakeRunner(
+            running_host_responses("bge\nqwen\n")
+            + [
+                worker_response(),
+                ("stop paddleocr-gateway", 0, guest_output()),
+            ]
+        )
+        assert vllm.Orchestrator(FastConfig(), runner).run() == 0
+        assert not runner.responses
+        assert "stop bge" not in " ".join(runner.commands)
 
     def test_full_sequence_cleans_up_started_layers(self) -> None:
-        result, commands = run_case(
+        """The worker exits before owned models, VM and host are stopped."""
+        responses = (
             [
                 ("nc -z -w 2 proxmox-cortex.home.arpa 22", 1, ""),
                 ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
@@ -149,119 +154,93 @@ class TestVllmWeeklyWindow:
                 ("nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222", 0, ""),
                 ("expect -", 0, ""),
                 ("nc -z -w 1 proxmox-cortex.home.arpa 22", 0, ""),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 230",
-                    0,
-                    "status: stopped\n",
-                ),
-                ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 230", 0, ""),
-                ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
-                ("ps --services --filter status=running", 0, guest_output()),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 230",
-                    0,
-                    guest_output(),
-                ),
-                ("docker compose --profile extraction down", 0, guest_output()),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 230",
-                    0,
-                    "",
-                ),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa shutdown -h now",
-                    0,
-                    "",
-                ),
+                ("qm status 230", 0, "status: stopped\n"),
+                ("qm start 230", 0, ""),
+            ]
+            + running_host_responses()[2:]
+            + [
+                worker_response(),
+                ("stop bge paddleocr-gateway", 0, guest_output()),
+                ("qm shutdown 230", 0, ""),
+                ("shutdown -h now", 0, ""),
             ]
         )
-
-        assert result == 0
-        assert "qm start 230" in " ".join(commands)
-        assert any(
-            "docker compose --profile extraction up --wait --wait-timeout 600 --no-recreate"
-            in cmd
-            for cmd in commands
+        runner = FakeRunner(responses)
+        assert vllm.Orchestrator(FastConfig(), runner).run() == 0
+        assert not runner.responses
+        assert runner.commands[-2].endswith("qm shutdown 230")
+        assert runner.commands[-1].endswith(
+            "shutdown -h now 'vLLM weekly window complete'"
         )
-        assert any(
-            "docker compose --profile extraction down" in cmd for cmd in commands
-        )
-        assert commands[-2].endswith("qm shutdown 230")
-        assert commands[-1].endswith("shutdown -h now 'vLLM weekly window complete'")
 
-    def test_compose_start_failure_still_cleans_up(self) -> None:
-        result, commands = run_case(
-            [
-                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 1, ""),
-                ("vault kv get -field=proxmox-cortex kv/wolf", 0, "secret\n"),
-                ("wakeonlan", 0, ""),
-                ("nc -z -w 1 dropbear.proxmox-cortex.home.arpa 2222", 0, ""),
-                ("expect -", 0, ""),
-                ("nc -z -w 1 proxmox-cortex.home.arpa 22", 0, ""),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm status 230",
-                    0,
-                    "status: stopped\n",
-                ),
-                ("ssh -o BatchMode=yes proxmox-cortex.home.arpa qm start 230", 0, ""),
-                ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
-                ("ps --services --filter status=running", 0, guest_output()),
-                (
-                    "up --wait --wait-timeout 600 --no-recreate",
-                    0,
-                    guest_output(exitcode=1),
-                ),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm guest exec 230",
-                    0,
-                    guest_output(),
-                ),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa qm shutdown 230",
-                    0,
-                    "",
-                ),
-                (
-                    "ssh -o BatchMode=yes proxmox-cortex.home.arpa shutdown -h now",
-                    0,
-                    "",
-                ),
+    def test_compose_start_failure_cleans_only_owned_models(self) -> None:
+        """Unhealthy models never launch a worker and preserve existing services."""
+        responses = running_host_responses("bge\n")
+        responses[-1] = (
+            "up --wait --wait-timeout 600 --no-recreate",
+            0,
+            guest_output(exitcode=1),
+        )
+        runner = FakeRunner(responses + [("stop paddleocr-gateway", 0, guest_output())])
+        assert vllm.Orchestrator(FastConfig(), runner).run() == 1
+        assert not runner.responses
+        assert all("workstation --once" not in command for command in runner.commands)
+
+    @pytest.mark.parametrize(
+        "worker", [worker_response(1), ("workstation --once", 255, "")]
+    )
+    def test_uncertain_worker_completion_preserves_all_layers(self, worker) -> None:
+        """A failed or disconnected pass must not trigger destructive cleanup."""
+        runner = FakeRunner(running_host_responses() + [worker])
+        controller = vllm.Orchestrator(FastConfig(), runner)
+        controller.started_vm = True
+        controller.woke_host = True
+        assert controller.run() == 1
+        assert not runner.responses
+        assert all(
+            " stop " not in cmd and "shutdown" not in cmd for cmd in runner.commands
+        )
+
+    def test_window_waits_for_serial_passes_and_dry_run_never_sleeps(
+        self, monkeypatch
+    ) -> None:
+        """Stop admitting new passes at the deadline without interrupting one."""
+        ticks = iter([0, 0, 0, 10, 40, 70])
+        monkeypatch.setattr(vllm.time, "monotonic", lambda: next(ticks))
+        sleeps = []
+        monkeypatch.setattr(vllm.time, "sleep", sleeps.append)
+        runner = FakeRunner(
+            running_host_responses()
+            + [
+                worker_response(),
+                worker_response(),
+                ("stop bge paddleocr-gateway", 0, guest_output()),
             ]
         )
-
-        assert result == 1
-        assert any(
-            "docker compose --profile extraction down" in cmd for cmd in commands
+        assert (
+            vllm.Orchestrator(
+                dataclasses.replace(FastConfig(), window_seconds=60), runner
+            ).run()
+            == 0
         )
-        assert commands[-2].endswith("qm shutdown 230")
-        assert commands[-1].endswith("'vLLM weekly window complete'")
+        assert not runner.responses
+        assert sleeps == [30]
+        ticks = iter([0] * 20)
+        monkeypatch.setattr(vllm.time, "monotonic", lambda: next(ticks))
+        controller = vllm.Orchestrator(
+            dataclasses.replace(FastConfig(), window_seconds=3600, dry_run=True),
+            shared.Runner(dataclasses.replace(FastConfig(), dry_run=True)),
+        )
+        assert controller.run() == 0
+        assert sleeps == [30]
 
     def test_lock_contention_exits_75(self, tmp_path: Path) -> None:
+        """Keep the single orchestrator lock across the entire weekly window."""
         lock_path = str(tmp_path / "lock")
         lock = shared.acquire_lock(lock_path, "busy")
         with lock:
             result = vllm.main(["--lock-file", lock_path, "--dry-run"])
-
         assert result == 75
-
-    def test_unhealthy_existing_stack_is_not_torn_down(self) -> None:
-        """A failed Compose health check must preserve another operator's services."""
-        result, commands = run_case(
-            [
-                ("nc -z -w 2 proxmox-cortex.home.arpa 22", 0, ""),
-                ("qm status 230", 0, "status: running\n"),
-                ("nc -z -w 1 cerebrum.home.arpa 22", 0, ""),
-                ("ps --services --filter status=running", 0, guest_output("bge\n")),
-                (
-                    "up --wait --wait-timeout 600 --no-recreate",
-                    0,
-                    guest_output(exitcode=1),
-                ),
-            ]
-        )
-        assert result == 1
-        assert all(" down" not in command for command in commands)
-        assert all("qm shutdown" not in command for command in commands)
 
     def test_guest_command_must_finish_before_success(self) -> None:
         """A QGA PID alone is not a successful model startup."""

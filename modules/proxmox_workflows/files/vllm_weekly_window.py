@@ -51,7 +51,8 @@ class Orchestrator:
         self.woke_host = False
         self.reliable_proxmox_ssh = False
         self.started_vm = False
-        self.compose_up_attempted = False
+        self.started_services: list[str] = []
+        self.worker_running = False
 
     def run(self) -> int:
         try:
@@ -73,15 +74,29 @@ class Orchestrator:
             proxmox_orchestration.wait_for_port(
                 self.runner, self.config.vm_host, 22, "guest SSH", 300, 5
             )
+            selected = self.guest_exec(
+                self.compose_command("config --services")
+            ).stdout.split()
             already_running = self.guest_exec(
                 self.compose_command("ps --services --filter status=running")
-            ).stdout.strip()
-            self.compose_up_attempted = not already_running
+            ).stdout.split()
+            self.started_services = sorted(set(selected) - set(already_running))
             self.compose_up()
-            if already_running and not (self.woke_host or self.started_vm):
-                print("Existing vLLM services are healthy; leaving them running")
-                return 0
-            time.sleep(self.config.window_seconds)
+            deadline = time.monotonic() + self.config.window_seconds
+            while True:
+                self.worker_running = True
+                self.guest_exec(
+                    f"cd {shlex.quote(self.config.compose_dir + '/paperless-workstation')} && "
+                    "docker compose run --rm --no-deps workstation --once",
+                    timeout=0,
+                )
+                self.worker_running = False
+                remaining = deadline - time.monotonic()
+                if self.config.dry_run or remaining <= 0:
+                    break
+                time.sleep(min(30, remaining))
+                if time.monotonic() >= deadline:
+                    break
             return 0
         except Exception as error:
             print(f"vLLM weekly window failed: {error}", file=sys.stderr)
@@ -107,9 +122,18 @@ class Orchestrator:
         )
 
     def cleanup(self) -> None:
-        if self.compose_up_attempted:
+        if self.worker_running:
+            print(
+                "Worker completion is uncertain; leaving models, VM and host running",
+                file=sys.stderr,
+            )
+            return
+        if self.started_services:
             try:
-                self.guest_exec(self.compose_command("down"), timeout=300, check=False)
+                services = " ".join(shlex.quote(name) for name in self.started_services)
+                self.guest_exec(
+                    self.compose_command(f"stop {services}"), timeout=300, check=False
+                )
             except Exception as error:
                 print(f"compose cleanup failed: {error}", file=sys.stderr)
 

@@ -12,9 +12,20 @@ through `profile::chronicle_backup`, `profile::vllm_weekly_window`, and
 | `proxmox_workflows::library` | `/usr/local/lib/proxmox_orchestration.py` |
 
 The workflows remain separate. They share Vault authentication, wake/unlock, SSH,
-port-waiting, and locking helpers. Their existing CLI arguments, lock paths, cleanup
-rules, schedules, and timeout behavior are unchanged. The shared-library path is
+port-waiting, and locking helpers. Their existing CLI arguments, lock paths, and
+schedules are unchanged. The shared-library path is
 passed through the existing profile wrapper before either workflow is declared.
+
+The weekly window waits for the extraction profile's healthchecks, then runs
+serial `docker compose run --rm --no-deps workstation --once` passes from
+`/opt/docker/vllm/paperless-workstation`. It waits up to 30 seconds between passes
+and starts no further pass after the configured window ends. An in-flight pass
+finishes before cleanup, even if it exceeds the window; there is no command timeout
+for that pass. Existing healthy model services still receive weekly processing and
+remain running afterward. Cleanup stops only model services started by this run,
+then shuts down only the VM/host it started. If worker completion is uncertain,
+all layers remain running for operator inspection. Dry-run executes one simulated
+pass without waiting through the processing window.
 
 The host supplies Python 3 and the existing operational tools: Vault, SSH, Expect,
 wakeonlan, netcat, jq, and Proxmox commands. The existing Puppet certificate identity
